@@ -141,6 +141,8 @@ SARVAM_API_KEY=<your-sarvam-api-key>
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
 NEXT_PUBLIC_MERCHANT_UPI_ID=<your-upi-id>
 DID_API_KEY=<your-did-api-key-for-talking-avatar>
+GOOGLE_CLIENT_SECRET=<your-google-oauth-client-secret>
+NEXT_PUBLIC_API_URL=<your-api-base-url-e.g.-http://localhost:3000>
 ```
 
 > [!NOTE]
