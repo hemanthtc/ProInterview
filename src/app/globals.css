@@ -1,0 +1,227 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Premium Light Theme */
+html.theme-light {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+html.theme-light body {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+/* Background elements translation */
+html.theme-light .bg-\[\#050505\],
+html.theme-light .bg-\[\#050510\],
+html.theme-light .bg-black {
+  background-color: #f8fafc !important;
+}
+
+html.theme-light .bg-\[\#0a0a0a\],
+html.theme-light .bg-\[\#0a0a14\],
+html.theme-light .bg-\[\#0d0d12\]\/60 {
+  background-color: #f1f5f9 !important;
+}
+
+html.theme-light .bg-\[\#111\],
+html.theme-light .bg-\[\#111111\],
+html.theme-light .bg-\[\#16161a\],
+html.theme-light .bg-\[\#1a1a24\] {
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+}
+
+html.theme-light .bg-black\/20 {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+
+html.theme-light .bg-white\/5 {
+  background-color: #e2e8f0 !important;
+}
+
+html.theme-light .bg-white\/10 {
+  background-color: #cbd5e1 !important;
+}
+
+html.theme-light .hover\:bg-white\/10:hover {
+  background-color: #cbd5e1 !important;
+}
+
+html.theme-light .hover\:bg-white\/20:hover {
+  background-color: #94a3b8 !important;
+}
+
+html.theme-light .bg-indigo-600\/20 {
+  background-color: #e0e7ff !important;
+}
+
+html.theme-light .bg-emerald-500\/20 {
+  background-color: #d1fae5 !important;
+}
+
+html.theme-light .bg-orange-500\/20 {
+  background-color: #ffedd5 !important;
+}
+
+/* Text overrides */
+html.theme-light .text-white,
+html.theme-light h1,
+html.theme-light h2,
+html.theme-light h3,
+html.theme-light h4,
+html.theme-light p.font-bold,
+html.theme-light span.font-bold,
+html.theme-light .hover\:text-white:hover {
+  color: #0f172a !important;
+}
+
+html.theme-light .text-white\/80 {
+  color: #334155 !important;
+}
+
+html.theme-light .text-white\/70 {
+  color: #475569 !important;
+}
+
+html.theme-light .text-white\/60,
+html.theme-light .text-white\/50 {
+  color: #64748b !important;
+}
+
+html.theme-light .text-white\/40 {
+  color: #94a3b8 !important;
+}
+
+html.theme-light .text-indigo-300 {
+  color: #4f46e5 !important;
+}
+
+html.theme-light .text-emerald-300 {
+  color: #059669 !important;
+}
+
+html.theme-light .text-orange-300 {
+  color: #ea580c !important;
+}
+
+/* Border overrides */
+html.theme-light .border-white\/10,
+html.theme-light .border-white\/5,
+html.theme-light .border {
+  border-color: #e2e8f0 !important;
+}
+
+html.theme-light .border-indigo-500\/30 {
+  border-color: #818cf8 !important;
+}
+
+html.theme-light .border-emerald-500\/50 {
+  border-color: #34d399 !important;
+}
+
+html.theme-light .border-orange-500\/50 {
+  border-color: #fb923c !important;
+}
+
+/* Inputs & Form Controls */
+html.theme-light input,
+html.theme-light textarea,
+html.theme-light select {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light input::placeholder,
+html.theme-light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Special text exceptions for high contrast */
+html.theme-light .text-indigo-200 {
+  color: #312e81 !important;
+}
+
+/* Custom shadow/premium feel for light mode headers */
+html.theme-light header {
+  background-color: rgba(248, 250, 252, 0.8) !important;
+  border-bottom-color: #e2e8f0 !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Ensure backdrop blur elements have white tint overlays instead of black */
+html.theme-light .backdrop-blur-md,
+html.theme-light .backdrop-blur-sm {
+  background-color: rgba(248, 250, 252, 0.75) !important;
+}
+
+/* Resume and custom document styling overrides */
+html.theme-light .prose,
+html.theme-light .markdown-body {
+  color: #334155 !important;
+}
+
+html.theme-light code {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Style React-Select in Light Mode */
+html.theme-light .react-select__control {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light .react-select__placeholder {
+  color: #64748b !important;
+}
+
+html.theme-light .react-select__input,
+html.theme-light .react-select__input-container,
+html.theme-light .react-select__single-value {
+  color: #0f172a !important;
+}
+
+html.theme-light .react-select__menu {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light .react-select__option {
+  color: #0f172a !important;
+}
+
+html.theme-light .react-select__option:hover,
+html.theme-light .react-select__option--is-focused {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+}
+
+/* Override dark inputs */
+html.theme-light .bg-black\/40 {
+  background-color: #ffffff !important;
+}
+
+/* Eye Protection Theme */
+html.theme-eyeprotect {
+  filter: sepia(0.55) contrast(0.95) brightness(0.95);
+}

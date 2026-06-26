@@ -1,0 +1,735 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowLeft, Video, Loader2, Lock, Mail, AlertCircle, ChevronDown, Search, User, Sun, Moon, Eye } from "lucide-react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
+import { motion, AnimatePresence } from "framer-motion";
+
+const COUNTRIES = [
+    { name: "United States", code: "+1", iso: "US" },
+    { name: "India", code: "+91", iso: "IN" },
+    { name: "United Kingdom", code: "+44", iso: "GB" },
+    { name: "Canada", code: "+1", iso: "CA" },
+    { name: "Australia", code: "+61", iso: "AU" },
+    { name: "Germany", code: "+49", iso: "DE" },
+    { name: "France", code: "+33", iso: "FR" },
+    { name: "Japan", code: "+81", iso: "JP" },
+    { name: "Brazil", code: "+55", iso: "BR" },
+    { name: "South Africa", code: "+27", iso: "ZA" },
+    { name: "Singapore", code: "+65", iso: "SG" },
+    { name: "United Arab Emirates", code: "+971", iso: "AE" }
+];
+
+// Animated blinking eye SVG — shows password only while hovering
+function EyeIcon({ isHovering }: { isHovering: boolean }) {
+    return (
+        <svg
+            viewBox="0 0 24 24"
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            {isHovering ? (
+                // Open eye — show password
+                <>
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                </>
+            ) : (
+                // Closed / blinking eye
+                <>
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+                    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+                    <line x1="1" y1="1" x2="23" y2="23" />
+                </>
+            )}
+        </svg>
+    );
+}
+
+function LoginContent() {
+    const router = useRouter();
+    const [loading, setLoading] = useState(false);
+    const [isRegistering, setIsRegistering] = useState(false);
+    const [loginType, setLoginType] = useState<"email" | "phone">("email");
+    const [loginMode, setLoginMode] = useState<"user" | "organization">("user");
+    const [orgSubMode, setOrgSubMode] = useState<"admin" | "employee">("admin");
+    const [adminId, setAdminId] = useState("");
+    const [employeeId, setEmployeeId] = useState("");
+
+    // Seed default organization accounts
+    useEffect(() => {
+        try {
+            const dbRef = localStorage.getItem("appUsersDb");
+            let db = dbRef ? JSON.parse(dbRef) : [];
+            
+            const hasAdmin = db.find((u: any) => u.identifier === "admin123" && u.orgRole === "admin");
+            if (!hasAdmin) {
+                db.push({
+                    identifier: "admin123",
+                    password: "Password123",
+                    displayName: "System Admin",
+                    isOrganization: true,
+                    orgRole: "admin"
+                });
+            }
+
+            const hasEmployee = db.find((u: any) => u.identifier === "emp123" && u.orgRole === "employee");
+            if (!hasEmployee) {
+                db.push({
+                    identifier: "emp123",
+                    password: "Password123",
+                    displayName: "Jane Doe",
+                    isOrganization: true,
+                    orgRole: "employee"
+                });
+            }
+
+            localStorage.setItem("appUsersDb", JSON.stringify(db));
+        } catch (e) {
+            console.error("Failed to seed default organization credentials", e);
+        }
+    }, []);
+
+    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem("globalTheme") as any;
+        if (savedTheme) {
+            setTheme(savedTheme);
+        }
+    }, []);
+
+    const cycleTheme = () => {
+        let nextTheme: "dark" | "light" | "eyeprotect" = "dark";
+        if (theme === "dark") nextTheme = "light";
+        else if (theme === "light") nextTheme = "eyeprotect";
+        
+        setTheme(nextTheme);
+        localStorage.setItem("globalTheme", nextTheme);
+        document.documentElement.className = `theme-${nextTheme}`;
+    };
+
+    // Auth States
+    const [displayName, setDisplayName] = useState("");
+    const [email, setEmail] = useState("");
+    const [phone, setPhone] = useState("");
+    const [password, setPassword] = useState("");
+    const [error, setError] = useState("");
+    const [loginSuccess, setLoginSuccess] = useState(false);
+    const [successName, setSuccessName] = useState("");
+
+    // Password reveal — shown only while hovering the eye icon
+    const [eyeHovering, setEyeHovering] = useState(false);
+
+    // Phone Dropdown States
+    const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+    const [countrySearch, setCountrySearch] = useState("");
+    const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
+
+    const filteredCountries = useMemo(() => {
+        const search = countrySearch.toLowerCase().trim();
+        return COUNTRIES.filter(c =>
+            c.name.toLowerCase().includes(search) ||
+            c.code.includes(search)
+        );
+    }, [countrySearch]);
+
+    const completeLogin = useCallback(async (name: string, identifier: string, role?: string) => {
+        setLoading(true);
+        setLoginSuccess(true);
+        setSuccessName(name);
+
+        localStorage.setItem("userLoggedIn", "true");
+        localStorage.setItem("userName", name);
+        localStorage.setItem("userIdentifier", identifier);
+        localStorage.setItem("userType", loginMode);
+        localStorage.setItem("userRole", role || "user");
+
+        // Keep popup open for 1.8 seconds to allow full success animations to finish
+        await new Promise(resolve => setTimeout(resolve, 1800));
+        router.push("/");
+    }, [router, loginMode]);
+
+    const googleLogin = useGoogleLogin({
+        onSuccess: async (tokenResponse) => {
+            setLoading(true);
+            setError("");
+            try {
+                const res = await fetch("/api/auth/google", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ accessToken: tokenResponse.access_token })
+                });
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.error || "Failed backend verification");
+                }
+                const data = await res.json();
+                completeLogin(data.name, data.email);
+            } catch (err: any) {
+                setError(err.message || "Failed server-side Google authentication verification.");
+                setLoading(false);
+            }
+        },
+        onError: () => {
+            setError("Google Login failed. Please check your credentials.");
+            setLoading(false);
+        }
+    });
+
+    const handleGoogleLogin = useCallback(() => {
+        const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+        if (!clientId || clientId === "YOUR_GOOGLE_CLIENT_ID" || clientId.trim() === "") {
+            setError("Google Client ID is not configured. Please add NEXT_PUBLIC_GOOGLE_CLIENT_ID to your .env file.");
+            return;
+        }
+        googleLogin();
+    }, [googleLogin]);
+
+    const handleSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setShowCountryDropdown(false);
+
+        let identifier = "";
+        if (loginMode === "user") {
+            const isPhoneEmpty = loginType === "phone" && !phone.trim();
+            const isEmailEmpty = loginType === "email" && !email.trim();
+            if (isPhoneEmpty || isEmailEmpty || !password.trim()) {
+                setError("Please fill in all credentials.");
+                return;
+            }
+
+            if (isRegistering && !displayName.trim()) {
+                setError("Please enter your display name.");
+                return;
+            }
+
+            identifier = loginType === "email" ? email.trim() : `${selectedCountry.code}${phone.trim()}`;
+        } else {
+            // Organization login
+            const isIdEmpty = orgSubMode === "admin" ? !adminId.trim() : !employeeId.trim();
+            if (isIdEmpty || !password.trim()) {
+                setError("Please fill in all credentials.");
+                return;
+            }
+            identifier = orgSubMode === "admin" ? adminId.trim() : employeeId.trim();
+        }
+
+        setLoading(true);
+        await new Promise(r => setTimeout(r, 1200));
+
+        try {
+            const dbRef = localStorage.getItem("appUsersDb");
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const db = dbRef ? JSON.parse(dbRef) : [];
+
+            if (loginMode === "user") {
+                if (isRegistering) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const exists = db.find((u: any) => u.identifier === identifier);
+                    if (exists) {
+                        setError(`An account with this ${loginType} already exists.`);
+                        setLoading(false);
+                        return;
+                    }
+                    db.push({ 
+                        identifier, 
+                        password, 
+                        type: loginType, 
+                        displayName: displayName.trim(),
+                        isOrganization: false
+                    });
+                    localStorage.setItem("appUsersDb", JSON.stringify(db));
+                    completeLogin(displayName.trim(), identifier, "user");
+                } else {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const user = db.find((u: any) => 
+                        u.identifier === identifier && 
+                        u.password === password && 
+                        !u.isOrganization
+                    );
+                    if (!user) {
+                        setError(`Invalid credentials for this login type.`);
+                        setLoading(false);
+                        return;
+                    }
+                    completeLogin(user.displayName || identifier, identifier, "user");
+                }
+            } else {
+                // Organization mode - administration or employee
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const user = db.find((u: any) => 
+                    u.identifier === identifier && 
+                    u.password === password && 
+                    u.isOrganization === true &&
+                    u.orgRole === orgSubMode
+                );
+                if (!user) {
+                    setError(`Invalid credentials for organization ${orgSubMode === "admin" ? "Administration" : "Employee"} login.`);
+                    setLoading(false);
+                    return;
+                }
+                completeLogin(user.displayName || identifier, identifier, orgSubMode);
+            }
+        } catch {
+            setError("A secure database error occurred.");
+            setLoading(false);
+        }
+    }, [loginType, email, selectedCountry, phone, password, isRegistering, displayName, loginMode, completeLogin, orgSubMode, adminId, employeeId]);
+
+    return (
+        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans relative overflow-hidden">
+            <AnimatePresence>
+                {loading && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-6"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
+                            className="max-w-md w-full bg-gradient-to-b from-[#111] to-[#0a0a0a] border border-white/10 rounded-3xl p-8 text-center shadow-[0_0_50px_rgba(79,70,229,0.3)] relative overflow-hidden"
+                        >
+                            <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-[40px] pointer-events-none" />
+                            <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-[40px] pointer-events-none" />
+
+                            <div className="relative z-10 flex flex-col items-center">
+                                {loginSuccess ? (
+                                    <div className="relative w-24 h-24 mb-6 flex items-center justify-center">
+                                        <motion.div
+                                            initial={{ scale: 0 }}
+                                            animate={{ scale: 1 }}
+                                            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+                                            className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+                                        >
+                                            <motion.svg
+                                                className="w-10 h-10"
+                                                fill="none"
+                                                viewBox="0 0 24 24"
+                                                stroke="currentColor"
+                                                strokeWidth="3"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            >
+                                                <motion.path
+                                                    initial={{ pathLength: 0 }}
+                                                    animate={{ pathLength: 1 }}
+                                                    transition={{ delay: 0.2, duration: 0.4 }}
+                                                    d="M20 6L9 17l-5-5"
+                                                />
+                                            </motion.svg>
+                                        </motion.div>
+                                    </div>
+                                ) : (
+                                    <div className="relative w-24 h-24 mb-6">
+                                        <motion.div
+                                            animate={{ rotate: 360 }}
+                                            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                                            className="absolute inset-0 rounded-full border-t-2 border-r-2 border-indigo-500"
+                                        />
+                                        <motion.div
+                                            animate={{ rotate: -360 }}
+                                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                                            className="absolute inset-2 rounded-full border-b-2 border-l-2 border-purple-500"
+                                        />
+                                        <div className="absolute inset-4 rounded-full bg-black/40 flex items-center justify-center">
+                                            <Video className="w-6 h-6 text-indigo-400 animate-pulse" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 text-transparent bg-clip-text">
+                                    {loginSuccess ? "Authentication Successful" : "Secure Authentication"}
+                                </h3>
+                                <p className="text-sm text-white/60 mb-6">
+                                    {loginSuccess ? `Welcome back, ${successName}! Syncing your profile...` : "Verifying credentials and establishing a secure session..."}
+                                </p>
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-xs text-white/40">
+                                    {loginSuccess ? (
+                                        <>
+                                            <motion.div
+                                                animate={{ scale: [1, 1.2, 1] }}
+                                                transition={{ duration: 1, repeat: Infinity }}
+                                                className="w-2 h-2 rounded-full bg-emerald-400"
+                                            />
+                                            <span>Redirecting to home...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                                            <span>Syncing with AI database</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+                <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+                        <Video className="w-5 h-5 text-white" />
+                    </div>
+                    <span className="font-bold text-xl tracking-tight">AI Interviewer</span>
+                </Link>
+                <div className="flex items-center gap-4">
+                    {/* Theme Toggle Button */}
+                    <button 
+                        onClick={cycleTheme}
+                        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                        title={`Current Theme: ${theme}. Click to switch.`}
+                    >
+                        {theme === "dark" && <Moon className="w-4 h-4" />}
+                        {theme === "light" && <Sun className="w-4 h-4" />}
+                        {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                    </button>
+                    <Link href="/" className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-2">
+                        <ArrowLeft className="w-4 h-4" /> Back to Home
+                    </Link>
+                </div>
+            </header>
+
+            <main className="flex-1 flex items-center justify-center p-6 relative">
+                <div className="absolute top-[10%] right-[20%] w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none z-0" />
+                <div className="absolute bottom-[20%] left-[20%] w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none z-0" />
+
+                <div className="max-w-md w-full bg-[#111] border border-white/10 rounded-3xl p-8 z-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative transition-all duration-300">
+                    <div className="text-center mb-6">
+                        <h1 className="text-3xl font-bold mb-2">{isRegistering ? "Create Account" : "Secure Login"}</h1>
+                        <p className="text-white/50 text-sm">
+                            {isRegistering ? "Register your credentials to start capturing interview data." : "Enter your exact credentials to sync your interview algorithms."}
+                        </p>
+                    </div>
+
+                    {/* User / Organization Toggle Switch */}
+                    <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
+                        <button 
+                            type="button" 
+                            onClick={() => { setLoginMode("user"); setError(""); }}
+                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "user" ? "bg-indigo-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                        >
+                            User Login
+                        </button>
+                        <button 
+                            type="button" 
+                            onClick={() => { setLoginMode("organization"); setError(""); }}
+                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "organization" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                        >
+                            Organization
+                        </button>
+                    </div>
+
+                    {/* Google Login for Users Only */}
+                    {loginMode === "user" && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleGoogleLogin}
+                                disabled={loading}
+                                className="w-full h-12 mb-6 flex items-center justify-center gap-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-70"
+                            >
+                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                    <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                                        <path d="M1 1h22v22H1z" fill="none" />
+                                    </svg>
+                                )}
+                                Continue with Google
+                            </button>
+
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="h-px bg-white/10 flex-1"></div>
+                                <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">OR</span>
+                                <div className="h-px bg-white/10 flex-1"></div>
+                            </div>
+
+                            {/* Tab toggle */}
+                            <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5">
+                                <button type="button" onClick={() => { setLoginType("email"); setError(""); setShowCountryDropdown(false); }}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "email" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
+                                    Email
+                                </button>
+                                <button type="button" onClick={() => { setLoginType("phone"); setError(""); setShowCountryDropdown(false); }}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "phone" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
+                                    Phone Number
+                                </button>
+                            </div>
+                        </>
+                    )}
+
+                    {/* Sub-tab toggle for Organization Mode */}
+                    {loginMode === "organization" && (
+                        <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
+                            <button 
+                                type="button" 
+                                onClick={() => { setOrgSubMode("admin"); setError(""); }}
+                                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "admin" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                            >
+                                Administration Login
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={() => { setOrgSubMode("employee"); setError(""); }}
+                                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "employee" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                            >
+                                Employee Login
+                            </button>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className="space-y-4 relative z-20">
+                        <AnimatePresence>
+                            {error && (
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, height: "auto", scale: 1 }}
+                                    exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                                    transition={{ duration: 0.3, ease: "easeInOut" }}
+                                    className="overflow-hidden"
+                                >
+                                    <div className="flex items-start gap-3 text-red-300 bg-gradient-to-r from-red-500/15 to-rose-600/15 p-4 rounded-2xl border border-red-500/30 text-sm shadow-[0_4px_20px_rgba(239,68,68,0.15)] backdrop-blur-md relative group">
+                                        <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0 border border-red-500/40">
+                                            <AlertCircle className="w-4 h-4 text-red-400" />
+                                        </div>
+                                        <div className="flex-1 min-w-0 pr-6">
+                                            <p className="font-bold text-white text-xs tracking-wider uppercase mb-1">Attention Required</p>
+                                            <p className="text-white/70 leading-relaxed text-xs">{error}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => setError("")}
+                                            className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-lg text-xs"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* Scoped fields block */}
+                        {loginMode === "user" ? (
+                            <>
+                                {/* Display name — only on registration */}
+                                {isRegistering && (
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Your Name</label>
+                                        <div className="relative">
+                                            <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                            <input
+                                                type="text"
+                                                value={displayName}
+                                                onChange={e => setDisplayName(e.target.value)}
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                                placeholder="John Doe"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Email or Phone */}
+                                {loginType === "email" ? (
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Email Address</label>
+                                        <div className="relative">
+                                            <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                            <input
+                                                type="email"
+                                                value={email}
+                                                onChange={e => setEmail(e.target.value)}
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                                placeholder="name@company.com"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Phone Number</label>
+                                        <div className="relative flex items-stretch">
+                                            <button type="button" onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                                                className="px-3 bg-black/50 border border-white/10 border-r-0 rounded-l-xl flex items-center gap-1.5 text-sm shrink-0 hover:bg-white/10 transition-colors">
+                                                <span className="opacity-70">{selectedCountry.iso}</span>
+                                                <span className="font-mono">{selectedCountry.code}</span>
+                                                <ChevronDown className="w-3 h-3 text-white/50" />
+                                            </button>
+                                            <input type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                                                className="w-full bg-black/50 border border-white/10 rounded-r-xl pl-3 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                                                placeholder="555-000-0000" />
+                                            {showCountryDropdown && (
+                                                <>
+                                                    <div className="fixed inset-0 z-40" onClick={() => setShowCountryDropdown(false)} />
+                                                    <div className="absolute top-[110%] left-0 w-[280px] bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 max-h-64 flex flex-col overflow-hidden">
+                                                        <div className="p-2 border-b border-white/10 relative shrink-0">
+                                                            <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                                                            <input type="text" placeholder="Search country..." value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
+                                                                className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
+                                                        </div>
+                                                        <div className="overflow-y-auto p-1 flex-1">
+                                                            {filteredCountries.map(c => (
+                                                                <button type="button" key={c.iso}
+                                                                    onClick={() => { setSelectedCountry(c); setShowCountryDropdown(false); setCountrySearch(""); }}
+                                                                    className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 rounded-lg flex justify-between items-center transition-colors">
+                                                                    <span className="text-white/80">{c.name} ({c.iso})</span>
+                                                                    <span className="text-white/50 font-mono">{c.code}</span>
+                                                                </button>
+                                                            ))}
+                                                            {filteredCountries.length === 0 && <div className="px-3 py-4 text-center text-sm text-white/40">No countries found</div>}
+                                                        </div>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <>
+                                {/* Organization Inputs */}
+                                {orgSubMode === "admin" ? (
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Administration ID</label>
+                                        <div className="relative">
+                                            <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                            <input
+                                                type="text"
+                                                value={adminId}
+                                                onChange={e => setAdminId(e.target.value)}
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
+                                                placeholder="e.g. admin123"
+                                            />
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Employee ID</label>
+                                        <div className="relative">
+                                            <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                            <input
+                                                type="text"
+                                                value={employeeId}
+                                                onChange={e => setEmployeeId(e.target.value)}
+                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
+                                                placeholder="e.g. emp123"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {/* Password with hover-to-reveal eye */}
+                        <div className="space-y-1 relative z-10">
+                            <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Password</label>
+                            <div className="relative">
+                                <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                <input
+                                    type={eyeHovering ? "text" : "password"}
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    className={`w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white focus:outline-none focus:ring-1 transition-all ${
+                                        loginMode === "organization" ? "focus:border-purple-500 focus:ring-purple-500 font-sans" : "focus:border-indigo-500 focus:ring-indigo-500"
+                                    }`}
+                                    placeholder="••••••••"
+                                />
+                                {/* Hover, touch, or focus to reveal eye icon */}
+                                <button
+                                    type="button"
+                                    onMouseEnter={() => setEyeHovering(true)}
+                                    onMouseLeave={() => setEyeHovering(false)}
+                                    onTouchStart={() => setEyeHovering(true)}
+                                    onTouchEnd={() => setEyeHovering(false)}
+                                    onFocus={() => setEyeHovering(true)}
+                                    onBlur={() => setEyeHovering(false)}
+                                    className={`absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-200 select-none focus:outline-none ${
+                                        eyeHovering 
+                                            ? (loginMode === "organization" ? "text-purple-400 scale-110" : "text-indigo-400 scale-110") 
+                                            : "text-white/30 hover:text-white/50"
+                                    }`}
+                                    tabIndex={0}
+                                    aria-label="Hold or focus to reveal password"
+                                    title="Hold or focus to reveal password"
+                                >
+                                    <EyeIcon isHovering={eyeHovering} />
+                                </button>
+                            </div>
+                            <p className="text-xs text-white/25 ml-1">Hover the eye icon to reveal your password</p>
+                        </div>
+
+                        {/* Custom recovery links for Organization */}
+                        {loginMode === "organization" && (
+                            <div className="flex justify-between items-center px-1 text-[11px] font-semibold text-purple-400 pt-1 relative z-30">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setError(`Please contact system administrator to retrieve your ${orgSubMode === "admin" ? "Administration ID" : "Employee ID"}.`)}
+                                    className="hover:text-purple-300 transition-colors cursor-pointer"
+                                >
+                                    Forgot {orgSubMode === "admin" ? "Administration ID" : "Employee ID"}?
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setError("Please contact system administrator to recover your password.")}
+                                    className="hover:text-purple-300 transition-colors cursor-pointer"
+                                >
+                                    Forgot Password?
+                                </button>
+                            </div>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className={`w-full h-12 mt-4 flex items-center justify-center gap-2 transition-all disabled:opacity-50 rounded-xl font-bold text-white shadow-lg cursor-pointer ${
+                                loginMode === "organization" 
+                                    ? "bg-purple-600 hover:bg-purple-500 shadow-purple-500/20" 
+                                    : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20"
+                            }`}
+                        >
+                            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                            {loading ? "Authenticating..." : (isRegistering ? "Create Account" : "Sign In")}
+                        </button>
+                    </form>
+
+                    {loginMode === "user" && (
+                        <div className="mt-6 text-center">
+                            <button type="button"
+                                onClick={() => { setIsRegistering(!isRegistering); setError(""); setPassword(""); setDisplayName(""); setShowCountryDropdown(false); }}
+                                className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
+                                {isRegistering ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                            </button>
+                        </div>
+                    )}
+
+                    <p className="mt-6 text-center text-xs text-white/30">
+                        Credentials stored securely in your local cache. End-to-end protected.
+                    </p>
+                </div>
+            </main>
+        </div>
+    );
+}
+
+export default function LoginPage() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "dummy-client-id";
+    return (
+        <GoogleOAuthProvider clientId={clientId}>
+            <LoginContent />
+        </GoogleOAuthProvider>
+    );
+}
