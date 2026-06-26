@@ -57,8 +57,9 @@
 
 ```
 Ai-interviewer-main/
-├── .env                          # API keys and config
-├── ARCHITECTURE.md               # Original architecture docs
+├── .env                          # API keys and config (ignored by git)
+├── .env.example                  # Template config with placeholders for other developers
+├── ARCHITECTURE.md               # Original architecture docs (including D-ID WebRTC avatar docs)
 ├── REPORT.md                     # THIS FILE — full dev report
 ├── package.json                  # Dependencies and scripts
 ├── next.config.ts                # Next.js configuration
@@ -139,7 +140,11 @@ GEMINI_API_KEY=<your-gemini-api-key>
 SARVAM_API_KEY=<your-sarvam-api-key>
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=<your-google-oauth-client-id>
 NEXT_PUBLIC_MERCHANT_UPI_ID=<your-upi-id>
+DID_API_KEY=<your-did-api-key-for-talking-avatar>
 ```
+
+> [!NOTE]
+> A template configuration file [.env.example](file:///d:/Project%20repo/Ai-interviewer-main/.env.example) is included in the project root. You can quickly set up your environment by copying it: `cp .env.example .env`.
 
 ### ⚠️ CRITICAL: Windows `.env` Sanitization
 
@@ -167,6 +172,29 @@ node node_modules/next/dist/bin/next build
 ---
 
 ## 5. All Modifications — Changelog
+
+### Session: 2026-06-26
+
+Below is a chronological list of every change made during this session.
+
+---
+
+### Change 1: Robust .gitignore and .env.example Template
+**Files Modified:**
+- [.gitignore](file:///d:/Project%20repo/Ai-interviewer-main/.gitignore)
+- [.env.example](file:///d:/Project%20repo/Ai-interviewer-main/.env.example) [NEW]
+
+**What:** Created a new environment configuration template `.env.example` to guide new developers on key setups. Excluded `.env.example` from the Git ignore list by adding the `!.env.example` rule, and standardized `node_modules/` in `.gitignore`.  
+**Why:** Improves developer onboarding and repository setup.
+
+---
+
+### Change 2: Architectural Documentation Refactoring
+**File:** [ARCHITECTURE.md](file:///d:/Project%20repo/Ai-interviewer-main/ARCHITECTURE.md)  
+**What:** Added comprehensive architectural deep-dives for the **D-ID Talking Head WebRTC Avatar Stream** engine, realistic mock interview flows, email invitation/offer letter parser, and interactive career roadmap builder. Added clickable file references.  
+**Why:** Syncs documentation with existing codebase capabilities.
+
+---
 
 ### Session: 2026-06-23
 
@@ -324,6 +352,8 @@ The largest file in the project. Contains 4 tool tabs:
 | `/api/profile-guidance` | POST | Career coaching across sessions | `{ pastSessions }` |
 | `/api/upload` | POST | Resume PDF upload + text extraction | `FormData { file }` |
 | `/api/auth` | POST | Authentication | `{ token, provider }` |
+| `/api/d-id-talk` | POST | Triggers static talking head video generation | `{ text }` |
+| `/api/d-id-stream` | POST | Creates, configures WebRTC D-ID stream connection and SDP exchange | `{ action, streamId?, sessionId?, answer?, candidate?, sdpMid?, sdpMLineIndex?, text? }` |
 
 ### `/api/analyze-email` — Response Shape
 
