@@ -925,7 +925,7 @@ export default function InterviewRoom() {
                                 {/* AI Video */}
                                 <div className="relative bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center min-h-[300px]">
                                     <div className="absolute top-4 left-4 inline-flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-semibold z-10">
-                                        AI Interviewer <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
+                                        ProInterview <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
                                     </div>
 
                                     <div className="relative flex items-center justify-center z-0">

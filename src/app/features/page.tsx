@@ -1681,7 +1681,7 @@ function FeaturesContent() {
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
                         <Video className="w-5 h-5 text-white" />
                     </div>
-                    <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">AI Interviewer</Link>
+                    <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
                 </div>
                 <nav className="flex gap-6 text-sm font-medium text-white/70 items-center">
                     {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}

@@ -345,11 +345,11 @@ export default function ProfilePage() {
         if (!txDetails || !selectedPlanForPayment) return;
         const receiptText = `
 ========================================
-       AI INTERVIEWER SUBSCRIPTION
+       PROINTERVIEW SUBSCRIPTION
            NPCI UPI RECEIPT
 ========================================
 Date: ${txDetails.date}
-Merchant: AI Interviewer Inc. (Verified Merchant)
+Merchant: ProInterview Inc. (Verified Merchant)
 Plan: ${selectedPlanForPayment}
 Amount Paid: INR ${txDetails.amount}.00
 Payment Channel: NPCI Unified Payments Interface (UPI)
@@ -812,7 +812,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
                         <Video className="w-5 h-5 text-white" />
                     </div>
-                    <span className="font-bold text-xl tracking-tight">AI Interviewer</span>
+                    <span className="font-bold text-xl tracking-tight">ProInterview</span>
                 </Link>
                 <div className="flex items-center gap-4">
                     <button 

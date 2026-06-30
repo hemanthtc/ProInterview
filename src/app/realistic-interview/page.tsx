@@ -1188,7 +1188,7 @@ export default function RealisticInterviewRoom() {
                                 {/* AI Video - Animated Human Face */}
                                 <div className="relative bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center min-h-[300px]">
                                     <div className="absolute top-3 left-3 inline-flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg text-xs font-semibold z-10">
-                                        AI Interviewer <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
+                                        ProInterview <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
                                     </div>
 
                                     <div className="relative flex items-center justify-center z-0 w-full h-full">
@@ -1210,7 +1210,7 @@ export default function RealisticInterviewRoom() {
                                             {/* Professional presenter photo */}
                                             <img
                                                 src="https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg"
-                                                alt="AI Interviewer"
+                                                alt="ProInterview"
                                                 className={`object-cover w-full h-full transition-all duration-700 ${isSpeaking ? "brightness-110 contrast-105" : "brightness-90 contrast-100"}`}
                                             />
 
