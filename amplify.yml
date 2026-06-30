@@ -12,6 +12,9 @@ frontend:
         - echo "DID_API_KEY=${DID_API_KEY}" >> .env.production
         - echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env.production
         - echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" >> .env.production
+        - echo "MONGODB_URI=${MONGODB_URI}" >> .env.production
+        - echo "GMAIL_USER=${GMAIL_USER}" >> .env.production
+        - echo "GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}" >> .env.production
     build:
       commands:
         - npm run build
