@@ -106,6 +106,24 @@ export default function ProfilePage() {
     const [paymentTimer, setPaymentTimer] = useState<number>(300); // 5 minutes in seconds
     const [txDetails, setTxDetails] = useState<{ txId: string; refNo: string; date: string; amount: number } | null>(null);
 
+    // Sync profile helper
+    const syncProfileToCloud = async (fieldsToUpdate: any) => {
+        const identifier = getStorageItem("userIdentifier") || userIdentifier;
+        if (!identifier) return;
+        try {
+            const res = await fetch("/api/auth/profile", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ identifier, ...fieldsToUpdate })
+            });
+            if (!res.ok) {
+                console.warn("Cloud sync: profile save returned non-200 status.");
+            }
+        } catch (err) {
+            console.warn("Cloud sync offline or connection missing:", err);
+        }
+    };
+
     useEffect(() => {
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
@@ -169,18 +187,88 @@ export default function ProfilePage() {
             setEduPGMarks(storedEdu.pg?.marks || "");
         } catch { /* ignore */ }
 
-        // Determine member since from first session or login timestamp
-        const dbRef = getStorageItem("appUsersDb");
-        if (dbRef) {
+        // Fetch user document from cloud database on load
+        const fetchCloudProfile = async (id: string) => {
             try {
-                const db = JSON.parse(dbRef);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const acct = db.find((u: any) => u.identifier === identifier);
-                if (acct?.createdAt) {
-                    setMemberSince(new Date(acct.createdAt).toLocaleDateString());
+                const res = await fetch(`/api/auth/profile?identifier=${encodeURIComponent(id)}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.user) {
+                        const u = data.user;
+                        setUserName(u.displayName);
+                        setEditNameValue(u.displayName);
+                        setStorageItem("userName", u.displayName);
+
+                        if (u.profilePhoto) {
+                            setProfilePhoto(u.profilePhoto);
+                            setStorageItem("userProfilePhoto", u.profilePhoto);
+                        }
+                        if (u.additionalEmail) {
+                            setAdditionalEmail(u.additionalEmail);
+                            setEditAdditionalEmailValue(u.additionalEmail);
+                            setStorageItem("userAdditionalEmail", u.additionalEmail);
+                        }
+                        if (u.subscriptionPlan) {
+                            setSubscriptionPlan(u.subscriptionPlan);
+                            setStorageItem("userSubscriptionPlan", u.subscriptionPlan);
+                        }
+                        if (u.github) {
+                            setGithub(u.github);
+                            setEditGithubValue(u.github);
+                            setStorageItem("userGithub", u.github);
+                        }
+                        if (u.linkedin) {
+                            setLinkedin(u.linkedin);
+                            setEditLinkedinValue(u.linkedin);
+                            setStorageItem("userLinkedin", u.linkedin);
+                        }
+                        if (u.portfolioUrl) {
+                            setPortfolioUrl(u.portfolioUrl);
+                            setEditPortfolioValue(u.portfolioUrl);
+                            setStorageItem("userPortfolio", u.portfolioUrl);
+                        }
+                        if (u.resumeCvName) {
+                            setResumeCvName(u.resumeCvName);
+                            setStorageItem("userResumeCvName", u.resumeCvName);
+                        }
+                        if (u.resumeCvText) {
+                            setResumeCvText(u.resumeCvText);
+                            setStorageItem("userResumeCvText", u.resumeCvText);
+                        }
+                        if (u.phone) {
+                            setPhone(u.phone);
+                            setEditPhoneValue(u.phone);
+                            setStorageItem("userPhone", u.phone);
+                        }
+                        if (u.educationData) {
+                            setStorageItem("userEducationData", JSON.stringify(u.educationData));
+                            setEdu10thInstitution(u.educationData.tenth?.institution || "");
+                            setEdu10thBoard(u.educationData.tenth?.board || "");
+                            setEdu10thMarks(u.educationData.tenth?.marks || "");
+                            setEdu12thInstitution(u.educationData.twelfth?.institution || "");
+                            setEdu12thBoard(u.educationData.twelfth?.board || "");
+                            setEdu12thMarks(u.educationData.twelfth?.marks || "");
+                            setEduUGInstitution(u.educationData.ug?.institution || "");
+                            setEduUGCourse(u.educationData.ug?.course || "");
+                            setEduUGMarks(u.educationData.ug?.marks || "");
+                            setEduPGInstitution(u.educationData.pg?.institution || "");
+                            setEduPGCourse(u.educationData.pg?.course || "");
+                            setEduPGMarks(u.educationData.pg?.marks || "");
+                        }
+                        if (u.createdAt) {
+                            setMemberSince(new Date(u.createdAt).toLocaleDateString());
+                        }
+                    }
                 }
-            } catch { /* ignore */ }
+            } catch (err) {
+                console.warn("Could not sync profile with Cloud database, offline or connection error:", err);
+            }
+        };
+
+        if (identifier) {
+            fetchCloudProfile(identifier);
         }
+
         if (!memberSince) setMemberSince(new Date().toLocaleDateString());
 
         loadSessions(exactUser);
@@ -324,20 +412,7 @@ export default function ProfilePage() {
         if (!selectedPlanForPayment) return;
         setStorageItem("userSubscriptionPlan", selectedPlanForPayment);
         setSubscriptionPlan(selectedPlanForPayment);
-        
-        // Update mock database (localStorage appUsersDb)
-        const dbRef = getStorageItem("appUsersDb");
-        if (dbRef && userIdentifier) {
-            try {
-                const db = JSON.parse(dbRef);
-                const idx = db.findIndex((u: any) => u.identifier === userIdentifier);
-                if (idx !== -1) {
-                    db[idx].subscriptionPlan = selectedPlanForPayment;
-                    setStorageItem("appUsersDb", JSON.stringify(db));
-                }
-            } catch { /* ignore */ }
-        }
-
+        syncProfileToCloud({ subscriptionPlan: selectedPlanForPayment });
         setPaymentStatus("success");
     };
 
@@ -381,18 +456,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
             setStorageItem("userSubscriptionPlan", "Free Tier");
             setSubscriptionPlan("Free Tier");
-
-            const dbRef = getStorageItem("appUsersDb");
-            if (dbRef && userIdentifier) {
-                try {
-                    const db = JSON.parse(dbRef);
-                    const idx = db.findIndex((u: any) => u.identifier === userIdentifier);
-                    if (idx !== -1) {
-                        db[idx].subscriptionPlan = "Free Tier";
-                        setStorageItem("appUsersDb", JSON.stringify(db));
-                    }
-                } catch { /* ignore */ }
-            }
+            syncProfileToCloud({ subscriptionPlan: "Free Tier" });
 
             await new Promise(resolve => setTimeout(resolve, 1000));
             setUpgradingPlan(null);
@@ -406,28 +470,17 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
     const saveName = () => {
         const trimmed = editNameValue.trim();
         if (!trimmed) return;
-        // Update localStorage
         setStorageItem("userName", trimmed);
-        // Update the user's displayName in appUsersDb
-        const dbRef = getStorageItem("appUsersDb");
-        if (dbRef) {
-            try {
-                const db = JSON.parse(dbRef);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const idx = db.findIndex((u: any) => u.identifier === userIdentifier);
-                if (idx !== -1) db[idx].displayName = trimmed;
-                setStorageItem("appUsersDb", JSON.stringify(db));
-            } catch { /* ignore */ }
-        }
+        syncProfileToCloud({ displayName: trimmed });
         setUserName(trimmed);
         setEditingName(false);
-        // Reload sessions — filter now correctly uses userIdentifier not userName
         loadSessions(trimmed);
     };
 
     const saveGithub = () => {
         const trimmed = editGithubValue.trim();
         setStorageItem("userGithub", trimmed);
+        syncProfileToCloud({ github: trimmed });
         setGithub(trimmed);
         setEditingGithub(false);
     };
@@ -435,6 +488,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
     const saveLinkedin = () => {
         const trimmed = editLinkedinValue.trim();
         setStorageItem("userLinkedin", trimmed);
+        syncProfileToCloud({ linkedin: trimmed });
         setLinkedin(trimmed);
         setEditingLinkedin(false);
     };
@@ -442,6 +496,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
     const savePortfolio = () => {
         const trimmed = editPortfolioValue.trim();
         setStorageItem("userPortfolio", trimmed);
+        syncProfileToCloud({ portfolioUrl: trimmed });
         setPortfolioUrl(trimmed);
         setEditingPortfolio(false);
     };
@@ -449,6 +504,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
     const savePhone = () => {
         const trimmed = editPhoneValue.trim();
         setStorageItem("userPhone", trimmed);
+        syncProfileToCloud({ phone: trimmed });
         setPhone(trimmed);
         setEditingPhone(false);
     };
@@ -456,6 +512,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
     const saveAdditionalEmail = () => {
         const trimmed = editAdditionalEmailValue.trim();
         setStorageItem("userAdditionalEmail", trimmed);
+        syncProfileToCloud({ additionalEmail: trimmed });
         setAdditionalEmail(trimmed);
         setEditingAdditionalEmail(false);
     };
@@ -468,6 +525,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             pg: { institution: eduPGInstitution.trim(), course: eduPGCourse.trim(), marks: eduPGMarks.trim() }
         };
         setStorageItem("userEducationData", JSON.stringify(eduObj));
+        syncProfileToCloud({ educationData: eduObj });
 
         // Also build a plain-text summary for the resume builder
         const lines: string[] = [];
@@ -484,26 +542,23 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
     const handleDeleteAccount = async () => {
         setIsDeleting(true);
-        // Simulate database synchronization/connection delay
         await new Promise(resolve => setTimeout(resolve, 1500));
 
-        // 1. Remove from appUsersDb
-        const dbRef = getStorageItem("appUsersDb");
-        if (dbRef) {
-            try {
-                const db = JSON.parse(dbRef);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const updatedDb = db.filter((u: any) => u.identifier !== userIdentifier);
-                setStorageItem("appUsersDb", JSON.stringify(updatedDb));
-            } catch { /* ignore */ }
+        const identifier = getStorageItem("userIdentifier") || userIdentifier;
+        try {
+            if (identifier) {
+                await fetch(`/api/auth/profile?identifier=${encodeURIComponent(identifier)}`, {
+                    method: "DELETE"
+                });
+            }
+        } catch (err) {
+            console.warn("Could not delete Cloud profile:", err);
         }
 
-        // 2. Clear all user scoped data
-        if (userIdentifier) {
-            clearUserScopedData(userIdentifier);
+        if (identifier) {
+            clearUserScopedData(identifier);
         }
 
-        // 3. Clean up global session details
         removeStorageItem("userLoggedIn");
         removeStorageItem("userName");
         removeStorageItem("userIdentifier");
@@ -512,8 +567,6 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
         setIsDeleting(false);
         setDeleteConfirmOpen(false);
-
-        // 4. Redirect to home
         router.push("/");
     };
 
@@ -582,6 +635,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             setResumeCvText(data.text || "");
             setStorageItem("userResumeCvName", file.name);
             setStorageItem("userResumeCvText", data.text || "");
+            syncProfileToCloud({ resumeCvName: file.name, resumeCvText: data.text || "" });
         } catch (error) {
             console.error("Resume/CV upload failed:", error);
             alert((error as Error).message || "Failed to upload resume/CV.");
@@ -679,6 +733,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         const base64String = canvas.toDataURL("image/jpeg", 0.9);
         setStorageItem("userProfilePhoto", base64String);
         setProfilePhoto(base64String);
+        syncProfileToCloud({ profilePhoto: base64String });
         setCropModalOpen(false);
         setTempImageSrc("");
     };
@@ -686,6 +741,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
     const handleRemoveResumeCv = () => {
         removeStorageItem("userResumeCvName");
         removeStorageItem("userResumeCvText");
+        syncProfileToCloud({ resumeCvName: "", resumeCvText: "" });
         setResumeCvName("");
         setResumeCvText("");
     };

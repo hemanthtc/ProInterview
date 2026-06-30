@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeft, Video, Loader2, Lock, Mail, AlertCircle, ChevronDown, Search, User, Sun, Moon, Eye } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from "framer-motion";
@@ -62,40 +62,6 @@ function LoginContent() {
     const [adminId, setAdminId] = useState("");
     const [employeeId, setEmployeeId] = useState("");
 
-    // Seed default organization accounts
-    useEffect(() => {
-        try {
-            const dbRef = localStorage.getItem("appUsersDb");
-            let db = dbRef ? JSON.parse(dbRef) : [];
-            
-            const hasAdmin = db.find((u: any) => u.identifier === "admin123" && u.orgRole === "admin");
-            if (!hasAdmin) {
-                db.push({
-                    identifier: "admin123",
-                    password: "Password123",
-                    displayName: "System Admin",
-                    isOrganization: true,
-                    orgRole: "admin"
-                });
-            }
-
-            const hasEmployee = db.find((u: any) => u.identifier === "emp123" && u.orgRole === "employee");
-            if (!hasEmployee) {
-                db.push({
-                    identifier: "emp123",
-                    password: "Password123",
-                    displayName: "Jane Doe",
-                    isOrganization: true,
-                    orgRole: "employee"
-                });
-            }
-
-            localStorage.setItem("appUsersDb", JSON.stringify(db));
-        } catch (e) {
-            console.error("Failed to seed default organization credentials", e);
-        }
-    }, []);
-
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
     useEffect(() => {
@@ -132,6 +98,26 @@ function LoginContent() {
     const [countrySearch, setCountrySearch] = useState("");
     const [selectedCountry, setSelectedCountry] = useState(COUNTRIES[0]);
 
+    // OTP & Forgot Password flow states
+    const [otpStep, setOtpStep] = useState<"form" | "otp_verify" | "forgot_password" | "forgot_otp_verify" | "reset_password">("form");
+    const [generatedOtp, setGeneratedOtp] = useState("");
+    const [otpInputs, setOtpInputs] = useState<string[]>(Array(6).fill(""));
+    const [otpTimer, setOtpTimer] = useState(30);
+    const [forgotIdentifier, setForgotIdentifier] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [originalFlowType, setOriginalFlowType] = useState<"login" | "register">("login");
+    const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+        if ((otpStep === "otp_verify" || otpStep === "forgot_otp_verify") && otpTimer > 0) {
+            timer = setInterval(() => {
+                setOtpTimer(prev => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [otpStep, otpTimer]);
+
     const filteredCountries = useMemo(() => {
         const search = countrySearch.toLowerCase().trim();
         return COUNTRIES.filter(c =>
@@ -140,7 +126,7 @@ function LoginContent() {
         );
     }, [countrySearch]);
 
-    const completeLogin = useCallback(async (name: string, identifier: string, role?: string) => {
+    const completeLogin = useCallback(async (name: string, identifier: string, role: string, details?: any) => {
         setLoading(true);
         setLoginSuccess(true);
         setSuccessName(name);
@@ -150,6 +136,19 @@ function LoginContent() {
         localStorage.setItem("userIdentifier", identifier);
         localStorage.setItem("userType", loginMode);
         localStorage.setItem("userRole", role || "user");
+
+        if (details) {
+            localStorage.setItem("userSubscriptionPlan", details.subscriptionPlan || "Free Tier");
+            if (details.profilePhoto) localStorage.setItem("userProfilePhoto", details.profilePhoto);
+            if (details.additionalEmail) localStorage.setItem("userAdditionalEmail", details.additionalEmail);
+            if (details.github) localStorage.setItem("userGithub", details.github);
+            if (details.linkedin) localStorage.setItem("userLinkedin", details.linkedin);
+            if (details.portfolioUrl) localStorage.setItem("userPortfolio", details.portfolioUrl);
+            if (details.resumeCvName) localStorage.setItem("userResumeCvName", details.resumeCvName);
+            if (details.resumeCvText) localStorage.setItem("userResumeCvText", details.resumeCvText);
+            if (details.phone) localStorage.setItem("userPhone", details.phone);
+            if (details.educationData) localStorage.setItem("userEducationData", JSON.stringify(details.educationData));
+        }
 
         // Keep popup open for 1.8 seconds to allow full success animations to finish
         await new Promise(resolve => setTimeout(resolve, 1800));
@@ -173,7 +172,7 @@ function LoginContent() {
                     throw new Error(errorData.error || "Failed backend verification");
                 }
                 const data = await res.json().catch(() => ({}));
-                completeLogin(data.name, data.email);
+                completeLogin(data.name, data.email, "user", data);
             } catch (err: any) {
                 setError(err.message || "Failed server-side Google authentication verification.");
                 setLoading(false);
@@ -225,66 +224,275 @@ function LoginContent() {
         }
 
         setLoading(true);
-        await new Promise(r => setTimeout(r, 1200));
 
         try {
-            const dbRef = localStorage.getItem("appUsersDb");
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const db = dbRef ? JSON.parse(dbRef) : [];
-
-            if (loginMode === "user") {
-                if (isRegistering) {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const exists = db.find((u: any) => u.identifier === identifier);
-                    if (exists) {
-                        setError(`An account with this ${loginType} already exists.`);
-                        setLoading(false);
-                        return;
-                    }
-                    db.push({ 
-                        identifier, 
-                        password, 
-                        type: loginType, 
+            if (loginMode === "user" && isRegistering) {
+                const res = await fetch("/api/auth/register", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        identifier,
+                        password,
                         displayName: displayName.trim(),
-                        isOrganization: false
-                    });
-                    localStorage.setItem("appUsersDb", JSON.stringify(db));
-                    completeLogin(displayName.trim(), identifier, "user");
-                } else {
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    const user = db.find((u: any) => 
-                        u.identifier === identifier && 
-                        u.password === password && 
-                        !u.isOrganization
-                    );
-                    if (!user) {
-                        setError(`Invalid credentials for this login type.`);
-                        setLoading(false);
-                        return;
-                    }
-                    completeLogin(user.displayName || identifier, identifier, "user");
+                        type: loginType
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || "Registration failed.");
                 }
+
+                setGeneratedOtp(data.otpCode || "");
+                setForgotIdentifier(identifier);
+                setOriginalFlowType("register");
+                setOtpInputs(Array(6).fill(""));
+                setOtpTimer(30);
+                setOtpStep("otp_verify");
             } else {
-                // Organization mode - administration or employee
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const user = db.find((u: any) => 
-                    u.identifier === identifier && 
-                    u.password === password && 
-                    u.isOrganization === true &&
-                    u.orgRole === orgSubMode
-                );
-                if (!user) {
-                    setError(`Invalid credentials for organization ${orgSubMode === "admin" ? "Administration" : "Employee"} login.`);
-                    setLoading(false);
-                    return;
+                // User login or Organization login
+                const res = await fetch("/api/auth/login", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        identifier,
+                        password,
+                        loginMode,
+                        orgSubMode
+                    })
+                });
+
+                const data = await res.json();
+                if (!res.ok) {
+                    throw new Error(data.error || "Login failed.");
                 }
-                completeLogin(user.displayName || identifier, identifier, orgSubMode);
+
+                setGeneratedOtp(data.otpCode || "");
+                setForgotIdentifier(identifier);
+                setOriginalFlowType("login");
+                setOtpInputs(Array(6).fill(""));
+                setOtpTimer(30);
+                setOtpStep("otp_verify");
             }
-        } catch {
-            setError("A secure database error occurred.");
+        } catch (err: any) {
+            setError(err.message || "An authentication error occurred.");
+        } finally {
             setLoading(false);
         }
-    }, [loginType, email, selectedCountry, phone, password, isRegistering, displayName, loginMode, completeLogin, orgSubMode, adminId, employeeId]);
+    }, [loginType, email, selectedCountry, phone, password, isRegistering, displayName, loginMode, orgSubMode, adminId, employeeId]);
+
+    const resendOtp = useCallback(async () => {
+        setError("");
+        setLoading(true);
+        try {
+            let res;
+            if (otpStep === "otp_verify") {
+                if (originalFlowType === "register") {
+                    res = await fetch("/api/auth/register", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ identifier: forgotIdentifier, password, displayName, type: loginType })
+                    });
+                } else {
+                    res = await fetch("/api/auth/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ identifier: forgotIdentifier, password, loginMode, orgSubMode })
+                    });
+                }
+            } else {
+                // Forgot OTP verify
+                res = await fetch("/api/auth/forgot-password", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ identifier: forgotIdentifier })
+                });
+            }
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to resend code.");
+            }
+
+            setGeneratedOtp(data.otpCode || "");
+            setOtpInputs(Array(6).fill(""));
+            setOtpTimer(30);
+            setError("");
+        } catch (err: any) {
+            setError(err.message || "Failed to resend verification code.");
+        } finally {
+            setLoading(false);
+        }
+    }, [otpStep, originalFlowType, forgotIdentifier, password, displayName, loginType, loginMode, orgSubMode]);
+
+    const handleVerifyOtpSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setLoading(true);
+
+        const enteredOtp = otpInputs.join("");
+        if (enteredOtp.length < 6) {
+            setError("Please enter the full 6-digit code.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const flowType = otpStep === "otp_verify" ? originalFlowType : "forgot_password";
+            const res = await fetch("/api/auth/verify-otp", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ identifier: forgotIdentifier, otp: enteredOtp, flowType })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Invalid or expired verification code.");
+            }
+
+            if (otpStep === "otp_verify") {
+                // Login or Register flow completed!
+                const userObj = data.user;
+                const role = userObj.isOrganization ? userObj.orgRole : "user";
+                await completeLogin(userObj.displayName, userObj.identifier, role, userObj);
+            } else {
+                // Forgot Password flow: transition to password input
+                setOtpStep("reset_password");
+            }
+        } catch (err: any) {
+            setError(err.message || "Failed to verify passcode.");
+        } finally {
+            setLoading(false);
+        }
+    }, [otpStep, originalFlowType, forgotIdentifier, otpInputs, completeLogin]);
+
+    const handleForgotPasswordSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setLoading(true);
+
+        if (!forgotIdentifier.trim()) {
+            setError("Please enter your email or phone number.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const res = await fetch("/api/auth/forgot-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ identifier: forgotIdentifier.trim() })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to initiate password reset.");
+            }
+
+            setGeneratedOtp(data.otpCode || "");
+            setOtpInputs(Array(6).fill(""));
+            setOtpTimer(30);
+            setOtpStep("forgot_otp_verify");
+        } catch (err: any) {
+            setError(err.message || "Failed to request verification code.");
+        } finally {
+            setLoading(false);
+        }
+    }, [forgotIdentifier]);
+
+    const handleResetPasswordSubmit = useCallback(async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+        setLoading(true);
+
+        if (!newPassword.trim()) {
+            setError("Please enter a new password.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            const enteredOtp = otpInputs.join("");
+            const res = await fetch("/api/auth/reset-password", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    identifier: forgotIdentifier.trim(),
+                    otp: enteredOtp,
+                    newPassword: newPassword.trim()
+                })
+            });
+
+            const data = await res.json();
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to reset password.");
+            }
+
+            // Success: back to login form
+            setOtpStep("form");
+            setNewPassword("");
+            setForgotIdentifier("");
+            setPassword("");
+            setIsRegistering(false);
+            setGeneratedOtp("");
+            // Alert success
+            alert("Password updated successfully! Please sign in with your new password.");
+        } catch (err: any) {
+            setError(err.message || "Failed to reset password.");
+        } finally {
+            setLoading(false);
+        }
+    }, [forgotIdentifier, otpInputs, newPassword]);
+
+    const handleOtpInputChange = (index: number, val: string) => {
+        const cleanedVal = val.replace(/[^0-9]/g, "").slice(-1);
+        const newOtp = [...otpInputs];
+        newOtp[index] = cleanedVal;
+        setOtpInputs(newOtp);
+
+        // Auto shift focus to next input
+        if (cleanedVal && index < 5) {
+            otpInputRefs.current[index + 1]?.focus();
+        }
+    };
+
+    const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Backspace" && !otpInputs[index] && index > 0) {
+            const newOtp = [...otpInputs];
+            newOtp[index - 1] = "";
+            setOtpInputs(newOtp);
+            otpInputRefs.current[index - 1]?.focus();
+        }
+    };
+
+    const getHeaderInfo = () => {
+        if (otpStep === "otp_verify" || otpStep === "forgot_otp_verify") {
+            return {
+                title: "Verify Passcode",
+                subtitle: "We sent a 6-digit verification code. Enter it below to secure your session."
+            };
+        }
+        if (otpStep === "forgot_password") {
+            return {
+                title: "Forgot Password",
+                subtitle: "Enter your registered credentials below to request a password reset verification."
+            };
+        }
+        if (otpStep === "reset_password") {
+            return {
+                title: "Reset Password",
+                subtitle: "Create a new secure password for your ProInterview account."
+            };
+        }
+        return {
+            title: isRegistering ? "Create Account" : "Secure Login",
+            subtitle: isRegistering
+                ? "Register your credentials to start capturing interview data."
+                : "Enter your exact credentials to sync your interview algorithms."
+        };
+    };
+
+    const headerInfo = getHeaderInfo();
 
     return (
         <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans relative overflow-hidden">
@@ -369,7 +577,7 @@ function LoginContent() {
                                     ) : (
                                         <>
                                             <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-                                            <span>Syncing with AI database</span>
+                                            <span>Syncing with cloud database</span>
                                         </>
                                     )}
                                 </div>
@@ -409,315 +617,500 @@ function LoginContent() {
 
                 <div className="max-w-md w-full bg-[#111] border border-white/10 rounded-3xl p-8 z-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative transition-all duration-300">
                     <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold mb-2">{isRegistering ? "Create Account" : "Secure Login"}</h1>
-                        <p className="text-white/50 text-sm">
-                            {isRegistering ? "Register your credentials to start capturing interview data." : "Enter your exact credentials to sync your interview algorithms."}
-                        </p>
+                        <h1 className="text-3xl font-bold mb-2">{headerInfo.title}</h1>
+                        <p className="text-white/50 text-sm">{headerInfo.subtitle}</p>
                     </div>
 
-                    {/* User / Organization Toggle Switch */}
-                    <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
-                        <button 
-                            type="button" 
-                            onClick={() => { setLoginMode("user"); setError(""); }}
-                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "user" ? "bg-indigo-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
-                        >
-                            User Login
-                        </button>
-                        <button 
-                            type="button" 
-                            onClick={() => { setLoginMode("organization"); setError(""); }}
-                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "organization" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
-                        >
-                            Organization
-                        </button>
-                    </div>
-
-                    {/* Google Login for Users Only */}
-                    {loginMode === "user" && (
-                        <>
-                            <button
-                                type="button"
-                                onClick={handleGoogleLogin}
-                                disabled={loading}
-                                className="w-full h-12 mb-6 flex items-center justify-center gap-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-70"
+                    <AnimatePresence>
+                        {error && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                className="overflow-hidden mb-4"
                             >
-                                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                                    <svg className="w-5 h-5" viewBox="0 0 24 24">
-                                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                                        <path d="M1 1h22v22H1z" fill="none" />
-                                    </svg>
+                                <div className="flex items-start gap-3 text-red-300 bg-gradient-to-r from-red-500/15 to-rose-600/15 p-4 rounded-2xl border border-red-500/30 text-sm shadow-[0_4px_20px_rgba(239,68,68,0.15)] backdrop-blur-md relative group">
+                                    <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0 border border-red-500/40">
+                                        <AlertCircle className="w-4 h-4 text-red-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0 pr-6">
+                                        <p className="font-bold text-white text-xs tracking-wider uppercase mb-1">Attention Required</p>
+                                        <p className="text-white/70 leading-relaxed text-xs">{error}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setError("")}
+                                        className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-lg text-xs"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* RENDER FORMS BASED ON CURRENT OTP STEP */}
+                    {otpStep === "form" && (
+                        <>
+                            {/* User / Organization Toggle Switch */}
+                            <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
+                                <button 
+                                    type="button" 
+                                    onClick={() => { setLoginMode("user"); setError(""); }}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "user" ? "bg-indigo-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                >
+                                    User Login
+                                </button>
+                                <button 
+                                    type="button" 
+                                    onClick={() => { setLoginMode("organization"); setError(""); }}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "organization" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                >
+                                    Organization
+                                </button>
+                            </div>
+
+                            {/* Google Login for Users Only */}
+                            {loginMode === "user" && (
+                                <>
+                                    <button
+                                        type="button"
+                                        onClick={handleGoogleLogin}
+                                        disabled={loading}
+                                        className="w-full h-12 mb-6 flex items-center justify-center gap-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-70"
+                                    >
+                                        {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                                            <svg className="w-5 h-5" viewBox="0 0 24 24">
+                                                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                                                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                                                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                                                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                                                <path d="M1 1h22v22H1z" fill="none" />
+                                            </svg>
+                                        )}
+                                        Continue with Google
+                                    </button>
+
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <div className="h-px bg-white/10 flex-1"></div>
+                                        <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">OR</span>
+                                        <div className="h-px bg-white/10 flex-1"></div>
+                                    </div>
+
+                                    {/* Tab toggle */}
+                                    <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5">
+                                        <button type="button" onClick={() => { setLoginType("email"); setError(""); setShowCountryDropdown(false); }}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "email" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
+                                            Email
+                                        </button>
+                                        <button type="button" onClick={() => { setLoginType("phone"); setError(""); setShowCountryDropdown(false); }}
+                                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "phone" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
+                                            Phone Number
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Sub-tab toggle for Organization Mode */}
+                            {loginMode === "organization" && (
+                                <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setOrgSubMode("admin"); setError(""); }}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "admin" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                    >
+                                        Administration Login
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => { setOrgSubMode("employee"); setError(""); }}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "employee" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                    >
+                                        Employee Login
+                                    </button>
+                                </div>
+                            )}
+
+                            <form onSubmit={handleSubmit} className="space-y-4 relative z-20">
+                                {/* Scoped fields block */}
+                                {loginMode === "user" ? (
+                                    <>
+                                        {/* Display name — only on registration */}
+                                        {isRegistering && (
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Your Name</label>
+                                                <div className="relative">
+                                                    <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <input
+                                                        type="text"
+                                                        value={displayName}
+                                                        onChange={e => setDisplayName(e.target.value)}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                                        placeholder="John Doe"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Email or Phone */}
+                                        {loginType === "email" ? (
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Email Address</label>
+                                                <div className="relative">
+                                                    <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <input
+                                                        type="email"
+                                                        value={email}
+                                                        onChange={e => setEmail(e.target.value)}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                                        placeholder="name@company.com"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Phone Number</label>
+                                                <div className="relative flex items-stretch">
+                                                    <button type="button" onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                                                        className="px-3 bg-black/50 border border-white/10 border-r-0 rounded-l-xl flex items-center gap-1.5 text-sm shrink-0 hover:bg-white/10 transition-colors">
+                                                        <span className="opacity-70">{selectedCountry.iso}</span>
+                                                        <span className="font-mono">{selectedCountry.code}</span>
+                                                        <ChevronDown className="w-3 h-3 text-white/50" />
+                                                    </button>
+                                                    <input type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-r-xl pl-3 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                                                        placeholder="555-000-0000" />
+                                                    {showCountryDropdown && (
+                                                        <>
+                                                            <div className="fixed inset-0 z-40" onClick={() => setShowCountryDropdown(false)} />
+                                                            <div className="absolute top-[110%] left-0 w-[280px] bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 max-h-64 flex flex-col overflow-hidden">
+                                                                <div className="p-2 border-b border-white/10 relative shrink-0">
+                                                                    <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                                                                    <input type="text" placeholder="Search country..." value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
+                                                                        className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
+                                                                </div>
+                                                                <div className="overflow-y-auto p-1 flex-1">
+                                                                    {filteredCountries.map(c => (
+                                                                        <button type="button" key={c.iso}
+                                                                            onClick={() => { setSelectedCountry(c); setShowCountryDropdown(false); setCountrySearch(""); }}
+                                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 rounded-lg flex justify-between items-center transition-colors">
+                                                                            <span className="text-white/80">{c.name} ({c.iso})</span>
+                                                                            <span className="text-white/50 font-mono">{c.code}</span>
+                                                                        </button>
+                                                                    ))}
+                                                                    {filteredCountries.length === 0 && <div className="px-3 py-4 text-center text-sm text-white/40">No countries found</div>}
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                ) : (
+                                    <>
+                                        {/* Organization Inputs */}
+                                        {orgSubMode === "admin" ? (
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Administration ID</label>
+                                                <div className="relative">
+                                                    <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <input
+                                                        type="text"
+                                                        value={adminId}
+                                                        onChange={e => setAdminId(e.target.value)}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
+                                                        placeholder="e.g. admin123"
+                                                    />
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-1">
+                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Employee ID</label>
+                                                <div className="relative">
+                                                    <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <input
+                                                        type="text"
+                                                        value={employeeId}
+                                                        onChange={e => setEmployeeId(e.target.value)}
+                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
+                                                        placeholder="e.g. emp123"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
-                                Continue with Google
-                            </button>
 
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="h-px bg-white/10 flex-1"></div>
-                                <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">OR</span>
-                                <div className="h-px bg-white/10 flex-1"></div>
-                            </div>
+                                {/* Password with hover-to-reveal eye */}
+                                <div className="space-y-1 relative z-10">
+                                    <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Password</label>
+                                    <div className="relative">
+                                        <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                        <input
+                                            type={eyeHovering ? "text" : "password"}
+                                            value={password}
+                                            onChange={e => setPassword(e.target.value)}
+                                            className={`w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white focus:outline-none focus:ring-1 transition-all ${
+                                                loginMode === "organization" ? "focus:border-purple-500 focus:ring-purple-500 font-sans" : "focus:border-indigo-500 focus:ring-indigo-500"
+                                            }`}
+                                            placeholder="••••••••"
+                                        />
+                                        {/* Hover, touch, or focus to reveal eye icon */}
+                                        <button
+                                            type="button"
+                                            onMouseEnter={() => setEyeHovering(true)}
+                                            onMouseLeave={() => setEyeHovering(false)}
+                                            onTouchStart={() => setEyeHovering(true)}
+                                            onTouchEnd={() => setEyeHovering(false)}
+                                            onFocus={() => setEyeHovering(true)}
+                                            onBlur={() => setEyeHovering(false)}
+                                            className={`absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-200 select-none focus:outline-none ${
+                                                eyeHovering 
+                                                    ? (loginMode === "organization" ? "text-purple-400 scale-110" : "text-indigo-400 scale-110") 
+                                                    : "text-white/30 hover:text-white/50"
+                                            }`}
+                                            tabIndex={0}
+                                            aria-label="Hold or focus to reveal password"
+                                            title="Hold or focus to reveal password"
+                                        >
+                                            <EyeIcon isHovering={eyeHovering} />
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-white/25 ml-1">Hover the eye icon to reveal your password</p>
+                                </div>
 
-                            {/* Tab toggle */}
-                            <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5">
-                                <button type="button" onClick={() => { setLoginType("email"); setError(""); setShowCountryDropdown(false); }}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "email" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
-                                    Email
+                                {/* Custom recovery links for Organization */}
+                                {loginMode === "organization" && (
+                                    <div className="flex justify-between items-center px-1 text-[11px] font-semibold text-purple-400 pt-1 relative z-30">
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setError(`Please contact system administrator to retrieve your ${orgSubMode === "admin" ? "Administration ID" : "Employee ID"}.`)}
+                                            className="hover:text-purple-300 transition-colors cursor-pointer"
+                                        >
+                                            Forgot {orgSubMode === "admin" ? "Administration ID" : "Employee ID"}?
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setError("Please contact system administrator to recover your password.")}
+                                            className="hover:text-purple-300 transition-colors cursor-pointer"
+                                        >
+                                            Forgot Password?
+                                        </button>
+                                    </div>
+                                )}
+
+                                {/* User forgot password recovery link */}
+                                {loginMode === "user" && !isRegistering && (
+                                    <div className="flex justify-end px-1 text-xs font-semibold text-indigo-400 pt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setOtpStep("forgot_password");
+                                                setError("");
+                                                setPassword("");
+                                                setForgotIdentifier(loginType === "email" ? email.trim() : `${selectedCountry.code}${phone.trim()}`);
+                                            }}
+                                            className="hover:text-indigo-300 transition-colors cursor-pointer text-right"
+                                        >
+                                            Forgot Password?
+                                        </button>
+                                    </div>
+                                )}
+
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className={`w-full h-12 mt-4 flex items-center justify-center gap-2 transition-all disabled:opacity-50 rounded-xl font-bold text-white shadow-lg cursor-pointer ${
+                                        loginMode === "organization" 
+                                            ? "bg-purple-600 hover:bg-purple-500 shadow-purple-500/20" 
+                                            : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20"
+                                    }`}
+                                >
+                                    {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                    {loading ? "Authenticating..." : (isRegistering ? "Create Account" : "Sign In")}
                                 </button>
-                                <button type="button" onClick={() => { setLoginType("phone"); setError(""); setShowCountryDropdown(false); }}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "phone" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
-                                    Phone Number
-                                </button>
-                            </div>
+                            </form>
+
+                            {loginMode === "user" && (
+                                <div className="mt-6 text-center">
+                                    <button type="button"
+                                        onClick={() => { setIsRegistering(!isRegistering); setError(""); setPassword(""); setDisplayName(""); setShowCountryDropdown(false); }}
+                                        className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
+                                        {isRegistering ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                                    </button>
+                                </div>
+                            )}
                         </>
                     )}
 
-                    {/* Sub-tab toggle for Organization Mode */}
-                    {loginMode === "organization" && (
-                        <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
-                            <button 
-                                type="button" 
-                                onClick={() => { setOrgSubMode("admin"); setError(""); }}
-                                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "admin" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
-                            >
-                                Administration Login
-                            </button>
-                            <button 
-                                type="button" 
-                                onClick={() => { setOrgSubMode("employee"); setError(""); }}
-                                className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "employee" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
-                            >
-                                Employee Login
-                            </button>
-                        </div>
-                    )}
-
-                    <form onSubmit={handleSubmit} className="space-y-4 relative z-20">
-                        <AnimatePresence>
-                            {error && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0, scale: 0.95 }}
-                                    animate={{ opacity: 1, height: "auto", scale: 1 }}
-                                    exit={{ opacity: 0, height: 0, scale: 0.95 }}
-                                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="flex items-start gap-3 text-red-300 bg-gradient-to-r from-red-500/15 to-rose-600/15 p-4 rounded-2xl border border-red-500/30 text-sm shadow-[0_4px_20px_rgba(239,68,68,0.15)] backdrop-blur-md relative group">
-                                        <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0 border border-red-500/40">
-                                            <AlertCircle className="w-4 h-4 text-red-400" />
-                                        </div>
-                                        <div className="flex-1 min-w-0 pr-6">
-                                            <p className="font-bold text-white text-xs tracking-wider uppercase mb-1">Attention Required</p>
-                                            <p className="text-white/70 leading-relaxed text-xs">{error}</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => setError("")}
-                                            className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-lg text-xs"
-                                        >
-                                            ✕
-                                        </button>
-                                    </div>
-                                </motion.div>
+                    {/* OTP PASSCODE VERIFICATION VIEW */}
+                    {(otpStep === "otp_verify" || otpStep === "forgot_otp_verify") && (
+                        <form onSubmit={handleVerifyOtpSubmit} className="space-y-6 relative z-20">
+                            {generatedOtp && (
+                                <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-center text-sm relative overflow-hidden animate-pulse">
+                                    {forgotIdentifier.includes("@") || loginType === "email" ? (
+                                        <span className="text-indigo-300 font-semibold">Verification code sent to {forgotIdentifier}. Please check your inbox.</span>
+                                    ) : (
+                                        <>
+                                            <span className="text-indigo-300 font-semibold">[Demo Mode] Verification code sent to {forgotIdentifier || "your registered address"}: </span>
+                                            <span className="font-mono text-white text-lg font-bold tracking-wider">{generatedOtp}</span>
+                                        </>
+                                    )}
+                                </div>
                             )}
-                        </AnimatePresence>
 
-                        {/* Scoped fields block */}
-                        {loginMode === "user" ? (
-                            <>
-                                {/* Display name — only on registration */}
-                                {isRegistering && (
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Your Name</label>
-                                        <div className="relative">
-                                            <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                                            <input
-                                                type="text"
-                                                value={displayName}
-                                                onChange={e => setDisplayName(e.target.value)}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
-                                                placeholder="John Doe"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block text-center">
+                                    Enter 6-Digit Passcode
+                                </label>
+                                <div className="flex justify-between gap-2 max-w-xs mx-auto">
+                                    {otpInputs.map((digit, idx) => (
+                                        <input
+                                            key={idx}
+                                            ref={el => { otpInputRefs.current[idx] = el; }}
+                                            type="text"
+                                            inputMode="numeric"
+                                            maxLength={1}
+                                            value={digit}
+                                            onChange={e => handleOtpInputChange(idx, e.target.value)}
+                                            onKeyDown={e => handleOtpKeyDown(idx, e)}
+                                            className="w-10 h-12 bg-black/50 border border-white/10 rounded-xl text-center font-bold text-xl text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                                        />
+                                    ))}
+                                </div>
+                            </div>
 
-                                {/* Email or Phone */}
-                                {loginType === "email" ? (
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Email Address</label>
-                                        <div className="relative">
-                                            <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                                            <input
-                                                type="email"
-                                                value={email}
-                                                onChange={e => setEmail(e.target.value)}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
-                                                placeholder="name@company.com"
-                                            />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Phone Number</label>
-                                        <div className="relative flex items-stretch">
-                                            <button type="button" onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                                                className="px-3 bg-black/50 border border-white/10 border-r-0 rounded-l-xl flex items-center gap-1.5 text-sm shrink-0 hover:bg-white/10 transition-colors">
-                                                <span className="opacity-70">{selectedCountry.iso}</span>
-                                                <span className="font-mono">{selectedCountry.code}</span>
-                                                <ChevronDown className="w-3 h-3 text-white/50" />
-                                            </button>
-                                            <input type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                                                className="w-full bg-black/50 border border-white/10 rounded-r-xl pl-3 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
-                                                placeholder="555-000-0000" />
-                                            {showCountryDropdown && (
-                                                <>
-                                                    <div className="fixed inset-0 z-40" onClick={() => setShowCountryDropdown(false)} />
-                                                    <div className="absolute top-[110%] left-0 w-[280px] bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 max-h-64 flex flex-col overflow-hidden">
-                                                        <div className="p-2 border-b border-white/10 relative shrink-0">
-                                                            <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
-                                                            <input type="text" placeholder="Search country..." value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
-                                                                className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
-                                                        </div>
-                                                        <div className="overflow-y-auto p-1 flex-1">
-                                                            {filteredCountries.map(c => (
-                                                                <button type="button" key={c.iso}
-                                                                    onClick={() => { setSelectedCountry(c); setShowCountryDropdown(false); setCountrySearch(""); }}
-                                                                    className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 rounded-lg flex justify-between items-center transition-colors">
-                                                                    <span className="text-white/80">{c.name} ({c.iso})</span>
-                                                                    <span className="text-white/50 font-mono">{c.code}</span>
-                                                                </button>
-                                                            ))}
-                                                            {filteredCountries.length === 0 && <div className="px-3 py-4 text-center text-sm text-white/40">No countries found</div>}
-                                                        </div>
-                                                    </div>
-                                                </>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <>
-                                {/* Organization Inputs */}
-                                {orgSubMode === "admin" ? (
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Administration ID</label>
-                                        <div className="relative">
-                                            <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                                            <input
-                                                type="text"
-                                                value={adminId}
-                                                onChange={e => setAdminId(e.target.value)}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
-                                                placeholder="e.g. admin123"
-                                            />
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Employee ID</label>
-                                        <div className="relative">
-                                            <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                                            <input
-                                                type="text"
-                                                value={employeeId}
-                                                onChange={e => setEmployeeId(e.target.value)}
-                                                className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
-                                                placeholder="e.g. emp123"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        )}
-
-                        {/* Password with hover-to-reveal eye */}
-                        <div className="space-y-1 relative z-10">
-                            <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Password</label>
-                            <div className="relative">
-                                <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
-                                <input
-                                    type={eyeHovering ? "text" : "password"}
-                                    value={password}
-                                    onChange={e => setPassword(e.target.value)}
-                                    className={`w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white focus:outline-none focus:ring-1 transition-all ${
-                                        loginMode === "organization" ? "focus:border-purple-500 focus:ring-purple-500 font-sans" : "focus:border-indigo-500 focus:ring-indigo-500"
-                                    }`}
-                                    placeholder="••••••••"
-                                />
-                                {/* Hover, touch, or focus to reveal eye icon */}
+                            <div className="flex justify-between items-center text-xs px-2">
+                                <span className="text-white/40">
+                                    {otpTimer > 0 ? `Resend code in ${otpTimer}s` : "Didn't receive code?"}
+                                </span>
                                 <button
                                     type="button"
-                                    onMouseEnter={() => setEyeHovering(true)}
-                                    onMouseLeave={() => setEyeHovering(false)}
-                                    onTouchStart={() => setEyeHovering(true)}
-                                    onTouchEnd={() => setEyeHovering(false)}
-                                    onFocus={() => setEyeHovering(true)}
-                                    onBlur={() => setEyeHovering(false)}
-                                    className={`absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-200 select-none focus:outline-none ${
-                                        eyeHovering 
-                                            ? (loginMode === "organization" ? "text-purple-400 scale-110" : "text-indigo-400 scale-110") 
-                                            : "text-white/30 hover:text-white/50"
-                                    }`}
-                                    tabIndex={0}
-                                    aria-label="Hold or focus to reveal password"
-                                    title="Hold or focus to reveal password"
+                                    disabled={otpTimer > 0 || loading}
+                                    onClick={resendOtp}
+                                    className="font-bold text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-30 disabled:hover:text-indigo-400 cursor-pointer"
                                 >
-                                    <EyeIcon isHovering={eyeHovering} />
+                                    Resend OTP
                                 </button>
                             </div>
-                            <p className="text-xs text-white/25 ml-1">Hover the eye icon to reveal your password</p>
-                        </div>
 
-                        {/* Custom recovery links for Organization */}
-                        {loginMode === "organization" && (
-                            <div className="flex justify-between items-center px-1 text-[11px] font-semibold text-purple-400 pt-1 relative z-30">
-                                <button 
-                                    type="button" 
-                                    onClick={() => setError(`Please contact system administrator to retrieve your ${orgSubMode === "admin" ? "Administration ID" : "Employee ID"}.`)}
-                                    className="hover:text-purple-300 transition-colors cursor-pointer"
-                                >
-                                    Forgot {orgSubMode === "admin" ? "Administration ID" : "Employee ID"}?
-                                </button>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setError("Please contact system administrator to recover your password.")}
-                                    className="hover:text-purple-300 transition-colors cursor-pointer"
-                                >
-                                    Forgot Password?
-                                </button>
-                            </div>
-                        )}
-
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className={`w-full h-12 mt-4 flex items-center justify-center gap-2 transition-all disabled:opacity-50 rounded-xl font-bold text-white shadow-lg cursor-pointer ${
-                                loginMode === "organization" 
-                                    ? "bg-purple-600 hover:bg-purple-500 shadow-purple-500/20" 
-                                    : "bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20"
-                            }`}
-                        >
-                            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                            {loading ? "Authenticating..." : (isRegistering ? "Create Account" : "Sign In")}
-                        </button>
-                    </form>
-
-                    {loginMode === "user" && (
-                        <div className="mt-6 text-center">
-                            <button type="button"
-                                onClick={() => { setIsRegistering(!isRegistering); setError(""); setPassword(""); setDisplayName(""); setShowCountryDropdown(false); }}
-                                className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
-                                {isRegistering ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
+                            <button
+                                type="submit"
+                                disabled={loading || otpInputs.some(d => !d)}
+                                className="w-full h-12 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20 transition-all disabled:opacity-50 rounded-xl font-bold text-white shadow-lg cursor-pointer"
+                            >
+                                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {loading ? "Verifying..." : "Verify Code"}
                             </button>
-                        </div>
+
+                            <button
+                                type="button"
+                                onClick={() => { setOtpStep("form"); setError(""); }}
+                                className="w-full text-center text-xs font-semibold text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                            >
+                                Back to Sign In
+                            </button>
+                        </form>
+                    )}
+
+                    {/* FORGOT PASSWORD REQUEST IDENTIFIER VIEW */}
+                    {otpStep === "forgot_password" && (
+                        <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 relative z-20">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">
+                                    Email Address or Phone Number
+                                </label>
+                                <div className="relative">
+                                    <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                    <input
+                                        type="text"
+                                        value={forgotIdentifier}
+                                        onChange={e => setForgotIdentifier(e.target.value)}
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                        placeholder="name@company.com or +91XXXXXXXXXX"
+                                        required
+                                    />
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading || !forgotIdentifier.trim()}
+                                className="w-full h-12 mt-2 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20 transition-all disabled:opacity-50 rounded-xl font-bold text-white shadow-lg cursor-pointer"
+                            >
+                                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {loading ? "Sending..." : "Send Verification Code"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => { setOtpStep("form"); setError(""); }}
+                                className="w-full text-center text-xs font-semibold text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                            >
+                                Back to Sign In
+                            </button>
+                        </form>
+                    )}
+
+                    {/* RESET PASSWORD ENTER NEW PASSWORD VIEW */}
+                    {otpStep === "reset_password" && (
+                        <form onSubmit={handleResetPasswordSubmit} className="space-y-4 relative z-20">
+                            <div className="space-y-1 relative z-10">
+                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">New Password</label>
+                                <div className="relative">
+                                    <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                    <input
+                                        type={eyeHovering ? "text" : "password"}
+                                        value={newPassword}
+                                        onChange={e => setNewPassword(e.target.value)}
+                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white focus:outline-none focus:ring-1 focus:border-indigo-500 focus:ring-indigo-500 transition-all font-sans"
+                                        placeholder="••••••••"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onMouseEnter={() => setEyeHovering(true)}
+                                        onMouseLeave={() => setEyeHovering(false)}
+                                        onTouchStart={() => setEyeHovering(true)}
+                                        onTouchEnd={() => setEyeHovering(false)}
+                                        onFocus={() => setEyeHovering(true)}
+                                        onBlur={() => setEyeHovering(false)}
+                                        className={`absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-200 select-none focus:outline-none ${
+                                            eyeHovering ? "text-indigo-400 scale-110" : "text-white/30 hover:text-white/50"
+                                        }`}
+                                        tabIndex={0}
+                                        aria-label="Hold or focus to reveal password"
+                                        title="Hold or focus to reveal password"
+                                    >
+                                        <EyeIcon isHovering={eyeHovering} />
+                                    </button>
+                                </div>
+                                <p className="text-xs text-white/25 ml-1">Hover the eye icon to reveal your new password</p>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading || !newPassword.trim()}
+                                className="w-full h-12 mt-2 flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 shadow-indigo-500/20 transition-all disabled:opacity-50 rounded-xl font-bold text-white shadow-lg cursor-pointer"
+                            >
+                                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                                {loading ? "Resetting..." : "Reset Password"}
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => { setOtpStep("form"); setError(""); }}
+                                className="w-full text-center text-xs font-semibold text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                            >
+                                Back to Sign In
+                            </button>
+                        </form>
                     )}
 
                     <p className="mt-6 text-center text-xs text-white/30">
-                        Credentials stored securely in your local cache. End-to-end protected.
+                        Credentials secured in Cloud & Sync cache. End-to-end protected.
                     </p>
                 </div>
             </main>
