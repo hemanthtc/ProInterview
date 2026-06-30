@@ -52,6 +52,16 @@ function EyeIcon({ isHovering }: { isHovering: boolean }) {
     );
 }
 
+// Helper to safely parse JSON response and avoid "Unexpected end of JSON input" on server crash
+async function safeParseJson(res: Response) {
+    const text = await res.text();
+    try {
+        return JSON.parse(text);
+    } catch (e) {
+        return { error: `Server error (${res.status}): ${text || res.statusText || "Internal Server Error"}` };
+    }
+}
+
 function LoginContent() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
@@ -238,7 +248,7 @@ function LoginContent() {
                     })
                 });
 
-                const data = await res.json();
+                const data = await safeParseJson(res);
                 if (!res.ok) {
                     throw new Error(data.error || "Registration failed.");
                 }
@@ -262,7 +272,7 @@ function LoginContent() {
                     })
                 });
 
-                const data = await res.json();
+                const data = await safeParseJson(res);
                 if (!res.ok) {
                     throw new Error(data.error || "Login failed.");
                 }
@@ -309,7 +319,7 @@ function LoginContent() {
                 });
             }
 
-            const data = await res.json();
+            const data = await safeParseJson(res);
             if (!res.ok) {
                 throw new Error(data.error || "Failed to resend code.");
             }
@@ -345,7 +355,7 @@ function LoginContent() {
                 body: JSON.stringify({ identifier: forgotIdentifier, otp: enteredOtp, flowType })
             });
 
-            const data = await res.json();
+            const data = await safeParseJson(res);
             if (!res.ok) {
                 throw new Error(data.error || "Invalid or expired verification code.");
             }
@@ -384,7 +394,7 @@ function LoginContent() {
                 body: JSON.stringify({ identifier: forgotIdentifier.trim() })
             });
 
-            const data = await res.json();
+            const data = await safeParseJson(res);
             if (!res.ok) {
                 throw new Error(data.error || "Failed to initiate password reset.");
             }
@@ -423,7 +433,7 @@ function LoginContent() {
                 })
             });
 
-            const data = await res.json();
+            const data = await safeParseJson(res);
             if (!res.ok) {
                 throw new Error(data.error || "Failed to reset password.");
             }
