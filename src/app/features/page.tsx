@@ -11,6 +11,7 @@ import RoleSelect from "../../components/RoleSelect";
 import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
+import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 
 interface SavedResume {
     id: string;
@@ -50,7 +51,7 @@ interface PortfolioAnalysisCache {
     analyzedAt: number;
 }
 
-export default function FeaturesPage() {
+function FeaturesContent() {
     const router = useRouter();
     const [github, setGithub] = useState("");
     const [linkedin, setLinkedin] = useState("");
@@ -121,6 +122,76 @@ export default function FeaturesPage() {
     const [resFontSize, setResFontSize] = useState(1.0);
     const [resLanguages, setResLanguages] = useState<{ name: string; level: number }[]>([]);
     const [generatingResume, setGeneratingResume] = useState(false);
+
+    // Gmail Direct Import states
+    const [gmailToken, setGmailToken] = useState("");
+    const [gmailEmails, setGmailEmails] = useState<any[]>([]);
+    const [isListingGmail, setIsListingGmail] = useState(false);
+    const [isFetchingGmailBody, setIsFetchingGmailBody] = useState(false);
+    const [showGmailList, setShowGmailList] = useState(false);
+    const [gmailError, setGmailError] = useState("");
+
+    const fetchGmailEmails = async (token: string) => {
+        setIsListingGmail(true);
+        setGmailError("");
+        try {
+            const res = await fetch("/api/gmail/list", {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                setGmailEmails(data.emails || []);
+                setShowGmailList(true);
+            } else {
+                setGmailError(data.error || "Failed to retrieve Gmail messages.");
+            }
+        } catch (e) {
+            setGmailError("Failed to connect to Gmail list API.");
+        } finally {
+            setIsListingGmail(false);
+        }
+    };
+
+    const handleGmailMessageSelect = async (msgId: string) => {
+        setIsFetchingGmailBody(true);
+        setGmailError("");
+        try {
+            const res = await fetch(`/api/gmail/get?id=${msgId}`, {
+                headers: {
+                    Authorization: `Bearer ${gmailToken}`
+                }
+            });
+            const data = await res.json();
+            if (res.ok && data.body) {
+                setEmailText(data.body);
+                setShowGmailList(false);
+            } else {
+                setGmailError(data.error || "Failed to retrieve email content.");
+            }
+        } catch (e) {
+            setGmailError("Connection to Gmail details API failed.");
+        } finally {
+            setIsFetchingGmailBody(false);
+        }
+    };
+
+    const gmailLogin = useGoogleLogin({
+        onSuccess: (tokenResponse) => {
+            const token = tokenResponse.access_token;
+            setGmailToken(token);
+            fetchGmailEmails(token);
+        },
+        onError: () => {
+            setGmailError("Google authorization failed. Gmail access is required.");
+        },
+        scope: "https://www.googleapis.com/auth/gmail.readonly"
+    });
+
+    const handleGmailImportLogin = () => {
+        gmailLogin();
+    };
 
     // Roadmap timeline accordions
     const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({ 0: true });
@@ -2828,13 +2899,25 @@ export default function FeaturesPage() {
                                         <label className="text-sm font-semibold text-white/80 block">Email Content</label>
                                         <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-[10px] text-white/30 uppercase font-bold tracking-wider">Quick links:</span>
+                                            <button
+                                                type="button"
+                                                onClick={handleGmailImportLogin}
+                                                disabled={isListingGmail}
+                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 hover:border-teal-500/50 text-[11px] font-bold text-teal-300 transition-all cursor-pointer disabled:opacity-50"
+                                            >
+                                                {isListingGmail ? (
+                                                    <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching...</>
+                                                ) : (
+                                                    <><Sparkles className="w-3.5 h-3.5 text-teal-400" /> Direct Import from Gmail</>
+                                                )}
+                                            </button>
                                             <a
                                                 href="https://mail.google.com"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#ea4335]/15 hover:bg-[#ea4335]/25 border border-[#ea4335]/30 hover:border-[#ea4335]/50 text-xs font-bold text-[#f28b82] transition-all"
                                             >
-                                                <ExternalLink className="w-3 h-3" /> Gmail
+                                                <ExternalLink className="w-3 h-3" /> Gmail Web
                                             </a>
                                             <a
                                                 href="https://outlook.live.com"
@@ -2854,6 +2937,69 @@ export default function FeaturesPage() {
                                             </a>
                                         </div>
                                     </div>
+
+                                    {gmailError && (
+                                        <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-xs px-3.5 py-2 rounded-xl flex items-center gap-2">
+                                            <AlertTriangle className="w-4 h-4 shrink-0" />
+                                            <span>{gmailError}</span>
+                                            <button type="button" className="ml-auto hover:text-white font-bold" onClick={() => setGmailError("")}>Dismiss</button>
+                                        </div>
+                                    )}
+
+                                    {/* Gmail Email List Drawer */}
+                                    <AnimatePresence>
+                                        {showGmailList && (
+                                            <motion.div
+                                                initial={{ height: 0, opacity: 0 }}
+                                                animate={{ height: "auto", opacity: 1 }}
+                                                exit={{ height: 0, opacity: 0 }}
+                                                className="bg-black/30 border border-teal-500/20 rounded-xl p-4 overflow-hidden text-left space-y-3"
+                                            >
+                                                <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                                    <span className="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+                                                        <Mail className="w-3.5 h-3.5" /> Select Recruitment Email to Import
+                                                    </span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowGmailList(false)}
+                                                        className="text-white/40 hover:text-white text-xs font-bold"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                                
+                                                {isFetchingGmailBody && (
+                                                    <div className="flex items-center gap-2 text-xs text-white/50 justify-center py-4">
+                                                        <Loader2 className="w-4 h-4 animate-spin text-teal-400" /> Fetching email content...
+                                                    </div>
+                                                )}
+
+                                                {!isFetchingGmailBody && (
+                                                    <div className="space-y-2 max-h-[220px] overflow-y-auto scrollbar-thin">
+                                                        {gmailEmails.length === 0 ? (
+                                                            <div className="text-xs text-white/40 text-center py-4 font-sans">No matching interview/offer emails found in your recent messages.</div>
+                                                        ) : (
+                                                            gmailEmails.map((email) => (
+                                                                <div
+                                                                    key={email.id}
+                                                                    onClick={() => handleGmailMessageSelect(email.id)}
+                                                                    className="p-2.5 rounded-lg border border-white/5 hover:border-teal-500/40 bg-white/[0.02] hover:bg-teal-500/5 transition-all cursor-pointer space-y-1 group"
+                                                                >
+                                                                    <div className="flex items-center justify-between text-[10px] text-white/40 font-sans">
+                                                                        <span className="font-semibold text-teal-300 truncate max-w-[200px]">{email.from}</span>
+                                                                        <span>{email.date ? new Date(email.date).toLocaleDateString() : ""}</span>
+                                                                    </div>
+                                                                    <div className="text-xs font-bold text-white group-hover:text-teal-400 transition-colors truncate font-sans">{email.subject}</div>
+                                                                    <div className="text-[10px] text-white/50 truncate leading-snug font-sans">{email.snippet}</div>
+                                                                </div>
+                                                            ))
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
                                     <textarea
                                         value={emailText}
                                         onChange={(e) => setEmailText(e.target.value)}
@@ -3724,6 +3870,15 @@ export default function FeaturesPage() {
                 )}
             </AnimatePresence>
         </div>
+    );
+}
+
+export default function FeaturesPage() {
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "dummy-client-id";
+    return (
+        <GoogleOAuthProvider clientId={clientId}>
+            <FeaturesContent />
+        </GoogleOAuthProvider>
     );
 }
 
