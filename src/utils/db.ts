@@ -125,6 +125,8 @@ async function connectDB() {
     if (!cached.promise) {
         const opts = {
             bufferCommands: false,
+            serverSelectionTimeoutMS: 8000,
+            connectTimeoutMS: 8000,
         };
 
         // Resolve the connection string dynamically before calling mongoose.connect()
