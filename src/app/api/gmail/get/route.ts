@@ -75,7 +75,12 @@ export async function GET(req: NextRequest) {
         if (!detailRes.ok) {
             const errText = await detailRes.text();
             console.error("Gmail fetch error:", errText);
-            return NextResponse.json({ error: "Failed to fetch email details from Gmail" }, { status: detailRes.status });
+            let parsedErr: any;
+            try {
+                parsedErr = JSON.parse(errText);
+            } catch (e) {}
+            const detailMsg = parsedErr?.error?.message || errText || "Failed to fetch email details from Gmail";
+            return NextResponse.json({ error: `Gmail API Error: ${detailMsg}` }, { status: detailRes.status });
         }
 
         const detailData = await detailRes.json();

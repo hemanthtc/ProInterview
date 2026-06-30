@@ -22,7 +22,12 @@ export async function GET(req: NextRequest) {
         if (!listRes.ok) {
             const errText = await listRes.text();
             console.error("Gmail list error:", errText);
-            return NextResponse.json({ error: "Failed to list emails from Gmail" }, { status: listRes.status });
+            let parsedErr: any;
+            try {
+                parsedErr = JSON.parse(errText);
+            } catch (e) {}
+            const detailMsg = parsedErr?.error?.message || errText || "Failed to list emails from Gmail";
+            return NextResponse.json({ error: `Gmail API Error: ${detailMsg}` }, { status: listRes.status });
         }
 
         const listData = await listRes.json();
