@@ -165,7 +165,7 @@ export default function SetupPage() {
             <div className="max-w-xl w-full bg-[#111] p-8 rounded-2xl border border-white/10 shadow-2xl">
 
                 <button
-                    onClick={() => router.push("/features")}
+                    onClick={() => router.push(isRealisticMode ? "/" : "/features")}
                     className="group flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
