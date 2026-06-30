@@ -169,10 +169,10 @@ function LoginContent() {
                     body: JSON.stringify({ accessToken: tokenResponse.access_token })
                 });
                 if (!res.ok) {
-                    const errorData = await res.json();
+                    const errorData = await res.json().catch(() => ({ error: "Failed backend verification" }));
                     throw new Error(errorData.error || "Failed backend verification");
                 }
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 completeLogin(data.name, data.email);
             } catch (err: any) {
                 setError(err.message || "Failed server-side Google authentication verification.");

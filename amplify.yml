@@ -1,0 +1,25 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm ci --cache .npm --prefer-offline
+        # Create .env.production to inject variables into Next.js build environment
+        - echo "GEMINI_API_KEY=${GEMINI_API_KEY}" >> .env.production
+        - echo "SARVAM_API_KEY=${SARVAM_API_KEY}" >> .env.production
+        - echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}" >> .env.production
+        - echo "NEXT_PUBLIC_MERCHANT_UPI_ID=${NEXT_PUBLIC_MERCHANT_UPI_ID}" >> .env.production
+        - echo "DID_API_KEY=${DID_API_KEY}" >> .env.production
+        - echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env.production
+        - echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" >> .env.production
+    build:
+      commands:
+        - npm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - '**/*'
+  cache:
+    paths:
+      - .npm/**/*
+      - .next/cache/**/*
