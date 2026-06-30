@@ -136,14 +136,14 @@ ${resume}`;
                     break;
                 } catch (retryErr: any) {
                     if (retryErr?.status === 429) {
-                        console.warn("Gemini quota exhausted for interview generation; returning fallback response.");
-                        return quotaFallback();
-                    }
-
-                    if (retryErr?.status === 429 && attempt < 2) {
-                        const delay = (attempt + 1) * 5000;
-                        console.warn(`Gemini 429 rate limit hit, retrying in ${delay}ms...`);
-                        await new Promise(r => setTimeout(r, delay));
+                        if (attempt < 2) {
+                            const delay = (attempt + 1) * 5000;
+                            console.warn(`Gemini 429 rate limit hit, retrying in ${delay}ms...`);
+                            await new Promise(r => setTimeout(r, delay));
+                        } else {
+                            console.warn("Gemini quota exhausted for interview generation; returning fallback response.");
+                            return quotaFallback();
+                        }
                     } else {
                         throw retryErr;
                     }
