@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Video, Loader2, Lock, Mail, AlertCircle, ChevronDown, Search, User, Sun, Moon, Eye } from "lucide-react";
+import { ArrowLeft, Video, Loader2, Lock, Mail, AlertCircle, CheckCircle, ChevronDown, Search, User, Sun, Moon, Eye } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
@@ -97,6 +97,7 @@ function LoginContent() {
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [error, setError] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
     const [loginSuccess, setLoginSuccess] = useState(false);
     const [successName, setSuccessName] = useState("");
 
@@ -206,6 +207,7 @@ function LoginContent() {
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setSuccessMessage("");
         setShowCountryDropdown(false);
 
         let identifier = "";
@@ -293,6 +295,7 @@ function LoginContent() {
 
     const resendOtp = useCallback(async () => {
         setError("");
+        setSuccessMessage("");
         setLoading(true);
         try {
             let res;
@@ -338,6 +341,7 @@ function LoginContent() {
     const handleVerifyOtpSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setSuccessMessage("");
         setLoading(true);
 
         const enteredOtp = otpInputs.join("");
@@ -379,6 +383,7 @@ function LoginContent() {
     const handleForgotPasswordSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setSuccessMessage("");
         setLoading(true);
 
         if (!forgotIdentifier.trim()) {
@@ -413,6 +418,7 @@ function LoginContent() {
     const handleResetPasswordSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
+        setSuccessMessage("");
         setLoading(true);
 
         if (!newPassword.trim()) {
@@ -446,7 +452,7 @@ function LoginContent() {
             setIsRegistering(false);
             setGeneratedOtp("");
             // Alert success
-            alert("Password updated successfully! Please sign in with your new password.");
+            setSuccessMessage("Password updated successfully! Please sign in with your new password.");
         } catch (err: any) {
             setError(err.message || "Failed to reset password.");
         } finally {
@@ -658,6 +664,32 @@ function LoginContent() {
                                 </div>
                             </motion.div>
                         )}
+                        {successMessage && (
+                            <motion.div
+                                initial={{ opacity: 0, height: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, height: "auto", scale: 1 }}
+                                exit={{ opacity: 0, height: 0, scale: 0.95 }}
+                                transition={{ duration: 0.3, ease: "easeInOut" }}
+                                className="overflow-hidden mb-4"
+                            >
+                                <div className="flex items-start gap-3 text-emerald-300 bg-gradient-to-r from-emerald-500/15 to-teal-600/15 p-4 rounded-2xl border border-emerald-500/30 text-sm shadow-[0_4px_20px_rgba(16,185,129,0.15)] backdrop-blur-md relative group">
+                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/40">
+                                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                    </div>
+                                    <div className="flex-1 min-w-0 pr-6">
+                                        <p className="font-bold text-white text-xs tracking-wider uppercase mb-1">Success</p>
+                                        <p className="text-white/70 leading-relaxed text-xs">{successMessage}</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setSuccessMessage("")}
+                                        className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-lg text-xs"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                            </motion.div>
+                        )}
                     </AnimatePresence>
 
                     {/* RENDER FORMS BASED ON CURRENT OTP STEP */}
@@ -667,14 +699,14 @@ function LoginContent() {
                             <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
                                 <button 
                                     type="button" 
-                                    onClick={() => { setLoginMode("user"); setError(""); }}
+                                    onClick={() => { setLoginMode("user"); setError(""); setSuccessMessage(""); }}
                                     className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "user" ? "bg-indigo-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
                                 >
                                     User Login
                                 </button>
                                 <button 
                                     type="button" 
-                                    onClick={() => { setLoginMode("organization"); setError(""); }}
+                                    onClick={() => { setLoginMode("organization"); setError(""); setSuccessMessage(""); }}
                                     className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "organization" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
                                 >
                                     Organization
@@ -710,11 +742,11 @@ function LoginContent() {
 
                                     {/* Tab toggle */}
                                     <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5">
-                                        <button type="button" onClick={() => { setLoginType("email"); setError(""); setShowCountryDropdown(false); }}
+                                        <button type="button" onClick={() => { setLoginType("email"); setError(""); setSuccessMessage(""); setShowCountryDropdown(false); }}
                                             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "email" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
                                             Email
                                         </button>
-                                        <button type="button" onClick={() => { setLoginType("phone"); setError(""); setShowCountryDropdown(false); }}
+                                        <button type="button" onClick={() => { setLoginType("phone"); setError(""); setSuccessMessage(""); setShowCountryDropdown(false); }}
                                             className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "phone" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
                                             Phone Number
                                         </button>
@@ -946,7 +978,7 @@ function LoginContent() {
                             {loginMode === "user" && (
                                 <div className="mt-6 text-center">
                                     <button type="button"
-                                        onClick={() => { setIsRegistering(!isRegistering); setError(""); setPassword(""); setDisplayName(""); setShowCountryDropdown(false); }}
+                                        onClick={() => { setIsRegistering(!isRegistering); setError(""); setSuccessMessage(""); setPassword(""); setDisplayName(""); setShowCountryDropdown(false); }}
                                         className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
                                         {isRegistering ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
                                     </button>
