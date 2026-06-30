@@ -321,8 +321,13 @@ function FeaturesContent() {
     };
 
     useEffect(() => {
+        const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
+        setIsRealisticMode(isRealistic);
+        if (isRealistic) {
+            router.push("/");
+            return;
+        }
         setIsLoggedIn(getStorageItem("userLoggedIn") === "true");
-        setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         syncAccountDetailsFromStorage();
         
         const savedTheme = localStorage.getItem("globalTheme") as any;
@@ -700,6 +705,9 @@ function FeaturesContent() {
         const newMode = !isRealisticMode;
         setIsRealisticMode(newMode);
         setStorageItem("globalInterviewMode", newMode ? "realistic" : "technical");
+        if (newMode) {
+            router.push("/");
+        }
     };
 
     const cycleTheme = () => {
