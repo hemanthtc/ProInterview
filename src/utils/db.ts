@@ -114,7 +114,7 @@ async function resolveSrvConnectionString(srvUri: string): Promise<string> {
 async function connectDB() {
     if (!MONGODB_URI) {
         throw new Error(
-            "Please define the MONGODB_URI environment variable inside your .env file to connect to MongoDB Atlas."
+            "Please define the MONGODB_URI environment variable to connect to MongoDB Atlas."
         );
     }
 
