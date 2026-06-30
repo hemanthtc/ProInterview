@@ -9,6 +9,7 @@ import { marked } from "marked";
 import CompanySelect from "../../components/CompanySelect";
 import RoleSelect from "../../components/RoleSelect";
 import { RESUME_TEMPLATES } from "../../data/templates";
+import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
 
 interface SavedResume {
@@ -471,6 +472,58 @@ export default function FeaturesPage() {
         setResCertifications("");
         setResAwards("");
         setResAccentColor("indigo");
+        setResFontSize(1.0);
+        setSelectedTemplateId(newRes.templateId);
+    };
+
+    const handleCreateFromPreset = (presetId: string) => {
+        const preset = RESUME_PRESETS.find(p => p.id === presetId);
+        if (!preset) return;
+        
+        const defaultName = getStorageItem("userName") || "Your Name";
+        const defaultEmail = getStorageItem("userIdentifier") || "email@example.com";
+        const storedAdditionalEmail = getStorageItem("userAdditionalEmail") || "";
+        const defaultPhone = getStorageItem("userPhone") || "";
+        const defaultEducation = getStorageItem("userEducation") || preset.education;
+        
+        const newRes: SavedResume = {
+            id: "res_" + Date.now(),
+            title: preset.roleName + " Preset",
+            updatedAt: Date.now(),
+            templateId: preset.templateId,
+            name: defaultName,
+            email: defaultEmail.includes("@") ? defaultEmail : (storedAdditionalEmail || defaultEmail),
+            phone: defaultPhone,
+            summary: preset.summary,
+            skills: preset.skills,
+            experience: preset.experience,
+            education: defaultEducation,
+            projects: preset.projects,
+            internships: preset.internships,
+            certifications: preset.certifications,
+            awards: preset.awards,
+            accentColor: preset.accentColor,
+            fontSize: 1.0
+        };
+        
+        const newList = [newRes, ...savedResumes];
+        setSavedResumes(newList);
+        setActiveResumeId(newRes.id);
+        setStorageItem("savedResumesDatabase", JSON.stringify(newList));
+        setStorageItem("activeResumeId", newRes.id);
+        
+        setResName(newRes.name);
+        setResEmail(newRes.email);
+        setResPhone(newRes.phone);
+        setResSummary(newRes.summary);
+        setResSkills(newRes.skills);
+        setResExperience(newRes.experience);
+        setResEducation(newRes.education);
+        setResProjects(newRes.projects || "");
+        setResInternships(newRes.internships || "");
+        setResCertifications(newRes.certifications || "");
+        setResAwards(newRes.awards || "");
+        setResAccentColor(newRes.accentColor || "indigo");
         setResFontSize(1.0);
         setSelectedTemplateId(newRes.templateId);
     };
@@ -2301,17 +2354,36 @@ export default function FeaturesPage() {
                                 <div className="lg:col-span-6 space-y-6 flex flex-col">
                                     {/* Saved Resumes Database List */}
                                     <div className="bg-white/5 border border-white/10 rounded-xl p-4">
-                                        <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                                             <h3 className="text-sm font-extrabold text-purple-400 flex items-center gap-2">
                                                 <FileText className="w-4 h-4" /> Saved Resumes Database
                                             </h3>
-                                            <button
-                                                type="button"
-                                                onClick={handleCreateNewResume}
-                                                className="px-3 py-1 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                                            >
-                                                <Sparkles className="w-3 h-3" /> New Resume
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <select
+                                                    onChange={(e) => {
+                                                        if (e.target.value) {
+                                                            handleCreateFromPreset(e.target.value);
+                                                            e.target.value = ""; // Reset dropdown
+                                                        }
+                                                    }}
+                                                    className="bg-purple-950/45 border border-purple-500/30 hover:border-purple-500/50 text-purple-300 rounded-lg px-2 py-1.5 text-xs font-bold focus:outline-none transition-colors cursor-pointer bg-[#050505]"
+                                                    defaultValue=""
+                                                >
+                                                    <option value="" disabled className="text-white/40">Create from Preset...</option>
+                                                    {RESUME_PRESETS.map((preset) => (
+                                                        <option key={preset.id} value={preset.id} className="bg-[#111] text-white">
+                                                            {preset.roleName}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleCreateNewResume}
+                                                    className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shrink-0"
+                                                >
+                                                    <Sparkles className="w-3.5 h-3.5" /> New Blank
+                                                </button>
+                                            </div>
                                         </div>
                                         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin">
                                             {savedResumes.map((res) => {
