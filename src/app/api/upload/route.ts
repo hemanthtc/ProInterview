@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-const pdfParse = require("pdf-parse").PDFParse ?? require("pdf-parse");
 import JSZip from "jszip";
 
 async function extractTextFromFile(file: File): Promise<string> {
@@ -7,6 +6,7 @@ async function extractTextFromFile(file: File): Promise<string> {
     
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
         try {
+            const pdfParse = require("pdf-parse").PDFParse ?? require("pdf-parse");
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const data = await pdfParse(buffer);
