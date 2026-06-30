@@ -1,5 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
 
+function cleanHtmlEntities(text: string): string {
+    return text
+        .replace(/&nbsp;/gi, " ")
+        .replace(/&amp;/gi, "&")
+        .replace(/&lt;/gi, "<")
+        .replace(/&gt;/gi, ">")
+        .replace(/&quot;/gi, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#8199;/g, "")
+        .replace(/&#65279;/g, "")
+        .replace(/&#847;/g, "")
+        .replace(/&#8203;/g, "")
+        .replace(/[\u200B-\u200D\uFEFF]/g, "")
+        .replace(/&#(\d+);/g, (match, dec) => {
+            const code = parseInt(dec, 10);
+            return (code === 160 || code === 8199) ? " " : String.fromCharCode(code);
+        })
+        .replace(/&#x([0-9a-f]+);/gi, (match, hex) => {
+            const code = parseInt(hex, 16);
+            return String.fromCharCode(code);
+        });
+}
+
+function cleanTextBody(text: string): string {
+    let cleaned = cleanHtmlEntities(text);
+
+    cleaned = cleaned
+        .split("\n")
+        .map(line => line.trim())
+        .filter(Boolean)
+        .join("\n");
+
+    const footerMarkers = [
+        "© unstop",
+        "all rights reserved",
+        "unsubscribe",
+        "privacy policy",
+        "terms of service",
+        "fee payments user warranty",
+        "disclaimer of warranties",
+        "if you'd prefer not to receive these emails"
+    ];
+
+    const lowerText = cleaned.toLowerCase();
+    let earliestIndex = cleaned.length;
+
+    for (const marker of footerMarkers) {
+        const idx = lowerText.indexOf(marker);
+        if (idx !== -1 && idx < earliestIndex) {
+            earliestIndex = idx;
+        }
+    }
+
+    if (earliestIndex < cleaned.length) {
+        cleaned = cleaned.substring(0, earliestIndex).trim();
+    }
+
+    return cleaned;
+}
+
+function cleanHtmlBody(htmlText: string): string {
+    const stripped = htmlText
+        .replace(/<\/p>/gi, "\n")
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/tr>/gi, "\n")
+        .replace(/<\/li>/gi, "\n")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<[^>]+>/g, " ");
+
+    return cleanTextBody(stripped);
+}
+
 function getDecodedBody(payload: any): string {
     if (!payload) return "";
     
@@ -38,16 +111,10 @@ function getDecodedBody(payload: any): string {
     const decoded = Buffer.from(cleaned, "base64").toString("utf-8");
 
     if (isHtml) {
-        // Strip HTML tags to return clean text
-        return decoded
-            .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
-            .replace(/<[^>]+>/g, " ")
-            .replace(/\s+/g, " ")
-            .trim();
+        return cleanHtmlBody(decoded);
     }
 
-    return decoded;
+    return cleanTextBody(decoded);
 }
 
 export async function GET(req: NextRequest) {
