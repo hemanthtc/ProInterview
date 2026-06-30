@@ -140,15 +140,24 @@ function FeaturesContent() {
                     Authorization: `Bearer ${token}`
                 }
             });
-            const data = await res.json();
+            
+            let data: any;
+            try {
+                data = await res.json();
+            } catch (parseErr) {
+                setGmailError(`Server returned an invalid response (${res.status} ${res.statusText || "Internal Server Error"}).`);
+                setIsListingGmail(false);
+                return;
+            }
+
             if (res.ok) {
                 setGmailEmails(data.emails || []);
                 setShowGmailList(true);
             } else {
                 setGmailError(data.error || "Failed to retrieve Gmail messages.");
             }
-        } catch (e) {
-            setGmailError("Failed to connect to Gmail list API.");
+        } catch (e: any) {
+            setGmailError(`Connection error: ${e.message || "Failed to connect to Gmail list API."}`);
         } finally {
             setIsListingGmail(false);
         }
@@ -163,15 +172,24 @@ function FeaturesContent() {
                     Authorization: `Bearer ${gmailToken}`
                 }
             });
-            const data = await res.json();
+            
+            let data: any;
+            try {
+                data = await res.json();
+            } catch (parseErr) {
+                setGmailError(`Server returned an invalid response (${res.status} ${res.statusText || "Internal Server Error"}).`);
+                setIsFetchingGmailBody(false);
+                return;
+            }
+
             if (res.ok && data.body) {
                 setEmailText(data.body);
                 setShowGmailList(false);
             } else {
                 setGmailError(data.error || "Failed to retrieve email content.");
             }
-        } catch (e) {
-            setGmailError("Connection to Gmail details API failed.");
+        } catch (e: any) {
+            setGmailError(`Connection error: ${e.message || "Connection to Gmail details API failed."}`);
         } finally {
             setIsFetchingGmailBody(false);
         }
