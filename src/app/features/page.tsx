@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu } from "lucide-react";
+import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
@@ -12,6 +12,7 @@ import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
+import ProInterviewerApp from "../../components/prointerviewer/ProInterviewerApp";
 
 interface SavedResume {
     id: string;
@@ -51,6 +52,8 @@ interface PortfolioAnalysisCache {
     analyzedAt: number;
 }
 
+
+
 function FeaturesContent() {
     const router = useRouter();
     const [github, setGithub] = useState("");
@@ -65,8 +68,10 @@ function FeaturesContent() {
     const [pausedSession, setPausedSession] = useState<any>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
-    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator">("analysis");
-    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | null>(null);
+    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer">("analysis");
+    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | null>(null);
+
+
 
     // Email Analyser states
     const [emailText, setEmailText] = useState("");
@@ -209,6 +214,11 @@ function FeaturesContent() {
 
     const handleGmailImportLogin = () => {
         gmailLogin();
+    };
+
+    const launchProInterviewer = () => {
+        setActiveModal("prointerviewer");
+        setActiveTool("prointerviewer");
     };
 
     // Roadmap timeline accordions
@@ -1683,7 +1693,7 @@ function FeaturesContent() {
     const selectedColorHex = ACCENT_COLORS[resAccentColor] || "#4f46e5";
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-indigo-500/30 flex flex-col font-sans">
+        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${activeModal === "prointerviewer" ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
             <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
@@ -1727,7 +1737,15 @@ function FeaturesContent() {
                 </nav>
             </header>
 
-            <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
+            {activeModal === "prointerviewer" ? (
+                <div className="flex-1 flex flex-col overflow-hidden relative bg-[#0b0f19]">
+                    <ProInterviewerApp onClose={() => {
+                        setActiveModal(null);
+                        setActiveTool("analysis");
+                    }} />
+                </div>
+            ) : (
+                <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
                 <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 
@@ -1772,51 +1790,6 @@ function FeaturesContent() {
 
                             {!isRealisticMode && (
                                 <>
-                                    {/* Card C: AI Resume Builder */}
-                                    <div 
-                                        onClick={() => {
-                                            // Check profile completeness before opening resume builder
-                                            const missing: string[] = [];
-                                            const storedName = getStorageItem("userName") || "";
-                                            const storedEmail = getStorageItem("userIdentifier") || "";
-                                            const storedPhone = getStorageItem("userPhone") || (storedEmail.startsWith("+") ? storedEmail : "");
-                                            if (!storedName || storedName === "Guest") missing.push("Full Name");
-                                            
-                                            const hasEmail = storedEmail.includes("@") || (getStorageItem("userAdditionalEmail") || "").includes("@");
-                                            if (!hasEmail) missing.push("Email Address");
-                                            
-                                            if (!storedPhone) missing.push("Contact Number");
-
-                                            try {
-                                                const eduData = JSON.parse(getStorageItem("userEducationData") || "{}");
-                                                const hasAnyEdu =
-                                                    (eduData.tenth?.institution || eduData.tenth?.marks) ||
-                                                    (eduData.twelfth?.institution || eduData.twelfth?.marks) ||
-                                                    (eduData.ug?.institution || eduData.ug?.marks) ||
-                                                    (eduData.pg?.institution || eduData.pg?.marks);
-                                                if (!hasAnyEdu) missing.push("Education Details (at least one level)");
-                                            } catch {
-                                                missing.push("Education Details (at least one level)");
-                                            }
-
-                                            if (missing.length > 0) {
-                                                setMissingProfileFields(missing);
-                                                setProfileIncompletePopup(true);
-                                            } else {
-                                                setActiveModal("resume");
-                                                setActiveTool("resume");
-                                                setShowAnalysis(false);
-                                                setShowResume(true);
-                                            }
-                                        }}
-                                        className="group bg-[#0d0d12]/60 hover:bg-[#18121d]/80 backdrop-blur-sm border border-purple-500/20 hover:border-purple-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(168,85,247,0.05)] hover:shadow-[0_0_40px_rgba(168,85,247,0.15)]"
-                                    >
-                                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
-                                            <FileText className="w-6 h-6" />
-                                        </div>
-                                        <h3 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors">AI Resume Builder</h3>
-                                    </div>
-
                                     {/* Card D: AI Email Analyser */}
                                     <div 
                                         onClick={() => {
@@ -1845,6 +1818,17 @@ function FeaturesContent() {
                                             <Map className="w-6 h-6" />
                                         </div>
                                         <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">Roadmap Generator</h3>
+                                    </div>
+
+                                    {/* Card F: Pro Interviewer Code */}
+                                    <div 
+                                        onClick={launchProInterviewer}
+                                        className="group bg-[#0d0d12]/60 hover:bg-[#1f1a12]/80 backdrop-blur-sm border border-amber-500/20 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(245,158,11,0.05)] hover:shadow-[0_0_40px_rgba(245,158,11,0.15)]"
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                            <Code className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">Resume Builder</h3>
                                     </div>
                                 </>
                             )}
@@ -3798,6 +3782,9 @@ function FeaturesContent() {
                 </div>
                 )}
             </main>
+            )}
+
+
 
             {/* Profile Import Success Toast */}
             <AnimatePresence>

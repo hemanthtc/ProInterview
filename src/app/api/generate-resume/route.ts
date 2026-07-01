@@ -67,6 +67,8 @@ export async function POST(req: NextRequest) {
         const portfolioUrl = formData.get("portfolioUrl") as string;
         const targetCompanies = formData.get("targetCompanies") as string;
         const preferredRoles = formData.get("preferredRoles") as string;
+        const userInput = formData.get("userInput") as string;
+        const missingSectionsRaw = formData.get("missingSections") as string || "summary,workExperience";
         const projectFiles = formData.getAll("projectFiles") as File[];
 
         let projectText = "";
@@ -86,7 +88,8 @@ export async function POST(req: NextRequest) {
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.7 } });
 
         const systemPrompt = `You are an expert resume writer.
-Generate a professional resume summary and structured work experience for a candidate with the following credentials:
+Generate professional resume details for a candidate with the following credentials.
+Generate ONLY the requested sections listed here: ${missingSectionsRaw}. Do not generate keys for any other sections.
 
 Target Roles: ${preferredRoles || "Software Engineer"}
 Target Companies: ${targetCompanies || "Top Tech Companies"}
@@ -94,26 +97,69 @@ GitHub Profile: ${github || "Not specified"}
 LinkedIn Profile: ${linkedin || "Not specified"}
 Portfolio Website: ${portfolioUrl || "Not specified"}
 
-Additional Code / Projects / Files context:
+${userInput ? `Candidate's Background & Notes (incorporate this to write accurate, highly-tailored resume details):
+${userInput}
+` : ""}Additional Code / Projects / Files context:
 ${projectText || "No project files provided."}
 
-Return a valid JSON block containing exactly:
+Return a valid JSON block matching this schema. ONLY include keys that are in the requested list [${missingSectionsRaw}] (omit any keys not requested):
 {
-  "summary": "...",
-  "experience": "..."
+  "summary": "A professional summary paragraph of 3-4 sentences.",
+  "workExperience": [
+    {
+      "company": "Company Name",
+      "position": "Job Title",
+      "startDate": "Start Date (e.g. 2022)",
+      "endDate": "End Date or 'Present'",
+      "current": true or false,
+      "description": "Bulleted list of achievements starting with - (separate bullet points with newlines)"
+    }
+  ],
+  "education": [
+    {
+      "institution": "University/School Name",
+      "degree": "e.g. B.Tech / High School",
+      "fieldOfStudy": "e.g. Computer Science",
+      "location": "City, State or Country",
+      "startDate": "Start Date",
+      "endDate": "End Date",
+      "gpa": "Grade/GPA",
+      "description": "Coursework or honors"
+    }
+  ],
+  "projects": [
+    {
+      "name": "Project Name",
+      "description": "Details about the project...",
+      "technologies": ["React", "TypeScript", "Node.js"],
+      "link": "Project URL or GitHub repository",
+      "role": "e.g. Frontend Developer"
+    }
+  ],
+  "skills": [
+    {
+      "name": "Skill Name (e.g. React.js)",
+      "level": "Advanced or Intermediate or Expert",
+      "category": "e.g. Frontend or Backend or Languages"
+    }
+  ],
+  "languages": [
+    {
+      "name": "Language Name",
+      "proficiency": "e.g. Native or Fluent or Conversational"
+    }
+  ],
+  "certifications": [
+    {
+      "name": "Certification Name",
+      "issuer": "Issuer Name",
+      "date": "Issue Date (e.g. 2023)",
+      "link": "Credential URL"
+    }
+  ]
 }
 
-Ensure the "summary" is a single highly professional paragraph (about 3-4 sentences).
-Ensure the "experience" value is a single string formatted with newlines, listing 2 distinct, highly relevant job positions with dates, company names, and bullet points. Use strong action verbs and metrics. Example:
-Lead Software Engineer at TechCorp (2022 - Present)
-- Led frontend design of Next.js web application, resulting in a 40% speed boost
-- Configured robust CI/CD deployment pipelines on AWS
-
-Software Engineer at DevLabs (2020 - 2022)
-- Built interactive and responsive features using React
-- Collaborated in an agile team to design REST API endpoints
-
-Respond ONLY with a valid JSON block. Do not write any markdown code blocks or explanatory text outside of the JSON.`;
+Respond ONLY with a valid JSON block. Do not write any markdown code blocks (e.g. \`\`\`json) or explanatory text outside of the JSON. Ensure it parses cleanly with JSON.parse.`;
 
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -138,23 +184,16 @@ Respond ONLY with a valid JSON block. Do not write any markdown code blocks or e
         }
 
         const rawText = result.response.text().trim();
-        let summary = "";
-        let experience = "";
-
+        let parsedJson = {};
         try {
             const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-            const parsed = JSON.parse(cleanJson);
-            summary = parsed.summary || "";
-            experience = parsed.experience || "";
+            parsedJson = JSON.parse(cleanJson);
         } catch (e) {
-            // fallback parsing in case JSON parsing failed
-            const summaryMatch = rawText.match(/"summary"\s*:\s*"([\s\S]*?)"/);
-            const expMatch = rawText.match(/"experience"\s*:\s*"([\s\S]*?)"/);
-            summary = summaryMatch ? summaryMatch[1].replace(/\\n/g, "\n") : "";
-            experience = expMatch ? expMatch[1].replace(/\\n/g, "\n") : rawText;
+            console.error("JSON parsing failed, returning raw text error:", rawText);
+            return NextResponse.json({ error: "Failed to parse AI generated JSON response", rawText }, { status: 500 });
         }
 
-        return NextResponse.json({ summary, experience });
+        return NextResponse.json(parsedJson);
     } catch (error: any) {
         console.error("Resume Generation Error:", error);
         return NextResponse.json({ error: error.message || "Failed to generate resume" }, { status: 500 });

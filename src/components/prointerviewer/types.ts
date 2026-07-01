@@ -1,0 +1,138 @@
+export interface PersonalInfo {
+  name: string;
+  title: string;
+  email: string;
+  phone: string;
+  location: string;
+  website: string;
+  linkedin: string;
+  github: string;
+  avatar: string; // Base64 dataURL or image URL
+  summary: string;
+}
+
+export interface WorkExperience {
+  id: string;
+  company: string;
+  position: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  current: boolean;
+  description: string; // Bullet points or text description
+}
+
+export interface Education {
+  id: string;
+  institution: string;
+  degree: string;
+  fieldOfStudy: string;
+  location: string;
+  startDate: string;
+  endDate: string;
+  gpa: string;
+  description: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  description: string;
+  technologies: string[];
+  link: string;
+  role: string;
+}
+
+export interface Skill {
+  id: string;
+  name: string;
+  level: string; // e.g. "Beginner", "Intermediate", "Advanced", "Expert", or ""
+  category: string; // e.g. "Languages", "Frameworks", "Design"
+}
+
+export interface Language {
+  id: string;
+  name: string;
+  proficiency: string; // e.g. "Native", "Fluent", "Conversational", "Basic"
+}
+
+export interface Certification {
+  id: string;
+  name: string;
+  issuer: string;
+  date: string;
+  link: string;
+}
+
+export interface CustomSectionItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  date: string;
+  description: string;
+}
+
+export interface CustomSection {
+  id: string;
+  title: string;
+  items: CustomSectionItem[];
+}
+
+export interface ResumeData {
+  personalInfo: PersonalInfo;
+  workExperience: WorkExperience[];
+  education: Education[];
+  projects: Project[];
+  skills: Skill[];
+  languages: Language[];
+  certifications: Certification[];
+  customSections: CustomSection[];
+}
+
+export type LayoutType = 'single-column' | 'left-sidebar' | 'right-sidebar' | 'split-header' | 'three-column';
+export type HeaderStyle = 'minimalist' | 'bold-banner' | 'split-profile' | 'accent-line';
+export type DividerStyle = 'simple' | 'accent-block' | 'pill-badges' | 'timeline';
+export type FontSize = 'sm' | 'md' | 'lg';
+export type SpacingSize = 'compact' | 'normal' | 'relaxed';
+export type MarginSize = 'narrow' | 'normal' | 'wide';
+
+export interface ColorPalette {
+  id: string;
+  name: string;
+  primary: string; // e.g. hex or hsl
+  secondary: string;
+  accent: string;
+  text: string;
+  background: string;
+  sidebarBg?: string; // used for two-column layouts
+  sidebarText?: string;
+  bannerBg?: string; // used for bold banner header
+  bannerText?: string;
+}
+
+export interface FontFamily {
+  id: string;
+  name: string;
+  class: string; // css class name or font-family string
+  importUrl?: string; // google fonts import url if needed
+}
+
+export interface ResumeStyle {
+  layout: LayoutType;
+  headerStyle: HeaderStyle;
+  colorPaletteId: string;
+  fontFamilyId: string;
+  dividerStyle: DividerStyle;
+  fontSize: FontSize;
+  spacing: SpacingSize;
+  margins: MarginSize;
+  showAvatars: boolean;
+}
+
+export interface ResumeTemplate {
+  id: string;
+  name: string;
+  category: 'Modern' | 'Creative' | 'Professional' | 'Academic' | 'Technical' | 'Minimalist';
+  description: string;
+  style: ResumeStyle;
+}
