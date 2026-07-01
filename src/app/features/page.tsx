@@ -1885,17 +1885,17 @@ function FeaturesContent() {
 
                                             <div>
                                                 <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5 mb-1.5"><Github className="w-3.5 h-3.5 text-white/60"/> GitHub Profile URL</label>
-                                                <input type="url" value={github} onChange={(e) => { setGithub(e.target.value); setStorageItem("userGithub", e.target.value); }} placeholder="https://github.com/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
+                                                <input type="url" value={github || ""} onChange={(e) => { setGithub(e.target.value); setStorageItem("userGithub", e.target.value); }} placeholder="https://github.com/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
                                             </div>
                                             
                                             <div>
                                                 <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5 mb-1.5"><Linkedin className="w-3.5 h-3.5 text-white/60"/> LinkedIn Profile URL</label>
-                                                <input type="url" value={linkedin} onChange={(e) => { setLinkedin(e.target.value); setStorageItem("userLinkedin", e.target.value); }} placeholder="https://linkedin.com/in/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
+                                                <input type="url" value={linkedin || ""} onChange={(e) => { setLinkedin(e.target.value); setStorageItem("userLinkedin", e.target.value); }} placeholder="https://linkedin.com/in/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
                                             </div>
                                             
                                             <div>
                                                 <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5 mb-1.5"><Globe className="w-3.5 h-3.5 text-white/60"/> Portfolio Website URL</label>
-                                                <input type="url" value={portfolioUrl} onChange={(e) => { setPortfolioUrl(e.target.value); setStorageItem("userPortfolio", e.target.value); }} placeholder="https://myportfolio.com" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
+                                                <input type="url" value={portfolioUrl || ""} onChange={(e) => { setPortfolioUrl(e.target.value); setStorageItem("userPortfolio", e.target.value); }} placeholder="https://myportfolio.com" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
                                             </div>
                                             
                                             <div>
@@ -2032,7 +2032,7 @@ function FeaturesContent() {
                                                         </div>
 
                                                         <div className="prose prose-invert max-w-none text-xs text-white/75 leading-relaxed border-t border-white/5 pt-3 space-y-2">
-                                                            {analysisResult.feedback.split("\n").map((line, i) => {
+                                                            {(analysisResult.feedback || "").split("\n").map((line, i) => {
                                                                 const cleaned = line.replace(/^\*\*/g, "").replace(/\*\*/g, "").trim();
                                                                 if (!cleaned) return <div key={i} className="h-1.5" />;
                                                                 
@@ -2196,7 +2196,7 @@ function FeaturesContent() {
                                             <label className="text-[11px] font-semibold text-white/70 block mb-1">Full Name</label>
                                             <input
                                                 type="text"
-                                                value={resName}
+                                                value={resName || ""}
                                                 onChange={(e) => {
                                                     setResName(e.target.value);
                                                     updateActiveResume({ name: e.target.value });
@@ -2211,7 +2211,7 @@ function FeaturesContent() {
                                                 <label className="text-[11px] font-semibold text-white/70 block mb-1">Email</label>
                                                 <input
                                                     type="email"
-                                                    value={resEmail}
+                                                    value={resEmail || ""}
                                                     onChange={(e) => {
                                                         setResEmail(e.target.value);
                                                         updateActiveResume({ email: e.target.value });
@@ -2224,7 +2224,7 @@ function FeaturesContent() {
                                                 <label className="text-[11px] font-semibold text-white/70 block mb-1">Phone</label>
                                                 <input
                                                     type="text"
-                                                    value={resPhone}
+                                                    value={resPhone || ""}
                                                     onChange={(e) => {
                                                         setResPhone(e.target.value);
                                                         updateActiveResume({ phone: e.target.value });
@@ -2239,7 +2239,7 @@ function FeaturesContent() {
                                         <div>
                                             <label className="text-[11px] font-semibold text-white/70 block mb-1">Professional Summary</label>
                                             <textarea
-                                                value={resSummary}
+                                                value={resSummary || ""}
                                                 onChange={(e) => {
                                                     setResSummary(e.target.value);
                                                     updateActiveResume({ summary: e.target.value });
@@ -2254,7 +2254,7 @@ function FeaturesContent() {
                                             <label className="text-[11px] font-semibold text-white/70 block mb-1">Skills (comma separated)</label>
                                             <input
                                                 type="text"
-                                                value={resSkills}
+                                                value={resSkills || ""}
                                                 onChange={(e) => {
                                                     setResSkills(e.target.value);
                                                     updateActiveResume({ skills: e.target.value });
@@ -2267,7 +2267,7 @@ function FeaturesContent() {
                                         <div>
                                             <label className="text-[11px] font-semibold text-white/70 block mb-1">Work Experience</label>
                                             <textarea
-                                                value={resExperience}
+                                                value={resExperience || ""}
                                                 onChange={(e) => {
                                                     setResExperience(e.target.value);
                                                     updateActiveResume({ experience: e.target.value });
@@ -2282,7 +2282,7 @@ function FeaturesContent() {
                                             <div>
                                                 <label className="text-[11px] font-semibold text-white/70 block mb-1">Internships</label>
                                                 <textarea
-                                                    value={resInternships}
+                                                    value={resInternships || ""}
                                                     onChange={(e) => {
                                                         setResInternships(e.target.value);
                                                         updateActiveResume({ internships: e.target.value });
@@ -2295,7 +2295,7 @@ function FeaturesContent() {
                                             <div>
                                                 <label className="text-[11px] font-semibold text-white/70 block mb-1">Projects</label>
                                                 <textarea
-                                                    value={resProjects}
+                                                    value={resProjects || ""}
                                                     onChange={(e) => {
                                                         setResProjects(e.target.value);
                                                         updateActiveResume({ projects: e.target.value });
@@ -2310,7 +2310,7 @@ function FeaturesContent() {
                                         <div>
                                             <label className="text-[11px] font-semibold text-white/70 block mb-1">Education</label>
                                             <textarea
-                                                value={resEducation}
+                                                value={resEducation || ""}
                                                 onChange={(e) => {
                                                     setResEducation(e.target.value);
                                                     updateActiveResume({ education: e.target.value });
@@ -2326,7 +2326,7 @@ function FeaturesContent() {
                                             <div>
                                                 <label className="text-[11px] font-semibold text-white/70 block mb-1">Certifications & Licenses</label>
                                                 <textarea
-                                                    value={resCertifications}
+                                                    value={resCertifications || ""}
                                                     onChange={(e) => {
                                                         setResCertifications(e.target.value);
                                                         updateActiveResume({ certifications: e.target.value });
@@ -2339,7 +2339,7 @@ function FeaturesContent() {
                                             <div>
                                                 <label className="text-[11px] font-semibold text-white/70 block mb-1">Awards & Achievements</label>
                                                 <textarea
-                                                    value={resAwards}
+                                                    value={resAwards || ""}
                                                     onChange={(e) => {
                                                         setResAwards(e.target.value);
                                                         updateActiveResume({ awards: e.target.value });
@@ -2359,7 +2359,7 @@ function FeaturesContent() {
                                                     <div key={idx} className="flex items-center gap-2.5">
                                                         <input
                                                             type="text"
-                                                            value={lang.name}
+                                                            value={lang.name || ""}
                                                             onChange={e => {
                                                                 const updated = [...resLanguages];
                                                                 updated[idx] = { ...updated[idx], name: e.target.value };
@@ -2797,13 +2797,13 @@ function FeaturesContent() {
                                                                             ? "bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[8.5px]" 
                                                                             : "px-1.5 py-0.5 rounded text-[8.5px] font-bold border"
                                                                     }
-                                                                    style={
+                                                    style={
                                                                         selectedTemplateId === "modern" 
                                                                             ? { backgroundColor: `${selectedColorHex}12`, color: selectedColorHex, borderColor: `${selectedColorHex}30` } 
                                                                             : undefined
                                                                     }
                                                                 >
-                                                                    {s.trim()}{selectedTemplateId === "classic" && idx < resSkills.split(",").length - 1 ? "," : ""}
+                                                                    {s.trim()}{selectedTemplateId === "classic" && idx < (resSkills || "No skills listed").split(",").length - 1 ? "," : ""}
                                                                 </span>
                                                             ))}
                                                         </div>
@@ -3027,7 +3027,7 @@ function FeaturesContent() {
                                     </AnimatePresence>
 
                                     <textarea
-                                        value={emailText}
+                                        value={emailText || ""}
                                         onChange={(e) => setEmailText(e.target.value)}
                                         rows={8}
                                         placeholder="Paste the raw invitation email text here..."
@@ -3148,7 +3148,7 @@ function FeaturesContent() {
                                                                 <label className="text-[10px] text-white/40 block font-bold">Target Role</label>
                                                                 <input
                                                                     type="text"
-                                                                    value={editRole}
+                                                                    value={editRole || ""}
                                                                     onChange={(e) => setEditRole(e.target.value)}
                                                                     className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500 font-sans"
                                                                 />
@@ -3157,7 +3157,7 @@ function FeaturesContent() {
                                                                 <label className="text-[10px] text-white/40 block font-bold">Target Company</label>
                                                                 <input
                                                                     type="text"
-                                                                    value={editCompany}
+                                                                    value={editCompany || ""}
                                                                     onChange={(e) => setEditCompany(e.target.value)}
                                                                     className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500 font-sans"
                                                                 />
@@ -3166,7 +3166,7 @@ function FeaturesContent() {
                                                                 <label className="text-[10px] text-white/40 block font-bold">Location</label>
                                                                 <input
                                                                     type="text"
-                                                                    value={editLocation}
+                                                                    value={editLocation || ""}
                                                                     onChange={(e) => setEditLocation(e.target.value)}
                                                                     className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500 font-sans"
                                                                 />
@@ -3447,7 +3447,7 @@ function FeaturesContent() {
                                         <label className="text-xs font-semibold text-white/70 block mb-1">Course / Target Role</label>
                                         <input
                                             type="text"
-                                            value={roadmapCourse}
+                                            value={roadmapCourse || ""}
                                             onChange={(e) => setRoadmapCourse(e.target.value)}
                                             placeholder="e.g. Frontend Engineer, React Developer"
                                             className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors text-white font-sans font-medium"
@@ -3457,7 +3457,7 @@ function FeaturesContent() {
                                         <label className="text-xs font-semibold text-white/70 block mb-1">Target Company</label>
                                         <input
                                             type="text"
-                                            value={roadmapCompany}
+                                            value={roadmapCompany || ""}
                                             onChange={(e) => setRoadmapCompany(e.target.value)}
                                             placeholder="e.g. Google, Amazon, Stripe"
                                             className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors text-white font-sans font-medium"
@@ -3467,7 +3467,7 @@ function FeaturesContent() {
                                         <label className="text-xs font-semibold text-white/70 block mb-1">Job Location</label>
                                         <input
                                             type="text"
-                                            value={roadmapLocation}
+                                            value={roadmapLocation || ""}
                                             onChange={(e) => setRoadmapLocation(e.target.value)}
                                             placeholder="e.g. London, Remote, New York"
                                             className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors text-white font-sans font-medium"
@@ -3478,7 +3478,7 @@ function FeaturesContent() {
                                 <div>
                                     <label className="text-xs font-semibold text-white/70 block mb-1">Additional Requirements / Context (Skills, Email details)</label>
                                     <textarea
-                                        value={roadmapAdditional}
+                                        value={roadmapAdditional || ""}
                                         onChange={(e) => setRoadmapAdditional(e.target.value)}
                                         rows={3}
                                         placeholder="Add key technologies, specific skills (e.g. Next.js, System Design) or details extracted from your invite email..."
