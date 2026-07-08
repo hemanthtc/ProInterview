@@ -6,12 +6,20 @@ const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
 
 export async function POST(req: NextRequest) {
     try {
-        const { history, resume, message, attachment, type, provider, company, roles } = await req.json();
+        const { history, resume, message, attachment, type, provider, company, roles, level } = await req.json();
         
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
+        const safeLevel = level || "intermediate";
+
+        const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
+- You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.
+- Basic difficulty: Focus on core syntax, fundamental data structures, simple functions, and entry-level programming concepts.
+- Intermediate difficulty: Focus on object-oriented/functional paradigms, design patterns, framework concepts, API usage, unit testing, and medium-complexity logical problem solving.
+- Advanced difficulty: Focus on complex system architecture, high scalability, concurrency, distributed systems, deep algorithmic optimization, security, memory management, and trade-off analysis under high pressure.`;
 
         const systemPrompt = `ROLE: You are an ultra-realistic, highly empathetic, and professional AI Job Interviewer. You must behave exactly like an experienced corporate HR manager or a senior technical lead at ${safeCompany} — calm, confident, welcoming, and observant. The candidate is applying for: ${safeRoles}.
+${difficultyInstruction}
 
 PERSONA & TONE:
 - Tone: Professional, encouraging, conversational, and direct. You are a real human sitting across the table.

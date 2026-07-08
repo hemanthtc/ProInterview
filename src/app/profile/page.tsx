@@ -96,15 +96,18 @@ export default function ProfilePage() {
     const [subModalOpen, setSubModalOpen] = useState(false);
     const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
     const [upgradeSuccess, setUpgradeSuccess] = useState(false);
+    const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
 
-    // NPCI UPI Payment States
+    // Razorpay Checkout Payment States
     const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<string | null>(null);
-    const [paymentMethod, setPaymentMethod] = useState<"qr" | "vpa">("qr");
-    const [upiId, setUpiId] = useState("");
-    const [upiIdError, setUpiIdError] = useState("");
     const [paymentStatus, setPaymentStatus] = useState<"idle" | "requesting" | "verifying" | "success" | "error">("idle");
-    const [paymentTimer, setPaymentTimer] = useState<number>(300); // 5 minutes in seconds
     const [txDetails, setTxDetails] = useState<{ txId: string; refNo: string; date: string; amount: number } | null>(null);
+
+    // Utility getter to display "Elite Plan" for legacy Enterprise tiers
+    const getPlanDisplay = (plan: string) => {
+        if (plan === "Enterprise Tier" || plan === "Enterprise Plan") return "Elite Plan";
+        return plan;
+    };
 
     // Sync profile helper
     const syncProfileToCloud = async (fieldsToUpdate: any) => {
@@ -274,6 +277,17 @@ export default function ProfilePage() {
         loadSessions(exactUser);
     }, [router]);
 
+    // Dynamically load Razorpay script on mount
+    useEffect(() => {
+        const script = document.createElement("script");
+        script.src = "https://checkout.razorpay.com/v1/checkout.js";
+        script.async = true;
+        document.body.appendChild(script);
+        return () => {
+            document.body.removeChild(script);
+        };
+    }, []);
+
     // Reset payment states when subscription modal closes
     useEffect(() => {
         if (!subModalOpen) {
@@ -281,26 +295,6 @@ export default function ProfilePage() {
             setPaymentStatus("idle");
         }
     }, [subModalOpen]);
-
-    // Timer Effect for NPCI UPI Checkout
-    useEffect(() => {
-        let interval: NodeJS.Timeout | null = null;
-        if (selectedPlanForPayment && paymentStatus !== "success" && paymentStatus !== "error") {
-            interval = setInterval(() => {
-                setPaymentTimer(prev => {
-                    if (prev <= 1) {
-                        setPaymentStatus("error");
-                        if (interval) clearInterval(interval);
-                        return 0;
-                    }
-                    return prev - 1;
-                });
-            }, 1000);
-        }
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [selectedPlanForPayment, paymentStatus]);
 
     const loadSessions = (exactUser: string) => {
         const stored = getStorageItem("interviewSessions");
@@ -357,63 +351,109 @@ export default function ProfilePage() {
         router.push("/");
     };
 
-    const initiatePayment = (planName: string) => {
-        setSelectedPlanForPayment(planName);
-        setPaymentMethod("qr");
-        setUpiId("");
-        setUpiIdError("");
-        setPaymentStatus("idle");
-        setPaymentTimer(300); // 5 minutes
-
-        const randomTxId = "TXN" + Math.floor(100000000000 + Math.random() * 900000000000);
-        const randomRefNo = "NPCI" + Math.floor(100000000000 + Math.random() * 900000000000);
-        const dateStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
-        const amt = planName === "Pro Plan" ? 2449 : 8349;
-        setTxDetails({
-            txId: randomTxId,
-            refNo: randomRefNo,
-            date: dateStr,
-            amount: amt
-        });
-    };
-
-    const handleUpiPaymentSubmit = async () => {
-        if (paymentMethod === "vpa") {
-            const trimmed = upiId.trim();
-            if (!trimmed) {
-                setUpiIdError("UPI ID cannot be empty");
+    const initiatePayment = async (planName: string) => {
+        try {
+            if (!(window as any).Razorpay) {
+                alert("Razorpay payment SDK failed to load. Please check your internet connection.");
                 return;
             }
-            if (!trimmed.includes("@") || trimmed.split("@")[0].length < 3 || trimmed.split("@")[1].length < 2) {
-                setUpiIdError("Invalid UPI ID format (e.g. name@bank)");
-                return;
-            }
-            setUpiIdError("");
+
+            setSelectedPlanForPayment(planName);
             setPaymentStatus("requesting");
 
-            // Simulate collect request sent to user's phone via NPCI
-            await new Promise(resolve => setTimeout(resolve, 3000));
-            setPaymentStatus("verifying");
+            const identifier = getStorageItem("userIdentifier") || userIdentifier;
+            const res = await fetch("/api/razorpay/create-order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    planName,
+                    billingCycle,
+                    userIdentifier: identifier
+                })
+            });
 
-            // Simulate user approving on phone
-            await new Promise(resolve => setTimeout(resolve, 4000));
-            completePayment();
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.error || "Failed to initiate payment order.");
+            }
+
+            const orderData = await res.json();
+            
+            // Set transaction details for invoice display
+            const calculatedAmount = orderData.amount / 100;
+            const txId = orderData.orderId;
+            const refNo = "RZP" + Math.floor(100000000000 + Math.random() * 900000000000);
+            const dateStr = new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+            
+            setTxDetails({
+                txId,
+                refNo,
+                date: dateStr,
+                amount: calculatedAmount
+            });
+
+            setPaymentStatus("idle");
+
+            const options = {
+                key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "",
+                amount: orderData.amount,
+                currency: orderData.currency,
+                name: "ProInterview",
+                description: `Upgrade to ${planName} (${billingCycle})`,
+                order_id: orderData.orderId,
+                handler: async function (response: any) {
+                    try {
+                        setPaymentStatus("verifying");
+
+                        const verifyRes = await fetch("/api/razorpay/verify-payment", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                                razorpay_payment_id: response.razorpay_payment_id,
+                                razorpay_order_id: response.razorpay_order_id,
+                                razorpay_signature: response.razorpay_signature,
+                                planName,
+                                userIdentifier: identifier
+                            })
+                        });
+
+                        if (!verifyRes.ok) {
+                            const verifyErr = await verifyRes.json();
+                            throw new Error(verifyErr.error || "Payment verification failed.");
+                        }
+
+                        const verifyData = await verifyRes.json();
+                        const finalPlan = verifyData.subscriptionPlan;
+
+                        setStorageItem("userSubscriptionPlan", finalPlan);
+                        setSubscriptionPlan(finalPlan);
+                        setPaymentStatus("success");
+                    } catch (err: any) {
+                        console.error("Signature verification error:", err);
+                        setPaymentStatus("error");
+                    }
+                },
+                prefill: {
+                    name: userName || "",
+                    email: identifier || "",
+                },
+                theme: {
+                    color: "#4f46e5"
+                },
+                modal: {
+                    ondismiss: function () {
+                        setPaymentStatus("idle");
+                        setSelectedPlanForPayment(null);
+                    }
+                }
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+            rzp.open();
+        } catch (error: any) {
+            console.error("Razorpay initiation failed:", error);
+            setPaymentStatus("error");
         }
-    };
-
-    const verifyPaymentSettlement = async () => {
-        setPaymentStatus("verifying");
-        // Simulate settlement check with NPCI switches
-        await new Promise(resolve => setTimeout(resolve, 3500));
-        completePayment();
-    };
-
-    const completePayment = () => {
-        if (!selectedPlanForPayment) return;
-        setStorageItem("userSubscriptionPlan", selectedPlanForPayment);
-        setSubscriptionPlan(selectedPlanForPayment);
-        syncProfileToCloud({ subscriptionPlan: selectedPlanForPayment });
-        setPaymentStatus("success");
     };
 
     const downloadReceipt = () => {
@@ -421,16 +461,16 @@ export default function ProfilePage() {
         const receiptText = `
 ========================================
        PROINTERVIEW SUBSCRIPTION
-           NPCI UPI RECEIPT
+           RAZORPAY RECEIPT
 ========================================
 Date: ${txDetails.date}
-Merchant: ProInterview Inc. (Verified Merchant)
-Plan: ${selectedPlanForPayment}
+Merchant: ProInterview Inc. (Razorpay Certified)
+Plan: ${selectedPlanForPayment} (${billingCycle})
 Amount Paid: INR ${txDetails.amount}.00
-Payment Channel: NPCI Unified Payments Interface (UPI)
-Transaction ID: ${txDetails.txId}
-NPCI Ref Number: ${txDetails.refNo}
-Status: SETTLED / SUCCESSFUL
+Payment Channel: Razorpay Secure checkout
+Order ID: ${txDetails.txId}
+Receipt Reference: ${txDetails.refNo}
+Status: VERIFIED / SETTLED / SUCCESSFUL
 ========================================
 Thank you for subscribing!
 You have been successfully upgraded to ${selectedPlanForPayment}.
@@ -1013,7 +1053,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Subscription</span>
                             <span className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5 mt-0.5">
                                 <Award className="w-4 h-4 text-indigo-400 shrink-0" />
-                                {subscriptionPlan}
+                                {getPlanDisplay(subscriptionPlan)}
                             </span>
                         </div>
                         <button
@@ -1754,7 +1794,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
                             {selectedPlanForPayment ? (
                                 <div className="relative z-10 flex flex-col md:flex-row gap-6 items-stretch">
-                                    {/* Left Column: Transaction details & Tabs */}
+                                    {/* Left Column: Transaction details & Razorpay Status */}
                                     <div className="flex-1 flex flex-col justify-between border border-white/10 rounded-2xl bg-white/[0.01] p-5">
                                         <div>
                                             <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
@@ -1766,9 +1806,9 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     </div>
                                                     <div>
                                                         <h3 className="text-sm font-extrabold text-white uppercase tracking-wider flex items-center gap-1.5">
-                                                            NPCI UPI Secure Checkout
+                                                            Razorpay Secure Checkout
                                                         </h3>
-                                                        <p className="text-[10px] text-white/40">Verified Business Merchant Gateway</p>
+                                                        <p className="text-[10px] text-white/40">Verified Payment Partner Gateway</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2">
@@ -1794,158 +1834,63 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     </button>
                                                 </div>
                                             </div>
-
+ 
                                             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 mb-4">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
                                                         <p className="text-xs text-white/50">Subscription Plan</p>
-                                                        <h4 className="text-lg font-black text-white">{selectedPlanForPayment}</h4>
+                                                        <h4 className="text-lg font-black text-white">{selectedPlanForPayment === "Enterprise Plan" ? "Elite Plan" : selectedPlanForPayment}</h4>
                                                     </div>
                                                     <div className="text-right">
-                                                        <p className="text-xs text-white/50">Total Amount</p>
+                                                        <p className="text-xs text-white/50">Total Amount ({billingCycle === "yearly" ? "Annually" : "Monthly"})</p>
                                                         <p className="text-xl font-black text-indigo-400">₹{txDetails?.amount}</p>
-                                                        <p className="text-[10px] text-white/30">(Equivalent to ${selectedPlanForPayment === "Pro Plan" ? "29" : "99"} USD)</p>
+                                                        <p className="text-[10px] text-white/30">
+                                                            {billingCycle === "yearly" ? "Equivalent to ₹999/mo (Pro) or ₹2,999/mo (Elite)" : "Monthly recurring billing"}
+                                                        </p>
                                                     </div>
                                                 </div>
                                                 <div className="border-t border-white/5 pt-2 mt-2 flex justify-between text-[11px] text-white/40 font-mono">
-                                                    <span>Txn ID: {txDetails?.txId}</span>
-                                                    <span>Ref No: {txDetails?.refNo}</span>
+                                                    <span>Order ID: {txDetails?.txId || "PENDING"}</span>
+                                                    <span>Ref No: {txDetails?.refNo || "PENDING"}</span>
                                                 </div>
                                             </div>
-
-                                            {paymentStatus === "idle" || paymentStatus === "requesting" || paymentStatus === "verifying" ? (
-                                                <>
-                                                    <div className="flex gap-2 p-1 bg-black/40 border border-white/10 rounded-xl mb-4">
-                                                        <button
-                                                            onClick={() => {
-                                                                setPaymentMethod("qr");
-                                                                setPaymentStatus("idle");
-                                                                setUpiIdError("");
-                                                            }}
-                                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                                                paymentMethod === "qr"
-                                                                    ? "bg-indigo-600 text-white shadow-lg"
-                                                                    : "text-white/60 hover:text-white hover:bg-white/5"
-                                                            }`}
-                                                        >
-                                                            Scan UPI QR Code
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setPaymentMethod("vpa");
-                                                                setPaymentStatus("idle");
-                                                                setUpiIdError("");
-                                                            }}
-                                                            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                                                                paymentMethod === "vpa"
-                                                                    ? "bg-indigo-600 text-white shadow-lg"
-                                                                    : "text-white/60 hover:text-white hover:bg-white/5"
-                                                            }`}
-                                                        >
-                                                            Pay via UPI ID
-                                                        </button>
+ 
+                                            {paymentStatus === "requesting" ? (
+                                                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-5 flex flex-col items-center justify-center gap-3 text-center my-6">
+                                                    <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                                                    <div>
+                                                        <p className="text-sm font-bold text-indigo-300">Contacting Payment Gateway...</p>
+                                                        <p className="text-xs text-white/40 mt-1">Initializing secure order and opening Razorpay checkout widget.</p>
                                                     </div>
-
-                                                    {paymentMethod === "qr" ? (
-                                                        <div className="space-y-3">
-                                                            <p className="text-xs text-white/60 leading-relaxed">
-                                                                Scan the QR code on the right with any UPI app on your phone (GPay, PhonePe, Paytm, BHIM) to make a secure payment of ₹{txDetails?.amount}.
-                                                            </p>
-                                                            <div className="flex flex-col gap-2 pt-2">
-                                                                <button
-                                                                    onClick={verifyPaymentSettlement}
-                                                                    disabled={paymentStatus === "verifying"}
-                                                                    className="w-full h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/20"
-                                                                >
-                                                                    {paymentStatus === "verifying" ? (
-                                                                        <>
-                                                                            <Loader2 className="w-4 h-4 animate-spin" /> Verifying NPCI Settlement...
-                                                                        </>
-                                                                    ) : (
-                                                                        <>Verify Payment After Scanning</>
-                                                                    )}
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="space-y-3">
-                                                            <p className="text-xs text-white/60">
-                                                                Enter your UPI ID (VPA) to request a payment from our merchant gateway. Approve it on your UPI mobile app.
-                                                            </p>
-                                                            <div>
-                                                                <label className="block text-[10px] uppercase font-bold text-white/40 mb-1.5 tracking-wider">UPI ID / VPA</label>
-                                                                <div className="relative">
-                                                                    <input
-                                                                        type="text"
-                                                                        placeholder="e.g. name@upi"
-                                                                        value={upiId}
-                                                                        onChange={(e) => {
-                                                                            setUpiId(e.target.value);
-                                                                            setUpiIdError("");
-                                                                        }}
-                                                                        disabled={paymentStatus !== "idle"}
-                                                                        className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all font-mono placeholder:text-white/20"
-                                                                    />
-                                                                </div>
-                                                                {upiIdError && <p className="text-red-400 text-[10px] font-bold mt-1.5">{upiIdError}</p>}
-                                                            </div>
-
-                                                            {paymentStatus === "idle" && (
-                                                                <button
-                                                                    onClick={handleUpiPaymentSubmit}
-                                                                    className="w-full h-11 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center"
-                                                                >
-                                                                    Verify & Send Request
-                                                                </button>
-                                                            )}
-
-                                                            {paymentStatus === "requesting" && (
-                                                                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-3.5 flex items-center gap-3">
-                                                                    <Loader2 className="w-5 h-5 text-indigo-400 animate-spin shrink-0" />
-                                                                    <div>
-                                                                        <p className="text-xs font-bold text-indigo-300">Sending Request...</p>
-                                                                        <p className="text-[10px] text-white/40">Broadcasting collect request on NPCI switch...</p>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {paymentStatus === "verifying" && (
-                                                                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-3.5 space-y-2">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Loader2 className="w-5 h-5 text-indigo-400 animate-spin shrink-0" />
-                                                                        <div>
-                                                                            <p className="text-xs font-bold text-indigo-300">UPI Request Sent to User App!</p>
-                                                                            <p className="text-[10px] text-white/40">Open GPay/PhonePe and approve payment of ₹{txDetails?.amount}.</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="text-[10px] text-white/30 italic text-center border-t border-white/5 pt-2">
-                                                                        Simulated auto-approval in progress (5s)...
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    )}
-                                                </>
+                                                </div>
+                                            ) : paymentStatus === "verifying" ? (
+                                                <div className="bg-indigo-500/5 border border-indigo-500/20 rounded-xl p-5 flex flex-col items-center justify-center gap-3 text-center my-6">
+                                                    <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                                                    <div>
+                                                        <p className="text-sm font-bold text-indigo-300">Verifying Payment Signature...</p>
+                                                        <p className="text-xs text-white/40 mt-1">Checking hash authenticity and updating user subscription status in database.</p>
+                                                    </div>
+                                                </div>
                                             ) : paymentStatus === "success" ? (
                                                 <div className="space-y-4 py-2 flex-1 flex flex-col justify-center">
                                                     <div className="flex flex-col items-center text-center">
                                                         <div className="w-14 h-14 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 mb-3 shadow-[0_0_20px_rgba(16,185,129,0.2)]">
                                                             <Check className="w-7 h-7" />
                                                         </div>
-                                                        <h3 className="text-lg font-bold text-white mb-1">NPCI UPI Payment Success!</h3>
+                                                        <h3 className="text-lg font-bold text-white mb-1">Razorpay Payment Success!</h3>
                                                         <p className="text-xs text-white/50 max-w-sm">
-                                                            Your transaction has been settled. Your account has been upgraded to the <b>{selectedPlanForPayment}</b>.
+                                                            Your transaction has been settled. Your account has been upgraded to the <b>{selectedPlanForPayment === "Enterprise Plan" ? "Elite Plan" : selectedPlanForPayment}</b>.
                                                         </p>
                                                     </div>
-
+ 
                                                     <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3 text-xs space-y-2 font-mono">
-                                                        <div className="flex justify-between"><span className="text-white/40">Plan:</span><span className="text-white">{selectedPlanForPayment}</span></div>
+                                                        <div className="flex justify-between"><span className="text-white/40">Plan:</span><span className="text-white">{selectedPlanForPayment === "Enterprise Plan" ? "Elite Plan" : selectedPlanForPayment}</span></div>
                                                         <div className="flex justify-between"><span className="text-white/40">Amount:</span><span className="text-white font-bold">₹{txDetails?.amount}.00</span></div>
-                                                        <div className="flex justify-between"><span className="text-white/40">Transaction ID:</span><span className="text-white">{txDetails?.txId}</span></div>
-                                                        <div className="flex justify-between"><span className="text-white/40">NPCI Ref No:</span><span className="text-white">{txDetails?.refNo}</span></div>
+                                                        <div className="flex justify-between"><span className="text-white/40">Order ID:</span><span className="text-white">{txDetails?.txId}</span></div>
+                                                        <div className="flex justify-between"><span className="text-white/40">Reference Ref:</span><span className="text-white">{txDetails?.refNo}</span></div>
                                                         <div className="flex justify-between"><span className="text-white/40">Settle Date:</span><span className="text-white">{txDetails?.date}</span></div>
                                                     </div>
-
+ 
                                                     <div className="flex gap-2">
                                                         <button
                                                             onClick={downloadReceipt}
@@ -1965,111 +1910,72 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                         </button>
                                                     </div>
                                                 </div>
-                                            ) : (
+                                            ) : paymentStatus === "error" ? (
                                                 <div className="space-y-4 py-2 flex-1 flex flex-col justify-center text-center">
                                                     <div className="w-14 h-14 mx-auto rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-3 shadow-[0_0_20px_rgba(239,68,68,0.2)] animate-pulse">
                                                         <X className="w-7 h-7" />
                                                     </div>
-                                                    <h3 className="text-lg font-bold text-white mb-1">Transaction Expired</h3>
+                                                    <h3 className="text-lg font-bold text-white mb-1">Transaction Failed / Cancelled</h3>
                                                     <p className="text-xs text-white/50 max-w-sm mx-auto">
-                                                        The secure NPCI payment session has timed out or expired. Please attempt checkout again.
+                                                        The Razorpay checkout session failed or was dismissed. Please attempt checkout again.
                                                     </p>
                                                     <button
-                                                        onClick={() => {
-                                                            setPaymentStatus("idle");
-                                                            setPaymentTimer(300);
-                                                        }}
+                                                        onClick={() => initiatePayment(selectedPlanForPayment)}
                                                         className="py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold text-white transition-colors max-w-xs mx-auto w-full"
                                                     >
                                                         Try Again
                                                     </button>
                                                 </div>
+                                            ) : (
+                                                <div className="space-y-4 py-4 text-center">
+                                                    <p className="text-xs text-white/60 leading-relaxed max-w-md mx-auto">
+                                                        Connection established. Press the button below to initiate the secure Razorpay payment flow.
+                                                    </p>
+                                                    <button
+                                                        onClick={() => initiatePayment(selectedPlanForPayment)}
+                                                        className="w-full h-11 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-bold rounded-xl text-xs transition-all shadow-lg shadow-indigo-500/20"
+                                                    >
+                                                        Pay Securely with Razorpay
+                                                    </button>
+                                                </div>
                                             )}
                                         </div>
-
+ 
                                         <div className="border-t border-white/5 pt-4 mt-4 flex items-center justify-between text-[10px] text-white/40">
                                             <span className="flex items-center gap-1">
                                                 <svg className="w-3.5 h-3.5 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M2.166 4.9L10 1.154l7.834 3.746A2 2 0 0119 6.653v5.694a8 8 0 01-4.767 7.307l-3.733 1.68a1 1 0 01-.88 0l-3.733-1.68A8 8 0 011 12.347V6.653a2 2 0 011.166-1.753zM10 3.74l-6 2.87v5.738a6 6 0 003.575 5.48l2.425 1.092 2.425-1.092A6 6 0 0016 12.348V6.61l-6-2.87z" clipRule="evenodd" />
                                                 </svg>
-                                                NPCI Secured 256-Bit SSL
+                                                Razorpay Secure 256-Bit SSL
                                             </span>
                                             <div className="flex gap-2 uppercase tracking-widest font-bold opacity-30 text-[8px]">
                                                 <span>UPI</span>
-                                                <span>BHIM</span>
-                                                <span>GPAY</span>
-                                                <span>PAYTM</span>
+                                                <span>CARDS</span>
+                                                <span>NETBANKING</span>
                                             </div>
                                         </div>
                                     </div>
-
-                                    {/* Right Column: QR Code Display / Visual Helper */}
+ 
+                                    {/* Right Column: Checkout Info & Security Guarantee */}
                                     <div className="w-full md:w-80 flex flex-col items-center justify-center border border-white/10 rounded-2xl bg-black/40 p-6 text-center relative overflow-hidden shrink-0">
                                         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
                                         
-                                        {paymentStatus === "success" ? (
-                                            <div className="flex flex-col items-center">
-                                                <div className="w-24 h-24 bg-emerald-500/5 border border-emerald-500/20 rounded-2xl flex items-center justify-center mb-4">
-                                                    <svg className="w-12 h-12 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                                    </svg>
-                                                </div>
-                                                <h4 className="text-white font-bold text-sm">NPCI Receipt Issued</h4>
-                                                <p className="text-white/40 text-[10px] mt-1">Transaction logged on UPI ledger.</p>
+                                        <div className="flex flex-col items-center">
+                                            <div className="w-16 h-16 bg-indigo-500/5 border border-indigo-500/20 rounded-2xl flex items-center justify-center mb-4">
+                                                <svg className="w-8 h-8 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                                                </svg>
                                             </div>
-                                        ) : paymentStatus === "error" ? (
-                                            <div className="flex flex-col items-center">
-                                                <div className="w-24 h-24 bg-red-500/5 border border-red-500/20 rounded-2xl flex items-center justify-center mb-4">
-                                                    <X className="w-12 h-12 text-red-400" />
-                                                </div>
-                                                <h4 className="text-white font-bold text-sm">Session Ended</h4>
-                                                <p className="text-white/40 text-[10px] mt-1">Gateway timeout reached.</p>
-                                            </div>
-                                        ) : (
-                                            <>
-                                                <div className="relative p-3.5 bg-white rounded-2xl shadow-[0_0_30px_rgba(79,70,229,0.25)] border border-white mb-4 group">
-                                                    <div className="absolute -top-1 -left-1 w-4 h-4 border-t-2 border-l-2 border-indigo-500" />
-                                                    <div className="absolute -top-1 -right-1 w-4 h-4 border-t-2 border-r-2 border-indigo-500" />
-                                                    <div className="absolute -bottom-1 -left-1 w-4 h-4 border-b-2 border-l-2 border-indigo-500" />
-                                                    <div className="absolute -bottom-1 -right-1 w-4 h-4 border-b-2 border-r-2 border-indigo-500" />
-
-                                                    <img
-                                                        src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&color=09090b&bgcolor=ffffff&qzone=1&data=${encodeURIComponent(
-                                                            `upi://pay?pa=${(process.env.NEXT_PUBLIC_MERCHANT_UPI_ID || "subscribe@aiinterviewer").replace(/"/g, "")}&pn=AI%20Interviewer&am=${txDetails?.amount}&cu=INR&tn=AI%20Interviewer%20${selectedPlanForPayment}`
-                                                        )}`}
-                                                        alt="UPI QR Code"
-                                                        className="w-[180px] h-[180px] select-none pointer-events-none rounded-lg"
-                                                    />
-
-                                                    <div className="absolute inset-x-3.5 top-3.5 h-0.5 bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.8)] opacity-60 animate-[bounce_2.5s_infinite] pointer-events-none" />
-                                                </div>
-
-                                                <div className="space-y-1 mb-2">
-                                                    <p className="text-white text-xs font-bold flex items-center justify-center gap-1.5">
-                                                        <span className="w-2 h-2 bg-indigo-500 rounded-full animate-ping" />
-                                                        Scan & Pay Instantly
-                                                    </p>
-                                                    <p className="text-[10px] text-white/50">Amount: <span className="font-extrabold text-white">₹{txDetails?.amount}</span></p>
-                                                </div>
-
-                                                <div className="bg-white/5 border border-white/5 px-3 py-1.5 rounded-xl inline-flex items-center gap-1.5 text-xs text-white/50 font-mono">
-                                                    <Clock className="w-3.5 h-3.5 text-indigo-400" />
-                                                    Session expires in: <span className="text-white font-bold">{Math.floor(paymentTimer / 60)}:{(paymentTimer % 60).toString().padStart(2, "0")}</span>
-                                                </div>
-
-                                                <div className="mt-5 pt-4 border-t border-white/5 w-full flex items-center justify-center gap-3 grayscale opacity-40 hover:grayscale-0 hover:opacity-75 transition-all">
-                                                    <span className="text-[9px] font-black text-white italic tracking-tighter">BHIM UPI</span>
-                                                    <span className="text-[9px] font-black text-white italic tracking-tighter">GPAY</span>
-                                                    <span className="text-[9px] font-black text-white italic tracking-tighter">PHONEPE</span>
-                                                    <span className="text-[9px] font-black text-white italic tracking-tighter">PAYTM</span>
-                                                </div>
-                                            </>
-                                        )}
+                                            <h4 className="text-white font-extrabold text-sm uppercase tracking-wider">PCI-DSS Compliant</h4>
+                                            <p className="text-white/40 text-[10px] mt-2 leading-relaxed px-2">
+                                                All credentials are encrypted. Your subscription will be instantly updated in MongoDB upon successful validation.
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
                             ) : (
                                 <>
-                                    <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6 relative z-10">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-white/10 pb-4 mb-6 relative z-10 gap-4">
                                         <div>
                                             <h2 className="text-xl md:text-2xl font-extrabold tracking-tight flex items-center gap-2">
                                                 <Award className="w-6 h-6 text-indigo-400" />
@@ -2077,14 +1983,33 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             </h2>
                                             <p className="text-xs md:text-sm text-white/50 mt-0.5">Choose a plan that fits your interview preparation goals.</p>
                                         </div>
-                                        <button
-                                            onClick={() => setSubModalOpen(false)}
-                                            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
-                                        >
-                                            <X className="w-4 h-4" />
-                                        </button>
+                                        
+                                        {/* Billing Cycle Toggle */}
+                                        <div className="flex items-center gap-2 bg-black/40 border border-white/10 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+                                            <button
+                                                onClick={() => setBillingCycle("monthly")}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                    billingCycle === "monthly"
+                                                        ? "bg-indigo-600 text-white shadow-md"
+                                                        : "text-white/60 hover:text-white"
+                                                }`}
+                                            >
+                                                Monthly
+                                            </button>
+                                            <button
+                                                onClick={() => setBillingCycle("yearly")}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                    billingCycle === "yearly"
+                                                        ? "bg-indigo-600 text-white shadow-md"
+                                                        : "text-white/60 hover:text-white"
+                                                }`}
+                                            >
+                                                Yearly
+                                                <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[8px] px-1 py-0.5 rounded font-black uppercase tracking-wider">Save 20%+</span>
+                                            </button>
+                                        </div>
                                     </div>
-
+ 
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
                                         {/* Free Tier Card */}
                                         <div className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${subscriptionPlan === "Free Tier" ? "bg-indigo-500/5 border-indigo-500/40 shadow-[0_0_15px_rgba(79,70,229,0.1)]" : "bg-white/5 border-white/5 hover:border-white/10"}`}>
@@ -2095,21 +2020,21 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 </div>
                                                 <h3 className="text-lg font-bold text-white">Free Tier</h3>
                                                 <div className="mt-3 mb-4 flex items-baseline">
-                                                    <span className="text-3xl font-black">$0</span>
+                                                    <span className="text-3xl font-black">₹0</span>
                                                     <span className="text-xs text-white/40 ml-1">/ month</span>
                                                 </div>
                                                 <ul className="space-y-2.5 text-xs text-white/60 mb-6">
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        2 interview sessions / month
+                                                        2 standard interviews / month
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Basic performance scoring
+                                                        Basic performance scorecard
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Standard AI report summary
+                                                        Gemini integration only
                                                     </li>
                                                 </ul>
                                             </div>
@@ -2121,7 +2046,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 {subscriptionPlan === "Free Tier" ? "Current Plan" : "Downgrade to Free"}
                                             </button>
                                         </div>
-
+ 
                                         {/* Pro Plan Card */}
                                         <div className={`rounded-2xl p-5 border transition-all duration-200 relative flex flex-col justify-between ${subscriptionPlan === "Pro Plan" ? "bg-indigo-500/10 border-indigo-500 shadow-[0_0_25px_rgba(79,70,229,0.2)]" : "bg-white/5 border-white/5 hover:border-white/10"}`}>
                                             <div className="absolute -top-3 right-4 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[9px] font-black tracking-wider uppercase px-3 py-1 rounded-full shadow-md shadow-indigo-500/20">
@@ -2136,26 +2061,36 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     Pro Plan <Sparkles className="w-4 h-4 text-indigo-400" />
                                                 </h3>
                                                 <div className="mt-3 mb-4 flex items-baseline">
-                                                    <span className="text-3xl font-black">$29</span>
+                                                    <span className="text-3xl font-black">
+                                                        ₹{billingCycle === "yearly" ? "999" : "1,299"}
+                                                    </span>
                                                     <span className="text-xs text-white/40 ml-1">/ month</span>
-                                                    <span className="text-[10px] text-white/30 ml-2">(≈ ₹2,449)</span>
+                                                    {billingCycle === "yearly" && (
+                                                        <span className="text-[10px] text-indigo-400 font-extrabold ml-2">
+                                                            (₹11,988 billed annually)
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <ul className="space-y-2.5 text-xs text-white/60 mb-6">
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Unlimited interview sessions
+                                                        Unlimited standard interviews
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Detailed score breakdowns
+                                                        5 D-ID Avatar Stream interviews / mo
+                                                    </li>
+                                                    <li className="flex items-center gap-2">
+                                                        <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                                        Advanced difficulty mode
                                                     </li>
                                                     <li className="flex items-center gap-2 text-indigo-300 font-semibold">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Access to AI Career Coach
+                                                        Multilingual (Gemini & Sarvam AI)
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Interactive dashboard analytics
+                                                        Code (`[MODE:CODE]`) & Board (`[MODE:DRAW]`)
                                                     </li>
                                                 </ul>
                                             </div>
@@ -2167,41 +2102,55 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 {subscriptionPlan === "Pro Plan" ? "Current Plan" : "Upgrade to Pro"}
                                             </button>
                                         </div>
-
-                                        {/* Enterprise Card */}
-                                        <div className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${subscriptionPlan === "Enterprise Plan" ? "bg-indigo-500/5 border-indigo-500/40 shadow-[0_0_15px_rgba(79,70,229,0.1)]" : "bg-white/5 border-white/5 hover:border-white/10"}`}>
+ 
+                                        {/* Elite Plan Card */}
+                                        <div className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${(subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier") ? "bg-indigo-500/5 border-indigo-500/40 shadow-[0_0_15px_rgba(79,70,229,0.1)]" : "bg-white/5 border-white/5 hover:border-white/10"}`}>
                                             <div>
                                                 <div className="flex items-center justify-between mb-3">
-                                                    <span className="text-xs font-bold text-white/40 uppercase tracking-wider">Professional</span>
-                                                    {subscriptionPlan === "Enterprise Plan" && <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">Active</span>}
+                                                    <span className="text-xs font-bold text-white/40 uppercase tracking-wider">Premium Prep</span>
+                                                    {(subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier") && <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">Active</span>}
                                                 </div>
-                                                <h3 className="text-lg font-bold text-white">Enterprise Plan</h3>
+                                                <h3 className="text-lg font-bold text-white">Elite Plan</h3>
                                                 <div className="mt-3 mb-4 flex items-baseline">
-                                                    <span className="text-3xl font-black">$99</span>
+                                                    <span className="text-3xl font-black">
+                                                        ₹{billingCycle === "yearly" ? "2,999" : "3,499"}
+                                                    </span>
                                                     <span className="text-xs text-white/40 ml-1">/ month</span>
-                                                    <span className="text-[10px] text-white/30 ml-2">(≈ ₹8,349)</span>
+                                                    {billingCycle === "yearly" && (
+                                                        <span className="text-[10px] text-indigo-400 font-extrabold ml-2">
+                                                            (₹35,988 billed annually)
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <ul className="space-y-2.5 text-xs text-white/60 mb-6">
+                                                    <li className="flex items-center gap-2 font-bold text-indigo-300">
+                                                        <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                                        Unlimited D-ID Avatar Calls
+                                                    </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                                         All Pro features included
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Custom interviewer agents
+                                                        Unlimited codebase ZIP uploads
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Live human HR expert checkins
+                                                        Full Career Guidance & skill maps
+                                                    </li>
+                                                    <li className="flex items-center gap-2">
+                                                        <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                                        Unlimited Roadmap & Email Analysis
                                                     </li>
                                                 </ul>
                                             </div>
                                             <button
-                                                disabled={subscriptionPlan === "Enterprise Plan"}
-                                                onClick={() => handleUpgradePlan("Enterprise Plan")}
-                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${subscriptionPlan === "Enterprise Plan" ? "bg-white/5 text-white/30 border border-white/5 cursor-default" : "bg-white/10 hover:bg-white/20 text-white"}`}
+                                                disabled={subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier"}
+                                                onClick={() => handleUpgradePlan("Elite Plan")}
+                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${(subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier") ? "bg-white/5 text-white/30 border border-white/5 cursor-default" : "bg-white/10 hover:bg-white/20 text-white"}`}
                                             >
-                                                {subscriptionPlan === "Enterprise Plan" ? "Current Plan" : "Upgrade Enterprise"}
+                                                {(subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier") ? "Current Plan" : "Upgrade to Elite"}
                                             </button>
                                         </div>
                                     </div>

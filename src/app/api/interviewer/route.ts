@@ -6,15 +6,23 @@ const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
 
 export async function POST(req: NextRequest) {
     try {
-        const { history, resume, message, attachment, type, provider, company, roles } = await req.json();
+        const { history, resume, message, attachment, type, provider, company, roles, level } = await req.json();
 
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
+        const safeLevel = level || "intermediate";
+
+        const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
+- You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.
+- Basic difficulty: Focus on core syntax, fundamental data structures, simple functions, and entry-level programming concepts.
+- Intermediate difficulty: Focus on object-oriented/functional paradigms, design patterns, framework concepts, API usage, unit testing, and medium-complexity logical problem solving.
+- Advanced difficulty: Focus on complex system architecture, high scalability, concurrency, distributed systems, deep algorithmic optimization, security, memory management, and trade-off analysis under high pressure.`;
 
         const typeInstruction = "Ask one highly relevant technical question at a time focusing strictly on coding, architecture, logic, and technical depth. Heavily favor practical tasks like writing code or drawing circuits.";
 
         const systemPrompt = `You are a professional online technical interviewer dynamically evaluating a candidate applying for: ${safeRoles} at ${safeCompany}. You are conducting a technical interview based on the candidate's resume.
 Your tone, technical expectations, and questions must strictly align with the documented technical hiring standards and engineering culture of the target companies: ${safeCompany}.
+${difficultyInstruction}
 Be conversational. ${typeInstruction}
 
 CRITICAL RULES FOR ASKING QUESTIONS:

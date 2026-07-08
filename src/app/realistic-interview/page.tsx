@@ -622,10 +622,21 @@ export default function RealisticInterviewRoom() {
             const provider = getStorageItem("aiProvider") || "gemini";
             const targetCompany = getStorageItem("targetCompany") || "Generic Tech Company";
             const preferredRoles = getStorageItem("preferredRoles") || "Software Engineer";
+            const level = getStorageItem("interviewLevel") || "intermediate";
             const res = await fetch("/api/realistic-interviewer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ resume, history, message: nextMessage, attachment, type: interviewType, provider, company: targetCompany, roles: preferredRoles }),
+                body: JSON.stringify({
+                    resume,
+                    history,
+                    message: nextMessage,
+                    attachment,
+                    type: interviewType,
+                    provider,
+                    company: targetCompany,
+                    roles: preferredRoles,
+                    level
+                }),
             });
             const data = await res.json();
 
