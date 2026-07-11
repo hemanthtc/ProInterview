@@ -15,6 +15,9 @@ frontend:
         - echo "MONGODB_URI=${MONGODB_URI}" >> .env.production
         - echo "GMAIL_USER=${GMAIL_USER}" >> .env.production
         - echo "GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}" >> .env.production
+        - echo "RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}" >> .env.production
+        - echo "RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}" >> .env.production
+        - echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}" >> .env.production
     build:
       commands:
         - npm run build
