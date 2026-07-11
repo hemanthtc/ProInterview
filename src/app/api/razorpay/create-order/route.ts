@@ -42,6 +42,28 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Invalid subscription plan selected." }, { status: 400 });
         }
 
+        // Apply proration discount if upgrading from Pro to Elite
+        let prorationDiscount = 0;
+        if ((planName === "Elite Plan" || planName === "Enterprise Plan") && user.subscriptionPlan === "Pro Plan") {
+            const now = new Date();
+            const lastUpdated = user.updatedAt || user.createdAt || now;
+            const elapsedMs = now.getTime() - lastUpdated.getTime();
+            const elapsedDays = Math.max(0, Math.floor(elapsedMs / (1000 * 60 * 60 * 24)));
+            
+            const period = billingCycle === "yearly" ? 365 : 30;
+            const proPrice = billingCycle === "yearly" ? (999 * 12) : 1299;
+            
+            if (elapsedDays < period) {
+                const daysRemaining = period - elapsedDays;
+                const dailyValue = proPrice / period;
+                const remainingValue = dailyValue * daysRemaining;
+                prorationDiscount = Math.floor(remainingValue * 100);
+            }
+        }
+
+        // Subtract discount, but ensure a minimum of ₹1.00 (100 paise) for transactions
+        amountInPaise = Math.max(100, amountInPaise - prorationDiscount);
+
         const keyId = process.env.RAZORPAY_KEY_ID;
         const keySecret = process.env.RAZORPAY_KEY_SECRET;
 

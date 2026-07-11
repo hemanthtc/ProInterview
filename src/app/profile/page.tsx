@@ -486,7 +486,21 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         URL.revokeObjectURL(url);
     };
 
+    const getPlanTier = (plan: string) => {
+        if (plan === "Pro Plan") return 1;
+        if (plan === "Elite Plan" || plan === "Enterprise Plan" || plan === "Enterprise Tier") return 2;
+        return 0; // Free Tier
+    };
+
     const handleUpgradePlan = async (planName: string) => {
+        const currentTier = getPlanTier(subscriptionPlan);
+        const targetTier = getPlanTier(planName);
+
+        if (targetTier < currentTier) {
+            alert("Downgrades are not allowed. You can only upgrade to a higher tier plan.");
+            return;
+        }
+
         if (planName === "Free Tier") {
             setUpgradingPlan(planName);
             setUpgradeSuccess(false);
@@ -2052,11 +2066,11 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 </ul>
                                             </div>
                                             <button
-                                                disabled={subscriptionPlan === "Free Tier"}
+                                                disabled={getPlanTier(subscriptionPlan) >= 0}
                                                 onClick={() => handleUpgradePlan("Free Tier")}
-                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${subscriptionPlan === "Free Tier" ? "bg-white/5 text-white/30 border border-white/5 cursor-default" : "bg-white/10 hover:bg-white/20 text-white"}`}
+                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all bg-white/5 text-white/30 border border-white/5 cursor-default`}
                                             >
-                                                {subscriptionPlan === "Free Tier" ? "Current Plan" : "Downgrade to Free"}
+                                                {subscriptionPlan === "Free Tier" ? "Current Plan" : "Downgrade Restricted"}
                                             </button>
                                         </div>
  
@@ -2108,11 +2122,11 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 </ul>
                                             </div>
                                             <button
-                                                disabled={subscriptionPlan === "Pro Plan"}
+                                                disabled={getPlanTier(subscriptionPlan) >= 1}
                                                 onClick={() => handleUpgradePlan("Pro Plan")}
-                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg ${subscriptionPlan === "Pro Plan" ? "bg-white/5 text-white/30 border border-white/5 cursor-default" : "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-indigo-500/10"}`}
+                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg ${getPlanTier(subscriptionPlan) >= 1 ? "bg-white/5 text-white/30 border border-white/5 cursor-default" : "bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white shadow-indigo-500/10"}`}
                                             >
-                                                {subscriptionPlan === "Pro Plan" ? "Current Plan" : "Upgrade to Pro"}
+                                                {subscriptionPlan === "Pro Plan" ? "Current Plan" : getPlanTier(subscriptionPlan) > 1 ? "Downgrade Restricted" : "Upgrade to Pro"}
                                             </button>
                                         </div>
  
@@ -2159,9 +2173,9 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 </ul>
                                             </div>
                                             <button
-                                                disabled={subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier"}
+                                                disabled={getPlanTier(subscriptionPlan) >= 2}
                                                 onClick={() => handleUpgradePlan("Elite Plan")}
-                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${(subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier") ? "bg-white/5 text-white/30 border border-white/5 cursor-default" : "bg-white/10 hover:bg-white/20 text-white"}`}
+                                                className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all ${(getPlanTier(subscriptionPlan) >= 2) ? "bg-white/5 text-white/30 border border-white/5 cursor-default" : "bg-white/10 hover:bg-white/20 text-white"}`}
                                             >
                                                 {(subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier") ? "Current Plan" : "Upgrade to Elite"}
                                             </button>

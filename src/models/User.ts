@@ -10,6 +10,7 @@ export interface IUser extends Document {
     subscriptionPlan: string;
     isVerified: boolean;
     createdAt: Date;
+    updatedAt: Date;
     otpCode?: string;
     otpExpires?: Date;
 }
