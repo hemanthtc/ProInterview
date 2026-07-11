@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import connectDB from "@/utils/db";
+import User from "@/models/User";
 
 export async function POST(req: NextRequest) {
     try {
@@ -35,13 +37,35 @@ export async function POST(req: NextRequest) {
         }
 
         const userInfo = await userInfoRes.json();
+        const email: string = userInfo.email;
+        const name: string = userInfo.name || email;
+
+        // 4. Upsert user in MongoDB so all downstream routes (profile, payments)
+        //    can find them by identifier (email). Google users have no password.
+        await connectDB();
+        const user = await User.findOneAndUpdate(
+            { identifier: email },
+            {
+                $setOnInsert: {
+                    identifier: email,
+                    displayName: name,
+                    type: "email",
+                    isOrganization: false,
+                    orgRole: "user",
+                    isVerified: true,
+                    subscriptionPlan: "Free Tier",
+                },
+            },
+            { upsert: true, new: true }
+        );
 
         // Return user credentials to the client
         return NextResponse.json({
             success: true,
-            name: userInfo.name || userInfo.email,
-            email: userInfo.email,
-            picture: userInfo.picture
+            name: user.displayName,
+            email: user.identifier,
+            picture: userInfo.picture,
+            subscriptionPlan: user.subscriptionPlan,
         });
 
     } catch (error: any) {
@@ -49,3 +73,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
     }
 }
+
