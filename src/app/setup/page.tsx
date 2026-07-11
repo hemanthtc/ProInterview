@@ -127,8 +127,13 @@ export default function SetupPage() {
                 extractedText = data.text || "";
             }
 
-            if (!extractedText.trim()) {
-                throw new Error("No resume content available. Upload a resume/CV or add it in your profile.");
+            const github = getStorageItem("userGithub") || "";
+            const linkedin = getStorageItem("userLinkedin") || "";
+            const portfolio = portfolioUrl.trim() || getStorageItem("userPortfolio") || "";
+            const hasPortfolio = Boolean(github || linkedin || portfolio || hasManualFiles);
+
+            if (!extractedText.trim() && !hasPortfolio) {
+                throw new Error("No resume or portfolio details found. Please provide at least one source (upload a resume/CV or add a portfolio link) to run the interview.");
             }
 
             // Read global mode from cached home screen toggle
@@ -137,6 +142,9 @@ export default function SetupPage() {
             setStorageItem("interviewLevel", level);
             setStorageItem("interviewType", globalMode);
             setStorageItem("aiProvider", provider);
+            if (portfolioUrl.trim()) {
+                setStorageItem("userPortfolio", portfolioUrl.trim());
+            }
             
             const finalCompany = targetCompanies.length > 0 ? targetCompanies.join(", ") : "Generic Tech Company";
             const finalRoles = preferredRoles.length > 0 ? preferredRoles.join(", ") : "Software Engineer";

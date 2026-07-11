@@ -264,12 +264,17 @@ export default function RealisticInterviewRoom() {
             setTheme(savedTheme);
         }
 
-        if (!text) {
+        const github = getStorageItem("userGithub") || "";
+        const linkedin = getStorageItem("userLinkedin") || "";
+        const portfolio = getStorageItem("userPortfolio") || "";
+        const hasPortfolio = Boolean(github || linkedin || portfolio);
+
+        if (!text && !hasPortfolio) {
             router.push("/setup");
             return;
         }
 
-        setResumeText(text);
+        setResumeText(text || "");
 
         // Initialize D-ID WebRTC Stream session
         initializeDIdStream();
@@ -349,7 +354,7 @@ export default function RealisticInterviewRoom() {
         const targetCompanyTxt = getStorageItem("targetCompany") || "a technology company";
         const roleText = getStorageItem("preferredRoles") || "Software Engineer";
         const firstMessage = `Please start the realistic company interview. You are a hiring manager for ${targetCompanyTxt}. The candidate is applying for the role(s) of: ${roleText}. You will conduct a full-spectrum interview consisting of behavioral questions, experience deep-dives based on my resume, and real-world scenarios, just like a real company interviewer at ${targetCompanyTxt}. Adjust the difficulty of your questions to a strictly ${levelText} level. Note: do not repeatedly welcome the user, just start.`;
-        triggerAiResponse(text, [], firstMessage, typeText);
+        triggerAiResponse(text || "", [], firstMessage, typeText);
 
         return () => {
             isMounted = false;

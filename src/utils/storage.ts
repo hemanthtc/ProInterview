@@ -42,7 +42,7 @@ export function removeStorageItem(key: string): void {
 
 export function getInterviewResumeText(): string | null {
     const directText = getStorageItem("resumeText");
-    if (directText) return directText;
+    if (directText !== null) return directText;
 
     const storedResumes = getStorageItem("savedResumesDatabase");
     if (!storedResumes) return null;

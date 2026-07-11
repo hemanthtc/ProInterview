@@ -229,12 +229,17 @@ export default function InterviewRoom() {
             setTheme(savedTheme);
         }
 
-        if (!text) {
+        const github = getStorageItem("userGithub") || "";
+        const linkedin = getStorageItem("userLinkedin") || "";
+        const portfolio = getStorageItem("userPortfolio") || "";
+        const hasPortfolio = Boolean(github || linkedin || portfolio);
+
+        if (!text && !hasPortfolio) {
             router.push("/setup");
             return;
         }
 
-        setResumeText(text);
+        setResumeText(text || "");
 
         let isMounted = true;
         const videoNode = videoRef.current;
@@ -313,7 +318,7 @@ export default function InterviewRoom() {
         const firstMessage = typeText === "technical" 
             ? `Please start the technical interview by welcoming me. You will conduct a highly technical interview focusing strictly on coding, architecture, and logic matching the engineering standards of ${targetCompanyTxt}. I am specifically applying for the role(s) of: ${roleText}. Adjust the technical difficulty and depth of your questions to a strictly ${levelText} level.`
             : `Please start the realistic company interview by welcoming me. You will conduct a full-spectrum interview consisting of behavioral questions, experience deep-dives based on my resume, and real-world scenarios, just like a real company interviewer. I am specifically applying for the role(s) of: ${roleText}. Adjust the difficulty of your questions to a strictly ${levelText} level.`;
-        triggerAiResponse(text, [], firstMessage, typeText);
+        triggerAiResponse(text || "", [], firstMessage, typeText);
 
         return () => {
             isMounted = false;
