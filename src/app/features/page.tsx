@@ -68,8 +68,8 @@ function FeaturesContent() {
     const [pausedSession, setPausedSession] = useState<any>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
-    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer">("analysis");
-    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | null>(null);
+    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials">("analysis");
+    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | null>(null);
 
 
 
@@ -375,6 +375,17 @@ function FeaturesContent() {
             setShowAnalysis(false);
             setShowResume(false);
         }
+    }, []);
+
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data === "back-to-features") {
+                setActiveModal(null);
+                setActiveTool("analysis");
+            }
+        };
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
     }, []);
 
     useEffect(() => {
@@ -1029,6 +1040,8 @@ function FeaturesContent() {
         setLoading(true);
         try {
             const formData = new FormData();
+            const resumeText = getStorageItem("userResumeCvText") || getInterviewResumeText() || "";
+            if (resumeText) formData.append("resumeText", resumeText);
             if (github) formData.append("github", github);
             if (linkedin) formData.append("linkedin", linkedin);
             if (portfolioUrl) formData.append("portfolioUrl", portfolioUrl);
@@ -1071,6 +1084,8 @@ function FeaturesContent() {
         setAnalysisResult(null);
         try {
             const formData = new FormData();
+            const resumeText = getStorageItem("userResumeCvText") || getInterviewResumeText() || "";
+            if (resumeText) formData.append("resumeText", resumeText);
             if (github) formData.append("github", github);
             if (linkedin) formData.append("linkedin", linkedin);
             if (portfolioUrl) formData.append("portfolioUrl", portfolioUrl);
@@ -1693,49 +1708,51 @@ function FeaturesContent() {
     const selectedColorHex = ACCENT_COLORS[resAccentColor] || "#4f46e5";
 
     return (
-        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${activeModal === "prointerviewer" ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
-            <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
-                        <Video className="w-5 h-5 text-white" />
+        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
+            {activeModal !== "study_materials" && (
+                <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+                            <Video className="w-5 h-5 text-white" />
+                        </div>
+                        <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
                     </div>
-                    <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
-                </div>
-                <nav className="flex gap-6 text-sm font-medium text-white/70 items-center">
-                    {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
-                    {isLoggedIn && (
+                    <nav className="flex gap-6 text-sm font-medium text-white/70 items-center">
+                        {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
+                        {isLoggedIn && (
+                            <button 
+                                onClick={toggleMode}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
+                            >
+                                <span className={`w-2 h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
+                                {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
+                            </button>
+                        )}
+                        {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
+                        {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
+                        
+                        {/* Theme Toggle Button */}
                         <button 
-                            onClick={toggleMode}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
+                            onClick={cycleTheme}
+                            className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                            title={`Current Theme: ${theme}. Click to switch.`}
                         >
-                            <span className={`w-2 h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
-                            {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
+                            {theme === "dark" && <Moon className="w-4 h-4" />}
+                            {theme === "light" && <Sun className="w-4 h-4" />}
+                            {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
                         </button>
-                    )}
-                    {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
-                    {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
-                    
-                    {/* Theme Toggle Button */}
-                    <button 
-                        onClick={cycleTheme}
-                        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
-                        title={`Current Theme: ${theme}. Click to switch.`}
-                    >
-                        {theme === "dark" && <Moon className="w-4 h-4" />}
-                        {theme === "light" && <Sun className="w-4 h-4" />}
-                        {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
-                    </button>
 
-                    {isLoggedIn ? (
-                        <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
-                            <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
-                            My Profile
-                        </Link>
-                    ) : (
-                        <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
-                    )}
-                </nav>
-            </header>
+                        {isLoggedIn ? (
+                            <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
+                                <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
+                                My Profile
+                            </Link>
+                        ) : (
+                            <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
+                        )}
+                    </nav>
+                </header>
+            )}
 
             {activeModal === "prointerviewer" ? (
                 <div className="flex-1 flex flex-col overflow-hidden relative bg-[#0b0f19]">
@@ -1743,6 +1760,14 @@ function FeaturesContent() {
                         setActiveModal(null);
                         setActiveTool("analysis");
                     }} />
+                </div>
+            ) : activeModal === "study_materials" ? (
+                <div className="flex-1 w-full h-full relative overflow-hidden bg-[#050505]">
+                    <iframe 
+                        src="/study-materials/index.html" 
+                        className="w-full h-full border-none"
+                        title="Study Materials"
+                    />
                 </div>
             ) : (
                 <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
@@ -1829,6 +1854,20 @@ function FeaturesContent() {
                                             <Code className="w-6 h-6" />
                                         </div>
                                         <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">Resume Builder</h3>
+                                    </div>
+
+                                    {/* Card G: Study Materials */}
+                                    <div 
+                                        onClick={() => {
+                                            setActiveModal("study_materials");
+                                            setActiveTool("study_materials");
+                                        }}
+                                        className="group bg-[#0d0d12]/60 hover:bg-[#18121a]/80 backdrop-blur-sm border border-purple-500/20 hover:border-purple-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(168,85,247,0.05)] hover:shadow-[0_0_40px_rgba(168,85,247,0.15)]"
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                            <BookOpen className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors">Study Materials</h3>
                                     </div>
                                 </>
                             )}

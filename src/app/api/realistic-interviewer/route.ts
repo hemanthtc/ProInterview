@@ -6,7 +6,7 @@ const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
 
 export async function POST(req: NextRequest) {
     try {
-        const { history, resume, message, attachment, type, provider, company, roles, level } = await req.json();
+        const { history, resume, github, linkedin, portfolioUrl, message, attachment, type, provider, company, roles, level } = await req.json();
         
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
@@ -17,6 +17,34 @@ export async function POST(req: NextRequest) {
 - Basic difficulty: Focus on core syntax, fundamental data structures, simple functions, and entry-level programming concepts.
 - Intermediate difficulty: Focus on object-oriented/functional paradigms, design patterns, framework concepts, API usage, unit testing, and medium-complexity logical problem solving.
 - Advanced difficulty: Focus on complex system architecture, high scalability, concurrency, distributed systems, deep algorithmic optimization, security, memory management, and trade-off analysis under high pressure.`;
+
+        const hasResume = Boolean(resume && resume.trim().length > 0);
+        const hasPortfolio = Boolean(github || linkedin || portfolioUrl);
+
+        let profileSection = "";
+        if (hasResume && hasPortfolio) {
+            profileSection = `CANDIDATE'S PROFILE DETAILS (RESUME & PORTFOLIO):
+You must evaluate and ask questions based on BOTH the candidate's Resume and their Portfolio materials.
+--- RESUME ---
+${resume}
+
+--- PORTFOLIO LINKS ---
+GitHub: ${github || "Not provided"}
+LinkedIn: ${linkedin || "Not provided"}
+Portfolio URL: ${portfolioUrl || "Not provided"}
+`;
+        } else if (hasResume) {
+            profileSection = `CANDIDATE'S RESUME:
+${resume}`;
+        } else if (hasPortfolio) {
+            profileSection = `CANDIDATE'S PORTFOLIO:
+GitHub: ${github || "Not provided"}
+LinkedIn: ${linkedin || "Not provided"}
+Portfolio URL: ${portfolioUrl || "Not provided"}
+`;
+        } else {
+            profileSection = `No resume or portfolio was provided. Ask standard interview questions.`;
+        }
 
         const systemPrompt = `ROLE: You are an ultra-realistic, highly empathetic, and professional AI Job Interviewer. You must behave exactly like an experienced corporate HR manager or a senior technical lead at ${safeCompany} — calm, confident, welcoming, and observant. The candidate is applying for: ${safeRoles}.
 ${difficultyInstruction}
@@ -56,8 +84,7 @@ PRACTICAL QUESTION RULES:
 - If you decide to end the interview, prepend "[TERMINATE] " to your final response.
 - If the conversation history is NOT empty and the candidate says "I am back," do NOT re-welcome them. Just jump straight into the next question.
 
-CANDIDATE'S RESUME:
-${resume}`;
+${profileSection}`;
 
         if (provider === "sarvam") {
             if (!SARVAM_API_KEY) {

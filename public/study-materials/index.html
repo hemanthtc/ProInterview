@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HyperDimensional Study Lab</title>
+  <script type="module" crossorigin src="./assets/index-CWESAtmN.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-0J4_c6iO.css">
+</head>
+
+<body>
+  <!-- 3D Canvas Background -->
+  <div id="canvas-container"></div>
+
+  <!-- Sidebar Toggle Button -->
+  <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Browse Courses">
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+    <span class="hamburger-line"></span>
+  </button>
+
+  <!-- Sidebar Backdrop -->
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <!-- Course Sidebar Panel -->
+  <nav class="course-sidebar" id="course-sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-dot"></div>
+        <span class="sidebar-brand-text">Course Catalog</span>
+      </div>
+      <span class="sidebar-tag">Browse &amp; Select</span>
+    </div>
+    <div class="sidebar-search-wrapper">
+      <svg class="sidebar-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <input type="text" id="sidebar-search" class="sidebar-search-input" placeholder="Search courses..."
+        autocomplete="off" />
+    </div>
+    <div class="sidebar-course-list" id="sidebar-course-list">
+      <!-- Dynamically populated by SidebarManager -->
+    </div>
+    <div class="sidebar-footer">
+      <span class="sidebar-footer-text">13 courses available</span>
+    </div>
+  </nav>
+
+  <!-- AR Label Overlay Container -->
+  <div id="labels-tracker"></div>
+
+  <!-- HUD Layout Layer -->
+  <div class="hud-layer">
+
+    <!-- Top Bar HUD -->
+    <header class="top-bar interactive-panel">
+      <div class="brand-section">
+        <div class="brand-icon"></div>
+        <span class="brand-name">Study Materials</span>
+      </div>
+
+      <div class="breadcrumb-container" id="hud-breadcrumbs">
+        <span class="breadcrumb-item active" data-view="main">Computer Science</span>
+      </div>
+
+      <!-- Right Side Actions (Search + Back Button) -->
+      <div class="right-actions-container">
+        <!-- Global Search Container -->
+        <div class="global-search-container">
+          <div class="global-search-input-wrapper">
+            <svg class="global-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="global-search-input" placeholder="Search topics, books, chapters..."
+              autocomplete="off" />
+            <button id="global-search-clear" style="display: none;">&times;</button>
+          </div>
+          <div class="global-search-results" id="global-search-results"></div>
+        </div>
+
+        <!-- Back to Features Button -->
+        <button id="back-to-features-btn" class="back-to-features-btn" title="Back to features selection page">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+          Back to Features
+        </button>
+      </div>
+    </header>
+
+
+
+    <!-- Center Dynamic Helper HUD -->
+    <div class="center-hud-info">
+      <div class="instruction-tag" id="instructions-tag">
+        Rotate core using mouse. Hover/Click books to select material.
+      </div>
+    </div>
+
+
+    <!-- Footer Bar -->
+    <footer class="footer-bar">
+      <div class="footer-nav"></div>
+      <div class="status-item">
+        <span>COGNITIVE HARMONIC:</span>
+        <span class="status-val">98.2%</span>
+      </div>
+      <div class="footer-nav"></div>
+    </footer>
+
+  </div>
+
+  <!-- Holographic Rows and Columns Shelf Overlay -->
+  <div class="shelf-hologram-overlay" id="shelf-overlay">
+    <div class="shelf-header">
+      <div class="shelf-title-container">
+        <h1 class="shelf-title" id="shelf-title-text">Subject Library</h1>
+        <span class="shelf-subtitle" id="shelf-subtitle-text">Browse chapters and reference guides</span>
+      </div>
+      <button class="shelf-close-btn" id="shelf-close-btn">&times;</button>
+    </div>
+
+    <div class="books-grid-wrapper">
+      <div class="books-grid-row">
+        <h3 class="row-title">Core Materials</h3>
+        <div class="row-books-list" id="shelf-books-grid">
+          <!-- Dynamically populated holographic book cards -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3D Book Viewer / Reader Overlay -->
+  <div class="book-reader-overlay" id="book-reader-overlay">
+    <header class="book-reader-header">
+      <div class="reader-title-sec">
+        <h2 class="brand-name" style="font-size: 1.1rem;" id="reader-book-title">Book Title</h2>
+        <span class="breadcrumb-separator">|</span>
+        <span class="status-val" style="font-size: 0.8rem; color: var(--text-secondary);"
+          id="reader-chapter-title">Chapter 1</span>
+      </div>
+    </header>
+
+    <!-- Container where flat-content-panel is displayed -->
+    <div id="reader-3d-container">
+      <!-- Interactive paper book layout -->
+      <div class="flat-content-panel" id="flat-book-panel">
+        <button class="page-close-btn" id="page-close-btn">&times;</button>
+        <div class="page-half left-page">
+          <h1 class="page-title" id="book-page-title-left">Chapter Title</h1>
+          <div class="page-content" id="book-page-content-left">
+            <!-- Left page content (HTML) -->
+          </div>
+          <div class="page-number">
+            <span>HyperDimensional Library</span>
+            <span id="page-num-left">p. 1</span>
+          </div>
+        </div>
+        <div class="page-half right-page">
+          <h1 class="page-title" id="book-page-title-right">Detail View</h1>
+          <div class="page-content" id="book-page-content-right">
+            <!-- Right page content (HTML) -->
+          </div>
+          <div class="page-number">
+            <span id="page-num-right">p. 2</span>
+            <span>Online Learning Sync</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="reader-hud-controls">
+      <button class="reader-btn" id="reader-prev-btn" disabled>&larr; Prev Page</button>
+      <button class="reader-btn" id="reader-next-btn">Next Page &rarr;</button>
+    </div>
+  </div>
+
+</body>
+
+</html>

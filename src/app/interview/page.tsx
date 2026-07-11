@@ -360,11 +360,17 @@ export default function InterviewRoom() {
             const targetCompany = getStorageItem("targetCompany") || "Generic Tech Company";
             const preferredRoles = getStorageItem("preferredRoles") || "Software Engineer";
             const level = getStorageItem("interviewLevel") || "intermediate";
+            const github = getStorageItem("userGithub") || "";
+            const linkedin = getStorageItem("userLinkedin") || "";
+            const portfolioUrl = getStorageItem("userPortfolio") || "";
             const res = await fetch("/api/interviewer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     resume,
+                    github,
+                    linkedin,
+                    portfolioUrl,
                     history,
                     message: nextMessage,
                     attachment,

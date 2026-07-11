@@ -1984,28 +1984,41 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             <p className="text-xs md:text-sm text-white/50 mt-0.5">Choose a plan that fits your interview preparation goals.</p>
                                         </div>
                                         
-                                        {/* Billing Cycle Toggle */}
-                                        <div className="flex items-center gap-2 bg-black/40 border border-white/10 p-1 rounded-xl shrink-0 self-start sm:self-auto">
+                                        {/* Header Actions Container */}
+                                        <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
+                                            {/* Billing Cycle Toggle */}
+                                            <div className="flex items-center gap-2 bg-black/40 border border-white/10 p-1 rounded-xl">
+                                                <button
+                                                    onClick={() => setBillingCycle("monthly")}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                                        billingCycle === "monthly"
+                                                            ? "bg-indigo-600 text-white shadow-md"
+                                                            : "text-white/60 hover:text-white"
+                                                    }`}
+                                                >
+                                                    Monthly
+                                                </button>
+                                                <button
+                                                    onClick={() => setBillingCycle("yearly")}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                        billingCycle === "yearly"
+                                                            ? "bg-indigo-600 text-white shadow-md"
+                                                            : "text-white/60 hover:text-white"
+                                                    }`}
+                                                >
+                                                    Yearly
+                                                    <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[8px] px-1 py-0.5 rounded font-black uppercase tracking-wider">Save 20%+</span>
+                                                </button>
+                                            </div>
+
+                                            {/* Close Button */}
                                             <button
-                                                onClick={() => setBillingCycle("monthly")}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                                                    billingCycle === "monthly"
-                                                        ? "bg-indigo-600 text-white shadow-md"
-                                                        : "text-white/60 hover:text-white"
-                                                }`}
+                                                type="button"
+                                                onClick={() => setSubModalOpen(false)}
+                                                className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-white/50 hover:text-white transition-colors cursor-pointer shrink-0"
+                                                title="Close"
                                             >
-                                                Monthly
-                                            </button>
-                                            <button
-                                                onClick={() => setBillingCycle("yearly")}
-                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                                    billingCycle === "yearly"
-                                                        ? "bg-indigo-600 text-white shadow-md"
-                                                        : "text-white/60 hover:text-white"
-                                                }`}
-                                            >
-                                                Yearly
-                                                <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[8px] px-1 py-0.5 rounded font-black uppercase tracking-wider">Save 20%+</span>
+                                                <X className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>

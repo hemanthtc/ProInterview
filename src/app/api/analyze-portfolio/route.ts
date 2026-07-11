@@ -71,11 +71,14 @@ export async function POST(req: NextRequest) {
         const isRealisticMode = formData.get("isRealisticMode") === "true";
         const projectFiles = formData.getAll("projectFiles") as File[];
 
-        const hasPortfolioSource = Boolean(github || linkedin || portfolioUrl || projectFiles.length > 0);
-        if (!hasPortfolioSource) {
+        const resumeText = formData.get("resumeText") as string;
+        const hasResume = Boolean(resumeText && resumeText.trim().length > 0);
+        const hasPortfolio = Boolean(github || linkedin || portfolioUrl || projectFiles.length > 0);
+
+        if (!hasResume && !hasPortfolio) {
             return NextResponse.json({
                 needsInput: true,
-                feedback: "No portfolio data was found in your account details. Add a GitHub, LinkedIn, portfolio URL, or project files to run portfolio analysis."
+                feedback: "No resume or portfolio data was found in your account details. Add a GitHub, LinkedIn, portfolio URL, or project files to run profile analysis."
             }, { status: 400 });
         }
 
@@ -95,27 +98,61 @@ export async function POST(req: NextRequest) {
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.0 } });
 
         const buildFallbackResponse = (reason: string) => {
-            const hasProfessionalLinks = Boolean(github || linkedin || portfolioUrl);
-            const rating = hasProfessionalLinks ? 70 : 55;
-            const feedback = hasProfessionalLinks
-                ? `Portfolio analysis is temporarily limited because the AI quota was exhausted. Based on the provided links and materials, you have enough signal to start the interview flow now. ${reason}`
-                : `Portfolio analysis is temporarily limited because the AI quota was exhausted. Add a GitHub, LinkedIn, or portfolio link for a stronger automated evaluation. ${reason}`;
+            const hasSignal = Boolean(hasResume || github || linkedin || portfolioUrl);
+            const rating = hasSignal ? 75 : 55;
+            const feedback = hasResume
+                ? `Profile analysis is temporarily limited because the AI quota was exhausted. Based on your resume, you have enough signal to start the interview flow now. ${reason}`
+                : hasSignal
+                    ? `Portfolio analysis is temporarily limited because the AI quota was exhausted. Based on your portfolio links, you have enough signal to start the interview flow now. ${reason}`
+                    : `Analysis is temporarily limited because the AI quota was exhausted. Please upload a resume or portfolio link for a stronger automated evaluation. ${reason}`;
 
             return NextResponse.json({ rating, feedback, fallback: true });
         };
 
         const evaluationCriteria = isRealisticMode 
-            ? `You must rigorously evaluate this portfolio against the technical capability required for the roles: [${preferredRoles || "Software Engineer"}] AND strictly align your quality expectations with the hiring bar of these companies: [${targetCompanies || "Generic Tech Company"}].`
-            : `You must strictly evaluate this portfolio against the technical capabilities and requirements explicitly expected for these technical roles: [${preferredRoles || "Software Engineer"}].`;
+            ? `You must rigorously evaluate this candidate against the technical capability required for the roles: [${preferredRoles || "Software Engineer"}] AND strictly align your quality expectations with the hiring bar of these companies: [${targetCompanies || "Generic Tech Company"}].`
+            : `You must strictly evaluate this candidate against the technical capabilities and requirements explicitly expected for these technical roles: [${preferredRoles || "Software Engineer"}].`;
 
-        const systemPrompt = `You are a strict, highly deterministic technical recruiter evaluating a candidate's portfolio.
+        let systemPrompt = "";
+        
+        if (hasResume) {
+            systemPrompt = `You are a strict, highly deterministic technical recruiter evaluating a candidate's resume/CV.
+You have been provided with:
+Candidate Resume Text:
+---
+${resumeText}
+---
+
+Your task is to analyze these materials and return a JSON object with:
+1. "rating": A numerical rating STRICTLY between 0 and 100.
+2. "feedback": A brief Markdown-formatted feedback text summarizing key strengths, key improvement areas, and recommended study topics/skills to improve. Use standard markdown headers. Limit the response to 150 words.
+
+${evaluationCriteria}
+
+Strict Rubric:
+- Base score starts at 50 if they have a valid resume.
+- Analyze their resume contents to determine if they meet the specific difficulty/quality constraints of their target roles/companies. Add points for aligned, high-quality projects, technical experiences, and skills (up to 100).
+- Heavily penalize or score lowly if the experience or project tech stack is trivial and they are applying for senior/complex roles or top-tier companies in realistic mode.
+- Only drop the score below 50 if the provided resume contents are explicitly junk, irrelevant, or highly unprofessional.
+
+Formatting Instructions for the "feedback" field:
+Make sure to include these sections:
+### Key Strengths
+- [Brief strength points]
+
+### Skills to Improve & Study Recommendations
+- [Mention specific study resources, technical topics, or system architecture concepts the candidate should read/study to meet the bar for the target role/company]
+
+Respond ONLY with a valid JSON block containing the fields "rating" and "feedback". Do not write any markdown code blocks or explanatory text outside of the JSON.`;
+        } else {
+            systemPrompt = `You are a strict, highly deterministic technical recruiter evaluating a candidate's portfolio.
 You have been provided with:
 GitHub URL: ${github || "Not provided"}
 LinkedIn URL: ${linkedin || "Not provided"}
 Portfolio Website URL: ${portfolioUrl || "Not provided"}
 
-            Project Documentation / Source Code / Contents: 
-            ${projectText ? projectText.substring(0, 5000) : "Not provided"}
+Project Documentation / Source Code / Contents: 
+${projectText ? projectText.substring(0, 5000) : "Not provided"}
 
 Your task is to analyze these materials and return a JSON object with:
 1. "rating": A numerical rating STRICTLY between 0 and 100.
@@ -139,6 +176,7 @@ Make sure to include these sections:
 - [Mention specific study resources, technical topics, or system architecture concepts the candidate should read/study to meet the bar for the target role/company]
 
 Respond ONLY with a valid JSON block containing the fields "rating" and "feedback". Do not write any markdown code blocks or explanatory text outside of the JSON.`;
+        }
 
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {

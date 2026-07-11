@@ -6,7 +6,7 @@ const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
 
 export async function POST(req: NextRequest) {
     try {
-        const { history, resume, message, attachment, type, provider, company, roles, level } = await req.json();
+        const { history, resume, github, linkedin, portfolioUrl, message, attachment, type, provider, company, roles, level } = await req.json();
 
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
@@ -20,7 +20,40 @@ export async function POST(req: NextRequest) {
 
         const typeInstruction = "Ask one highly relevant technical question at a time focusing strictly on coding, architecture, logic, and technical depth. Heavily favor practical tasks like writing code or drawing circuits.";
 
-        const systemPrompt = `You are a professional online technical interviewer dynamically evaluating a candidate applying for: ${safeRoles} at ${safeCompany}. You are conducting a technical interview based on the candidate's resume.
+        const hasResume = Boolean(resume && resume.trim().length > 0);
+        const hasPortfolio = Boolean(github || linkedin || portfolioUrl);
+
+        let candidateProfileInfo = "";
+        if (hasResume && hasPortfolio) {
+            candidateProfileInfo = `You are conducting a technical interview based on BOTH the candidate's Resume and their Portfolio materials.
+Here is the Candidate's Resume Text:
+---
+${resume}
+---
+
+Here are the Candidate's Portfolio details:
+- GitHub: ${github || "Not provided"}
+- LinkedIn: ${linkedin || "Not provided"}
+- Portfolio URL: ${portfolioUrl || "Not provided"}
+
+You MUST evaluate, discuss, and ask highly relevant questions about the experiences, projects, and tech stacks listed in BOTH their resume and their portfolio links throughout the interview. Make sure to reference details from both sources.`;
+        } else if (hasResume) {
+            candidateProfileInfo = `You are conducting a technical interview based on the candidate's Resume.
+Here is the Candidate's Resume Text:
+---
+${resume}
+---`;
+        } else if (hasPortfolio) {
+            candidateProfileInfo = `You are conducting a technical interview based on the candidate's Portfolio.
+Here are the Candidate's Portfolio details:
+- GitHub: ${github || "Not provided"}
+- LinkedIn: ${linkedin || "Not provided"}
+- Portfolio URL: ${portfolioUrl || "Not provided"}`;
+        } else {
+            candidateProfileInfo = `You are conducting a general technical interview. No resume or portfolio was provided.`;
+        }
+
+        const systemPrompt = `You are a professional online technical interviewer dynamically evaluating a candidate applying for: ${safeRoles} at ${safeCompany}.
 Your tone, technical expectations, and questions must strictly align with the documented technical hiring standards and engineering culture of the target companies: ${safeCompany}.
 ${difficultyInstruction}
 Be conversational. ${typeInstruction}
@@ -35,8 +68,7 @@ CRITICAL RULES FOR ASKING QUESTIONS:
 6. If you decide to terminate the interview (because you have asked enough questions, or the candidate is behaving terribly), prepend "[TERMINATE] ".
 7. DO NOT say "Welcome" or "Hello" unless the conversation history is completely empty. If the candidate says "I am back" or resumes the chat, DO NOT welcome them again, just jump straight into the next question.
 
-Candidate's Resume Text:
-${resume}`;
+${candidateProfileInfo}`;
 
         if (provider === "sarvam") {
             if (!SARVAM_API_KEY) {
