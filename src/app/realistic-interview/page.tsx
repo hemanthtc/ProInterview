@@ -30,6 +30,34 @@ export default function RealisticInterviewRoom() {
     const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null);
     const [isAvatarGenerating, setIsAvatarGenerating] = useState(false);
     const [isDidAvailable, setIsDidAvailable] = useState<boolean | null>(null);
+    const [avatarType, setAvatarType] = useState<"d-id" | "svg">("svg");
+
+    const closeDIdStream = () => {
+        if (peerConnectionRef.current) {
+            try { peerConnectionRef.current.close(); } catch (e) { }
+            peerConnectionRef.current = null;
+        }
+        if (dataChannelRef.current) {
+            try { dataChannelRef.current.close(); } catch (e) { }
+            dataChannelRef.current = null;
+        }
+        streamIdRef.current = null;
+        sessionIdRef.current = null;
+        remoteStreamRef.current = null;
+        setAvatarVideoUrl(null);
+        setIsAvatarGenerating(false);
+    };
+
+    const handleSwitchAvatarType = (type: "d-id" | "svg") => {
+        if (type === avatarType) return;
+        setAvatarType(type);
+        if (type === "svg") {
+            closeDIdStream();
+            setIsDidAvailable(false);
+        } else {
+            initializeDIdStream();
+        }
+    };
 
     // WebRTC Streaming refs
     const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
@@ -276,8 +304,10 @@ export default function RealisticInterviewRoom() {
 
         setResumeText(text || "");
 
-        // Initialize D-ID WebRTC Stream session
-        initializeDIdStream();
+        // Initialize D-ID WebRTC Stream session only if selected
+        if (avatarType === "d-id") {
+            initializeDIdStream();
+        }
 
         let isMounted = true;
         const videoNode = videoRef.current;
@@ -401,7 +431,10 @@ export default function RealisticInterviewRoom() {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ action: "create" })
             });
-            if (!res.ok) throw new Error("Failed to create D-ID stream session");
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `Failed to create D-ID stream session: Status ${res.status}`);
+            }
             
             const data = await res.json();
             const { id: streamId, offer, ice_servers: iceServers, session_id: sessionId } = data;
@@ -475,6 +508,7 @@ export default function RealisticInterviewRoom() {
                 if (event.streams && event.streams[0]) {
                     const remoteStream = event.streams[0];
                     remoteStreamRef.current = remoteStream;
+                    setIsDidAvailable(true);
                     if (avatarVideoRef.current) {
                         avatarVideoRef.current.srcObject = remoteStream;
                         avatarVideoRef.current.muted = false;
@@ -501,7 +535,10 @@ export default function RealisticInterviewRoom() {
                     answer
                 })
             });
-            if (!sdpRes.ok) throw new Error("Failed to send SDP answer");
+            if (!sdpRes.ok) {
+                const errData = await sdpRes.json().catch(() => ({}));
+                throw new Error(errData.error || `Failed to send SDP answer: Status ${sdpRes.status}`);
+            }
             
             console.log("D-ID WebRTC Stream initialized successfully.");
             setIsDidAvailable(true);
@@ -509,20 +546,45 @@ export default function RealisticInterviewRoom() {
             console.error("D-ID WebRTC initialization failed, falling back:", err);
             setIsDidAvailable(false);
         }
-    }, []);
+    }, [avatarType]);
+
+    const setAvatarVideoRef = useCallback((el: HTMLVideoElement | null) => {
+        (avatarVideoRef as any).current = el;
+        if (el) {
+            if (remoteStreamRef.current) {
+                console.log("Attaching remote stream to video element via callback ref");
+                el.srcObject = remoteStreamRef.current;
+                el.muted = false;
+                el.play().catch(e => console.warn("Webrtc video play failed in callback ref:", e));
+            } else if (avatarVideoUrl) {
+                console.log("Loading video URL via callback ref:", avatarVideoUrl);
+                el.src = avatarVideoUrl;
+                el.play().catch(e => console.warn("Video url play failed in callback ref:", e));
+            }
+        }
+    }, [avatarVideoUrl]);
 
     // Effect to attach/re-attach remote stream to new video element on layout switches
     useEffect(() => {
-        if (isDidAvailable === true && remoteStreamRef.current && avatarVideoRef.current) {
-            console.log("Attaching remote stream to video element on layout change");
-            avatarVideoRef.current.srcObject = remoteStreamRef.current;
-            avatarVideoRef.current.muted = false;
-            avatarVideoRef.current.play().catch(e => console.warn("Play failed on layout change:", e));
+        const el = avatarVideoRef.current;
+        if (isDidAvailable === true && el) {
+            if (remoteStreamRef.current) {
+                console.log("Attaching remote stream to video element on layout change");
+                el.srcObject = remoteStreamRef.current;
+                el.muted = false;
+                el.play().catch(e => console.warn("Play failed on layout change:", e));
+            } else if (avatarVideoUrl) {
+                el.src = avatarVideoUrl;
+                el.play().catch(e => console.warn("Play failed on layout change:", e));
+            }
         }
-    }, [interactionMode, isDidAvailable]);
+    }, [interactionMode, isDidAvailable, avatarType, avatarVideoUrl]);
 
     const handleVoiceAndVideo = (text: string) => {
-        if (isDidAvailable === true && streamIdRef.current && sessionIdRef.current) {
+        if (avatarType === "svg") {
+            // SVG Animation mode: speaks via local TTS directly, bypassing D-ID video API
+            speakText(text);
+        } else if (isDidAvailable === true && streamIdRef.current && sessionIdRef.current) {
             // WebRTC Stream mode: speaks and animates directly via WebRTC
             triggerDidVideo(text);
         } else {
@@ -1201,7 +1263,7 @@ export default function RealisticInterviewRoom() {
                 </motion.div>
             )}
 
-            <main className={`flex-1 flex flex-col lg:flex-row p-4 gap-4 relative ${interactionMode !== "chat" ? "max-w-none px-6" : "max-w-[1600px]"} mx-auto w-full transition-all duration-500`}>
+<main className={`flex-1 flex flex-col lg:flex-row p-4 gap-4 relative ${interactionMode !== "chat" ? "max-w-none px-6" : "max-w-[1600px]"} mx-auto w-full transition-all duration-500`}>
                 {interactionMode === "chat" ? (
                     <>
                         {/* ===== LEFT SIDE: Videos + Controls (Default Chat Layout) ===== */}
@@ -1213,68 +1275,121 @@ export default function RealisticInterviewRoom() {
                                         ProInterview <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
                                     </div>
 
+                                    {/* Segmented Switch for D-ID vs. SVG fallback */}
+                                    <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 p-0.5 rounded-lg text-[9px] font-bold z-30">
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSwitchAvatarType("svg")}
+                                            className={`px-2 py-0.5 rounded-md transition-all ${avatarType === "svg" ? "bg-indigo-600 text-white" : "text-white/50 hover:text-white"}`}
+                                        >
+                                            SVG Avatar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSwitchAvatarType("d-id")}
+                                            className={`px-2 py-0.5 rounded-md transition-all ${avatarType === "d-id" ? "bg-indigo-600 text-white" : "text-white/50 hover:text-white"}`}
+                                        >
+                                            D-ID Presenter
+                                        </button>
+                                    </div>
+
                                     <div className="relative flex items-center justify-center z-0 w-full h-full">
-                                        {/* D-ID video layer — shown when available */}
-                                        {isDidAvailable === true && (avatarVideoUrl || (streamIdRef.current && sessionIdRef.current)) && (
-                                            <video
-                                                ref={avatarVideoRef}
-                                                src={avatarVideoUrl || undefined}
-                                                className="object-cover w-full h-full absolute inset-0 z-20"
-                                                playsInline
-                                                autoPlay
-                                                onPlay={() => setIsSpeaking(true)}
-                                                onEnded={() => setIsSpeaking(false)}
-                                            />
-                                        )}
-
-                                        {/* Ultra-realistic presenter photo with speaking indicators */}
-                                        <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0f0f24] to-[#0a0a14]">
-                                            {/* Professional presenter photo */}
-                                            <img
-                                                src="https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg"
-                                                alt="ProInterview"
-                                                className={`object-cover w-full h-full transition-all duration-700 ${isSpeaking ? "brightness-110 contrast-105" : "brightness-90 contrast-100"}`}
-                                            />
-
-                                            {/* Subtle cinematic vignette overlay */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
-
-                                            {/* Speaking glow ring around the frame */}
-                                            {isSpeaking && (
-                                                <motion.div
-                                                    className="absolute inset-0 rounded-2xl pointer-events-none z-10"
-                                                    style={{ boxShadow: "inset 0 0 30px rgba(99, 102, 241, 0.3), 0 0 40px rgba(99, 102, 241, 0.15)" }}
-                                                    animate={{ opacity: [0.4, 0.8, 0.4] }}
-                                                    transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                                                />
-                                            )}
-
-                                            {/* Audio waveform visualizer at bottom */}
-                                            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-end gap-[3px] z-10">
-                                                {[...Array(9)].map((_, i) => (
+                                        {avatarType === "svg" ? (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0d0d1e] to-[#0a0a14] p-6 overflow-hidden">
+                                                {/* Futuristic Orb Animation */}
+                                                <div className="relative w-44 h-44 flex items-center justify-center">
+                                                    {/* Pulsing Outer Ring */}
                                                     <motion.div
-                                                        key={i}
-                                                        className="w-[3px] rounded-full bg-gradient-to-t from-indigo-400 to-purple-400"
-                                                        animate={isSpeaking
-                                                            ? { height: [4, 12 + Math.random() * 16, 6, 18 + Math.random() * 10, 4], opacity: [0.6, 1, 0.7, 1, 0.6] }
-                                                            : { height: [3, 5, 3], opacity: [0.2, 0.35, 0.2] }
-                                                        }
-                                                        transition={isSpeaking
-                                                            ? { repeat: Infinity, duration: 0.4 + Math.random() * 0.3, ease: "easeInOut", delay: i * 0.05 }
-                                                            : { repeat: Infinity, duration: 2.5, ease: "easeInOut", delay: i * 0.15 }
-                                                        }
+                                                        className="absolute inset-0 rounded-full border border-indigo-500/25"
+                                                        animate={isSpeaking ? { scale: [1, 1.35, 1], opacity: [0.15, 0.45, 0.15] } : { scale: 1, opacity: 0.08 }}
+                                                        transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
                                                     />
-                                                ))}
-                                            </div>
-
-                                            {/* D-ID generating overlay */}
-                                            {isAvatarGenerating && (
-                                                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-20">
-                                                    <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
-                                                    <span className="text-[10px] text-white/80 font-medium bg-black/60 px-2.5 py-1 rounded-md border border-white/10 animate-pulse">Generating video response...</span>
+                                                    {/* Orbiting Ring */}
+                                                    <motion.div
+                                                        className="absolute inset-2 rounded-full border-t-2 border-indigo-500/40 border-r-2 border-purple-500/40 border-b-2 border-transparent"
+                                                        animate={{ rotate: 360 }}
+                                                        transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
+                                                    />
+                                                    {/* Glowing Core */}
+                                                    <motion.div
+                                                        className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-[0_0_50px_rgba(99,102,241,0.35)] relative z-10"
+                                                        animate={isSpeaking ? { scale: [1, 1.1, 1], boxShadow: ["0 0 50px rgba(99, 102, 241, 0.35)", "0 0 80px rgba(99, 102, 241, 0.7)", "0 0 50px rgba(99, 102, 241, 0.35)"] } : { scale: 1 }}
+                                                        transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+                                                    >
+                                                        <Volume2 className="w-10 h-10 text-white animate-pulse" />
+                                                    </motion.div>
                                                 </div>
-                                            )}
-                                        </div>
+                                                <div className="mt-8 text-center px-4">
+                                                    <h3 className="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">AI Voice Synthesizer</h3>
+                                                    <p className="text-white/40 text-[10px] mt-1.5 leading-relaxed max-w-xs">SVG talking head active (API-saver). Click "D-ID Presenter" at the top-right to start video stream.</p>
+                                                </div>
+                                            </div>
+                                         ) : (
+                                             <>
+                                                {/* D-ID video layer — shown when available */}
+                                                {isDidAvailable === true && (avatarVideoUrl || (streamIdRef.current && sessionIdRef.current)) && (
+                                                    <video
+                                                        ref={setAvatarVideoRef}
+                                                        src={avatarVideoUrl || undefined}
+                                                        className="object-cover w-full h-full absolute inset-0 z-20"
+                                                        playsInline
+                                                        autoPlay
+                                                        onPlay={() => setIsSpeaking(true)}
+                                                        onEnded={() => setIsSpeaking(false)}
+                                                    />
+                                                )}
+
+
+                                                {/* Ultra-realistic presenter photo with speaking indicators */}
+                                                <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0f0f24] to-[#0a0a14]">
+                                                    {/* Professional presenter photo */}
+                                                    <img
+                                                        src="https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg"
+                                                        alt="ProInterview"
+                                                        className={`object-cover w-full h-full transition-all duration-700 ${isSpeaking ? "brightness-110 contrast-105" : "brightness-90 contrast-100"}`}
+                                                    />
+
+                                                    {/* Subtle cinematic vignette overlay */}
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
+
+                                                    {/* Speaking glow ring around the frame */}
+                                                    {isSpeaking && (
+                                                        <motion.div
+                                                            className="absolute inset-0 rounded-2xl pointer-events-none z-10"
+                                                            style={{ boxShadow: "inset 0 0 30px rgba(99, 102, 241, 0.3), 0 0 40px rgba(99, 102, 241, 0.15)" }}
+                                                            animate={{ opacity: [0.4, 0.8, 0.4] }}
+                                                            transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                                                        />
+                                                    )}
+
+                                                    {/* Audio waveform visualizer at bottom */}
+                                                    <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-end gap-[3px] z-10">
+                                                        {[...Array(9)].map((_, i) => (
+                                                            <motion.div
+                                                                key={i}
+                                                                className="w-[3px] rounded-full bg-gradient-to-t from-indigo-400 to-purple-400"
+                                                                animate={isSpeaking
+                                                                    ? { height: [4, 12 + Math.random() * 16, 6, 18 + Math.random() * 10, 4], opacity: [0.6, 1, 0.7, 1, 0.6] }
+                                                                    : { height: [3, 5, 3], opacity: [0.2, 0.35, 0.2] }
+                                                                }
+                                                                transition={isSpeaking
+                                                                    ? { repeat: Infinity, duration: 0.4 + Math.random() * 0.3, ease: "easeInOut", delay: i * 0.05 }
+                                                                    : { repeat: Infinity, duration: 2.5, ease: "easeInOut", delay: i * 0.15 }
+                                                                }
+                                                            />
+                                                        ))}
+                                                    </div>
+
+                                                    {/* D-ID generating overlay */}
+                                                    {isAvatarGenerating && (
+                                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-20">
+                                                            <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
+                                                            <span className="text-[10px] text-white/80 font-medium bg-black/60 px-2.5 py-1 rounded-md border border-white/10 animate-pulse">Generating video response...</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
 
