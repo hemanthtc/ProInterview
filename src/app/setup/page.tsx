@@ -28,6 +28,12 @@ export default function SetupPage() {
     const hasAnyInput = hasManualFiles || hasAccountPortfolio || hasAccountResume || portfolioUrl.trim().length > 0;
 
     useEffect(() => {
+        const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+        if (!isLoggedIn) {
+            router.push("/login");
+            return;
+        }
+
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         
         const savedTheme = localStorage.getItem("globalTheme") as any || "dark";
