@@ -24,6 +24,7 @@ export default function InterviewRoom() {
     const [videoActive, setVideoActive] = useState(false);
     const [finalScores, setFinalScores] = useState<{interview: number, technical: number, behavioral: number, communication: number, portfolio: number | string, final: number, annotatedTranscript?: string, summary?: string} | null>(null);
     const [isEvaluating, setIsEvaluating] = useState(false);
+    const [isAuthChecked, setIsAuthChecked] = useState(false);
 
     const [interactionMode, setInteractionMode] = useState<"chat" | "code" | "draw">("chat");
     const [codeContent, setCodeContent] = useState("");
@@ -225,6 +226,7 @@ export default function InterviewRoom() {
             router.push("/login");
             return;
         }
+        setIsAuthChecked(true);
 
         isCallEndedRef.current = false;
         const text = getInterviewResumeText();
@@ -912,6 +914,8 @@ export default function InterviewRoom() {
     }
 
     // ---- MAIN INTERVIEW UI ----
+    if (!isAuthChecked) return null;
+
     return (
         <div className="min-h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
             {/* Ambient dynamic glassmorphism background */}

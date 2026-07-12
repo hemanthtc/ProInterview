@@ -70,6 +70,7 @@ function FeaturesContent() {
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials">("analysis");
     const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | null>(null);
+    const [isAuthChecked, setIsAuthChecked] = useState(false);
 
 
 
@@ -337,6 +338,7 @@ function FeaturesContent() {
             router.push("/login");
             return;
         }
+        setIsAuthChecked(true);
 
         const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
         setIsRealisticMode(isRealistic);
@@ -1718,6 +1720,8 @@ function FeaturesContent() {
     };
     const selectedColorHex = ACCENT_COLORS[resAccentColor] || "#4f46e5";
     const isLight = theme === "light" || theme === "eyeprotect";
+
+    if (!isAuthChecked) return null;
 
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>

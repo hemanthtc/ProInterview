@@ -20,6 +20,7 @@ export default function SetupPage() {
     const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const [isAuthChecked, setIsAuthChecked] = useState(false);
     const router = useRouter();
 
     const [hasAccountPortfolio, setHasAccountPortfolio] = useState(false);
@@ -33,6 +34,7 @@ export default function SetupPage() {
             router.push("/login");
             return;
         }
+        setIsAuthChecked(true);
 
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         
@@ -178,6 +180,8 @@ export default function SetupPage() {
             setLoading(false);
         }
     };
+
+    if (!isAuthChecked) return null;
 
     return (
         <div className="min-h-screen bg-black text-white flex items-center justify-center p-6 py-12">
