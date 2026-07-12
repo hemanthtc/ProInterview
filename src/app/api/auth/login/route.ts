@@ -1,39 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
+import OrgAdmin from "@/models/OrgAdmin";
+import OrgEmployee from "@/models/OrgEmployee";
 import bcryptjs from "bcryptjs";
 import { sendVerificationEmail } from "@/utils/mailer";
 
-// Helper to seed default organization accounts in the database if they don't exist
+// Seed default organization accounts into their dedicated collections
 async function seedDefaultOrgAccounts() {
     try {
-        const adminId = "admin123";
-        const adminExists = await User.findOne({ identifier: adminId });
+        // --- Seed real admin account ---
+        const adminId = "hemanthtchemu2003@gmail.com";
+        const adminExists = await OrgAdmin.findOne({ identifier: adminId });
         if (!adminExists) {
-            const adminHashed = await bcryptjs.hash("Password123", 10);
-            await User.create({
+            const adminHashed = await bcryptjs.hash("H#m@nth!8286", 10);
+            await OrgAdmin.create({
                 identifier: adminId,
                 password: adminHashed,
-                displayName: "System Admin",
+                displayName: "Hemanth TC",
+                organizationName: "ProInterview Corp",
                 type: "email",
-                isOrganization: true,
-                orgRole: "admin",
                 isVerified: true,
                 subscriptionPlan: "Enterprise Tier"
             });
         }
 
+        // --- Seed default employee ---
         const employeeId = "emp123";
-        const employeeExists = await User.findOne({ identifier: employeeId });
+        const employeeExists = await OrgEmployee.findOne({ identifier: employeeId });
         if (!employeeExists) {
             const employeeHashed = await bcryptjs.hash("Password123", 10);
-            await User.create({
+            await OrgEmployee.create({
                 identifier: employeeId,
                 password: employeeHashed,
                 displayName: "Jane Doe",
+                adminId: "hemanthtchemu2003@gmail.com",
+                organizationName: "ProInterview Corp",
+                department: "Engineering",
                 type: "email",
-                isOrganization: true,
-                orgRole: "employee",
                 isVerified: true,
                 subscriptionPlan: "Enterprise Tier"
             });
@@ -54,46 +58,63 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Please fill in all fields." }, { status: 400 });
         }
 
-        // Find user by identifier
-        const user = await User.findOne({ identifier });
+        let account: any = null;
+        let resolvedOrgRole: "user" | "admin" | "employee" = "user";
 
-        if (!user) {
-            return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
-        }
-
-        // Validate mode
         if (loginMode === "user") {
-            if (user.isOrganization) {
-                return NextResponse.json({ error: "Invalid credentials for User Login." }, { status: 401 });
+            // ── Individual user login ──────────────────────────────────────────
+            account = await User.findOne({ identifier });
+            if (!account) {
+                return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
+            }
+            resolvedOrgRole = "user";
+
+        } else if (loginMode === "organization") {
+            // ── Organization login ─────────────────────────────────────────────
+            if (orgSubMode === "admin") {
+                account = await OrgAdmin.findOne({ identifier });
+                if (!account) {
+                    return NextResponse.json(
+                        { error: "Invalid credentials for organization Administration login." },
+                        { status: 401 }
+                    );
+                }
+                resolvedOrgRole = "admin";
+
+            } else if (orgSubMode === "employee") {
+                account = await OrgEmployee.findOne({ identifier });
+                if (!account) {
+                    return NextResponse.json(
+                        { error: "Invalid credentials for organization Employee login." },
+                        { status: 401 }
+                    );
+                }
+                resolvedOrgRole = "employee";
+
+            } else {
+                return NextResponse.json({ error: "Invalid organization sub-mode." }, { status: 400 });
             }
         } else {
-            // Organization login
-            if (!user.isOrganization || user.orgRole !== orgSubMode) {
-                return NextResponse.json(
-                    { error: `Invalid credentials for organization ${orgSubMode === "admin" ? "Administration" : "Employee"} login.` },
-                    { status: 401 }
-                );
-            }
+            return NextResponse.json({ error: "Invalid login mode." }, { status: 400 });
         }
 
-        // Verify password
-        const isPasswordCorrect = await bcryptjs.compare(password, user.password || "");
+        // ── Verify password ────────────────────────────────────────────────────
+        const isPasswordCorrect = await bcryptjs.compare(password, account.password || "");
         if (!isPasswordCorrect) {
             return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
         }
 
-        // Generate 6-digit OTP for verification
+        // ── Generate OTP ───────────────────────────────────────────────────────
         const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
+        const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-        // Save OTP code to user document
-        user.otpCode = generatedOtp;
-        user.otpExpires = otpExpires;
-        await user.save();
+        account.otpCode = generatedOtp;
+        account.otpExpires = otpExpires;
+        await account.save();
 
-        // Send email if user type is email
-        if (user.type === "email") {
-            const sent = await sendVerificationEmail(user.identifier, generatedOtp, user.displayName);
+        // ── Send OTP email ─────────────────────────────────────────────────────
+        if (account.type === "email") {
+            const sent = await sendVerificationEmail(account.identifier, generatedOtp, account.displayName);
             if (!sent) {
                 return NextResponse.json(
                     { error: "Failed to send verification email. Please check your GMAIL_USER and GMAIL_APP_PASSWORD configurations." },
@@ -105,7 +126,8 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             message: "Verification code sent.",
-            otpCode: generatedOtp
+            otpCode: generatedOtp,
+            accountType: resolvedOrgRole  // helps the frontend pass accountType to verify-otp
         });
     } catch (error: any) {
         console.error("Login API error:", error);

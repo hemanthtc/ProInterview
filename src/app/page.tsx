@@ -18,6 +18,13 @@ export default function Home() {
     const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
 
     useEffect(() => {
+        // Org admins have their own dashboard — redirect them away from the user home
+        const role = localStorage.getItem("userRole");
+        if (role === "admin") {
+            router.push("/admin");
+            return;
+        }
+
         setIsLoggedIn(getStorageItem("userLoggedIn") === "true");
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         

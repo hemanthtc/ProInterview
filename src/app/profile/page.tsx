@@ -343,7 +343,20 @@ export default function ProfilePage() {
         document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        try {
+            const role = getStorageItem("userRole");
+            const identifier = getStorageItem("userIdentifier");
+            if (identifier && role) {
+                await fetch("/api/auth/logout", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ identifier, accountType: role })
+                });
+            }
+        } catch (e) {
+            console.error("Failed to notify logout to server", e);
+        }
         removeStorageItem("userLoggedIn");
         removeStorageItem("userName");
         removeStorageItem("userIdentifier");

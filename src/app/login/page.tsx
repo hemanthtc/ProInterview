@@ -118,6 +118,7 @@ function LoginContent() {
     const [forgotIdentifier, setForgotIdentifier] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [originalFlowType, setOriginalFlowType] = useState<"login" | "register">("login");
+    const [accountType, setAccountType] = useState<"user" | "admin" | "employee">("user");
     const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     useEffect(() => {
@@ -151,20 +152,31 @@ function LoginContent() {
 
         if (details) {
             localStorage.setItem("userSubscriptionPlan", details.subscriptionPlan || "Free Tier");
-            if (details.profilePhoto) localStorage.setItem("userProfilePhoto", details.profilePhoto);
+            // Store org-specific fields
+            if (details.organizationName) localStorage.setItem("userOrgName", details.organizationName);
+            if (details.adminId)          localStorage.setItem("userAdminId", details.adminId);
+            if (details.department)       localStorage.setItem("userDepartment", details.department);
+            // Store individual user profile fields
+            if (details.profilePhoto)  localStorage.setItem("userProfilePhoto", details.profilePhoto);
             if (details.additionalEmail) localStorage.setItem("userAdditionalEmail", details.additionalEmail);
-            if (details.github) localStorage.setItem("userGithub", details.github);
-            if (details.linkedin) localStorage.setItem("userLinkedin", details.linkedin);
-            if (details.portfolioUrl) localStorage.setItem("userPortfolio", details.portfolioUrl);
-            if (details.resumeCvName) localStorage.setItem("userResumeCvName", details.resumeCvName);
-            if (details.resumeCvText) localStorage.setItem("userResumeCvText", details.resumeCvText);
-            if (details.phone) localStorage.setItem("userPhone", details.phone);
+            if (details.github)        localStorage.setItem("userGithub", details.github);
+            if (details.linkedin)      localStorage.setItem("userLinkedin", details.linkedin);
+            if (details.portfolioUrl)  localStorage.setItem("userPortfolio", details.portfolioUrl);
+            if (details.resumeCvName)  localStorage.setItem("userResumeCvName", details.resumeCvName);
+            if (details.resumeCvText)  localStorage.setItem("userResumeCvText", details.resumeCvText);
+            if (details.phone)         localStorage.setItem("userPhone", details.phone);
             if (details.educationData) localStorage.setItem("userEducationData", JSON.stringify(details.educationData));
         }
 
         // Keep popup open for 1.8 seconds to allow full success animations to finish
         await new Promise(resolve => setTimeout(resolve, 1800));
-        router.push("/");
+
+        // Admins go to the dedicated admin dashboard; everyone else goes to home
+        if (role === "admin") {
+            router.push("/admin");
+        } else {
+            router.push("/");
+        }
     }, [router, loginMode]);
 
     const googleLogin = useGoogleLogin({
@@ -259,6 +271,7 @@ function LoginContent() {
                 setGeneratedOtp(data.otpCode || "");
                 setForgotIdentifier(identifier);
                 setOriginalFlowType("register");
+                setAccountType("user");  // register is always a regular user
                 setOtpInputs(Array(6).fill(""));
                 setOtpTimer(30);
                 setOtpStep("otp_verify");
@@ -280,6 +293,10 @@ function LoginContent() {
                     throw new Error(data.error || "Login failed.");
                 }
 
+                // Store the accountType returned by the login API so verify-otp
+                // knows which collection to check
+                const resolvedAccountType: "user" | "admin" | "employee" = data.accountType || "user";
+                setAccountType(resolvedAccountType);
                 setGeneratedOtp(data.otpCode || "");
                 setForgotIdentifier(identifier);
                 setOriginalFlowType("login");
@@ -357,7 +374,12 @@ function LoginContent() {
             const res = await fetch("/api/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ identifier: forgotIdentifier, otp: enteredOtp, flowType })
+                body: JSON.stringify({
+                    identifier: forgotIdentifier,
+                    otp: enteredOtp,
+                    flowType,
+                    accountType   // pass the account type so the right collection is queried
+                })
             });
 
             const data = await safeParseJson(res);
@@ -379,7 +401,7 @@ function LoginContent() {
         } finally {
             setLoading(false);
         }
-    }, [otpStep, originalFlowType, forgotIdentifier, otpInputs, completeLogin]);
+    }, [otpStep, originalFlowType, forgotIdentifier, otpInputs, accountType, completeLogin]);
 
     const handleForgotPasswordSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();

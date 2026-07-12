@@ -12,6 +12,7 @@ export async function POST(req: NextRequest) {
             razorpay_order_id,
             razorpay_signature,
             planName,
+            billingCycle,   // "monthly" | "yearly"
             userIdentifier,
         } = await req.json();
 
@@ -51,12 +52,14 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Signature is valid. Find and update the user's plan.
+        // Signature is valid. Find and update the user's plan + billing cycle.
         const finalPlanName = planName === "Enterprise Plan" ? "Elite Plan" : planName;
+        const finalCycle: "monthly" | "yearly" | null =
+            billingCycle === "yearly" ? "yearly" : billingCycle === "monthly" ? "monthly" : null;
 
         const user = await User.findOneAndUpdate(
             { identifier: userIdentifier },
-            { subscriptionPlan: finalPlanName },
+            { subscriptionPlan: finalPlanName, billingCycle: finalCycle },
             { new: true }
         );
 

@@ -5,9 +5,8 @@ export interface IUser extends Document {
     password?: string;
     displayName: string;
     type: "email" | "phone";
-    isOrganization: boolean;
-    orgRole: "admin" | "employee" | "user";
     subscriptionPlan: string;
+    billingCycle: "monthly" | "yearly" | null;
     isVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -21,9 +20,8 @@ const UserSchema: Schema<IUser> = new Schema(
         password: { type: String },
         displayName: { type: String, required: true },
         type: { type: String, enum: ["email", "phone"], required: true },
-        isOrganization: { type: Boolean, default: false },
-        orgRole: { type: String, enum: ["admin", "employee", "user"], default: "user" },
         subscriptionPlan: { type: String, default: "Free Tier" },
+        billingCycle: { type: String, enum: ["monthly", "yearly", null], default: null },
         isVerified: { type: Boolean, default: false },
         otpCode: { type: String },
         otpExpires: { type: Date },

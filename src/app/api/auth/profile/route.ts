@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
+import OrgAdmin from "@/models/OrgAdmin";
+import OrgEmployee from "@/models/OrgEmployee";
 import ProfileData from "@/models/ProfileData";
+import mongoose from "mongoose";
+
+/**
+ * Returns the correct Mongoose model based on accountType.
+ * Individual users → User (also has ProfileData)
+ * Org admins → OrgAdmin (no separate ProfileData)
+ * Org employees → OrgEmployee (no separate ProfileData)
+ */
+function getModel(accountType: string): mongoose.Model<any> {
+    switch (accountType) {
+        case "admin":    return OrgAdmin;
+        case "employee": return OrgEmployee;
+        default:         return User;
+    }
+}
 
 // GET profile details
 export async function GET(req: NextRequest) {
@@ -9,32 +26,45 @@ export async function GET(req: NextRequest) {
         await connectDB();
         const { searchParams } = new URL(req.url);
         const identifier = searchParams.get("identifier");
+        const accountType = searchParams.get("accountType") || "user";
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
-        // 1. Fetch User credentials
-        const user = await User.findOne({ identifier });
-        if (!user) {
-            return NextResponse.json({ error: "User not found." }, { status: 404 });
+        const Model = getModel(accountType);
+        const account = await Model.findOne({ identifier });
+        if (!account) {
+            return NextResponse.json({ error: "Account not found." }, { status: 404 });
         }
 
-        // 2. Fetch User profile details (or default to empty if not created yet)
-        const profile = await ProfileData.findOne({ identifier });
+        // If organization account, refresh their active online state
+        if (accountType === "admin" || accountType === "employee") {
+            account.isOnline = true;
+            account.lastActive = new Date();
+            await account.save();
+        }
 
-        // Combined response payload matching existing frontend contract
+        // Only individual users have a separate ProfileData document
+        const profile = accountType === "user"
+            ? await ProfileData.findOne({ identifier })
+            : null;
+
         return NextResponse.json({
             success: true,
             user: {
-                identifier: user.identifier,
-                displayName: user.displayName,
-                type: user.type,
-                isOrganization: user.isOrganization,
-                orgRole: user.orgRole,
-                subscriptionPlan: user.subscriptionPlan,
-                createdAt: user.createdAt,
-                // Profile details retrieved from the ProfileData collection
+                identifier: account.identifier,
+                displayName: account.displayName,
+                type: account.type,
+                isOrganization: accountType !== "user",
+                orgRole: accountType === "admin" ? "admin" : accountType === "employee" ? "employee" : "user",
+                subscriptionPlan: account.subscriptionPlan,
+                createdAt: account.createdAt,
+                // Org-specific fields
+                organizationName: (account as any).organizationName || "",
+                department: (account as any).department || "",
+                adminId: (account as any).adminId || "",
+                // Profile fields (individual users only)
                 profilePhoto: profile?.profilePhoto || "",
                 additionalEmail: profile?.additionalEmail || "",
                 github: profile?.github || "",
@@ -59,8 +89,11 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const {
             identifier,
+            accountType = "user",
             displayName,
             subscriptionPlan,
+            organizationName,
+            department,
             profilePhoto,
             additionalEmail,
             github,
@@ -76,55 +109,64 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
-        // 1. Find and update User credentials/status if provided
-        const user = await User.findOne({ identifier });
-        if (!user) {
-            return NextResponse.json({ error: "User not found." }, { status: 404 });
+        const Model = getModel(accountType);
+        const account = await Model.findOne({ identifier });
+        if (!account) {
+            return NextResponse.json({ error: "Account not found." }, { status: 404 });
         }
 
-        if (displayName !== undefined) user.displayName = displayName;
-        if (subscriptionPlan !== undefined) user.subscriptionPlan = subscriptionPlan;
-        await user.save();
+        // Update base credential fields
+        if (displayName !== undefined) account.displayName = displayName;
+        if (subscriptionPlan !== undefined) account.subscriptionPlan = subscriptionPlan;
+        // Org-only fields
+        if (organizationName !== undefined && accountType !== "user") (account as any).organizationName = organizationName;
+        if (department !== undefined && accountType === "employee") (account as any).department = department;
+        await account.save();
 
-        // 2. Find and update (or upsert) ProfileData collection details
-        const profileUpdateFields: any = {};
-        if (profilePhoto !== undefined) profileUpdateFields.profilePhoto = profilePhoto;
-        if (additionalEmail !== undefined) profileUpdateFields.additionalEmail = additionalEmail;
-        if (github !== undefined) profileUpdateFields.github = github;
-        if (linkedin !== undefined) profileUpdateFields.linkedin = linkedin;
-        if (portfolioUrl !== undefined) profileUpdateFields.portfolioUrl = portfolioUrl;
-        if (resumeCvName !== undefined) profileUpdateFields.resumeCvName = resumeCvName;
-        if (resumeCvText !== undefined) profileUpdateFields.resumeCvText = resumeCvText;
-        if (phone !== undefined) profileUpdateFields.phone = phone;
-        if (educationData !== undefined) profileUpdateFields.educationData = educationData;
+        // Individual users: also update ProfileData
+        let updatedProfile: any = null;
+        if (accountType === "user") {
+            const profileUpdateFields: any = {};
+            if (profilePhoto !== undefined)      profileUpdateFields.profilePhoto = profilePhoto;
+            if (additionalEmail !== undefined)   profileUpdateFields.additionalEmail = additionalEmail;
+            if (github !== undefined)            profileUpdateFields.github = github;
+            if (linkedin !== undefined)          profileUpdateFields.linkedin = linkedin;
+            if (portfolioUrl !== undefined)      profileUpdateFields.portfolioUrl = portfolioUrl;
+            if (resumeCvName !== undefined)      profileUpdateFields.resumeCvName = resumeCvName;
+            if (resumeCvText !== undefined)      profileUpdateFields.resumeCvText = resumeCvText;
+            if (phone !== undefined)             profileUpdateFields.phone = phone;
+            if (educationData !== undefined)     profileUpdateFields.educationData = educationData;
 
-        const updatedProfile = await ProfileData.findOneAndUpdate(
-            { identifier },
-            { $set: profileUpdateFields },
-            { upsert: true, new: true }
-        );
+            updatedProfile = await ProfileData.findOneAndUpdate(
+                { identifier },
+                { $set: profileUpdateFields },
+                { upsert: true, new: true }
+            );
+        }
 
         return NextResponse.json({
             success: true,
             message: "Profile updated successfully.",
             user: {
-                identifier: user.identifier,
-                displayName: user.displayName,
-                type: user.type,
-                isOrganization: user.isOrganization,
-                orgRole: user.orgRole,
-                subscriptionPlan: user.subscriptionPlan,
-                createdAt: user.createdAt,
-                // Merged profile details
-                profilePhoto: updatedProfile.profilePhoto,
-                additionalEmail: updatedProfile.additionalEmail,
-                github: updatedProfile.github,
-                linkedin: updatedProfile.linkedin,
-                portfolioUrl: updatedProfile.portfolioUrl,
-                resumeCvName: updatedProfile.resumeCvName,
-                resumeCvText: updatedProfile.resumeCvText,
-                phone: updatedProfile.phone,
-                educationData: updatedProfile.educationData,
+                identifier: account.identifier,
+                displayName: account.displayName,
+                type: account.type,
+                isOrganization: accountType !== "user",
+                orgRole: accountType === "admin" ? "admin" : accountType === "employee" ? "employee" : "user",
+                subscriptionPlan: account.subscriptionPlan,
+                createdAt: account.createdAt,
+                organizationName: (account as any).organizationName || "",
+                department: (account as any).department || "",
+                adminId: (account as any).adminId || "",
+                profilePhoto: updatedProfile?.profilePhoto || "",
+                additionalEmail: updatedProfile?.additionalEmail || "",
+                github: updatedProfile?.github || "",
+                linkedin: updatedProfile?.linkedin || "",
+                portfolioUrl: updatedProfile?.portfolioUrl || "",
+                resumeCvName: updatedProfile?.resumeCvName || "",
+                resumeCvText: updatedProfile?.resumeCvText || "",
+                phone: updatedProfile?.phone || "",
+                educationData: updatedProfile?.educationData || {},
             }
         });
     } catch (error: any) {
@@ -139,23 +181,31 @@ export async function DELETE(req: NextRequest) {
         await connectDB();
         const { searchParams } = new URL(req.url);
         const identifier = searchParams.get("identifier");
+        const accountType = searchParams.get("accountType") || "user";
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
-        // 1. Delete credentials User document
-        const deletedUser = await User.findOneAndDelete({ identifier });
-        if (!deletedUser) {
-            return NextResponse.json({ error: "User not found." }, { status: 404 });
+        const Model = getModel(accountType);
+        const deletedAccount = await Model.findOneAndDelete({ identifier });
+        if (!deletedAccount) {
+            return NextResponse.json({ error: "Account not found." }, { status: 404 });
         }
 
-        // 2. Delete corresponding ProfileData document
-        await ProfileData.findOneAndDelete({ identifier });
+        // Delete ProfileData only for individual users
+        if (accountType === "user") {
+            await ProfileData.findOneAndDelete({ identifier });
+        }
+
+        // If deleting an admin, also remove all their linked employees
+        if (accountType === "admin") {
+            await OrgEmployee.deleteMany({ adminId: identifier });
+        }
 
         return NextResponse.json({
             success: true,
-            message: "User account and profile data deleted successfully from Cloud database."
+            message: "Account deleted successfully from the database."
         });
     } catch (error: any) {
         console.error("DELETE Profile API error:", error);
