@@ -9,6 +9,9 @@ const GLOBAL_KEYS = [
 
 const STORAGE_CHANGE_EVENT = "ai-storage-change";
 
+// In-memory fallback to avoid saving any guest data on disk
+const tempMemory: Record<string, string> = {};
+
 function emitStorageChange(key: string): void {
     if (typeof window === "undefined") return;
     window.dispatchEvent(new CustomEvent(STORAGE_CHANGE_EVENT, { detail: { key } }));
@@ -25,18 +28,33 @@ export function getScopedKey(key: string): string {
 
 export function getStorageItem(key: string): string | null {
     if (typeof window === "undefined") return null;
-    return localStorage.getItem(getScopedKey(key));
+    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true";
+    if (isLoggedIn) {
+        return localStorage.getItem(getScopedKey(key));
+    } else {
+        return tempMemory[getScopedKey(key)] || null;
+    }
 }
 
 export function setStorageItem(key: string, value: string): void {
     if (typeof window === "undefined") return;
-    localStorage.setItem(getScopedKey(key), value);
+    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true";
+    if (isLoggedIn) {
+        localStorage.setItem(getScopedKey(key), value);
+    } else {
+        tempMemory[getScopedKey(key)] = value;
+    }
     emitStorageChange(key);
 }
 
 export function removeStorageItem(key: string): void {
     if (typeof window === "undefined") return;
-    localStorage.removeItem(getScopedKey(key));
+    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true";
+    if (isLoggedIn) {
+        localStorage.removeItem(getScopedKey(key));
+    } else {
+        delete tempMemory[getScopedKey(key)];
+    }
     emitStorageChange(key);
 }
 
@@ -86,4 +104,10 @@ export function clearUserScopedData(userIdentifier: string): void {
         }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    Object.keys(tempMemory).forEach(key => {
+        if (key.endsWith(suffix)) {
+            delete tempMemory[key];
+        }
+    });
 }
