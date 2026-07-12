@@ -933,7 +933,7 @@ function LoginContent() {
                                                         placeholder="555-000-0000" />
                                                     {showCountryDropdown && (
                                                         <>
-                                                            <div className="fixed inset-0 z-40" onClick={() => setShowCountryDropdown(false)} />
+                                                            <div className="fixed top-0 left-0 w-full h-full z-40" onClick={() => setShowCountryDropdown(false)} />
                                                             <div className={`absolute top-[110%] left-0 w-[280px] border rounded-xl shadow-2xl z-50 max-h-64 flex flex-col overflow-hidden ${
                                                                 isLight ? "bg-white border-slate-200" : "bg-[#1a1a24] border-white/10"
                                                             }`}>
