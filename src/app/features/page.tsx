@@ -331,13 +331,19 @@ function FeaturesContent() {
     };
 
     useEffect(() => {
+        const loggedIn = getStorageItem("userLoggedIn") === "true";
+        setIsLoggedIn(loggedIn);
+        if (!loggedIn) {
+            router.push("/login");
+            return;
+        }
+
         const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
         setIsRealisticMode(isRealistic);
         if (isRealistic) {
             router.push("/");
             return;
         }
-        setIsLoggedIn(getStorageItem("userLoggedIn") === "true");
         syncAccountDetailsFromStorage();
         
         const savedTheme = localStorage.getItem("globalTheme") as any;
