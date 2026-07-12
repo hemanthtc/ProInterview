@@ -831,6 +831,27 @@ export default function AdminDashboard() {
                                 </div>
                             </div>
 
+                            {/* Right Column: Administrator Directory (restricted to root admin) */}
+                            {adminId.trim().toLowerCase() === "hemanthtchemu2003@gmail.com" && stats && (
+                                <div className={`rounded-2xl border ${isDark ? "border-white/8 bg-white/4" : "border-slate-200 bg-white"} p-6 space-y-4 flex flex-col`}>
+                                    <div className="flex items-center justify-between border-b pb-3 border-white/5">
+                                        <div>
+                                            <h3 className="font-bold text-sm">Administrator Directory</h3>
+                                            <p className={`text-xs mt-0.5 ${isDark ? "text-white/40" : "text-slate-500"}`}>
+                                                All registered system administrators.
+                                            </p>
+                                        </div>
+                                        <span className={`text-xs px-2 py-1 rounded-full ${isDark ? "bg-white/8 text-white/50" : "bg-slate-100 text-slate-500"}`}>
+                                            {(stats.admins || []).length} admin(s)
+                                        </span>
+                                    </div>
+
+                                    <div className="divide-y divide-white/5 max-h-[460px] overflow-y-auto pr-1 space-y-3">
+                                        {(stats.admins || []).length === 0 ? (
+                                            <p className={`text-xs ${isDark ? "text-white/30" : "text-slate-400"} py-4 text-center`}>No other administrators registered.</p>
+                                        ) : (
+                                            stats.admins!.map(adm => (
+                                                <div key={adm.identifier} className="pt-3 first:pt-0 flex items-start justify-between gap-3">
                                                     <div className="space-y-1 truncate">
                                                         <div className="flex items-center gap-1.5 flex-wrap">
                                                             <span className={`font-semibold text-xs ${isDark ? "text-white" : "text-slate-900"}`}>{adm.displayName}</span>
