@@ -220,6 +220,12 @@ export default function InterviewRoom() {
     }, [isCallEnded, terminatedForCheating, stopInterviewRuntime]);
 
     useEffect(() => {
+        const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+        if (!isLoggedIn) {
+            router.push("/login");
+            return;
+        }
+
         isCallEndedRef.current = false;
         const text = getInterviewResumeText();
         const levelText = getStorageItem("interviewLevel") || "intermediate";
