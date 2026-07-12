@@ -32,6 +32,7 @@ html.theme-light body {
 /* Background elements translation */
 html.theme-light .bg-\[\#050505\],
 html.theme-light .bg-\[\#050510\],
+html.theme-light .bg-\[\#0b0f19\],
 html.theme-light .bg-black {
   background-color: #f8fafc !important;
 }
@@ -47,7 +48,7 @@ html.theme-light .bg-\[\#111111\],
 html.theme-light .bg-\[\#16161a\],
 html.theme-light .bg-\[\#1a1a24\] {
   background-color: #ffffff !important;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
 }
 
 html.theme-light .bg-black\/20 {
@@ -55,23 +56,25 @@ html.theme-light .bg-black\/20 {
 }
 
 html.theme-light .bg-white\/5 {
-  background-color: #e2e8f0 !important;
+  background-color: #f1f5f9 !important;
 }
 
 html.theme-light .bg-white\/10 {
-  background-color: #cbd5e1 !important;
+  background-color: #e2e8f0 !important;
 }
 
 html.theme-light .hover\:bg-white\/10:hover {
-  background-color: #cbd5e1 !important;
+  background-color: #e2e8f0 !important;
 }
 
 html.theme-light .hover\:bg-white\/20:hover {
-  background-color: #94a3b8 !important;
+  background-color: #cbd5e1 !important;
 }
 
+html.theme-light .bg-indigo-900\/20,
 html.theme-light .bg-indigo-600\/20 {
-  background-color: #e0e7ff !important;
+  background-color: #f0fdf4 !important; /* light tint bg */
+  background: #e0e7ff !important;
 }
 
 html.theme-light .bg-emerald-500\/20 {
@@ -82,7 +85,7 @@ html.theme-light .bg-orange-500\/20 {
   background-color: #ffedd5 !important;
 }
 
-/* Text overrides */
+/* Text overrides for high professional contrast */
 html.theme-light .text-white,
 html.theme-light h1,
 html.theme-light h2,
@@ -95,51 +98,91 @@ html.theme-light .hover\:text-white:hover {
 }
 
 html.theme-light .text-white\/80 {
-  color: #334155 !important;
+  color: #1e293b !important;
 }
 
 html.theme-light .text-white\/70 {
-  color: #475569 !important;
+  color: #334155 !important;
 }
 
 html.theme-light .text-white\/60,
 html.theme-light .text-white\/50 {
+  color: #475569 !important;
+}
+
+html.theme-light .text-white\/40,
+html.theme-light .text-white\/30,
+html.theme-light .text-white\/25,
+html.theme-light .text-white\/20 {
   color: #64748b !important;
 }
 
-html.theme-light .text-white\/40 {
-  color: #94a3b8 !important;
-}
-
-html.theme-light .text-indigo-300 {
+html.theme-light .text-indigo-300,
+html.theme-light .text-indigo-400 {
   color: #4f46e5 !important;
 }
 
-html.theme-light .text-emerald-300 {
+html.theme-light .text-emerald-300,
+html.theme-light .text-emerald-400 {
   color: #059669 !important;
 }
 
-html.theme-light .text-orange-300 {
+html.theme-light .text-orange-300,
+html.theme-light .text-orange-400 {
   color: #ea580c !important;
 }
 
-/* Border overrides */
+/* Crisp & Highlighted Borders to define professional grid boundaries */
 html.theme-light .border-white\/10,
 html.theme-light .border-white\/5,
-html.theme-light .border {
-  border-color: #e2e8f0 !important;
+html.theme-light .border,
+html.theme-light hr {
+  border-color: #cbd5e1 !important; /* Crisper, defined card border */
 }
 
-html.theme-light .border-indigo-500\/30 {
-  border-color: #818cf8 !important;
+/* Highlight border on hover/interaction */
+html.theme-light .hover\:border-white\/20:hover,
+html.theme-light .hover\:border-indigo-500\/30:hover {
+  border-color: #94a3b8 !important;
 }
 
-html.theme-light .border-emerald-500\/50 {
-  border-color: #34d399 !important;
+html.theme-light .border-indigo-500\/30,
+html.theme-light .border-indigo-500\/50,
+html.theme-light .border-indigo-500\/20 {
+  border-color: #6366f1 !important;
+}
+
+html.theme-light .border-sky-500\/20,
+html.theme-light .border-sky-500\/50 {
+  border-color: #0ea5e9 !important;
+}
+
+html.theme-light .border-teal-500\/20,
+html.theme-light .border-teal-500\/50 {
+  border-color: #0d9488 !important;
+}
+
+html.theme-light .border-emerald-500\/50,
+html.theme-light .border-emerald-500\/20 {
+  border-color: #10b981 !important;
+}
+
+html.theme-light .border-amber-500\/20,
+html.theme-light .border-amber-500\/50 {
+  border-color: #f59e0b !important;
+}
+
+html.theme-light .border-purple-500\/20,
+html.theme-light .border-purple-500\/50 {
+  border-color: #a855f7 !important;
 }
 
 html.theme-light .border-orange-500\/50 {
-  border-color: #fb923c !important;
+  border-color: #f97316 !important;
+}
+
+html.theme-light .border-red-500\/30 {
+  border-color: #ef4444 !important;
 }
 
 /* Inputs & Form Controls */
@@ -163,15 +206,40 @@ html.theme-light .text-indigo-200 {
 
 /* Custom shadow/premium feel for light mode headers */
 html.theme-light header {
-  background-color: rgba(248, 250, 252, 0.8) !important;
-  border-bottom-color: #e2e8f0 !important;
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  border-bottom-color: #cbd5e1 !important;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05) !important;
 }
 
 /* Ensure backdrop blur elements have white tint overlays instead of black */
 html.theme-light .backdrop-blur-md,
-html.theme-light .backdrop-blur-sm {
-  background-color: rgba(248, 250, 252, 0.75) !important;
+html.theme-light .backdrop-blur-sm,
+html.theme-light .backdrop-blur-xl {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Modals & Overlays - Professional Clean Look */
+html.theme-light .fixed.inset-0 {
+  background-color: rgba(15, 23, 42, 0.45) !important; /* Slate backdrop tint */
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Modal Inner Container Style override to ensure professional whites/borders */
+html.theme-light .fixed.inset-0 > div,
+html.theme-light .fixed.inset-0 > form,
+html.theme-light .fixed.inset-0 .bg-\[\#111\],
+html.theme-light .fixed.inset-0 .bg-gradient-to-b {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+}
+
+html.theme-light .fixed.inset-0 .text-white\/40,
+html.theme-light .fixed.inset-0 .text-white\/60,
+html.theme-light .fixed.inset-0 .text-white\/50 {
+  color: #475569 !important;
 }
 
 /* Resume and custom document styling overrides */
@@ -224,4 +292,245 @@ html.theme-light .bg-black\/40 {
 /* Eye Protection Theme */
 html.theme-eyeprotect {
   filter: sepia(0.55) contrast(0.95) brightness(0.95);
+}
+
+/* Dim Indigo buttons/elements in light mode for professional contrast */
+html.theme-light .bg-indigo-600,
+html.theme-light .bg-indigo-500,
+html.theme-light .bg-gradient-to-r.from-indigo-600.to-purple-600 {
+  background-color: #4f46e5 !important;
+  background-image: none !important;
+  color: #ffffff !important;
+}
+
+html.theme-light .bg-indigo-600 *,
+html.theme-light .bg-indigo-500 *,
+html.theme-light .bg-gradient-to-r.from-indigo-600.to-purple-600 * {
+  color: #ffffff !important;
+}
+
+html.theme-light .hover\:bg-indigo-500:hover,
+html.theme-light .hover\:bg-indigo-600:hover,
+html.theme-light .group:hover .group-hover\:translate-x-1,
+html.theme-light .hover\:from-indigo-500:hover {
+  background-color: #4338ca !important;
+}
+
+/* Mute box shadow glow effects in light mode */
+html.theme-light .shadow-indigo-500\/20,
+html.theme-light .shadow-indigo-600\/20 {
+  box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.08), 0 2px 4px -2px rgba(99, 102, 241, 0.08) !important;
+}
+
+/* High-contrast rich gradient override for headline title under light mode */
+html.theme-light .from-indigo-400.via-purple-400.to-pink-400 {
+  background-image: linear-gradient(to right, #4f46e5, #9333ea, #db2777) !important;
+}
+
+/* Hide muddy/blurry abstract background glow elements in Light Mode to keep it clean and professional */
+html.theme-light .blur-\[120px\],
+html.theme-light .blur-\[100px\],
+html.theme-light .blur-\[150px\],
+html.theme-light .blur-\[80px\],
+html.theme-light .blur-\[40px\] {
+  display: none !important;
+}
+
+/* Eye Protection Theme specific border overrides for visual clarity */
+html.theme-eyeprotect .border-white\/10,
+html.theme-eyeprotect .border-white\/5,
+html.theme-eyeprotect .border,
+html.theme-eyeprotect hr {
+  border-color: #8c8578 !important; /* Defined warm slate/brown-grey border that pops under sepia filter */
+}
+
+/* Make colored borders darker and more prominent in Eye Comfort Mode */
+html.theme-eyeprotect .border-indigo-500\/30,
+html.theme-eyeprotect .border-indigo-500\/50,
+html.theme-eyeprotect .border-indigo-500\/20 {
+  border-color: #4f46e5 !important;
+}
+
+html.theme-eyeprotect .border-sky-500\/20,
+html.theme-eyeprotect .border-sky-500\/50 {
+  border-color: #0369a1 !important;
+}
+
+html.theme-eyeprotect .border-teal-500\/20,
+html.theme-eyeprotect .border-teal-500\/50 {
+  border-color: #0f766e !important;
+}
+
+html.theme-eyeprotect .border-emerald-500\/50,
+html.theme-eyeprotect .border-emerald-500\/20 {
+  border-color: #047857 !important;
+}
+
+html.theme-eyeprotect .border-amber-500\/20,
+html.theme-eyeprotect .border-amber-500\/50 {
+  border-color: #b45309 !important;
+}
+
+html.theme-eyeprotect .border-purple-500\/20,
+html.theme-eyeprotect .border-purple-500\/50 {
+  border-color: #7e22ce !important;
+}
+
+html.theme-eyeprotect .border-orange-500\/50 {
+  border-color: #c2410c !important;
+}
+
+html.theme-eyeprotect .border-red-500\/30 {
+  border-color: #b91c1c !important;
+}
+
+/* High-contrast and readable styles for soft colored alerts in Light/Eye Comfort Mode */
+html.theme-light .text-indigo-200,
+html.theme-light .text-indigo-300 {
+  color: #312e81 !important; /* Extremely dark indigo for readability */
+}
+
+html.theme-light .text-emerald-200,
+html.theme-light .text-emerald-300 {
+  color: #064e3b !important; /* Extremely dark emerald for readability */
+}
+
+html.theme-light .text-sky-200,
+html.theme-light .text-sky-300 {
+  color: #0c4a6e !important; /* Extremely dark sky-blue for readability */
+}
+
+html.theme-light .text-teal-200,
+html.theme-light .text-teal-300 {
+  color: #134e4a !important; /* Extremely dark teal for readability */
+}
+
+html.theme-light .bg-indigo-500\/10,
+html.theme-light .bg-indigo-500\/5 {
+  background-color: #e0e7ff !important;
+  border-color: #c7d2fe !important;
+}
+
+html.theme-light .bg-emerald-500\/10,
+html.theme-light .bg-emerald-500\/5 {
+  background-color: #d1fae5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.theme-light .bg-sky-500\/10,
+html.theme-light .bg-sky-500\/5 {
+  background-color: #e0f2fe !important;
+  border-color: #bae6fd !important;
+}
+
+/* ==========================================================================
+   Eye Comfort Mode (theme-eyeprotect) Specific Call Controls Enhancements
+   ========================================================================== */
+
+/* Camera button - Active / Inactive states */
+html.theme-eyeprotect button:has(svg.lucide-video),
+html.theme-eyeprotect button:has(svg.lucide-video-off) {
+  background-color: #e0f2fe !important; /* Soft sky blue */
+  border: 2px solid #0284c7 !important;
+}
+html.theme-eyeprotect button svg.lucide-video,
+html.theme-eyeprotect button svg.lucide-video-off {
+  color: #0369a1 !important; /* Dark blue icon */
+}
+
+/* Camera button - Inactive (Red tint if videoActive is false) */
+html.theme-eyeprotect button.bg-red-500\/20 {
+  background-color: #fee2e2 !important; /* Soft red */
+  border: 2px solid #ef4444 !important;
+}
+html.theme-eyeprotect button.bg-red-500\/20 svg {
+  color: #b91c1c !important;
+}
+
+/* Pause button */
+html.theme-eyeprotect button:has(svg.lucide-pause) {
+  background-color: #fef3c7 !important; /* Soft amber/yellow */
+  border: 2px solid #f59e0b !important;
+}
+html.theme-eyeprotect button svg.lucide-pause {
+  color: #b45309 !important; /* Dark amber icon */
+}
+
+/* End call button */
+html.theme-eyeprotect button:has(svg.lucide-phone-off) {
+  background-color: #dc2626 !important; /* Solid red background */
+  border: 2px solid #b91c1c !important;
+  box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3) !important;
+}
+html.theme-eyeprotect button svg.lucide-phone-off {
+  color: #ffffff !important;
+}
+
+/* Mic button - Inactive */
+html.theme-eyeprotect button:has(svg.lucide-mic):not(.bg-green-500) {
+  background-color: #e0e7ff !important; /* Soft indigo */
+  border: 2px solid #6366f1 !important;
+}
+html.theme-eyeprotect button:has(svg.lucide-mic):not(.bg-green-500) svg.lucide-mic {
+  color: #4f46e5 !important; /* Dark indigo icon */
+}
+
+/* Mic button - Active (Listening) */
+html.theme-eyeprotect button.bg-green-500 {
+  background-color: #22c55e !important; /* Vibrant green */
+  border: 2px solid #16a34a !important;
+}
+html.theme-eyeprotect button.bg-green-500 svg.lucide-mic {
+  color: #ffffff !important;
+}
+
+/* Send button */
+html.theme-eyeprotect button:has(svg.lucide-send) {
+  background-color: #4f46e5 !important; /* Solid indigo background */
+  border: 1px solid #4338ca !important;
+}
+html.theme-eyeprotect button svg.lucide-send {
+  color: #ffffff !important;
+}
+
+/* Captions text underneath button controls (Camera, Pause, End) */
+html.theme-eyeprotect span.text-white\/40 {
+  color: #475569 !important; /* Darker slate gray text for crisp legibility */
+  font-weight: 600 !important;
+}
+
+/* ==========================================================================
+   Header Buttons Styling (Log in & Theme Toggle Circle) Overrides
+   ========================================================================== */
+
+/* Log in button overrides for Light Mode & Eye Comfort Mode */
+html.theme-light a[href="/login"].bg-white\/10 {
+  background-color: #e2e8f0 !important; /* Soft blue-grey background */
+  color: #0f172a !important; /* Bold dark slate text */
+}
+
+html.theme-eyeprotect a[href="/login"].bg-white\/10 {
+  background-color: #cbd5e1 !important; /* Darker grey to maintain contrast under sepia filter */
+  color: #0f172a !important; /* Bold dark slate text */
+}
+
+html.theme-light a[href="/login"].bg-white\/10:hover {
+  background-color: #cbd5e1 !important; /* Highlight on hover */
+}
+
+html.theme-eyeprotect a[href="/login"].bg-white\/10:hover {
+  background-color: #94a3b8 !important; /* Highlight on hover under sepia */
+}
+
+/* Theme toggle circle border should be solid black in Eye Comfort Mode */
+html.theme-eyeprotect button:has(svg.lucide-eye),
+html.theme-eyeprotect button:has(svg.lucide-sun),
+html.theme-eyeprotect button:has(svg.lucide-moon) {
+  border: 1.5px solid #000000 !important; /* Solid black circle border */
+  background-color: #faf6f0 !important; /* Light-grey/white circle background */
+}
+
+/* Make eye comfort yellow/amber icon dark-amber or black for better accent contrast */
+html.theme-eyeprotect button svg.lucide-eye {
+  color: #b45309 !important; /* Warm amber */
 }

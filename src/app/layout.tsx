@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import "../components/prointerviewer/ProInterviewer.css";
 
@@ -26,22 +25,29 @@ export default function RootLayout({
 }>) {
     return (
         <html lang="en" suppressHydrationWarning>
-            <head />
+            <head>
+                <script
+                    dangerouslySetInnerHTML={{
+                        __html: `
+                            try {
+                                 const savedTheme = localStorage.getItem("globalTheme");
+                                 if (savedTheme) {
+                                     if (savedTheme === "eyeprotect") {
+                                         document.documentElement.className = "theme-light theme-eyeprotect";
+                                     } else {
+                                         document.documentElement.className = "theme-" + savedTheme;
+                                     }
+                                 } else {
+                                     document.documentElement.className = "theme-dark";
+                                 }
+                            } catch (e) {}
+                        `
+                    }}
+                />
+            </head>
             <body
                 className={`${geistSans.variable} ${geistMono.variable} antialiased`}
             >
-                <Script id="theme-loader" strategy="beforeInteractive">
-                    {`
-                        try {
-                            const savedTheme = localStorage.getItem("globalTheme");
-                            if (savedTheme) {
-                                document.documentElement.className = "theme-" + savedTheme;
-                            } else {
-                                document.documentElement.className = "theme-dark";
-                            }
-                        } catch (e) {}
-                    `}
-                </Script>
                 {children}
             </body>
         </html>

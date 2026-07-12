@@ -19,6 +19,7 @@ export default function SetupPage() {
     const [targetCompanies, setTargetCompanies] = useState<string[]>([]);
     const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
+    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const router = useRouter();
 
     const [hasAccountPortfolio, setHasAccountPortfolio] = useState(false);
@@ -28,6 +29,10 @@ export default function SetupPage() {
 
     useEffect(() => {
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
+        
+        const savedTheme = localStorage.getItem("globalTheme") as any || "dark";
+        setTheme(savedTheme);
+        document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
 
         const syncFromAccountDetails = () => {
             const portfolio = getStorageItem("userPortfolio") || "";
@@ -186,7 +191,14 @@ export default function SetupPage() {
                 </p>
 
                 {resumeCvName && (
-                    <div className="mb-6 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 text-sm text-indigo-200">
+                    <div 
+                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors"
+                        style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : '#e0e7ff',
+                            borderColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.2)' : '#c7d2fe',
+                            color: theme === 'dark' ? '#c7d2fe' : '#312e81'
+                        }}
+                    >
                         Saved Resume / CV detected from your account: <span className="font-semibold">{resumeCvName}</span>
                     </div>
                 )}
@@ -232,7 +244,20 @@ export default function SetupPage() {
                         </div>
                     </>
                 ) : (
-                    <div className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+                    <div 
+                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors"
+                        style={{
+                            backgroundColor: theme === 'dark' 
+                                ? (hasAccountPortfolio ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)')
+                                : (hasAccountPortfolio ? '#d1fae5' : '#e0e7ff'),
+                            borderColor: theme === 'dark'
+                                ? (hasAccountPortfolio ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)')
+                                : (hasAccountPortfolio ? '#a7f3d0' : '#c7d2fe'),
+                            color: theme === 'dark'
+                                ? (hasAccountPortfolio ? '#a7f3d0' : '#c7d2fe')
+                                : (hasAccountPortfolio ? '#064e3b' : '#312e81')
+                        }}
+                    >
                         {hasAccountPortfolio
                             ? "Portfolio link detected from your account. It will be used first during setup."
                             : "Saved Resume / CV detected from your account. The upload box is not needed unless you want to add more files."}
@@ -241,6 +266,7 @@ export default function SetupPage() {
 
                 <div className="mt-8 z-50 relative">
                     <RoleSelect
+                        theme={theme}
                         options={[
                             { value: 'Frontend Developer', label: 'Frontend Developer' },
                             { value: 'Backend Developer', label: 'Backend Developer' },
@@ -258,6 +284,7 @@ export default function SetupPage() {
 
                 <div className="mt-8 z-40 relative">
                     <CompanySelect 
+                        theme={theme}
                         options={[
                             { value: 'Google', label: 'Google' },
                             { value: 'Amazon', label: 'Amazon' },

@@ -343,6 +343,7 @@ function FeaturesContent() {
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
             setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
         }
         
         const stored = getStorageItem("interviewSessions");
@@ -382,6 +383,10 @@ function FeaturesContent() {
             if (event.data === "back-to-features") {
                 setActiveModal(null);
                 setActiveTool("analysis");
+            } else if (event.data && event.data.type === "sync-theme") {
+                const newTheme = event.data.theme as "dark" | "light" | "eyeprotect";
+                setTheme(newTheme);
+                document.documentElement.className = newTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${newTheme}`;
             }
         };
         window.addEventListener("message", handleMessage);
@@ -738,7 +743,7 @@ function FeaturesContent() {
         
         setTheme(nextTheme);
         localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = `theme-${nextTheme}`;
+        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
     };
 
     const handleResume = () => {
@@ -1706,6 +1711,7 @@ function FeaturesContent() {
         slate: "#64748b"
     };
     const selectedColorHex = ACCENT_COLORS[resAccentColor] || "#4f46e5";
+    const isLight = theme === "light" || theme === "eyeprotect";
 
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
@@ -1762,7 +1768,9 @@ function FeaturesContent() {
                     }} />
                 </div>
             ) : activeModal === "study_materials" ? (
-                <div className="flex-1 w-full h-full relative overflow-hidden bg-[#050505]">
+                <div className={`flex-1 w-full h-full relative overflow-hidden transition-colors duration-300 ${
+                    theme === "light" ? "bg-[#9897A9]" : theme === "eyeprotect" ? "bg-[#9897A9]" : "bg-[#050505]"
+                }`}>
                     <iframe 
                         src="/study-materials/index.html" 
                         className="w-full h-full border-none"
@@ -1954,6 +1962,7 @@ function FeaturesContent() {
 
                                             <div className="pt-1 z-50 relative">
                                                 <RoleSelect 
+                                                    theme={theme}
                                                     options={[
                                                         { value: 'Frontend Developer', label: 'Frontend Developer' },
                                                         { value: 'Backend Developer', label: 'Backend Developer' },
@@ -1970,6 +1979,7 @@ function FeaturesContent() {
 
                                             <div className="pt-1 z-40 relative">
                                                 <CompanySelect 
+                                                    theme={theme}
                                                     options={[
                                                         { value: 'Google', label: 'Google' },
                                                         { value: 'Amazon', label: 'Amazon' },
@@ -2952,19 +2962,27 @@ function FeaturesContent() {
                                                 type="button"
                                                 onClick={handleGmailImportLogin}
                                                 disabled={isListingGmail}
-                                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 hover:border-teal-500/50 text-[11px] font-bold text-teal-300 transition-all cursor-pointer disabled:opacity-50"
+                                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded transition-all cursor-pointer disabled:opacity-50 text-[11px] font-bold border ${
+                                                    isLight 
+                                                        ? "bg-teal-50 border-teal-200 text-teal-800 hover:bg-teal-100 hover:border-teal-300" 
+                                                        : "bg-teal-500/15 hover:bg-teal-500/25 border border-teal-500/30 hover:border-teal-500/50 text-teal-300"
+                                                }`}
                                             >
                                                 {isListingGmail ? (
                                                     <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Fetching...</>
                                                 ) : (
-                                                    <><Sparkles className="w-3.5 h-3.5 text-teal-400" /> Direct Import from Gmail</>
+                                                    <><Sparkles className={`w-3.5 h-3.5 ${isLight ? "text-teal-600" : "text-teal-400"}`} /> Direct Import from Gmail</>
                                                 )}
                                             </button>
                                             <a
                                                 href="https://mail.google.com"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#ea4335]/15 hover:bg-[#ea4335]/25 border border-[#ea4335]/30 hover:border-[#ea4335]/50 text-xs font-bold text-[#f28b82] transition-all"
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all border ${
+                                                    isLight 
+                                                        ? "bg-red-50 border-red-200 text-red-800 hover:bg-red-100 hover:border-red-300" 
+                                                        : "bg-[#ea4335]/15 hover:bg-[#ea4335]/25 border border-[#ea4335]/30 hover:border-[#ea4335]/50 text-[#f28b82]"
+                                                }`}
                                             >
                                                 <ExternalLink className="w-3 h-3" /> Gmail Web
                                             </a>
@@ -2972,7 +2990,11 @@ function FeaturesContent() {
                                                 href="https://outlook.live.com"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#0078d4]/15 hover:bg-[#0078d4]/25 border border-[#0078d4]/30 hover:border-[#0078d4]/50 text-xs font-bold text-[#8ab4f8] transition-all"
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all border ${
+                                                    isLight 
+                                                        ? "bg-sky-50 border-sky-200 text-sky-800 hover:bg-sky-100 hover:border-sky-300" 
+                                                        : "bg-[#0078d4]/15 hover:bg-[#0078d4]/25 border border-[#0078d4]/30 hover:border-[#0078d4]/50 text-[#8ab4f8]"
+                                                }`}
                                             >
                                                 <ExternalLink className="w-3 h-3" /> Outlook
                                             </a>
@@ -2980,7 +3002,11 @@ function FeaturesContent() {
                                                 href="https://mail.yahoo.com"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-[#6001d2]/15 hover:bg-[#6001d2]/25 border border-[#6001d2]/30 hover:border-[#6001d2]/50 text-xs font-bold text-[#d7aefb] transition-all"
+                                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold transition-all border ${
+                                                    isLight 
+                                                        ? "bg-purple-50 border-purple-200 text-purple-800 hover:bg-purple-100 hover:border-purple-300" 
+                                                        : "bg-[#6001d2]/15 hover:bg-[#6001d2]/25 border border-[#6001d2]/30 hover:border-[#6001d2]/50 text-[#d7aefb]"
+                                                }`}
                                             >
                                                 <ExternalLink className="w-3 h-3" /> Yahoo
                                             </a>
@@ -3078,8 +3104,12 @@ function FeaturesContent() {
                                             className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-white/10"
                                         >
                                             {/* Column 1: Important Points */}
-                                            <div className="bg-[#15151c]/60 border border-teal-500/10 rounded-2xl p-5 space-y-4">
-                                                <h4 className="text-sm font-extrabold text-teal-400 flex items-center gap-2">
+                                            <div className={`border rounded-2xl p-5 space-y-4 ${
+                                                isLight ? "bg-slate-50 border-slate-200" : "bg-[#15151c]/60 border border-teal-500/10"
+                                            }`}>
+                                                <h4 className={`text-sm font-extrabold flex items-center gap-2 ${
+                                                    isLight ? "text-slate-900" : "text-teal-400"
+                                                }`}>
                                                     <ShieldCheck className="w-4.5 h-4.5" /> Important Details
                                                 </h4>
                                                 <div className="prose prose-invert text-sm text-white/80 space-y-2 leading-relaxed">
@@ -3093,20 +3123,26 @@ function FeaturesContent() {
                                                         if (!cleaned) return <div key={i} className="h-1" />;
                                                         if (line.startsWith("- ") || line.startsWith("• ")) {
                                                             return (
-                                                                <p key={i} className="pl-4 before:content-['•'] before:text-teal-400 before:mr-2 flex items-start text-white/70">
+                                                                <p key={i} className={`pl-4 before:content-['•'] before:mr-2 flex items-start ${
+                                                                    isLight ? "before:text-teal-600 text-slate-700 font-medium" : "before:text-teal-400 text-white/70"
+                                                                }`}>
                                                                     <span>{cleaned.replace(/^[-•]\s*/, "")}</span>
                                                                 </p>
                                                             );
                                                         }
-                                                        return <p key={i} className="text-white/75">{cleaned}</p>;
+                                                        return <p key={i} className={isLight ? "text-slate-700 font-medium" : "text-white/75"}>{cleaned}</p>;
                                                     })}
                                                 </div>
                                             </div>
-
+ 
                                             {/* Column 2: Mandatory Things & Redirection */}
                                             <div className="space-y-6">
-                                                <div className="bg-[#15151c]/60 border border-teal-500/10 rounded-2xl p-5 space-y-4">
-                                                    <h4 className="text-sm font-extrabold text-teal-400 flex items-center gap-2">
+                                                <div className={`border rounded-2xl p-5 space-y-4 ${
+                                                    isLight ? "bg-slate-50 border-slate-200" : "bg-[#15151c]/60 border border-teal-500/10"
+                                                }`}>
+                                                    <h4 className={`text-sm font-extrabold flex items-center gap-2 ${
+                                                        isLight ? "text-slate-900" : "text-teal-400"
+                                                    }`}>
                                                         <Check className="w-4.5 h-4.5" /> Mandatory Requirements
                                                     </h4>
                                                     <div className="space-y-3">
@@ -3119,31 +3155,47 @@ function FeaturesContent() {
                                                             const cleaned = line.replace(/^-\s*\[\s*[x ]\s*\]/gi, "").replace(/^\*\*/g, "").replace(/\*\*/g, "").trim();
                                                             if (!cleaned) return null;
                                                             return (
-                                                                <label key={i} className="flex items-start gap-3 cursor-pointer group text-sm text-white/80 hover:text-white transition-colors">
-                                                                    <input type="checkbox" className="mt-1 accent-teal-500 rounded border-white/20 bg-black/40 text-teal-600 focus:ring-teal-500 focus:ring-offset-black cursor-pointer" />
+                                                                <label key={i} className={`flex items-start gap-3 cursor-pointer group text-sm transition-colors ${
+                                                                    isLight ? "text-slate-700 hover:text-slate-900 font-medium" : "text-white/80 hover:text-white"
+                                                                }`}>
+                                                                    <input type="checkbox" className={`mt-1 accent-teal-500 rounded text-teal-600 focus:ring-teal-500 focus:ring-offset-black cursor-pointer border ${
+                                                                        isLight ? "border-slate-300 bg-white" : "border-white/20 bg-black/40"
+                                                                    }`} />
                                                                     <span>{cleaned}</span>
                                                                 </label>
                                                             );
                                                         })}
                                                     </div>
                                                 </div>
-                                                <div className="bg-gradient-to-br from-teal-500/10 to-indigo-500/10 border border-teal-500/20 rounded-2xl p-5 space-y-4">
+                                                <div className={`border rounded-2xl p-5 space-y-4 ${
+                                                    isLight 
+                                                        ? "bg-slate-50/50 border-slate-200" 
+                                                        : "bg-gradient-to-br from-teal-500/10 to-indigo-500/10 border border-teal-500/20"
+                                                }`}>
                                                     <div className="flex items-start justify-between gap-4">
                                                         <div>
-                                                            <h4 className="text-sm font-extrabold text-white flex items-center gap-1.5">
-                                                                <Compass className="w-4 h-4 text-teal-400" /> Extracted Preparation Parameters
+                                                            <h4 className={`text-sm font-extrabold flex items-center gap-1.5 ${isLight ? "text-slate-900" : "text-white"}`}>
+                                                                <Compass className={`w-4 h-4 ${isLight ? "text-teal-600" : "text-teal-400"}`} /> Extracted Preparation Parameters
                                                             </h4>
-                                                            <p className="text-xs text-white/50 mt-1">We found these key parameters. Use them to construct a step-by-step roadmap.</p>
+                                                            <p className={`text-xs mt-1 ${isLight ? "text-slate-500" : "text-white/50"}`}>We found these key parameters. Use them to construct a step-by-step roadmap.</p>
                                                             {/* Email Type Classification Badge */}
                                                             {emailAnalysisResult.emailType && (
                                                                 <div className="flex items-center gap-2 pt-1.5">
                                                                     {emailAnalysisResult.emailType === "offer_letter" ? (
-                                                                        <span className="px-3 py-1 text-[10px] uppercase font-black tracking-wider bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 rounded-full flex items-center gap-1.5 shadow-sm">
-                                                                            <Award className="w-3.5 h-3.5 text-indigo-400" /> Job Offer Letter
+                                                                        <span className={`px-3 py-1 text-[10px] uppercase font-black tracking-wider border rounded-full flex items-center gap-1.5 shadow-sm ${
+                                                                            isLight 
+                                                                                ? "bg-indigo-50 border-indigo-200 text-indigo-800" 
+                                                                                : "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                                                        }`}>
+                                                                            <Award className={`w-3.5 h-3.5 ${isLight ? "text-indigo-600" : "text-indigo-400"}`} /> Job Offer Letter
                                                                         </span>
                                                                     ) : (
-                                                                        <span className="px-3 py-1 text-[10px] uppercase font-black tracking-wider bg-teal-500/20 text-teal-300 border border-teal-500/30 rounded-full flex items-center gap-1.5 shadow-sm">
-                                                                            <Mail className="w-3.5 h-3.5 text-teal-400" /> Interview Invitation
+                                                                        <span className={`px-3 py-1 text-[10px] uppercase font-black tracking-wider border rounded-full flex items-center gap-1.5 shadow-sm ${
+                                                                            isLight 
+                                                                                ? "bg-teal-50 border-teal-200 text-teal-800" 
+                                                                                : "bg-teal-500/20 text-teal-300 border border-teal-500/30"
+                                                                        }`}>
+                                                                            <Mail className={`w-3.5 h-3.5 ${isLight ? "text-teal-600" : "text-teal-400"}`} /> Interview Invitation
                                                                         </span>
                                                                     )}
                                                                 </div>
@@ -3159,39 +3211,51 @@ function FeaturesContent() {
                                                                 }
                                                                 setIsEditingParams(!isEditingParams);
                                                             }}
-                                                            className="px-2.5 py-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-white/70 hover:text-white font-bold text-[10px] flex items-center gap-1 transition cursor-pointer shrink-0 animate-pulse"
+                                                            className={`px-2.5 py-1 rounded-lg font-bold text-[10px] flex items-center gap-1 transition cursor-pointer shrink-0 border ${
+                                                                isLight
+                                                                    ? "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm"
+                                                                    : "bg-white/5 hover:bg-white/10 border border-white/5 text-white/70 hover:text-white animate-pulse"
+                                                            }`}
                                                         >
                                                             {isEditingParams ? "Cancel" : "Edit Details"}
                                                         </button>
                                                     </div>
 
                                                     {isEditingParams ? (
-                                                        <div className="space-y-3 bg-black/30 p-3.5 rounded-xl border border-white/5 relative text-xs">
+                                                        <div className={`space-y-3 p-3.5 rounded-xl border relative text-xs ${
+                                                            isLight ? "bg-white border-slate-200 shadow-sm" : "bg-black/30 border-white/5"
+                                                        }`}>
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] text-white/40 block font-bold">Target Role</label>
+                                                                <label className={`text-[10px] block font-bold ${isLight ? "text-slate-500" : "text-white/40"}`}>Target Role</label>
                                                                 <input
                                                                     type="text"
                                                                     value={editRole || ""}
                                                                     onChange={(e) => setEditRole(e.target.value)}
-                                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500 font-sans"
+                                                                    className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 font-sans ${
+                                                                        isLight ? "bg-white border-slate-300 text-slate-800" : "bg-black/40 border-white/10 text-white"
+                                                                    }`}
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] text-white/40 block font-bold">Target Company</label>
+                                                                <label className={`text-[10px] block font-bold ${isLight ? "text-slate-500" : "text-white/40"}`}>Target Company</label>
                                                                 <input
                                                                     type="text"
                                                                     value={editCompany || ""}
                                                                     onChange={(e) => setEditCompany(e.target.value)}
-                                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500 font-sans"
+                                                                    className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 font-sans ${
+                                                                        isLight ? "bg-white border-slate-300 text-slate-800" : "bg-black/40 border-white/10 text-white"
+                                                                    }`}
                                                                 />
                                                             </div>
                                                             <div className="space-y-1">
-                                                                <label className="text-[10px] text-white/40 block font-bold">Location</label>
+                                                                <label className={`text-[10px] block font-bold ${isLight ? "text-slate-500" : "text-white/40"}`}>Location</label>
                                                                 <input
                                                                     type="text"
                                                                     value={editLocation || ""}
                                                                     onChange={(e) => setEditLocation(e.target.value)}
-                                                                    className="w-full bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500 font-sans"
+                                                                    className={`w-full border rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-teal-500 font-sans ${
+                                                                        isLight ? "bg-white border-slate-300 text-slate-800" : "bg-black/40 border-white/10 text-white"
+                                                                    }`}
                                                                 />
                                                             </div>
                                                             <button
@@ -3216,50 +3280,52 @@ function FeaturesContent() {
                                                             </button>
                                                         </div>
                                                     ) : (
-                                                        <div className="grid grid-cols-2 gap-3 text-xs bg-black/30 p-3.5 rounded-xl border border-white/5 relative">
+                                                        <div className={`grid grid-cols-2 gap-3 text-xs p-3.5 rounded-xl border relative ${
+                                                            isLight ? "bg-white border-slate-200 shadow-sm" : "bg-black/30 border-white/5"
+                                                        }`}>
                                                             <div>
-                                                                <span className="text-white/40 block">Target Role</span>
-                                                                <span className="text-white font-semibold">{emailAnalysisResult.extractedDetails.role || "Not specified"}</span>
+                                                                <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>Target Role</span>
+                                                                <span className={`font-semibold ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.role || "Not specified"}</span>
                                                             </div>
                                                             <div>
-                                                                <span className="text-white/40 block flex items-center gap-1">
+                                                                <span className={`block flex items-center gap-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>
                                                                     Target Company
                                                                     {isVerifyingExtracted && <Loader2 className="w-3.5 h-3.5 text-teal-400 animate-spin" />}
                                                                     {!isVerifyingExtracted && verificationResult && (
                                                                         verificationResult.companyValid 
-                                                                            ? <Check className="w-3.5 h-3.5 text-green-400" />
+                                                                            ? <Check className="w-3.5 h-3.5 text-green-500" />
                                                                             : <span title="Invalid or fake company name"><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /></span>
                                                                     )}
                                                                 </span>
-                                                                <span className="text-white font-semibold flex items-center gap-1.5 font-sans">
+                                                                <span className={`font-semibold flex items-center gap-1.5 font-sans ${isLight ? "text-slate-800" : "text-white"}`}>
                                                                     {emailAnalysisResult.extractedDetails.company || "Not specified"}
                                                                 </span>
                                                             </div>
                                                             <div>
-                                                                <span className="text-white/40 block">HR / Sender</span>
-                                                                <span className="text-white font-semibold font-sans">{emailAnalysisResult.extractedDetails.hrName || "Not specified"}</span>
+                                                                <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>HR / Sender</span>
+                                                                <span className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.hrName || "Not specified"}</span>
                                                             </div>
-                                                            <div className="col-span-2 pt-2 border-t border-white/5">
-                                                                <span className="text-white/40 block flex items-center gap-1">
+                                                            <div className={`col-span-2 pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                <span className={`block flex items-center gap-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>
                                                                     Location
                                                                     {isVerifyingExtracted && <Loader2 className="w-3.5 h-3.5 text-teal-400 animate-spin" />}
                                                                     {!isVerifyingExtracted && verificationResult && (
                                                                         verificationResult.locationValid 
-                                                                            ? <Check className="w-3.5 h-3.5 text-green-400" />
+                                                                            ? <Check className="w-3.5 h-3.5 text-green-500" />
                                                                             : <span title="Invalid or fake location"><AlertTriangle className="w-3.5 h-3.5 text-amber-500" /></span>
                                                                     )}
                                                                 </span>
                                                                 <div className="flex items-center justify-between gap-2 mt-0.5">
-                                                                    <span className="text-white font-semibold font-sans">{emailAnalysisResult.extractedDetails.location || "Not specified"}</span>
+                                                                    <span className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.location || "Not specified"}</span>
                                                                     {emailAnalysisResult.extractedDetails.company && emailAnalysisResult.extractedDetails.location && emailAnalysisResult.extractedDetails.location.toLowerCase() !== "remote" && (
                                                                         <a
                                                                             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(emailAnalysisResult.extractedDetails.company + " " + emailAnalysisResult.extractedDetails.location)}`}
                                                                             target="_blank"
                                                                             rel="noopener noreferrer"
-                                                                            className="inline-flex items-center gap-0.5 text-[10px] text-teal-400 hover:text-teal-300 font-bold hover:underline transition-all"
+                                                                            className="inline-flex items-center gap-0.5 text-[10px] text-teal-500 hover:text-teal-600 font-bold hover:underline transition-all"
                                                                             title="View location on Google Maps"
                                                                         >
-                                                                            <Map className="w-3 h-3 text-teal-400" /> Map <ExternalLink className="w-2.5 h-2.5" />
+                                                                            <Map className="w-3 h-3 text-teal-500" /> Map <ExternalLink className="w-2.5 h-2.5" />
                                                                         </a>
                                                                     )}
                                                                 </div>
@@ -3268,13 +3334,13 @@ function FeaturesContent() {
                                                             {/* Conditional Invitation Fields */}
                                                             {emailAnalysisResult.emailType === "job_invite" && (
                                                                 <>
-                                                                    <div className="pt-2 border-t border-white/5">
-                                                                        <span className="text-white/40 block">Platform / Format</span>
-                                                                        <span className="text-white font-semibold font-sans">{emailAnalysisResult.extractedDetails.platformOrFormat || "Not specified"}</span>
+                                                                    <div className={`pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                        <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>Platform / Format</span>
+                                                                        <span className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.platformOrFormat || "Not specified"}</span>
                                                                     </div>
-                                                                    <div className="pt-2 border-t border-white/5">
-                                                                        <span className="text-white/40 block">Interview Schedule</span>
-                                                                        <span className="text-white font-semibold font-sans">{emailAnalysisResult.extractedDetails.interviewDate || "Not specified"}</span>
+                                                                    <div className={`pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                        <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>Interview Schedule</span>
+                                                                        <span className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.interviewDate || "Not specified"}</span>
                                                                     </div>
                                                                 </>
                                                             )}
@@ -3282,20 +3348,22 @@ function FeaturesContent() {
                                                             {/* Conditional Offer Fields */}
                                                             {emailAnalysisResult.emailType === "offer_letter" && (
                                                                 <>
-                                                                    <div className="pt-2 border-t border-white/5">
-                                                                        <span className="text-white/40 block">Salary / CTC</span>
-                                                                        <span className="text-white font-semibold font-sans text-indigo-300">{emailAnalysisResult.extractedDetails.salaryDetails?.baseSalary || "Not specified"}</span>
+                                                                    <div className={`pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                        <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>Salary / CTC</span>
+                                                                        <span className={`font-semibold font-sans ${isLight ? "text-indigo-600 font-bold" : "text-indigo-300"}`}>{emailAnalysisResult.extractedDetails.salaryDetails?.baseSalary || "Not specified"}</span>
                                                                     </div>
-                                                                    <div className="pt-2 border-t border-white/5">
-                                                                        <span className="text-white/40 block">Joining Date</span>
-                                                                        <span className="text-white font-semibold font-sans">{emailAnalysisResult.extractedDetails.salaryDetails?.joiningDate || "Not specified"}</span>
+                                                                    <div className={`pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                        <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>Joining Date</span>
+                                                                        <span className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.salaryDetails?.joiningDate || "Not specified"}</span>
                                                                     </div>
                                                                     {emailAnalysisResult.extractedDetails.salaryDetails?.benefits && emailAnalysisResult.extractedDetails.salaryDetails.benefits.length > 0 && (
-                                                                        <div className="col-span-2 pt-2 border-t border-white/5">
-                                                                            <span className="text-white/40 block mb-1">Benefits & Perks</span>
+                                                                        <div className={`col-span-2 pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                            <span className={`block mb-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>Benefits & Perks</span>
                                                                             <div className="flex flex-wrap gap-1.5">
                                                                                 {emailAnalysisResult.extractedDetails.salaryDetails.benefits.map((b: string, idx: number) => (
-                                                                                    <span key={idx} className="px-2 py-0.5 bg-indigo-500/10 border border-indigo-500/20 rounded-md text-[10px] text-indigo-300 font-medium font-sans">
+                                                                                    <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-medium font-sans border ${
+                                                                                        isLight ? "bg-indigo-50 border-indigo-200 text-indigo-800" : "bg-indigo-500/10 border-indigo-500/20 text-indigo-300"
+                                                                                    }`}>
                                                                                         {b}
                                                                                     </span>
                                                                                 ))}
@@ -3306,17 +3374,19 @@ function FeaturesContent() {
                                                             )}
 
                                                             {/* Key Skills Tags */}
-                                                            <div className="col-span-2 pt-2 border-t border-white/5">
-                                                                <span className="text-white/40 block">Required Skills</span>
+                                                            <div className={`col-span-2 pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>Required Skills</span>
                                                                 <div className="flex flex-wrap gap-1.5 mt-1">
                                                                     {emailAnalysisResult.extractedDetails.skills && emailAnalysisResult.extractedDetails.skills.length > 0 ? (
                                                                         emailAnalysisResult.extractedDetails.skills.map((s: string, idx: number) => (
-                                                                            <span key={idx} className="px-2 py-0.5 bg-teal-500/10 border border-teal-500/20 rounded-md text-[10px] text-teal-300 font-medium font-sans">
+                                                                            <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-medium font-sans border ${
+                                                                                isLight ? "bg-teal-50 border-teal-200 text-teal-800" : "bg-teal-500/10 border-teal-500/20 text-teal-300"
+                                                                            }`}>
                                                                                 {s}
                                                                             </span>
                                                                         ))
                                                                     ) : (
-                                                                        <span className="text-white/50 font-sans">None specified</span>
+                                                                        <span className={`font-sans ${isLight ? "text-slate-500" : "text-white/50"}`}>None specified</span>
                                                                     )}
                                                                 </div>
                                                             </div>
@@ -3324,10 +3394,12 @@ function FeaturesContent() {
                                                     )}
 
                                                     {(isVerifyingExtracted || verificationResult) && (
-                                                        <div className="bg-black/20 border border-white/5 rounded-xl p-3 text-[11px] leading-relaxed text-white/60 space-y-2">
+                                                        <div className={`rounded-xl p-3 text-[11px] leading-relaxed space-y-2 border ${
+                                                            isLight ? "bg-slate-100 border-slate-200 text-slate-700 font-medium" : "bg-black/20 border-white/5 text-white/60"
+                                                        }`}>
                                                             {isVerifyingExtracted ? (
                                                                 <span className="flex items-center gap-1.5">
-                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-400" /> Verifying target credentials against database...
+                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-teal-500" /> Verifying target credentials against database...
                                                                 </span>
                                                             ) : (
                                                                 <>
@@ -3337,28 +3409,28 @@ function FeaturesContent() {
                                                                         const avgScore = Math.round((compScore + locScore) / 2);
                                                                         
                                                                         let barColor = "from-red-500 to-red-400";
-                                                                        let textClass = "text-red-400";
+                                                                        let textClass = "text-red-500";
                                                                         if (avgScore >= 80) {
                                                                             barColor = "from-green-500 to-emerald-400";
-                                                                            textClass = "text-green-400";
+                                                                            textClass = "text-green-600";
                                                                         } else if (avgScore >= 40) {
                                                                             barColor = "from-amber-500 to-yellow-400";
-                                                                            textClass = "text-amber-400";
+                                                                            textClass = "text-amber-600";
                                                                         }
                                                                         
                                                                         return (
-                                                                            <div className="space-y-1.5 border-b border-white/5 pb-2">
+                                                                            <div className={`space-y-1.5 border-b pb-2 ${isLight ? "border-slate-200" : "border-white/5"}`}>
                                                                                 <div className="flex items-center justify-between font-bold">
-                                                                                    <span className="text-white/40">Credential Authenticity</span>
+                                                                                    <span className={isLight ? "text-slate-500" : "text-white/40"}>Credential Authenticity</span>
                                                                                     <span className={`${textClass} text-xs font-black`}>{avgScore}% Verified</span>
                                                                                 </div>
-                                                                                <div className="h-1.5 bg-black/40 rounded-full overflow-hidden border border-white/5">
+                                                                                <div className={`h-1.5 rounded-full overflow-hidden border ${isLight ? "bg-slate-200 border-slate-350" : "bg-black/40 border-white/5"}`}>
                                                                                     <div className={`h-full bg-gradient-to-r ${barColor} rounded-full transition-all duration-500`} style={{ width: `${avgScore}%` }} />
                                                                                 </div>
                                                                             </div>
                                                                         );
                                                                     })()}
-                                                                    <p className="text-white/70 font-sans">{verificationResult.verificationFeedback}</p>
+                                                                    <p className={`font-sans ${isLight ? "text-slate-600 font-medium" : "text-white/70"}`}>{verificationResult.verificationFeedback}</p>
                                                                 </>
                                                             )}
                                                         </div>
@@ -3394,9 +3466,13 @@ function FeaturesContent() {
                                 </div>
 
                                 {savedRoadmaps.length > 0 && (
-                                    <div className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3">
+                                    <div className={`border rounded-2xl p-4 space-y-3 ${
+                                        isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"
+                                    }`}>
                                         <div className="flex items-center justify-between">
-                                            <h4 className="text-xs font-black text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                                            <h4 className={`text-xs font-black uppercase tracking-wider flex items-center gap-2 ${
+                                                isLight ? "text-emerald-700" : "text-emerald-400"
+                                            }`}>
                                                 <Compass className="w-4 h-4" /> My Preparation Path Catalog
                                             </h4>
                                             <button
@@ -3422,29 +3498,39 @@ function FeaturesContent() {
                                                         onClick={() => handleLoadRoadmap(road.id)}
                                                         className={`flex-shrink-0 cursor-pointer p-3.5 rounded-xl border text-left transition-all ${
                                                             isActive
-                                                                ? "bg-emerald-950/20 border-emerald-500/80 text-white shadow-[0_0_15px_rgba(16,185,129,0.1)]"
-                                                                : "bg-black/30 border-white/5 text-white/60 hover:border-white/20 hover:text-white"
+                                                                ? isLight
+                                                                    ? "bg-emerald-50 border-emerald-500 text-slate-900 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                                                    : "bg-emerald-950/20 border-emerald-500/80 text-white shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                                                : isLight
+                                                                    ? "bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:text-slate-900 shadow-sm"
+                                                                    : "bg-black/30 border-white/5 text-white/60 hover:border-white/20 hover:text-white"
                                                         } min-w-[180px] max-w-[220px] relative group`}
                                                     >
-                                                        <div className="text-xs font-black text-white truncate pr-5 font-sans" title={road.course}>
+                                                        <div className={`text-xs font-black truncate pr-5 font-sans ${isLight ? "text-slate-900" : "text-white"}`} title={road.course}>
                                                             {road.course}
                                                         </div>
-                                                        <div className="text-[10px] text-white/50 font-bold truncate mt-0.5">
+                                                        <div className={`text-[10px] font-bold truncate mt-0.5 ${isLight ? "text-slate-500" : "text-white/50"}`}>
                                                             {road.company} &bull; {road.location}
                                                         </div>
                                                         
                                                         <div className="flex items-center gap-1.5 mt-2">
                                                             {isActive && (
-                                                                <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
+                                                                <span className={`border px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                                                    isLight ? "bg-emerald-100 border-emerald-300 text-emerald-800" : "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                                                }`}>
                                                                     Current
                                                                 </span>
                                                             )}
                                                             {isCompleted ? (
-                                                                <span className="bg-indigo-500/15 border border-indigo-500/35 text-indigo-300 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider">
+                                                                <span className={`border px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                                                    isLight ? "bg-indigo-100 border-indigo-300 text-indigo-800" : "bg-indigo-500/15 border-indigo-500/35 text-indigo-300"
+                                                                }`}>
                                                                     Completed
                                                                 </span>
                                                             ) : (
-                                                                <span className="bg-white/5 border border-white/5 text-white/40 px-1.5 py-0.5 rounded text-[8px] font-bold">
+                                                                <span className={`border px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                                                    isLight ? "bg-slate-100 border-slate-200 text-slate-500" : "bg-white/5 border-white/5 text-white/40"
+                                                                }`}>
                                                                     {completionPct}% Done
                                                                 </span>
                                                             )}
@@ -3530,12 +3616,14 @@ function FeaturesContent() {
                                             className="space-y-6 pt-6 border-t border-white/10"
                                         >
                                             {/* High Level Overview Card */}
-                                            <div className="bg-[#121c16]/50 border border-emerald-500/20 rounded-2xl p-5 relative overflow-hidden">
+                                            <div className={`border rounded-2xl p-5 relative overflow-hidden ${
+                                                isLight ? "bg-emerald-50 border-emerald-200 text-slate-900" : "bg-[#121c16]/50 border border-emerald-500/20 text-white"
+                                            }`}>
                                                 <div className="absolute top-0 right-0 p-6 opacity-5 pointer-events-none">
                                                     <Compass className="w-32 h-32 text-emerald-400" />
                                                 </div>
-                                                <h4 className="font-extrabold text-white text-base mb-2">Roadmap Strategy Overview</h4>
-                                                <p className="text-sm text-white/70 leading-relaxed max-w-3xl font-medium">{roadmapResult.overview}</p>
+                                                <h4 className={`font-extrabold text-base mb-2 ${isLight ? "text-emerald-950" : "text-white"}`}>Roadmap Strategy Overview</h4>
+                                                <p className={`text-sm leading-relaxed max-w-3xl font-medium ${isLight ? "text-emerald-850" : "text-white/70"}`}>{roadmapResult.overview}</p>
                                             </div>
 
                                             {/* Progress & Actions Section */}
@@ -3544,7 +3632,9 @@ function FeaturesContent() {
                                                 const checkedTasksCount = Object.values(roadmapTasksChecked).filter(Boolean).length;
                                                 const progressPercentage = totalTasks > 0 ? Math.round((checkedTasksCount / totalTasks) * 100) : 0;
                                                 return (
-                                                    <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                                                    <div className={`border rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 ${
+                                                        isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.02] border border-white/5"
+                                                    }`}>
                                                         <div className="flex items-center gap-5">
                                                             {/* Circular Progress SVG */}
                                                             <div className="relative w-20 h-20 shrink-0">
@@ -3554,7 +3644,7 @@ function FeaturesContent() {
                                                                         cx="50"
                                                                         cy="50"
                                                                         r="40"
-                                                                        className="stroke-white/[0.04]"
+                                                                        className={isLight ? "stroke-slate-200" : "stroke-white/[0.04]"}
                                                                         strokeWidth="8"
                                                                         fill="transparent"
                                                                     />
@@ -3584,19 +3674,19 @@ function FeaturesContent() {
                                                                     />
                                                                 </svg>
                                                                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                    <span className="text-lg font-black text-white leading-none">{progressPercentage}%</span>
-                                                                    <span className="text-[8px] font-bold text-white/40 uppercase tracking-wider mt-0.5">Done</span>
+                                                                    <span className={`text-lg font-black leading-none ${isLight ? "text-slate-900" : "text-white"}`}>{progressPercentage}%</span>
+                                                                    <span className={`text-[8px] font-bold uppercase tracking-wider mt-0.5 ${isLight ? "text-slate-500" : "text-white/40"}`}>Done</span>
                                                                 </div>
                                                             </div>
                                                             <div>
-                                                                <div className="text-xs font-bold text-white/40 uppercase tracking-wider mb-0.5">Overall Completion Progress</div>
-                                                                <div className="text-sm text-white font-extrabold flex items-baseline gap-1">
-                                                                    <span className="text-emerald-400 text-lg">{checkedTasksCount}</span>
-                                                                    <span className="text-white/40">/</span>
-                                                                    <span className="text-white/70">{totalTasks}</span>
-                                                                    <span className="text-white/40 ml-2 font-medium">tasks completed</span>
+                                                                <div className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${isLight ? "text-slate-400" : "text-white/40"}`}>Overall Completion Progress</div>
+                                                                <div className="text-sm font-extrabold flex items-baseline gap-1">
+                                                                    <span className="text-emerald-500 text-lg">{checkedTasksCount}</span>
+                                                                    <span className={isLight ? "text-slate-300" : "text-white/40"}>/</span>
+                                                                    <span className={isLight ? "text-slate-700" : "text-white/70"}>{totalTasks}</span>
+                                                                    <span className={`ml-2 font-medium ${isLight ? "text-slate-500" : "text-white/40"}`}>tasks completed</span>
                                                                 </div>
-                                                                <p className="text-xs text-white/50 mt-1">Keep checking off tasks in the timeline below to track your progress</p>
+                                                                <p className={`text-xs mt-1 ${isLight ? "text-slate-500" : "text-white/50"}`}>Keep checking off tasks in the timeline below to track your progress</p>
                                                             </div>
                                                         </div>
                                                         {/* Quick Actions Panel */}
@@ -3611,14 +3701,22 @@ function FeaturesContent() {
                                                             <button
                                                                 type="button"
                                                                 onClick={handleCopyRoadmapMarkdown}
-                                                                className="flex-1 md:flex-none px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                                                className={`flex-1 md:flex-none px-4 py-2.5 border font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                                                    isLight
+                                                                        ? "bg-white hover:bg-slate-50 border-slate-200 text-slate-750 hover:text-slate-900 shadow-sm"
+                                                                        : "bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white"
+                                                                }`}
                                                             >
                                                                 <Copy className="w-3.5 h-3.5" /> Copy Markdown
                                                             </button>
                                                             <button
                                                                 type="button"
                                                                 onClick={handleDownloadRoadmapText}
-                                                                className="flex-1 md:flex-none px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                                                className={`flex-1 md:flex-none px-4 py-2.5 border font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                                                                    isLight
+                                                                        ? "bg-white hover:bg-slate-50 border-slate-200 text-slate-750 hover:text-slate-900 shadow-sm"
+                                                                        : "bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white"
+                                                                }`}
                                                             >
                                                                 <Download className="w-3.5 h-3.5" /> Download Text
                                                             </button>
@@ -3629,8 +3727,10 @@ function FeaturesContent() {
 
                                             {/* Roadmap Timeline Phases */}
                                             <div className="space-y-4">
-                                                <h4 className="font-extrabold text-white text-base flex items-center gap-2">
-                                                    <ListTodo className="w-5 h-5 text-emerald-400" /> Execution Milestones
+                                                <h4 className={`font-extrabold text-base flex items-center gap-2 ${
+                                                    isLight ? "text-slate-900" : "text-white"
+                                                }`}>
+                                                    <ListTodo className={`w-5 h-5 ${isLight ? "text-emerald-600" : "text-emerald-400"}`} /> Execution Milestones
                                                 </h4>
                                                 <div className="space-y-3.5">
                                                     {roadmapResult.timeline.map((phase: any, phaseIdx: number) => {
@@ -3646,10 +3746,14 @@ function FeaturesContent() {
                                                         return (
                                                             <div
                                                                 key={phaseIdx}
-                                                                className={`bg-black/30 border rounded-2xl transition-all duration-300 ${
-                                                                    isExpanded
-                                                                        ? "border-emerald-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
-                                                                        : "border-white/5 hover:border-white/10"
+                                                                className={`border rounded-2xl transition-all duration-300 ${
+                                                                    isLight
+                                                                        ? isExpanded
+                                                                            ? "bg-white border-emerald-500/30 shadow-md"
+                                                                            : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm"
+                                                                        : isExpanded
+                                                                            ? "bg-black/30 border-emerald-500/20 shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
+                                                                            : "bg-black/30 border-white/5 hover:border-white/10"
                                                                 }`}
                                                             >
                                                                 {/* Header: Clickable panel to toggle expansion */}
@@ -3666,28 +3770,32 @@ function FeaturesContent() {
                                                                         {/* Phase Completion Node indicator */}
                                                                         <div className="shrink-0">
                                                                             {isPhaseCompleted ? (
-                                                                                <div className="w-7 h-7 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                                                                                <div className={`w-7 h-7 rounded-full border flex items-center justify-center ${
+                                                                                    isLight ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                                                                                }`}>
                                                                                     <CheckCircle className="w-4 h-4" />
                                                                                 </div>
                                                                             ) : (
-                                                                                <div className="w-7 h-7 rounded-full bg-white/5 border border-white/15 flex items-center justify-center text-white/50 text-xs font-black">
+                                                                                <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-black ${
+                                                                                    isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-white/5 border-white/15 text-white/50"
+                                                                                }`}>
                                                                                     {phaseIdx + 1}
                                                                                 </div>
                                                                             )}
                                                                         </div>
                                                                         
                                                                         <div className="min-w-0">
-                                                                            <h5 className="font-bold text-white text-sm truncate flex items-center gap-2">
+                                                                            <h5 className={`font-bold text-sm truncate flex items-center gap-2 ${isLight ? "text-slate-900" : "text-white"}`}>
                                                                                 {phase.phase}
                                                                             </h5>
                                                                             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                                                <span className="text-[10px] text-white/40 font-bold font-sans">
+                                                                                <span className={`text-[10px] font-bold font-sans ${isLight ? "text-slate-500" : "text-white/40"}`}>
                                                                                     {phase.duration}
                                                                                 </span>
                                                                                 {phaseTasksCount > 0 && (
                                                                                     <>
-                                                                                        <span className="text-white/20 text-[9px]">&bull;</span>
-                                                                                        <span className="text-[10px] text-emerald-400 font-extrabold">
+                                                                                        <span className={isLight ? "text-slate-300 text-[9px]" : "text-white/20 text-[9px]"}>&bull;</span>
+                                                                                        <span className={`text-[10px] font-extrabold ${isLight ? "text-emerald-600" : "text-emerald-400"}`}>
                                                                                             {phaseCheckedCount}/{phaseTasksCount} Tasks Completed
                                                                                         </span>
                                                                                     </>
@@ -3700,7 +3808,7 @@ function FeaturesContent() {
                                                                         <span className={`bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-opacity ${isExpanded ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
                                                                             {isPhaseCompleted ? "Completed" : "Active"}
                                                                         </span>
-                                                                        <div className="text-white/40 hover:text-white transition-colors">
+                                                                        <div className={isLight ? "text-slate-400 hover:text-slate-600 transition-colors" : "text-white/40 hover:text-white transition-colors"}>
                                                                             {isExpanded ? (
                                                                                 <ChevronUp className="w-4 h-4" />
                                                                             ) : (
@@ -3720,18 +3828,20 @@ function FeaturesContent() {
                                                                             transition={{ duration: 0.2, ease: "easeInOut" }}
                                                                             className="overflow-hidden"
                                                                         >
-                                                                            <div className="px-5 pb-5 pt-1.5 border-t border-white/5 space-y-4 text-left">
-                                                                                <p className="text-xs text-white/60 leading-relaxed font-medium">
+                                                                            <div className={`px-5 pb-5 pt-1.5 border-t space-y-4 text-left ${isLight ? "border-slate-100" : "border-white/5"}`}>
+                                                                                <p className={`text-xs leading-relaxed font-medium ${isLight ? "text-slate-650" : "text-white/60"}`}>
                                                                                     {phase.description}
                                                                                 </p>
                                                                                 
                                                                                 {/* Topics badges */}
                                                                                 {phase.topics && phase.topics.length > 0 && (
                                                                                     <div className="space-y-1.5">
-                                                                                        <span className="text-[10px] text-white/30 uppercase font-extrabold block">Topics to Study</span>
+                                                                                        <span className={`text-[10px] uppercase font-extrabold block ${isLight ? "text-slate-400" : "text-white/30"}`}>Topics to Study</span>
                                                                                         <div className="flex flex-wrap gap-1.5">
                                                                                             {phase.topics.map((topic: string, i: number) => (
-                                                                                                <span key={i} className="bg-white/5 border border-white/5 px-2 py-0.5 rounded-md text-[10px] text-white/70 font-semibold">{topic}</span>
+                                                                                                <span key={i} className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                                                                                                    isLight ? "bg-slate-50 border-slate-200 text-slate-700" : "bg-white/5 border-white/5 text-white/70"
+                                                                                                }`}>{topic}</span>
                                                                                             ))}
                                                                                         </div>
                                                                                     </div>
@@ -3739,11 +3849,13 @@ function FeaturesContent() {
                                                                                 
                                                                                 {/* Resources to check */}
                                                                                 {phase.resources && phase.resources.length > 0 && (
-                                                                                    <div className="space-y-1.5 bg-white/[0.01] border border-white/5 p-3.5 rounded-xl">
-                                                                                        <span className="text-[10px] text-white/30 uppercase font-extrabold block flex items-center gap-1">
-                                                                                            <BookOpen className="w-3.5 h-3.5 text-emerald-500/60" /> Study Resources
+                                                                                    <div className={`space-y-1.5 border p-3.5 rounded-xl ${
+                                                                                        isLight ? "bg-slate-50/50 border-slate-200" : "bg-white/[0.01] border border-white/5"
+                                                                                    }`}>
+                                                                                        <span className={`text-[10px] uppercase font-extrabold block flex items-center gap-1 ${isLight ? "text-slate-400" : "text-white/30"}`}>
+                                                                                            <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Study Resources
                                                                                         </span>
-                                                                                        <ul className="text-xs text-white/70 space-y-1.5 list-disc pl-4 leading-relaxed font-medium">
+                                                                                        <ul className={`text-xs space-y-1.5 list-disc pl-4 leading-relaxed font-medium ${isLight ? "text-slate-600" : "text-white/70"}`}>
                                                                                             {phase.resources.map((res: string, i: number) => (
                                                                                                 <li key={i}>{res}</li>
                                                                                             ))}
@@ -3754,12 +3866,16 @@ function FeaturesContent() {
                                                                                 {/* Task list with checkboxes */}
                                                                                 {phase.tasks && phase.tasks.length > 0 && (
                                                                                     <div className="space-y-2">
-                                                                                        <span className="text-[10px] text-white/30 uppercase font-extrabold block">Tasks Check-list</span>
+                                                                                        <span className={`text-[10px] uppercase font-extrabold block ${isLight ? "text-slate-400" : "text-white/30"}`}>Tasks Check-list</span>
                                                                                         <div className="space-y-1.5">
                                                                                             {phase.tasks.map((task: string, taskIdx: number) => {
                                                                                                 const taskKey = `${phaseIdx}_${taskIdx}`;
                                                                                                 return (
-                                                                                                    <label key={taskIdx} className="flex items-start gap-2.5 bg-black/40 border border-white/5 p-2.5 rounded-xl text-xs text-white/70 hover:text-white transition-colors cursor-pointer group">
+                                                                                                    <label key={taskIdx} className={`flex items-start gap-2.5 p-2.5 rounded-xl text-xs transition-colors cursor-pointer group border ${
+                                                                                                        isLight
+                                                                                                            ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                                                                                                            : "bg-black/40 border-white/5 text-white/70 hover:text-white"
+                                                                                                    }`}>
                                                                                                         <input
                                                                                                             type="checkbox"
                                                                                                             checked={!!roadmapTasksChecked[taskKey]}
@@ -3780,9 +3896,15 @@ function FeaturesContent() {
                                                                                                                     setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
                                                                                                                 }
                                                                                                             }}
-                                                                                                            className="mt-0.5 accent-emerald-500 rounded border-white/20 bg-black/40 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                                                                                            className={`mt-0.5 accent-emerald-500 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer border ${
+                                                                                                                isLight ? "border-slate-300 bg-white" : "border-white/20 bg-black/40"
+                                                                                                            }`}
                                                                                                         />
-                                                                                                        <span className={`font-medium ${roadmapTasksChecked[taskKey] ? "line-through text-white/30" : ""}`}>{task}</span>
+                                                                                                        <span className={`font-medium ${
+                                                                                                            roadmapTasksChecked[taskKey]
+                                                                                                                ? isLight ? "line-through text-slate-300" : "line-through text-white/30"
+                                                                                                                : ""
+                                                                                                        }`}>{task}</span>
                                                                                                     </label>
                                                                                                 );
                                                                                             })}
@@ -3801,11 +3923,19 @@ function FeaturesContent() {
 
                                             {/* Interview Tips Card */}
                                             {roadmapResult.interviewTips && roadmapResult.interviewTips.length > 0 && (
-                                                <div className="bg-[#121c16]/30 border border-emerald-500/10 rounded-2xl p-5 space-y-3">
-                                                    <h4 className="font-extrabold text-white text-sm flex items-center gap-1.5">
-                                                        <ShieldCheck className="w-4.5 h-4.5 text-emerald-400" /> Target Prep Strategy Tips
+                                                <div className={`border rounded-2xl p-5 space-y-3 ${
+                                                    isLight
+                                                        ? "bg-emerald-50/50 border-emerald-200"
+                                                        : "bg-[#121c16]/30 border border-emerald-500/10"
+                                                }`}>
+                                                    <h4 className={`font-extrabold text-sm flex items-center gap-1.5 ${
+                                                        isLight ? "text-slate-900" : "text-white"
+                                                    }`}>
+                                                        <ShieldCheck className={`w-4.5 h-4.5 ${isLight ? "text-emerald-600" : "text-emerald-400"}`} /> Target Prep Strategy Tips
                                                     </h4>
-                                                    <ul className="text-xs text-white/75 space-y-2 list-disc pl-4 leading-relaxed font-medium">
+                                                    <ul className={`text-xs space-y-2 list-disc pl-4 leading-relaxed font-medium ${
+                                                        isLight ? "text-slate-700" : "text-white/75"
+                                                    }`}>
                                                         {roadmapResult.interviewTips.map((tip: string, i: number) => (
                                                             <li key={i}>{tip}</li>
                                                         ))}

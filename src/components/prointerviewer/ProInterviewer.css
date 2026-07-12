@@ -105,6 +105,7 @@
   margin: 0;
   background: linear-gradient(135deg, #60a5fa, #3b82f6);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1112,6 +1113,201 @@ textarea.form-input {
     border: none !important;
     margin: 0 !important;
     padding: var(--page-padding, 2.5rem) !important;
+  padding-bottom: 0.2rem;
+  width: 100%;
+  position: relative;
+}
+
+.divider-accent-block .section-title-wrap::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 0;
+  width: 40px; height: 3px;
+  background-color: var(--primary-color);
+}
+
+.divider-pill-badges .section-title-wrap {
+  width: 100%;
+}
+
+.divider-pill-badges .section-title {
+  background-color: rgba(59, 130, 246, 0.08);
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+  border-left: 3px solid var(--primary-color);
+}
+
+/* List Item Formatting inside Resume */
+.section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.resume-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.resume-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-weight: 700;
+}
+
+.resume-item-org {
+  color: var(--primary-color);
+}
+
+.layout-two-column-bg .resume-item-org {
+  color: var(--sidebar-text);
+}
+
+.resume-item-sub {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-style: italic;
+  font-size: 0.9em;
+  color: var(--secondary-color);
+}
+
+.layout-two-column-bg .resume-item-sub {
+  color: var(--sidebar-text);
+  opacity: 0.8;
+}
+
+.resume-item-desc {
+  font-size: 0.9em;
+  white-space: pre-line;
+  margin-top: 0.25rem;
+  color: var(--text-color);
+}
+
+.layout-two-column-bg .resume-item-desc {
+  color: var(--sidebar-text);
+  opacity: 0.9;
+}
+
+/* Skills list rendering style */
+.skills-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.5rem;
+}
+
+.skill-tag {
+  font-size: 0.85em;
+  background-color: rgba(59, 130, 246, 0.05);
+  border: 1px solid rgba(59, 130, 246, 0.12);
+  color: var(--text-color);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.layout-two-column-bg .skill-tag {
+  background-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--sidebar-text);
+}
+
+.divider-pill-badges .skill-tag {
+  border-radius: 12px;
+  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.08);
+}
+
+/* Timeline specific layouts */
+.divider-timeline .section-list {
+  border-left: 2px dashed var(--divider-color, #e5e7eb);
+  padding-left: 1rem;
+  margin-left: 0.5rem;
+}
+
+.divider-timeline .resume-item {
+  position: relative;
+}
+
+.divider-timeline .resume-item::before {
+  content: '';
+  position: absolute;
+  left: calc(-1rem - 6px - 1px);
+  top: 5px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  border: 2px solid var(--bg-color, #ffffff);
+}
+
+/* Print Guide Overlay UI */
+.print-helper-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1f2937;
+  border: 1px solid var(--panel-border);
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  max-width: 480px;
+  width: 90%;
+}
+
+.modal-backdrop {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 99;
+}
+}
+
+/* High Fidelity Browser Print Core Rules */
+@media print {
+  /* Remove UI decorations completely */
+  .sidebar-panel,
+  .print-helper-modal,
+  .modal-backdrop,
+  .btn-floating,
+  .no-print {
+    display: none !important;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    color: #000000 !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .app-container {
+    display: block !important;
+    height: auto !important;
+    width: 100% !important;
+    overflow: visible !important;
+    background: none !important;
+  }
+
+  .preview-canvas-container {
+    display: block !important;
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .resume-page {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: var(--page-padding, 2.5rem) !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
@@ -1132,4 +1328,284 @@ textarea.form-input {
     size: A4;
     margin: 0;
   }
+}
+
+/* ==========================================================================
+   Theme Overrides (Light Mode & Eye Comfort Mode)
+   ========================================================================== */
+
+/* Light Mode Overrides for Left Sidebar panels */
+html.theme-light .resume-builder-pro {
+  --app-bg: #f8fafc;
+  --panel-bg: #ffffff;
+  --panel-border: #cbd5e1;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --input-bg: #ffffff;
+  --input-border: #cbd5e1;
+  --input-focus: #2563eb;
+}
+
+/* Eye Comfort Mode Overrides for Left Sidebar panels */
+html.theme-eyeprotect .resume-builder-pro {
+  --app-bg: #f4eae1;
+  --panel-bg: #faf6f0;
+  --panel-border: #8c8578;
+  --text-main: #000000;
+  --text-muted: #5c554a;
+  --input-bg: #ffffff;
+  --input-border: #8c8578;
+  --input-focus: #2563eb;
+}
+
+/* Common overrides for Light & Eye Comfort modes to ensure proper legibility */
+html.theme-light .resume-builder-pro,
+html.theme-eyeprotect .resume-builder-pro {
+  /* Buttons adjustments */
+  .btn-secondary {
+    background: #ffffff !important;
+    border: 1px solid var(--panel-border) !important;
+    color: var(--text-main) !important;
+  }
+  .btn-secondary:hover {
+    background: #f1f5f9 !important;
+  }
+  
+  /* Brand title text color */
+  .brand h1 {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+  }
+  .brand-icon {
+    color: #2563eb !important;
+  }
+
+  /* Navigation tab buttons */
+  .tab-btn.active {
+    color: #2563eb !important;
+    border-bottom-color: #2563eb !important;
+  }
+  
+  /* Category filter buttons */
+  .filter-badge {
+    background: #f1f5f9 !important;
+    border: 1px solid var(--panel-border) !important;
+    color: var(--text-muted) !important;
+  }
+  .filter-badge.active {
+    background: #2563eb !important;
+    color: #ffffff !important;
+    border-color: #2563eb !important;
+  }
+  
+  /* Accordion component background adjustments */
+  .accordion-item {
+    background: #ffffff !important;
+    border-color: var(--panel-border) !important;
+  }
+  .accordion-header {
+    background: #f8fafc !important;
+    color: var(--text-main) !important;
+  }
+  .accordion-header:hover {
+    background: #f1f5f9 !important;
+  }
+  .accordion-content {
+    background: #ffffff !important;
+    border-top-color: var(--panel-border) !important;
+  }
+  .accordion-header-left svg {
+    color: #2563eb !important;
+  }
+
+  /* Template selector grid mockups and cards */
+  .template-card {
+    background: #ffffff !important;
+    border: 1px solid var(--panel-border) !important;
+  }
+  .template-card.active {
+    border-color: #2563eb !important;
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2) !important;
+  }
+  .template-card-name {
+    color: var(--text-main) !important;
+  }
+  
+  /* Style Customizer palettes grids label color */
+  .customizer-section-title {
+    color: var(--text-main) !important;
+    border-bottom-color: var(--panel-border) !important;
+  }
+  
+  /* Preview panel zoom controllers card bg */
+  .preview-canvas-container .no-print > div {
+    background: #ffffff !important;
+    border-color: var(--panel-border) !important;
+  }
+  .preview-canvas-container .no-print button {
+    color: var(--text-main) !important;
+  }
+  .preview-canvas-container .no-print button:hover {
+    background: #f1f5f9 !important;
+  }
+  
+  /* Zoom level label */
+  .preview-canvas-container .no-print span {
+    color: var(--text-main) !important;
+  }
+  
+  /* Add buttons inside lists */
+  .btn-add {
+    background: #f1f5f9 !important;
+    border: 1px dashed var(--panel-border) !important;
+    color: #2563eb !important;
+  }
+  .btn-add:hover {
+    background: #e2e8f0 !important;
+  }
+  
+  /* Section card item list cards */
+  .list-item-card {
+    background: #f8fafc !important;
+    border: 1px solid var(--panel-border) !important;
+  }
+}
+
+/* Standout sheet panel canvas background colors for Light/Eye Comfort modes */
+html.theme-light .preview-canvas-container {
+  background: #cbd5e1 !important; /* Standout slate-grey desk */
+}
+html.theme-eyeprotect .preview-canvas-container {
+  background: #d8cebe !important; /* Standout sepia desk */
+}
+
+/* ==========================================================================
+   RESUME PREVIEW CANVAS SHEET PROTECTION OVERRIDES
+   ========================================================================== */
+
+/* Protect the resume sheet canvas and its children from global theme overrides */
+.resume-builder-pro .resume-page,
+html.theme-light .resume-builder-pro .resume-page,
+html.theme-eyeprotect .resume-builder-pro .resume-page {
+  background-color: var(--bg-color) !important;
+  color: var(--text-color) !important;
+}
+
+.resume-builder-pro .resume-page * {
+  /* Prevent global overrides from breaking the theme color hierarchy of the resume page */
+  border-color: var(--divider-color, rgba(0, 0, 0, 0.1)) !important;
+}
+
+/* Specific elements inside the sheet that have theme color backgrounds */
+.resume-builder-pro .resume-page .layout-two-column-bg,
+.resume-builder-pro .resume-page .resume-sidebar-col,
+html.theme-light .resume-builder-pro .resume-page .layout-two-column-bg,
+html.theme-light .resume-builder-pro .resume-page .resume-sidebar-col,
+html.theme-eyeprotect .resume-builder-pro .resume-page .layout-two-column-bg,
+html.theme-eyeprotect .resume-builder-pro .resume-page .resume-sidebar-col {
+  background-color: var(--sidebar-bg) !important;
+  color: var(--sidebar-text) !important;
+}
+
+.resume-builder-pro .resume-page .resume-sidebar-col * {
+  color: var(--sidebar-text) !important;
+}
+
+.resume-builder-pro .resume-page .header-bold-banner,
+html.theme-light .resume-builder-pro .resume-page .header-bold-banner,
+html.theme-eyeprotect .resume-builder-pro .resume-page .header-bold-banner {
+  background-color: var(--banner-bg) !important;
+  color: var(--banner-text) !important;
+}
+
+.resume-builder-pro .resume-page .header-bold-banner * {
+  color: var(--banner-text) !important;
+}
+
+.resume-builder-pro .resume-page .section-title,
+html.theme-light .resume-builder-pro .resume-page .section-title,
+html.theme-eyeprotect .resume-builder-pro .resume-page .section-title {
+  color: var(--primary-color) !important;
+  border-bottom-color: var(--primary-color) !important;
+}
+
+.resume-builder-pro .resume-page .contact-item svg,
+html.theme-light .resume-builder-pro .resume-page .contact-item svg,
+html.theme-eyeprotect .resume-builder-pro .resume-page .contact-item svg {
+  color: var(--primary-color) !important;
+}
+
+.resume-builder-pro .resume-page .resume-item-date,
+html.theme-light .resume-builder-pro .resume-page .resume-item-date,
+html.theme-eyeprotect .resume-builder-pro .resume-page .resume-item-date {
+  color: var(--secondary-color) !important;
+}
+
+/* Protect all header, description, and list text inside the resume sheet from global Light/Eye Comfort overrides */
+html.theme-light .resume-builder-pro .resume-page h1,
+html.theme-eyeprotect .resume-builder-pro .resume-page h1 {
+  color: var(--primary-color) !important;
+}
+
+html.theme-light .resume-builder-pro .resume-page h2,
+html.theme-eyeprotect .resume-builder-pro .resume-page h2 {
+  color: var(--secondary-color) !important;
+}
+
+html.theme-light .resume-builder-pro .resume-page h3,
+html.theme-eyeprotect .resume-builder-pro .resume-page h3 {
+  color: var(--primary-color) !important;
+}
+
+html.theme-light .resume-builder-pro .resume-page h4,
+html.theme-eyeprotect .resume-builder-pro .resume-page h4 {
+  color: var(--text-color) !important;
+}
+
+html.theme-light .resume-builder-pro .resume-page p,
+html.theme-eyeprotect .resume-builder-pro .resume-page p,
+html.theme-light .resume-builder-pro .resume-page span,
+html.theme-eyeprotect .resume-builder-pro .resume-page span,
+html.theme-light .resume-builder-pro .resume-page div,
+html.theme-eyeprotect .resume-builder-pro .resume-page div {
+  color: var(--text-color);
+}
+
+/* If headers are in a bold banner, preserve their correct banner text colors */
+html.theme-light .resume-builder-pro .resume-page .header-bold-banner h1,
+html.theme-eyeprotect .resume-builder-pro .resume-page .header-bold-banner h1,
+html.theme-light .resume-builder-pro .resume-page .header-bold-banner h2,
+html.theme-eyeprotect .resume-builder-pro .resume-page .header-bold-banner h2,
+html.theme-light .resume-builder-pro .resume-page .header-bold-banner p,
+html.theme-eyeprotect .resume-builder-pro .resume-page .header-bold-banner p,
+html.theme-light .resume-builder-pro .resume-page .header-bold-banner span,
+html.theme-eyeprotect .resume-builder-pro .resume-page .header-bold-banner span {
+  color: var(--banner-text, #ffffff) !important;
+}
+
+html.theme-light .resume-builder-pro .resume-page .resume-sidebar-col h1,
+html.theme-eyeprotect .resume-builder-pro .resume-page .resume-sidebar-col h1,
+html.theme-light .resume-builder-pro .resume-page .resume-sidebar-col h2,
+html.theme-eyeprotect .resume-builder-pro .resume-page .resume-sidebar-col h2,
+html.theme-light .resume-builder-pro .resume-page .resume-sidebar-col h3,
+html.theme-eyeprotect .resume-builder-pro .resume-page .resume-sidebar-col h3,
+html.theme-light .resume-builder-pro .resume-page .resume-sidebar-col p,
+html.theme-eyeprotect .resume-builder-pro .resume-page .resume-sidebar-col p,
+html.theme-light .resume-builder-pro .resume-page .resume-sidebar-col span,
+html.theme-eyeprotect .resume-builder-pro .resume-page .resume-sidebar-col span {
+  color: var(--sidebar-text) !important;
+}
+
+/* Eye Comfort Mode filter localization for Resume Builder Pro */
+
+/* Disable global sepia filter for the entire html/body when Resume Builder is active */
+html.theme-eyeprotect:has(.resume-builder-pro) {
+  filter: none !important;
+}
+
+/* Apply the sepia eye protection filter exclusively to the left controls sidebar */
+html.theme-eyeprotect .resume-builder-pro .sidebar-panel {
+  filter: sepia(0.55) contrast(0.95) brightness(0.95) !important;
 }

@@ -6,6 +6,7 @@ import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Down
 import { useRouter } from "next/navigation";
 import { marked } from "marked";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
+import { motion } from "framer-motion";
 
 export default function Home() {
     const router = useRouter();
@@ -14,6 +15,7 @@ export default function Home() {
     const [pausedSession, setPausedSession] = useState<any>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
 
     useEffect(() => {
         setIsLoggedIn(getStorageItem("userLoggedIn") === "true");
@@ -22,6 +24,7 @@ export default function Home() {
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
             setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
         }
         
         const stored = getStorageItem("interviewSessions");
@@ -44,6 +47,38 @@ export default function Home() {
                 console.error(e);
             }
         }
+
+        // Dynamic scrollspy active indicators
+        const handleHashChange = () => {
+            if (window.location.hash === "#how-it-works") {
+                setActiveSection("how-it-works");
+            } else {
+                setActiveSection("home");
+            }
+        };
+
+        const handleScroll = () => {
+            const howItWorks = document.getElementById("how-it-works");
+            if (howItWorks) {
+                const rect = howItWorks.getBoundingClientRect();
+                if (rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2) {
+                    setActiveSection("how-it-works");
+                    return;
+                }
+            }
+            setActiveSection("home");
+        };
+
+        window.addEventListener("hashchange", handleHashChange);
+        window.addEventListener("scroll", handleScroll);
+        
+        handleHashChange();
+        handleScroll();
+
+        return () => {
+            window.removeEventListener("hashchange", handleHashChange);
+            window.removeEventListener("scroll", handleScroll);
+        };
     }, []);
 
     const toggleMode = () => {
@@ -59,7 +94,7 @@ export default function Home() {
         
         setTheme(nextTheme);
         localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = `theme-${nextTheme}`;
+        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
     };
 
     const handleResume = () => {
@@ -148,7 +183,18 @@ export default function Home() {
                     <span className="font-bold text-xl tracking-tight">ProInterview</span>
                 </div>
                 <nav className="flex gap-6 text-sm font-medium text-white/70 items-center">
-                    {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
+                    {!isRealisticMode && (
+                        <Link 
+                            href="/" 
+                            className={`transition-colors pb-1 ${
+                                activeSection === "home" 
+                                    ? "text-white border-b border-indigo-500" 
+                                    : "hover:text-white text-white/70"
+                            }`}
+                        >
+                            Home
+                        </Link>
+                    )}
                     {isLoggedIn && (
                         <button 
                             onClick={toggleMode}
@@ -158,8 +204,19 @@ export default function Home() {
                             {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
                         </button>
                     )}
-                    {!isRealisticMode && <Link href="/features" className="hover:text-white transition-colors">Features</Link>}
-                    {!isRealisticMode && <Link href="#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
+                    {!isRealisticMode && <Link href="/features" className="hover:text-white text-white/70 transition-colors pb-1">Features</Link>}
+                    {!isRealisticMode && (
+                        <Link 
+                            href="#how-it-works" 
+                            className={`transition-colors pb-1 ${
+                                activeSection === "how-it-works" 
+                                    ? "text-white border-b border-indigo-500" 
+                                    : "hover:text-white text-white/70"
+                            }`}
+                        >
+                            How it works
+                        </Link>
+                    )}
                     
                     {/* Theme Toggle Button */}
                     <button 
@@ -195,8 +252,23 @@ export default function Home() {
                     </div>
 
                     <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
-                        Master your next <br />
-                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">technical interview</span>
+                        <motion.span
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                            className="inline-block"
+                        >
+                            Master your next
+                        </motion.span>
+                        <br />
+                        <motion.span
+                            initial={{ opacity: 0, y: 30 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                            className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 inline-block"
+                        >
+                            technical interview
+                        </motion.span>
                     </h1>
 
                     <p className="text-lg md:text-xl text-white/60 mb-12 max-w-2xl leading-relaxed">

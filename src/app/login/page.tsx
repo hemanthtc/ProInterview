@@ -78,6 +78,7 @@ function LoginContent() {
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
             setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
         }
     }, []);
 
@@ -88,7 +89,7 @@ function LoginContent() {
         
         setTheme(nextTheme);
         localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = `theme-${nextTheme}`;
+        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
     };
 
     // Auth States
@@ -509,22 +510,31 @@ function LoginContent() {
     };
 
     const headerInfo = getHeaderInfo();
+    const isLight = theme === "light" || theme === "eyeprotect";
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white flex flex-col font-sans relative overflow-hidden">
+        <div className={`min-h-screen flex flex-col font-sans relative overflow-hidden transition-colors duration-300 ${
+            isLight ? "bg-slate-50 text-slate-900" : "bg-[#050505] text-white"
+        }`}>
             <AnimatePresence>
                 {loading && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-6"
+                        className={`fixed inset-0 backdrop-blur-md z-50 flex items-center justify-center p-6 ${
+                            isLight ? "bg-slate-900/60" : "bg-black/85"
+                        }`}
                     >
                         <motion.div
                             initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
                             exit={{ scale: 0.95, opacity: 0 }}
-                            className="max-w-md w-full bg-gradient-to-b from-[#111] to-[#0a0a0a] border border-white/10 rounded-3xl p-8 text-center shadow-[0_0_50px_rgba(79,70,229,0.3)] relative overflow-hidden"
+                            className={`max-w-md w-full rounded-3xl p-8 text-center shadow-[0_0_50px_rgba(79,70,229,0.3)] relative overflow-hidden border ${
+                                isLight
+                                    ? "bg-white border-slate-200"
+                                    : "bg-gradient-to-b from-[#111] to-[#0a0a0a] border-white/10"
+                            }`}
                         >
                             <div className="absolute -top-20 -right-20 w-40 h-40 bg-indigo-500/20 rounded-full blur-[40px] pointer-events-none" />
                             <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-purple-500/20 rounded-full blur-[40px] pointer-events-none" />
@@ -536,7 +546,11 @@ function LoginContent() {
                                             initial={{ scale: 0 }}
                                             animate={{ scale: 1 }}
                                             transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                                            className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+                                            className={`w-20 h-20 rounded-full flex items-center justify-center border ${
+                                                isLight
+                                                    ? "bg-emerald-50 border-emerald-200 text-emerald-600 shadow-sm"
+                                                    : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.25)]"
+                                            }`}
                                         >
                                             <motion.svg
                                                 className="w-10 h-10"
@@ -568,19 +582,29 @@ function LoginContent() {
                                             transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
                                             className="absolute inset-2 rounded-full border-b-2 border-l-2 border-purple-500"
                                         />
-                                        <div className="absolute inset-4 rounded-full bg-black/40 flex items-center justify-center">
-                                            <Video className="w-6 h-6 text-indigo-400 animate-pulse" />
+                                        <div className={`absolute inset-4 rounded-full flex items-center justify-center ${
+                                            isLight ? "bg-slate-100" : "bg-black/40"
+                                        }`}>
+                                            <Video className={`w-6 h-6 animate-pulse ${
+                                                isLight ? "text-indigo-600" : "text-indigo-400"
+                                            }`} />
                                         </div>
                                     </div>
                                 )}
 
-                                <h3 className="text-xl font-bold mb-2 bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 text-transparent bg-clip-text">
+                                <h3 className={`text-xl font-bold mb-2 ${
+                                    isLight
+                                        ? "text-slate-900"
+                                        : "bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300 text-transparent bg-clip-text"
+                                }`}>
                                     {loginSuccess ? "Authentication Successful" : "Secure Authentication"}
                                 </h3>
-                                <p className="text-sm text-white/60 mb-6">
+                                <p className={`text-sm mb-6 ${ isLight ? "text-slate-500" : "text-white/60" }`}>
                                     {loginSuccess ? `Welcome back, ${successName}! Syncing your profile...` : "Verifying credentials and establishing a secure session..."}
                                 </p>
-                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/5 text-xs text-white/40">
+                                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs ${
+                                    isLight ? "bg-slate-100 border-slate-200 text-slate-500" : "bg-white/5 border-white/5 text-white/40"
+                                }`}>
                                     {loginSuccess ? (
                                         <>
                                             <motion.div
@@ -588,11 +612,11 @@ function LoginContent() {
                                                 transition={{ duration: 1, repeat: Infinity }}
                                                 className="w-2 h-2 rounded-full bg-emerald-400"
                                             />
-                                            <span>Redirecting to home...</span>
+                                            <span className={isLight ? "text-slate-600" : ""}>Redirecting to home...</span>
                                         </>
                                     ) : (
                                         <>
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-500" />
                                             <span>Syncing with cloud database</span>
                                         </>
                                     )}
@@ -603,38 +627,56 @@ function LoginContent() {
                 )}
             </AnimatePresence>
 
-            <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+            <header className={`px-8 py-6 flex items-center justify-between border-b backdrop-blur-md sticky top-0 z-50 transition-colors duration-300 ${
+                isLight
+                    ? "border-slate-200 bg-white/90 shadow-sm"
+                    : "border-white/10 bg-[#050505]/80"
+            }`}>
                 <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-md">
                         <Video className="w-5 h-5 text-white" />
                     </div>
-                    <span className="font-bold text-xl tracking-tight">ProInterview</span>
+                    <span className={`font-bold text-xl tracking-tight ${ isLight ? "text-slate-900" : "text-white" }`}>ProInterview</span>
                 </Link>
                 <div className="flex items-center gap-4">
                     {/* Theme Toggle Button */}
                     <button 
                         onClick={cycleTheme}
-                        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                        className={`p-2.5 border rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer ${
+                            isLight
+                                ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-600 hover:text-slate-900"
+                                : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white"
+                        }`}
                         title={`Current Theme: ${theme}. Click to switch.`}
                     >
                         {theme === "dark" && <Moon className="w-4 h-4" />}
                         {theme === "light" && <Sun className="w-4 h-4" />}
-                        {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                        {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-500" />}
                     </button>
-                    <Link href="/" className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-2">
+                    <Link href="/" className={`text-sm transition-colors flex items-center gap-2 ${
+                        isLight ? "text-slate-500 hover:text-slate-900" : "text-white/60 hover:text-white"
+                    }`}>
                         <ArrowLeft className="w-4 h-4" /> Back to Home
                     </Link>
                 </div>
             </header>
 
             <main className="flex-1 flex items-center justify-center p-6 relative">
-                <div className="absolute top-[10%] right-[20%] w-[400px] h-[400px] bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none z-0" />
-                <div className="absolute bottom-[20%] left-[20%] w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none z-0" />
+                <div className={`absolute top-[10%] right-[20%] w-[400px] h-[400px] rounded-full blur-[100px] pointer-events-none z-0 ${
+                    isLight ? "bg-indigo-300/20" : "bg-indigo-600/10"
+                }`} />
+                <div className={`absolute bottom-[20%] left-[20%] w-[300px] h-[300px] rounded-full blur-[100px] pointer-events-none z-0 ${
+                    isLight ? "bg-purple-300/20" : "bg-purple-600/10"
+                }`} />
 
-                <div className="max-w-md w-full bg-[#111] border border-white/10 rounded-3xl p-8 z-10 shadow-[0_0_50px_rgba(0,0,0,0.5)] relative transition-all duration-300">
+                <div className={`max-w-md w-full rounded-3xl p-8 z-10 relative transition-all duration-300 border ${
+                    isLight
+                        ? "bg-white border-slate-200 shadow-[0_8px_40px_rgba(99,102,241,0.12),0_2px_12px_rgba(0,0,0,0.06)]"
+                        : "bg-[#111] border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+                }`}>
                     <div className="text-center mb-6">
-                        <h1 className="text-3xl font-bold mb-2">{headerInfo.title}</h1>
-                        <p className="text-white/50 text-sm">{headerInfo.subtitle}</p>
+                        <h1 className={`text-3xl font-bold mb-2 ${ isLight ? "text-slate-900" : "text-white" }`}>{headerInfo.title}</h1>
+                        <p className={`text-sm ${ isLight ? "text-slate-500" : "text-white/50" }`}>{headerInfo.subtitle}</p>
                     </div>
 
                     <AnimatePresence>
@@ -646,18 +688,26 @@ function LoginContent() {
                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                                 className="overflow-hidden mb-4"
                             >
-                                <div className="flex items-start gap-3 text-red-300 bg-gradient-to-r from-red-500/15 to-rose-600/15 p-4 rounded-2xl border border-red-500/30 text-sm shadow-[0_4px_20px_rgba(239,68,68,0.15)] backdrop-blur-md relative group">
-                                    <div className="w-8 h-8 rounded-lg bg-red-500/20 flex items-center justify-center shrink-0 border border-red-500/40">
-                                        <AlertCircle className="w-4 h-4 text-red-400" />
+                                <div className={`flex items-start gap-3 p-4 rounded-2xl border text-sm relative group ${
+                                    isLight
+                                        ? "bg-red-50 border-red-200 text-red-800"
+                                        : "text-red-300 bg-gradient-to-r from-red-500/15 to-rose-600/15 border-red-500/30 shadow-[0_4px_20px_rgba(239,68,68,0.15)] backdrop-blur-md"
+                                }`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                                        isLight ? "bg-red-100 border-red-200" : "bg-red-500/20 border-red-500/40"
+                                    }`}>
+                                        <AlertCircle className={`w-4 h-4 ${ isLight ? "text-red-600" : "text-red-400" }`} />
                                     </div>
                                     <div className="flex-1 min-w-0 pr-6">
-                                        <p className="font-bold text-white text-xs tracking-wider uppercase mb-1">Attention Required</p>
-                                        <p className="text-white/70 leading-relaxed text-xs">{error}</p>
+                                        <p className={`font-bold text-xs tracking-wider uppercase mb-1 ${ isLight ? "text-red-700" : "text-white" }`}>Attention Required</p>
+                                        <p className={`leading-relaxed text-xs ${ isLight ? "text-red-600" : "text-white/70" }`}>{error}</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setError("")}
-                                        className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-lg text-xs"
+                                        className={`absolute right-3 top-3 transition-colors p-1 rounded-lg text-xs ${
+                                            isLight ? "text-red-400 hover:text-red-700 hover:bg-red-100" : "text-white/30 hover:text-white hover:bg-white/5"
+                                        }`}
                                     >
                                         ✕
                                     </button>
@@ -672,18 +722,26 @@ function LoginContent() {
                                 transition={{ duration: 0.3, ease: "easeInOut" }}
                                 className="overflow-hidden mb-4"
                             >
-                                <div className="flex items-start gap-3 text-emerald-300 bg-gradient-to-r from-emerald-500/15 to-teal-600/15 p-4 rounded-2xl border border-emerald-500/30 text-sm shadow-[0_4px_20px_rgba(16,185,129,0.15)] backdrop-blur-md relative group">
-                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/40">
-                                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                                <div className={`flex items-start gap-3 p-4 rounded-2xl border text-sm relative group ${
+                                    isLight
+                                        ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                                        : "text-emerald-300 bg-gradient-to-r from-emerald-500/15 to-teal-600/15 border-emerald-500/30 shadow-[0_4px_20px_rgba(16,185,129,0.15)] backdrop-blur-md"
+                                }`}>
+                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                                        isLight ? "bg-emerald-100 border-emerald-200" : "bg-emerald-500/20 border-emerald-500/40"
+                                    }`}>
+                                        <CheckCircle className={`w-4 h-4 ${ isLight ? "text-emerald-600" : "text-emerald-400" }`} />
                                     </div>
                                     <div className="flex-1 min-w-0 pr-6">
-                                        <p className="font-bold text-white text-xs tracking-wider uppercase mb-1">Success</p>
-                                        <p className="text-white/70 leading-relaxed text-xs">{successMessage}</p>
+                                        <p className={`font-bold text-xs tracking-wider uppercase mb-1 ${ isLight ? "text-emerald-700" : "text-white" }`}>Success</p>
+                                        <p className={`leading-relaxed text-xs ${ isLight ? "text-emerald-600" : "text-white/70" }`}>{successMessage}</p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => setSuccessMessage("")}
-                                        className="absolute right-3 top-3 text-white/30 hover:text-white transition-colors p-1 hover:bg-white/5 rounded-lg text-xs"
+                                        className={`absolute right-3 top-3 transition-colors p-1 rounded-lg text-xs ${
+                                            isLight ? "text-emerald-400 hover:text-emerald-700 hover:bg-emerald-100" : "text-white/30 hover:text-white hover:bg-white/5"
+                                        }`}
                                     >
                                         ✕
                                     </button>
@@ -696,18 +754,28 @@ function LoginContent() {
                     {otpStep === "form" && (
                         <>
                             {/* User / Organization Toggle Switch */}
-                            <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
+                            <div className={`flex rounded-xl p-1 mb-6 border relative z-20 ${
+                                isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/5"
+                            }`}>
                                 <button 
                                     type="button" 
                                     onClick={() => { setLoginMode("user"); setError(""); setSuccessMessage(""); }}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "user" ? "bg-indigo-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                                        loginMode === "user"
+                                            ? "bg-indigo-600 text-white shadow-md"
+                                            : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/40 hover:text-white/70")
+                                    }`}
                                 >
                                     User Login
                                 </button>
                                 <button 
                                     type="button" 
                                     onClick={() => { setLoginMode("organization"); setError(""); setSuccessMessage(""); }}
-                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${loginMode === "organization" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                    className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                                        loginMode === "organization"
+                                            ? "bg-purple-600 text-white shadow-md"
+                                            : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/40 hover:text-white/70")
+                                    }`}
                                 >
                                     Organization
                                 </button>
@@ -720,7 +788,11 @@ function LoginContent() {
                                         type="button"
                                         onClick={handleGoogleLogin}
                                         disabled={loading}
-                                        className="w-full h-12 mb-6 flex items-center justify-center gap-3 bg-white text-black rounded-xl font-bold hover:bg-gray-200 transition-colors disabled:opacity-70"
+                                        className={`w-full h-12 mb-6 flex items-center justify-center gap-3 rounded-xl font-bold transition-all disabled:opacity-70 border ${
+                                            isLight
+                                                ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                                : "bg-white text-black border-transparent hover:bg-gray-200"
+                                        }`}
                                     >
                                         {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
                                             <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -735,19 +807,29 @@ function LoginContent() {
                                     </button>
 
                                     <div className="flex items-center gap-4 mb-6">
-                                        <div className="h-px bg-white/10 flex-1"></div>
-                                        <span className="text-xs font-semibold text-white/40 uppercase tracking-wider">OR</span>
-                                        <div className="h-px bg-white/10 flex-1"></div>
+                                        <div className={`h-px flex-1 ${ isLight ? "bg-slate-200" : "bg-white/10" }`}></div>
+                                        <span className={`text-xs font-semibold uppercase tracking-wider ${ isLight ? "text-slate-400" : "text-white/40" }`}>OR</span>
+                                        <div className={`h-px flex-1 ${ isLight ? "bg-slate-200" : "bg-white/10" }`}></div>
                                     </div>
 
                                     {/* Tab toggle */}
-                                    <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5">
+                                    <div className={`flex rounded-xl p-1 mb-6 border ${
+                                        isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/5"
+                                    }`}>
                                         <button type="button" onClick={() => { setLoginType("email"); setError(""); setSuccessMessage(""); setShowCountryDropdown(false); }}
-                                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "email" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
+                                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                                                loginType === "email"
+                                                    ? (isLight ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "bg-white/10 text-white shadow-md")
+                                                    : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/40 hover:text-white/70")
+                                            }`}>
                                             Email
                                         </button>
                                         <button type="button" onClick={() => { setLoginType("phone"); setError(""); setSuccessMessage(""); setShowCountryDropdown(false); }}
-                                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${loginType === "phone" ? "bg-white/10 text-white shadow-md" : "text-white/40 hover:text-white/70"}`}>
+                                            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all ${
+                                                loginType === "phone"
+                                                    ? (isLight ? "bg-white text-slate-900 shadow-sm border border-slate-200" : "bg-white/10 text-white shadow-md")
+                                                    : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/40 hover:text-white/70")
+                                            }`}>
                                             Phone Number
                                         </button>
                                     </div>
@@ -756,18 +838,28 @@ function LoginContent() {
 
                             {/* Sub-tab toggle for Organization Mode */}
                             {loginMode === "organization" && (
-                                <div className="flex bg-white/5 rounded-xl p-1 mb-6 border border-white/5 relative z-20">
+                                <div className={`flex rounded-xl p-1 mb-6 border relative z-20 ${
+                                    isLight ? "bg-slate-100 border-slate-200" : "bg-white/5 border-white/5"
+                                }`}>
                                     <button 
                                         type="button" 
                                         onClick={() => { setOrgSubMode("admin"); setError(""); }}
-                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "admin" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                                            orgSubMode === "admin"
+                                                ? "bg-purple-600 text-white shadow-md"
+                                                : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/40 hover:text-white/70")
+                                        }`}
                                     >
                                         Administration Login
                                     </button>
                                     <button 
                                         type="button" 
                                         onClick={() => { setOrgSubMode("employee"); setError(""); }}
-                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${orgSubMode === "employee" ? "bg-purple-600 text-white shadow-md font-bold" : "text-white/40 hover:text-white/70"}`}
+                                        className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-all cursor-pointer ${
+                                            orgSubMode === "employee"
+                                                ? "bg-purple-600 text-white shadow-md"
+                                                : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/40 hover:text-white/70")
+                                        }`}
                                     >
                                         Employee Login
                                     </button>
@@ -781,14 +873,18 @@ function LoginContent() {
                                         {/* Display name — only on registration */}
                                         {isRegistering && (
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Your Name</label>
+                                                <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>Your Name</label>
                                                 <div className="relative">
-                                                    <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <User className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
                                                     <input
                                                         type="text"
                                                         value={displayName}
                                                         onChange={e => setDisplayName(e.target.value)}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                                        className={`w-full border rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-1 transition-all font-sans ${
+                                                            isLight
+                                                                ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-200"
+                                                                : "bg-black/50 border-white/10 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                                        }`}
                                                         placeholder="John Doe"
                                                     />
                                                 </div>
@@ -798,50 +894,70 @@ function LoginContent() {
                                         {/* Email or Phone */}
                                         {loginType === "email" ? (
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Email Address</label>
+                                                <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>Email Address</label>
                                                 <div className="relative">
-                                                    <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <Mail className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
                                                     <input
                                                         type="email"
                                                         value={email}
                                                         onChange={e => setEmail(e.target.value)}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                                        className={`w-full border rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-1 transition-all font-sans ${
+                                                            isLight
+                                                                ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-200"
+                                                                : "bg-black/50 border-white/10 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                                        }`}
                                                         placeholder="name@company.com"
                                                     />
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Phone Number</label>
+                                                <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>Phone Number</label>
                                                 <div className="relative flex items-stretch">
                                                     <button type="button" onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                                                        className="px-3 bg-black/50 border border-white/10 border-r-0 rounded-l-xl flex items-center gap-1.5 text-sm shrink-0 hover:bg-white/10 transition-colors">
-                                                        <span className="opacity-70">{selectedCountry.iso}</span>
-                                                        <span className="font-mono">{selectedCountry.code}</span>
-                                                        <ChevronDown className="w-3 h-3 text-white/50" />
+                                                        className={`px-3 border border-r-0 rounded-l-xl flex items-center gap-1.5 text-sm shrink-0 transition-colors ${
+                                                            isLight
+                                                                ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
+                                                                : "bg-black/50 border-white/10 hover:bg-white/10"
+                                                        }`}>
+                                                        <span className={`opacity-70 ${ isLight ? "text-slate-600" : "" }`}>{selectedCountry.iso}</span>
+                                                        <span className={`font-mono ${ isLight ? "text-slate-800" : "" }`}>{selectedCountry.code}</span>
+                                                        <ChevronDown className={`w-3 h-3 ${ isLight ? "text-slate-500" : "text-white/50" }`} />
                                                     </button>
                                                     <input type="tel" value={phone} onChange={e => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-r-xl pl-3 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 transition-all font-sans"
+                                                        className={`w-full border rounded-r-xl pl-3 pr-4 py-3 focus:outline-none transition-all font-sans ${
+                                                            isLight
+                                                                ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-200"
+                                                                : "bg-black/50 border-white/10 text-white focus:border-indigo-500"
+                                                        }`}
                                                         placeholder="555-000-0000" />
                                                     {showCountryDropdown && (
                                                         <>
                                                             <div className="fixed inset-0 z-40" onClick={() => setShowCountryDropdown(false)} />
-                                                            <div className="absolute top-[110%] left-0 w-[280px] bg-[#1a1a24] border border-white/10 rounded-xl shadow-2xl z-50 max-h-64 flex flex-col overflow-hidden">
-                                                                <div className="p-2 border-b border-white/10 relative shrink-0">
-                                                                    <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                                                            <div className={`absolute top-[110%] left-0 w-[280px] border rounded-xl shadow-2xl z-50 max-h-64 flex flex-col overflow-hidden ${
+                                                                isLight ? "bg-white border-slate-200" : "bg-[#1a1a24] border-white/10"
+                                                            }`}>
+                                                                <div className={`p-2 border-b relative shrink-0 ${ isLight ? "border-slate-200" : "border-white/10" }`}>
+                                                                    <Search className={`w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/40" }`} />
                                                                     <input type="text" placeholder="Search country..." value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
-                                                                        className="w-full bg-black/40 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
+                                                                        className={`w-full border rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none transition-colors ${
+                                                                            isLight
+                                                                                ? "bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-indigo-400"
+                                                                                : "bg-black/40 border-white/10 focus:border-indigo-500"
+                                                                        }`} />
                                                                 </div>
                                                                 <div className="overflow-y-auto p-1 flex-1">
                                                                     {filteredCountries.map(c => (
                                                                         <button type="button" key={c.iso}
                                                                             onClick={() => { setSelectedCountry(c); setShowCountryDropdown(false); setCountrySearch(""); }}
-                                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/5 rounded-lg flex justify-between items-center transition-colors">
-                                                                            <span className="text-white/80">{c.name} ({c.iso})</span>
-                                                                            <span className="text-white/50 font-mono">{c.code}</span>
+                                                                            className={`w-full text-left px-3 py-2 text-sm rounded-lg flex justify-between items-center transition-colors ${
+                                                                                isLight ? "text-slate-700 hover:bg-slate-50" : "hover:bg-white/5"
+                                                                            }`}>
+                                                                            <span className={isLight ? "text-slate-700" : "text-white/80"}>{c.name} ({c.iso})</span>
+                                                                            <span className={`font-mono ${ isLight ? "text-slate-500" : "text-white/50" }`}>{c.code}</span>
                                                                         </button>
                                                                     ))}
-                                                                    {filteredCountries.length === 0 && <div className="px-3 py-4 text-center text-sm text-white/40">No countries found</div>}
+                                                                    {filteredCountries.length === 0 && <div className={`px-3 py-4 text-center text-sm ${ isLight ? "text-slate-400" : "text-white/40" }`}>No countries found</div>}
                                                                 </div>
                                                             </div>
                                                         </>
@@ -855,28 +971,36 @@ function LoginContent() {
                                         {/* Organization Inputs */}
                                         {orgSubMode === "admin" ? (
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Administration ID</label>
+                                                <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>Administration ID</label>
                                                 <div className="relative">
-                                                    <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <User className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
                                                     <input
                                                         type="text"
                                                         value={adminId}
                                                         onChange={e => setAdminId(e.target.value)}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
+                                                        className={`w-full border rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-1 transition-all font-sans ${
+                                                            isLight
+                                                                ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-purple-500 focus:ring-purple-200"
+                                                                : "bg-black/50 border-white/10 text-white focus:border-purple-500 focus:ring-purple-500"
+                                                        }`}
                                                         placeholder="e.g. admin123"
                                                     />
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="space-y-1">
-                                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Employee ID</label>
+                                                <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>Employee ID</label>
                                                 <div className="relative">
-                                                    <User className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                                    <User className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
                                                     <input
                                                         type="text"
                                                         value={employeeId}
                                                         onChange={e => setEmployeeId(e.target.value)}
-                                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-all font-sans"
+                                                        className={`w-full border rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-1 transition-all font-sans ${
+                                                            isLight
+                                                                ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-purple-500 focus:ring-purple-200"
+                                                                : "bg-black/50 border-white/10 text-white focus:border-purple-500 focus:ring-purple-500"
+                                                        }`}
                                                         placeholder="e.g. emp123"
                                                     />
                                                 </div>
@@ -887,15 +1011,21 @@ function LoginContent() {
 
                                 {/* Password with hover-to-reveal eye */}
                                 <div className="space-y-1 relative z-10">
-                                    <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">Password</label>
+                                    <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>Password</label>
                                     <div className="relative">
-                                        <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                        <Lock className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
                                         <input
                                             type={eyeHovering ? "text" : "password"}
                                             value={password}
                                             onChange={e => setPassword(e.target.value)}
-                                            className={`w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white focus:outline-none focus:ring-1 transition-all ${
-                                                loginMode === "organization" ? "focus:border-purple-500 focus:ring-purple-500 font-sans" : "focus:border-indigo-500 focus:ring-indigo-500"
+                                            className={`w-full border rounded-xl pl-10 pr-12 py-3 focus:outline-none focus:ring-1 transition-all font-sans ${
+                                                isLight
+                                                    ? `bg-white border-slate-300 text-slate-900 placeholder-slate-400 ${
+                                                        loginMode === "organization" ? "focus:border-purple-500 focus:ring-purple-200" : "focus:border-indigo-500 focus:ring-indigo-200"
+                                                      }`
+                                                    : `bg-black/50 border-white/10 text-white ${
+                                                        loginMode === "organization" ? "focus:border-purple-500 focus:ring-purple-500" : "focus:border-indigo-500 focus:ring-indigo-500"
+                                                      }`
                                             }`}
                                             placeholder="••••••••"
                                         />
@@ -910,8 +1040,8 @@ function LoginContent() {
                                             onBlur={() => setEyeHovering(false)}
                                             className={`absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-200 select-none focus:outline-none ${
                                                 eyeHovering 
-                                                    ? (loginMode === "organization" ? "text-purple-400 scale-110" : "text-indigo-400 scale-110") 
-                                                    : "text-white/30 hover:text-white/50"
+                                                    ? (loginMode === "organization" ? "text-purple-500 scale-110" : "text-indigo-500 scale-110") 
+                                                    : (isLight ? "text-slate-400 hover:text-slate-600" : "text-white/30 hover:text-white/50")
                                             }`}
                                             tabIndex={0}
                                             aria-label="Hold or focus to reveal password"
@@ -920,23 +1050,23 @@ function LoginContent() {
                                             <EyeIcon isHovering={eyeHovering} />
                                         </button>
                                     </div>
-                                    <p className="text-xs text-white/25 ml-1">Hover the eye icon to reveal your password</p>
+                                    <p className={`text-xs ml-1 ${ isLight ? "text-slate-400" : "text-white/25" }`}>Hover the eye icon to reveal your password</p>
                                 </div>
 
                                 {/* Custom recovery links for Organization */}
                                 {loginMode === "organization" && (
-                                    <div className="flex justify-between items-center px-1 text-[11px] font-semibold text-purple-400 pt-1 relative z-30">
+                                    <div className={`flex justify-between items-center px-1 text-[11px] font-semibold pt-1 relative z-30 ${ isLight ? "text-purple-600" : "text-purple-400" }`}>
                                         <button 
                                             type="button" 
                                             onClick={() => setError(`Please contact system administrator to retrieve your ${orgSubMode === "admin" ? "Administration ID" : "Employee ID"}.`)}
-                                            className="hover:text-purple-300 transition-colors cursor-pointer"
+                                            className={`transition-colors cursor-pointer ${ isLight ? "hover:text-purple-800" : "hover:text-purple-300" }`}
                                         >
                                             Forgot {orgSubMode === "admin" ? "Administration ID" : "Employee ID"}?
                                         </button>
                                         <button 
                                             type="button" 
                                             onClick={() => setError("Please contact system administrator to recover your password.")}
-                                            className="hover:text-purple-300 transition-colors cursor-pointer"
+                                            className={`transition-colors cursor-pointer ${ isLight ? "hover:text-purple-800" : "hover:text-purple-300" }`}
                                         >
                                             Forgot Password?
                                         </button>
@@ -945,7 +1075,7 @@ function LoginContent() {
 
                                 {/* User forgot password recovery link */}
                                 {loginMode === "user" && !isRegistering && (
-                                    <div className="flex justify-end px-1 text-xs font-semibold text-indigo-400 pt-1">
+                                    <div className={`flex justify-end px-1 text-xs font-semibold pt-1 ${ isLight ? "text-indigo-600" : "text-indigo-400" }`}>
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -954,7 +1084,7 @@ function LoginContent() {
                                                 setPassword("");
                                                 setForgotIdentifier(loginType === "email" ? email.trim() : `${selectedCountry.code}${phone.trim()}`);
                                             }}
-                                            className="hover:text-indigo-300 transition-colors cursor-pointer text-right"
+                                            className={`transition-colors cursor-pointer text-right ${ isLight ? "hover:text-indigo-800" : "hover:text-indigo-300" }`}
                                         >
                                             Forgot Password?
                                         </button>
@@ -979,7 +1109,7 @@ function LoginContent() {
                                 <div className="mt-6 text-center">
                                     <button type="button"
                                         onClick={() => { setIsRegistering(!isRegistering); setError(""); setSuccessMessage(""); setPassword(""); setDisplayName(""); setShowCountryDropdown(false); }}
-                                        className="text-sm font-semibold text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer">
+                                        className={`text-sm font-semibold transition-colors cursor-pointer ${ isLight ? "text-indigo-600 hover:text-indigo-800" : "text-indigo-400 hover:text-indigo-300" }`}>
                                         {isRegistering ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
                                     </button>
                                 </div>
@@ -991,20 +1121,22 @@ function LoginContent() {
                     {(otpStep === "otp_verify" || otpStep === "forgot_otp_verify") && (
                         <form onSubmit={handleVerifyOtpSubmit} className="space-y-6 relative z-20">
                             {generatedOtp && (
-                                <div className="p-4 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl text-center text-sm relative overflow-hidden animate-pulse">
+                                <div className={`p-4 border rounded-2xl text-center text-sm relative overflow-hidden animate-pulse ${
+                                    isLight ? "bg-indigo-50 border-indigo-200" : "bg-indigo-500/10 border-indigo-500/20"
+                                }`}>
                                     {forgotIdentifier.includes("@") || loginType === "email" ? (
-                                        <span className="text-indigo-300 font-semibold">Verification code sent to {forgotIdentifier}. Please check your inbox.</span>
+                                        <span className={`font-semibold ${ isLight ? "text-indigo-700" : "text-indigo-300" }`}>Verification code sent to {forgotIdentifier}. Please check your inbox.</span>
                                     ) : (
                                         <>
-                                            <span className="text-indigo-300 font-semibold">[Demo Mode] Verification code sent to {forgotIdentifier || "your registered address"}: </span>
-                                            <span className="font-mono text-white text-lg font-bold tracking-wider">{generatedOtp}</span>
+                                            <span className={`font-semibold ${ isLight ? "text-indigo-700" : "text-indigo-300" }`}>[Demo Mode] Verification code sent to {forgotIdentifier || "your registered address"}: </span>
+                                            <span className={`font-mono text-lg font-bold tracking-wider ${ isLight ? "text-slate-900" : "text-white" }`}>{generatedOtp}</span>
                                         </>
                                     )}
                                 </div>
                             )}
 
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block text-center">
+                                <label className={`text-xs font-bold uppercase tracking-wider block text-center ${ isLight ? "text-slate-500" : "text-white/50" }`}>
                                     Enter 6-Digit Passcode
                                 </label>
                                 <div className="flex justify-between gap-2 max-w-xs mx-auto">
@@ -1018,21 +1150,27 @@ function LoginContent() {
                                             value={digit}
                                             onChange={e => handleOtpInputChange(idx, e.target.value)}
                                             onKeyDown={e => handleOtpKeyDown(idx, e)}
-                                            className="w-10 h-12 bg-black/50 border border-white/10 rounded-xl text-center font-bold text-xl text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                                            className={`w-10 h-12 border rounded-xl text-center font-bold text-xl focus:outline-none focus:ring-1 transition-all font-mono ${
+                                                isLight
+                                                    ? "bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-200"
+                                                    : "bg-black/50 border-white/10 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                            }`}
                                         />
                                     ))}
                                 </div>
                             </div>
 
                             <div className="flex justify-between items-center text-xs px-2">
-                                <span className="text-white/40">
+                                <span className={isLight ? "text-slate-400" : "text-white/40"}>
                                     {otpTimer > 0 ? `Resend code in ${otpTimer}s` : "Didn't receive code?"}
                                 </span>
                                 <button
                                     type="button"
                                     disabled={otpTimer > 0 || loading}
                                     onClick={resendOtp}
-                                    className="font-bold text-indigo-400 hover:text-indigo-300 transition-colors disabled:opacity-30 disabled:hover:text-indigo-400 cursor-pointer"
+                                    className={`font-bold transition-colors disabled:opacity-30 cursor-pointer ${
+                                        isLight ? "text-indigo-600 hover:text-indigo-800 disabled:hover:text-indigo-600" : "text-indigo-400 hover:text-indigo-300 disabled:hover:text-indigo-400"
+                                    }`}
                                 >
                                     Resend OTP
                                 </button>
@@ -1050,7 +1188,9 @@ function LoginContent() {
                             <button
                                 type="button"
                                 onClick={() => { setOtpStep("form"); setError(""); }}
-                                className="w-full text-center text-xs font-semibold text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                                className={`w-full text-center text-xs font-semibold transition-colors cursor-pointer ${
+                                    isLight ? "text-slate-400 hover:text-slate-600" : "text-white/40 hover:text-white/60"
+                                }`}
                             >
                                 Back to Sign In
                             </button>
@@ -1061,16 +1201,20 @@ function LoginContent() {
                     {otpStep === "forgot_password" && (
                         <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 relative z-20">
                             <div className="space-y-1">
-                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">
+                                <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>
                                     Email Address or Phone Number
                                 </label>
                                 <div className="relative">
-                                    <Mail className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                    <Mail className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
                                     <input
                                         type="text"
                                         value={forgotIdentifier}
                                         onChange={e => setForgotIdentifier(e.target.value)}
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-4 py-3 text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-sans"
+                                        className={`w-full border rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-1 transition-all font-sans ${
+                                            isLight
+                                                ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-200"
+                                                : "bg-black/50 border-white/10 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                        }`}
                                         placeholder="name@company.com or +91XXXXXXXXXX"
                                         required
                                     />
@@ -1089,7 +1233,9 @@ function LoginContent() {
                             <button
                                 type="button"
                                 onClick={() => { setOtpStep("form"); setError(""); }}
-                                className="w-full text-center text-xs font-semibold text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                                className={`w-full text-center text-xs font-semibold transition-colors cursor-pointer ${
+                                    isLight ? "text-slate-400 hover:text-slate-600" : "text-white/40 hover:text-white/60"
+                                }`}
                             >
                                 Back to Sign In
                             </button>
@@ -1100,14 +1246,18 @@ function LoginContent() {
                     {otpStep === "reset_password" && (
                         <form onSubmit={handleResetPasswordSubmit} className="space-y-4 relative z-20">
                             <div className="space-y-1 relative z-10">
-                                <label className="text-xs font-bold text-white/50 uppercase tracking-wider block ml-1">New Password</label>
+                                <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>New Password</label>
                                 <div className="relative">
-                                    <Lock className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-white/30" />
+                                    <Lock className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
                                     <input
                                         type={eyeHovering ? "text" : "password"}
                                         value={newPassword}
                                         onChange={e => setNewPassword(e.target.value)}
-                                        className="w-full bg-black/50 border border-white/10 rounded-xl pl-10 pr-12 py-3 text-white focus:outline-none focus:ring-1 focus:border-indigo-500 focus:ring-indigo-500 transition-all font-sans"
+                                        className={`w-full border rounded-xl pl-10 pr-12 py-3 focus:outline-none focus:ring-1 transition-all font-sans ${
+                                            isLight
+                                                ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-200"
+                                                : "bg-black/50 border-white/10 text-white focus:border-indigo-500 focus:ring-indigo-500"
+                                        }`}
                                         placeholder="••••••••"
                                         required
                                     />
@@ -1120,7 +1270,9 @@ function LoginContent() {
                                         onFocus={() => setEyeHovering(true)}
                                         onBlur={() => setEyeHovering(false)}
                                         className={`absolute right-3 top-1/2 -translate-y-1/2 transition-all duration-200 select-none focus:outline-none ${
-                                            eyeHovering ? "text-indigo-400 scale-110" : "text-white/30 hover:text-white/50"
+                                            eyeHovering
+                                                ? "text-indigo-500 scale-110"
+                                                : (isLight ? "text-slate-400 hover:text-slate-600" : "text-white/30 hover:text-white/50")
                                         }`}
                                         tabIndex={0}
                                         aria-label="Hold or focus to reveal password"
@@ -1129,7 +1281,7 @@ function LoginContent() {
                                         <EyeIcon isHovering={eyeHovering} />
                                     </button>
                                 </div>
-                                <p className="text-xs text-white/25 ml-1">Hover the eye icon to reveal your new password</p>
+                                <p className={`text-xs ml-1 ${ isLight ? "text-slate-400" : "text-white/25" }`}>Hover the eye icon to reveal your new password</p>
                             </div>
 
                             <button
@@ -1144,14 +1296,16 @@ function LoginContent() {
                             <button
                                 type="button"
                                 onClick={() => { setOtpStep("form"); setError(""); }}
-                                className="w-full text-center text-xs font-semibold text-white/40 hover:text-white/60 transition-colors cursor-pointer"
+                                className={`w-full text-center text-xs font-semibold transition-colors cursor-pointer ${
+                                    isLight ? "text-slate-400 hover:text-slate-600" : "text-white/40 hover:text-white/60"
+                                }`}
                             >
                                 Back to Sign In
                             </button>
                         </form>
                     )}
 
-                    <p className="mt-6 text-center text-xs text-white/30">
+                    <p className={`mt-6 text-center text-xs ${ isLight ? "text-slate-400" : "text-white/30" }`}>
                         Credentials secured in Cloud & Sync cache. End-to-end protected.
                     </p>
                 </div>

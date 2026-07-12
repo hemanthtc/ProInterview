@@ -129,12 +129,27 @@ async function connectDB() {
             connectTimeoutMS: 8000,
         };
 
-        // Resolve the connection string dynamically before calling mongoose.connect()
-        cached.promise = resolveSrvConnectionString(MONGODB_URI).then((resolvedUri) => {
-            return mongoose.connect(resolvedUri, opts);
-        }).then((mongooseInstance) => {
-            return mongooseInstance;
-        });
+        // Try connecting directly with the original MONGODB_URI first.
+        // If it fails (due to local port 53 DNS blocks), attempt fallback via Cloudflare DNS over HTTPS.
+        cached.promise = mongoose.connect(MONGODB_URI, opts)
+            .then((mongooseInstance) => {
+                console.log("Connected to MongoDB directly using original MONGODB_URI.");
+                return mongooseInstance;
+            })
+            .catch(async (directError) => {
+                console.warn("Direct connection failed, attempting DNS-over-HTTPS fallback...", directError.message || directError);
+                try {
+                    const resolvedUri = await resolveSrvConnectionString(MONGODB_URI);
+                    if (resolvedUri === MONGODB_URI) {
+                        throw directError;
+                    }
+                    console.log("Retrying database connection with DoH resolved replica set URI...");
+                    return await mongoose.connect(resolvedUri, opts);
+                } catch (fallbackError) {
+                    console.error("MongoDB failover fallback connection also failed:", fallbackError);
+                    throw directError; // Return original error for better diagnostics
+                }
+            });
     }
 
     try {

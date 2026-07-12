@@ -290,6 +290,7 @@ export default function RealisticInterviewRoom() {
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
             setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
         }
 
         const github = getStorageItem("userGithub") || "";
@@ -420,7 +421,7 @@ export default function RealisticInterviewRoom() {
         
         setTheme(nextTheme);
         localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = `theme-${nextTheme}`;
+        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
     };
 
     const initializeDIdStream = useCallback(async () => {
@@ -1095,10 +1096,17 @@ export default function RealisticInterviewRoom() {
                         <p className="text-white/60 mb-8">Great job! Here is a summary of your session.</p>
                     )}
 
-                        <div className="text-left bg-black/80 rounded-xl p-8 max-h-[500px] overflow-y-auto border border-white/10 mb-8 text-sm leading-relaxed whitespace-normal font-sans shadow-inner">
+                        <div 
+                            className="text-left rounded-xl p-8 max-h-[500px] overflow-y-auto border mb-8 text-sm leading-relaxed whitespace-normal font-sans shadow-inner transcript-container"
+                            style={{
+                                backgroundColor: theme === 'dark' ? 'rgba(0, 0, 0, 0.8)' : '#ffffff',
+                                borderColor: theme === 'dark' ? 'rgba(255, 255, 255, 0.1)' : '#cbd5e1',
+                                color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#334155'
+                            }}
+                        >
                             {finalScores?.annotatedTranscript ? (
                                 <div 
-                                    className="prose prose-invert prose-sm max-w-none transcript-display"
+                                    className={`prose ${theme === 'dark' ? 'prose-invert' : ''} prose-sm max-w-none transcript-display`}
                                     dangerouslySetInnerHTML={{ 
                                         __html: marked.parse(finalScores.annotatedTranscript, { gfm: true, breaks: true }) 
                                     }}
@@ -1106,11 +1114,23 @@ export default function RealisticInterviewRoom() {
                             ) : (
                                 <div className="space-y-6">
                                     {messages.map((msg, idx) => (
-                                        <div key={idx} className={`p-4 rounded-lg ${msg.role === 'user' ? 'bg-indigo-500/10 border border-indigo-500/20' : 'bg-white/5 border border-white/10'}`}>
+                                        <div 
+                                            key={idx} 
+                                            className="p-4 rounded-lg border transition-colors"
+                                            style={{
+                                                backgroundColor: theme === 'dark' 
+                                                    ? (msg.role === 'user' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(255, 255, 255, 0.05)') 
+                                                    : (msg.role === 'user' ? '#e0e7ff' : '#f1f5f9'),
+                                                borderColor: theme === 'dark'
+                                                    ? (msg.role === 'user' ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255, 255, 255, 0.1)')
+                                                    : (msg.role === 'user' ? '#a5b4fc' : '#cbd5e1'),
+                                                color: theme === 'dark' ? 'rgba(255, 255, 255, 0.9)' : '#1e293b'
+                                            }}
+                                        >
                                             <span className="font-bold text-[10px] uppercase tracking-widest opacity-40 block mb-2">
                                                 {msg.role === 'user' ? 'Candidate' : 'Interviewer'}
                                             </span>
-                                            <div className="text-white/90">{msg.content}</div>
+                                            <div>{msg.content}</div>
                                         </div>
                                     ))}
                                 </div>

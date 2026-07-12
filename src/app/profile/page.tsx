@@ -131,6 +131,7 @@ export default function ProfilePage() {
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
             setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
         }
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
 
@@ -339,7 +340,7 @@ export default function ProfilePage() {
         
         setTheme(nextTheme);
         localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = `theme-${nextTheme}`;
+        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
     };
 
     const handleLogout = () => {
@@ -1556,9 +1557,9 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
                 {/* Stats Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-[#111] border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform"><Activity className="w-16 h-16" /></div>
-                        <h3 className="text-white/50 font-bold mb-2 text-xs tracking-widest uppercase">Total Interviews</h3>
+                    <div className="bg-[#111] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden group shadow-[0_0_20px_rgba(79,70,229,0.1)]">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 text-indigo-500 group-hover:scale-110 transition-transform"><Activity className="w-16 h-16" /></div>
+                        <h3 className="text-indigo-400 font-bold mb-2 text-xs tracking-widest uppercase">Total Interviews</h3>
                         <p className="text-4xl font-black">{totalInterviews}</p>
                         <p className="text-xs text-white/30 mt-1">Last 12 months</p>
                     </div>
@@ -1568,9 +1569,9 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                         <p className="text-4xl font-black">{avgScore} <span className="text-lg text-white/30 font-bold">/ 100</span></p>
                         <p className="text-xs text-white/30 mt-1">Recent sessions count more</p>
                     </div>
-                    <div className="bg-[#111] border border-white/10 rounded-2xl p-6 relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 text-purple-500 group-hover:scale-110 transition-transform"><Award className="w-16 h-16" /></div>
-                        <h3 className="text-white/50 font-bold mb-2 text-xs tracking-widest uppercase">Benchmark</h3>
+                    <div className="bg-[#111] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden group shadow-[0_0_20px_rgba(79,70,229,0.1)]">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 text-indigo-500 group-hover:scale-110 transition-transform"><Award className="w-16 h-16" /></div>
+                        <h3 className="text-indigo-400 font-bold mb-2 text-xs tracking-widest uppercase">Benchmark</h3>
                         <p className={`text-xl font-bold mt-1 ${benchmarkColor}`}>{benchmark}</p>
                         <p className="text-xs text-white/30 mt-1">Based on weighted performance</p>
                     </div>

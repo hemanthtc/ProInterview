@@ -12,13 +12,13 @@ export interface OptionType {
   label: string;
 }
 
-// Props interface to make component highly reusable
 interface RoleSelectProps {
   options: OptionType[];
   maxLimit?: number;
   placeholder?: string;
   onChange: (selectedValues: string[]) => void;
   defaultValue?: OptionType[];
+  theme: "dark" | "light" | "eyeprotect";
 }
 
 // Initialize the animated components hook from react-select
@@ -33,7 +33,8 @@ export default function RoleSelect({
     maxLimit = 3, 
     placeholder = "Select preferred roles...", 
     onChange,
-    defaultValue = []
+    defaultValue = [],
+    theme
 }: RoleSelectProps) {
   const [selectedOptions, setSelectedOptions] = useState<MultiValue<OptionType>>(defaultValue);
   const [errorMsg, setErrorMsg] = useState<string>("");
@@ -86,35 +87,48 @@ export default function RoleSelect({
     setErrorMsg("");
   };
 
-  // 6. Custom styling specifically tailored to overriding defaults for Dark Mode aesthetics
+  const isLight = theme === 'light' || theme === 'eyeprotect';
+
+  // 6. Custom styling specifically tailored to overriding defaults for Dark/Light Mode aesthetics
   const customStyles: StylesConfig<OptionType, true> = {
     control: (base, state) => ({
       ...base,
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-      borderColor: state.isFocused ? '#6366f1' : 'rgba(255, 255, 255, 0.1)',
-      padding: '4px',
+      backgroundColor: isLight ? '#ffffff' : 'rgba(0, 0, 0, 0.4)',
+      borderColor: state.isFocused 
+        ? '#6366f1' 
+        : theme === 'eyeprotect'
+          ? '#000000'
+          : isLight 
+            ? '#cbd5e1' 
+            : 'rgba(255, 255, 255, 0.1)',
+      padding: '4px 8px',
       borderRadius: '0.75rem',
       cursor: 'text',
       boxShadow: state.isFocused ? '0 0 15px rgba(99, 102, 241, 0.2)' : 'none',
       ':hover': {
-        borderColor: '#6366f1'
+        borderColor: theme === 'eyeprotect' ? '#000000' : '#6366f1'
       }
+    }),
+    valueContainer: (base) => ({
+      ...base,
+      padding: '0px 8px',
     }),
     menu: (base) => ({
       ...base,
-      backgroundColor: '#1a1a1a', // Solid background to prevent transparency overlap
-      border: '1px solid rgba(255, 255, 255, 0.15)',
+      backgroundColor: isLight ? '#ffffff' : '#1a1a1a', // Solid background to prevent transparency overlap
+      border: isLight ? '1px solid #cbd5e1' : '1px solid rgba(255, 255, 255, 0.15)',
       borderRadius: '0.75rem',
       overflow: 'hidden',
       zIndex: 9999, // Extremely high to stay on top
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px rgba(0, 0, 0, 0.7)'
+      boxShadow: isLight
+        ? '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'
+        : '0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 10px 10px -5px rgba(0, 0, 0, 0.7)'
     }),
     menuList: (base) => ({
       ...base,
-      backgroundColor: '#1a1a1a', // Solid background for list container
+      backgroundColor: isLight ? '#ffffff' : '#1a1a1a', // Solid background for list container
       maxHeight: '250px',
       overflowY: 'auto',
-      /* custom scrollbar overrides if needed */
       '::-webkit-scrollbar': {
         width: '6px',
       },
@@ -128,22 +142,27 @@ export default function RoleSelect({
       backgroundColor: state.isSelected 
         ? '#4f46e5' 
         : state.isFocused 
-          ? 'rgba(99, 102, 241, 0.25)' 
-          : '#1a1a1a', // Opaque solid background for options
-      color: '#fff',
+          ? isLight ? '#f1f5f9' : 'rgba(99, 102, 241, 0.25)' 
+          : isLight ? '#ffffff' : '#1a1a1a', // Opaque solid background for options
+      color: state.isSelected 
+        ? '#ffffff' 
+        : isLight ? '#0f172a' : '#ffffff',
       padding: '12px 16px',
       cursor: 'pointer',
       ':active': {
-        backgroundColor: '#6366f1'
+        backgroundColor: '#6366f1',
+        color: '#ffffff'
       }
     }),
     input: (base) => ({
       ...base,
-      color: 'white',
+      color: isLight ? '#0f172a' : 'white',
+      margin: '0px',
+      padding: '0px',
     }),
     placeholder: (base) => ({
       ...base,
-      color: 'rgba(255,255,255,0.4)',
+      color: isLight ? '#64748b' : 'rgba(255,255,255,0.4)',
       fontSize: '0.875rem'
     }),
     multiValue: () => ({
@@ -159,20 +178,22 @@ export default function RoleSelect({
   return (
     <div className="w-full relative z-50">
       <div className="flex justify-between items-center mb-2">
-         <label className="text-sm font-semibold text-white/80 flex items-center gap-2">
-             <Briefcase className="w-4 h-4 text-indigo-400" />
+         <label className={`text-sm font-semibold flex items-center gap-2 ${
+             isLight ? "text-slate-700" : "text-white/80"
+         }`}>
+             <Briefcase className={`w-4 h-4 ${isLight ? "text-indigo-600" : "text-indigo-400"}`} />
              Preferred Roles (Max {maxLimit})
              {/* 8. Validation Label */}
              <span className="text-red-400 text-xs ml-1">*Required</span>
-         </label>
-         {selectedOptions.length > 0 && (
-            <button 
-                onClick={handleClearAll}
-                className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
-            >
-                <X className="w-3 h-3" /> Clear All
-            </button>
-         )}
+          </label>
+          {selectedOptions.length > 0 && (
+             <button 
+                 onClick={handleClearAll}
+                 className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1"
+             >
+                 <X className="w-3 h-3" /> Clear All
+             </button>
+          )}
       </div>
 
       {/* 3. Searchable Dropdown with makeAnimated and closeMenuOnSelect=true */}
@@ -197,16 +218,28 @@ export default function RoleSelect({
 
       {/* 9. Display active selections cleanly below the actual dropdown box */}
       {selectedOptions.length > 0 && (
-          <div className="mt-4 p-4 rounded-xl border border-white/5 bg-white/5 backdrop-blur-md">
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-3">Actively Selected Roles</p>
+          <div className={`mt-4 p-4 rounded-xl border backdrop-blur-md ${
+              isLight ? "border-slate-200 bg-white shadow-sm" : "border-white/5 bg-white/5"
+          }`}>
+              <p className={`text-xs font-semibold uppercase tracking-wider mb-3 ${
+                  isLight ? "text-slate-500" : "text-white/50"
+              }`}>Actively Selected Roles</p>
               <div className="flex flex-wrap gap-2">
                   {selectedOptions.map((opt) => (
-                      <span key={opt.value} className="px-3 py-1.5 bg-indigo-600/20 border border-indigo-500/30 text-indigo-200 rounded-lg text-sm font-medium flex items-center shadow-sm">
+                      <span key={opt.value} className={`px-3 py-1.5 border rounded-lg text-sm font-medium flex items-center shadow-sm ${
+                          isLight
+                              ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                              : "bg-indigo-600/20 border-indigo-500/30 text-indigo-200"
+                      }`}>
                           {opt.label}
                           <button 
                             type="button" 
                             onClick={() => handleRemove(opt.value)} 
-                            className="ml-2 hover:bg-red-500/30 text-white/50 hover:text-white rounded-full p-0.5 transition-colors flex items-center justify-center flex-shrink-0"
+                            className={`ml-2 rounded-full p-0.5 transition-colors flex items-center justify-center flex-shrink-0 ${
+                                isLight
+                                    ? "hover:bg-red-100 text-slate-400 hover:text-red-600"
+                                    : "hover:bg-red-500/30 text-white/50 hover:text-white"
+                            }`}
                             title="Remove"
                           >
                               <X className="w-3 h-3" />

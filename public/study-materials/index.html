@@ -3,11 +3,828 @@
 
 <head>
   <meta charset="UTF-8" />
+  <script>
+    // WebGL runtime hook:
+    // 1. Override ctx.clear  -> forces background clear color to #9897A9 in light/eyeprotect themes.
+    // 2. Override ctx.getUniformLocation + ctx.uniform3fv + ctx.uniform3f
+    //    -> tracks Three.js 'diffuse' uniform locations and overrides near-black cylinder
+    //    mesh color to white (#FFFFFF) in light/eyeprotect themes.
+    (function() {
+      // Helper: is a theme-light or theme-eyeprotect class active?
+      function isLightMode() {
+        var cl = document.documentElement.classList;
+        return cl.contains('theme-light') || cl.contains('theme-eyeprotect');
+      }
+
+      // Per-context state: map program -> Set of diffuse locations
+      function patchContext(ctx) {
+        if (ctx.__patched__) return;
+        ctx.__patched__ = true;
+
+        // --- HOOK 1: Background clearColor override ---
+        var orgClear = ctx.clear.bind(ctx);
+        var orgClearColor = ctx.clearColor.bind(ctx);
+        ctx.clear = function(mask) {
+          if (isLightMode() && !ctx.getParameter(ctx.FRAMEBUFFER_BINDING)) {
+            // #9897A9 -> R=152 G=151 B=169
+            orgClearColor(152/255, 151/255, 169/255, 1.0);
+          }
+          return orgClear(mask);
+        };
+
+        // --- HOOK 2: Track 'diffuse' uniform locations ---
+        var diffuseLocations = new WeakMap();
+
+        var orgGetUniformLocation = ctx.getUniformLocation.bind(ctx);
+        ctx.getUniformLocation = function(program, name) {
+          var loc = orgGetUniformLocation(program, name);
+          if (name === 'diffuse' && loc !== null) {
+            if (!diffuseLocations.has(program)) diffuseLocations.set(program, new Set());
+            diffuseLocations.get(program).add(loc);
+          }
+          return loc;
+        };
+
+        // Shared helper: check and override near-black diffuse values
+        function isDiffuseLoc(location) {
+          try {
+            var prog = ctx.getParameter(ctx.CURRENT_PROGRAM);
+            if (!prog) return false;
+            var locs = diffuseLocations.get(prog);
+            return locs && locs.has(location);
+          } catch(e) { return false; }
+        }
+
+        // --- HOOK 3: uniform3fv (Three.js uses this for vec3 arrays) ---
+        var orgUniform3fv = ctx.uniform3fv.bind(ctx);
+        ctx.uniform3fv = function(location, data, srcOffset, srcLength) {
+          if (isLightMode() && location !== null && isDiffuseLoc(location)) {
+            var r = data[0], g = data[1], b = data[2];
+            if (r < 0.06 && g < 0.06 && b < 0.06) {
+              // Override near-black cylinder diffuse -> white (#FFFFFF)
+              var white = new Float32Array([1.0, 1.0, 1.0]);
+              return orgUniform3fv(location, white);
+            }
+          }
+          return (srcOffset !== undefined)
+            ? orgUniform3fv(location, data, srcOffset, srcLength)
+            : orgUniform3fv(location, data);
+        };
+
+        // --- HOOK 4: uniform3f (some Three.js paths use this scalar form) ---
+        var orgUniform3f = ctx.uniform3f.bind(ctx);
+        ctx.uniform3f = function(location, x, y, z) {
+          if (isLightMode() && location !== null && isDiffuseLoc(location)) {
+            if (x < 0.06 && y < 0.06 && z < 0.06) {
+              // Override near-black cylinder diffuse -> white (#FFFFFF)
+              return orgUniform3f(location, 1.0, 1.0, 1.0);
+            }
+          }
+          return orgUniform3f(location, x, y, z);
+        };
+      }
+
+      // Intercept all canvas getContext calls
+      var orgGetContext = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function(type, attribs) {
+        var ctx = orgGetContext.apply(this, arguments);
+        if (ctx && (type === 'webgl' || type === 'webgl2' || type === 'experimental-webgl')) {
+          patchContext(ctx);
+        }
+        return ctx;
+      };
+    })();
+  </script>
+  <!-- Cylinder white color override via direct Three.js material access -->
+  <script>
+    (function() {
+      var LIGHT_COLOR = 0xFFFFFF;
+      var originalColors = null; // stores [{mesh, r, g, b}]
+
+      function isLightMode() {
+        var cl = document.documentElement.classList;
+        return cl.contains('theme-light') || cl.contains('theme-eyeprotect');
+      }
+
+      // Collect all mesh materials under the cylinderMesh group
+      function collectMeshes(root) {
+        var meshes = [];
+        function traverse(obj) {
+          if (!obj) return;
+          if (obj.isMesh && obj.material) {
+            meshes.push(obj);
+          }
+          if (obj.children) obj.children.forEach(traverse);
+        }
+        traverse(root);
+        return meshes;
+      }
+
+      function applyCylinderColor(toWhite) {
+        if (!originalColors) return;
+        originalColors.forEach(function(entry) {
+          var mat = entry.mesh.material;
+          if (!mat || !mat.color) return;
+          if (toWhite) {
+            mat.color.setHex(LIGHT_COLOR);
+          } else {
+            mat.color.setRGB(entry.r, entry.g, entry.b);
+          }
+          mat.needsUpdate = true;
+        });
+      }
+
+      // Poll until window.app and cylinderMesh are ready
+      function waitForApp() {
+        if (window.app && window.app.coreStructure && window.app.coreStructure.cylinderMesh) {
+          var root = window.app.coreStructure.cylinderMesh;
+          var meshes = collectMeshes(root);
+
+          // Save original colors once
+          if (!originalColors) {
+            originalColors = meshes.map(function(mesh) {
+              var c = mesh.material.color;
+              return { mesh: mesh, r: c ? c.r : 0, g: c ? c.g : 0, b: c ? c.b : 0 };
+            });
+          }
+
+          // Apply current theme
+          applyCylinderColor(isLightMode());
+
+          // Watch for theme class changes on <html> and update colors
+          var observer = new MutationObserver(function() {
+            applyCylinderColor(isLightMode());
+          });
+          observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+
+        } else {
+          // Not ready yet — retry next frame
+          requestAnimationFrame(waitForApp);
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', function() {
+        // Give the Three.js app a moment to finish constructing the scene
+        setTimeout(waitForApp, 300);
+      });
+    })();
+  </script>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HyperDimensional Study Lab</title>
   <script type="module" crossorigin src="./assets/index-CWESAtmN.js"></script>
   <link rel="stylesheet" crossorigin href="./assets/index-0J4_c6iO.css">
+  <style>
+    /* Light Mode Variable Overrides */
+    html.theme-light, body.theme-light {
+      --bg-color: #9897A9;
+      --bg-radial: radial-gradient(circle at 50% 50%, #b2b1be 0%, #9897A9 100%);
+      --panel-bg: rgba(255, 255, 255, 0.85);
+      --panel-border: rgba(15, 23, 42, 0.08);
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --primary-glow: 0 0 15px rgba(6, 182, 212, 0.15);
+      --cyan: #0891b2;
+      --cyan-glow: rgba(8, 145, 178, 0.3);
+      --purple: #7c3aed;
+      --purple-glow: rgba(124, 58, 237, 0.3);
+      --emerald: #059669;
+      --emerald-glow: rgba(5, 150, 105, 0.3);
+    }
+
+    /* Eye Comfort Mode Variable Overrides */
+    html.theme-eyeprotect, body.theme-eyeprotect {
+      --bg-color: #9897A9;
+      --bg-radial: radial-gradient(circle at 50% 50%, #b2b1be 0%, #9897A9 100%);
+      --panel-bg: rgba(244, 243, 238, 0.85);
+      --panel-border: rgba(107, 78, 61, 0.08);
+      --text-primary: #4a3728;
+      --text-secondary: #7c6b57;
+      --primary-glow: 0 0 15px rgba(217, 119, 6, 0.15);
+      --cyan: #b45309;
+      --cyan-glow: rgba(180, 83, 9, 0.3);
+      --purple: #c2410c;
+      --purple-glow: rgba(194, 65, 12, 0.3);
+      --emerald: #15803d;
+      --emerald-glow: rgba(21, 128, 61, 0.3);
+    }
+
+    /* Specific Elements Style Adjustments for Light Themes */
+    html.theme-light .book-reader-overlay {
+      background: rgba(241, 245, 249, 0.96) !important;
+    }
+    html.theme-eyeprotect .book-reader-overlay {
+      background: rgba(244, 237, 216, 0.96) !important;
+    }
+
+    html.theme-light .book-reader-header {
+      background: rgba(255, 255, 255, 0.9) !important;
+      border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .book-reader-header {
+      background: rgba(255, 253, 247, 0.9) !important;
+      border-bottom-color: rgba(67, 52, 34, 0.08) !important;
+    }
+
+    html.theme-light .global-search-results {
+      background: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08) !important;
+    }
+    html.theme-eyeprotect .global-search-results {
+      background: #fffdf7 !important;
+      border: 1px solid #dcd2ba !important;
+      box-shadow: 0 10px 30px rgba(67, 52, 34, 0.08) !important;
+    }
+
+    html.theme-light .search-result-item:hover {
+      background: rgba(15, 23, 42, 0.04) !important;
+    }
+    html.theme-eyeprotect .search-result-item:hover {
+      background: rgba(67, 52, 34, 0.04) !important;
+    }
+
+    html.theme-light .shelf-hologram-overlay {
+      background: rgba(241, 245, 249, 0.96) !important;
+    }
+    html.theme-eyeprotect .shelf-hologram-overlay {
+      background: rgba(244, 237, 216, 0.96) !important;
+    }
+
+    html.theme-light .shelf-header {
+      border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .shelf-header {
+      border-bottom-color: rgba(67, 52, 34, 0.08) !important;
+    }
+
+    html.theme-light .holo-book-card {
+      background: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+    html.theme-eyeprotect .holo-book-card {
+      background: #fffdf7 !important;
+      border: 1px solid #dcd2ba !important;
+    }
+
+    html.theme-light .holo-book-card:hover {
+      background: #f8fafc !important;
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08), 0 0 10px var(--theme-glow) !important;
+    }
+    html.theme-eyeprotect .holo-book-card:hover {
+      background: #fdfaf2 !important;
+      box-shadow: 0 8px 24px rgba(67, 52, 34, 0.08), 0 0 10px var(--theme-glow) !important;
+    }
+
+    html.theme-light .tracker-label {
+      background: rgba(255, 255, 255, 0.95) !important;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08), 0 0 10px var(--theme-glow) !important;
+    }
+    html.theme-eyeprotect .tracker-label {
+      background: rgba(255, 253, 247, 0.95) !important;
+      box-shadow: 0 4px 15px rgba(67, 52, 34, 0.08), 0 0 10px var(--theme-glow) !important;
+    }
+
+    html.theme-light .sidebar-course-item:hover {
+      background: rgba(15, 23, 42, 0.04) !important;
+    }
+    html.theme-eyeprotect .sidebar-course-item:hover {
+      background: rgba(67, 52, 34, 0.04) !important;
+    }
+
+    html.theme-light .sidebar-course-item.active {
+      background: rgba(255, 255, 255, 0.9) !important;
+    }
+    html.theme-eyeprotect .sidebar-course-item.active {
+      background: rgba(255, 253, 247, 0.9) !important;
+    }
+
+    html.theme-light .page-content pre {
+      background: #f1f5f9 !important;
+      color: #0f172a !important;
+      border-left-color: var(--theme-color) !important;
+    }
+    html.theme-eyeprotect .page-content pre {
+      background: #f4edd8 !important;
+      color: #433422 !important;
+      border-left-color: var(--theme-color) !important;
+    }
+
+    html.theme-light .page-content code {
+      background: rgba(15, 23, 42, 0.06) !important;
+      color: #0f172a !important;
+    }
+    html.theme-eyeprotect .page-content code {
+      background: rgba(67, 52, 34, 0.06) !important;
+      color: #433422 !important;
+    }
+
+    /* Light Scrollbars */
+    html.theme-light .books-grid-wrapper::-webkit-scrollbar-thumb,
+    html.theme-light .sidebar-course-list::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.15) !important;
+    }
+    html.theme-eyeprotect .books-grid-wrapper::-webkit-scrollbar-thumb,
+    html.theme-eyeprotect .sidebar-course-list::-webkit-scrollbar-thumb {
+      background: rgba(67, 52, 34, 0.15) !important;
+    }
+
+    /* Shadows and Opacity overrides */
+    html.theme-light .top-bar,
+    html.theme-light .left-sidebar,
+    html.theme-light .right-sidebar,
+    html.theme-light .course-sidebar {
+      box-shadow: 0 8px 32px rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .top-bar,
+    html.theme-eyeprotect .left-sidebar,
+    html.theme-eyeprotect .right-sidebar,
+    html.theme-eyeprotect .course-sidebar {
+      box-shadow: 0 8px 32px rgba(67, 52, 34, 0.08) !important;
+    }
+
+    /* Shift top bar to prevent close cross overlap with logo */
+    html.theme-light .top-bar {
+      padding-left: 100px !important;
+    }
+    html.theme-eyeprotect .top-bar {
+      padding-left: 100px !important;
+    }
+
+    /* Catalog Sidebar styling */
+    html.theme-light .course-sidebar {
+      background: #ffffff !important;
+      border: 1px solid #cbd5e1 !important;
+    }
+    html.theme-eyeprotect .course-sidebar {
+      background: #faf9f5 !important;
+      border: 1px solid #c8c6be !important;
+    }
+
+    html.theme-light .sidebar-header,
+    html.theme-light .sidebar-footer {
+      border-bottom-color: rgba(15, 23, 42, 0.08) !important;
+      border-top-color: rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .sidebar-header,
+    html.theme-eyeprotect .sidebar-footer {
+      border-bottom-color: rgba(67, 52, 34, 0.08) !important;
+      border-top-color: rgba(67, 52, 34, 0.08) !important;
+    }
+
+    html.theme-light .course-item-name {
+      color: #0f172a !important;
+    }
+    html.theme-light .course-item-count {
+      color: #475569 !important;
+    }
+    html.theme-eyeprotect .course-item-name {
+      color: #433422 !important;
+    }
+    html.theme-eyeprotect .course-item-count {
+      color: #7c6b57 !important;
+    }
+
+    html.theme-light .sidebar-course-item.active {
+      background: #f1f5f9 !important;
+      border-color: var(--theme-color) !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05) !important;
+    }
+    html.theme-eyeprotect .sidebar-course-item.active {
+      background: #f4edd8 !important;
+      border-color: var(--theme-color) !important;
+      box-shadow: 0 2px 8px rgba(67, 52, 34, 0.05) !important;
+    }
+    html.theme-light .sidebar-course-item.active .course-item-name {
+      color: var(--theme-color) !important;
+    }
+    html.theme-eyeprotect .sidebar-course-item.active .course-item-name {
+      color: var(--theme-color) !important;
+    }
+
+    html.theme-light .sidebar-brand-text {
+      background: linear-gradient(135deg, #0f172a 0%, var(--theme-color) 100%) !important;
+      -webkit-text-fill-color: transparent !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+    }
+    html.theme-eyeprotect .sidebar-brand-text {
+      background: linear-gradient(135deg, #433422 0%, var(--theme-color) 100%) !important;
+      -webkit-text-fill-color: transparent !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+    }
+
+    html.theme-light .sidebar-footer-text,
+    html.theme-light .sidebar-group-header {
+      color: #475569 !important;
+    }
+    html.theme-eyeprotect .sidebar-footer-text,
+    html.theme-eyeprotect .sidebar-group-header {
+      color: #7c6b57 !important;
+    }
+
+    html.theme-light .instruction-tag {
+      background: rgba(255, 255, 255, 0.8) !important;
+      border-color: rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .instruction-tag {
+      background: rgba(255, 253, 247, 0.8) !important;
+      border-color: rgba(67, 52, 34, 0.08) !important;
+    }
+
+    html.theme-light .sidebar-tag {
+      background: rgba(15, 23, 42, 0.04) !important;
+      border-color: rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .sidebar-tag {
+      background: rgba(67, 52, 34, 0.04) !important;
+      border-color: rgba(67, 52, 34, 0.08) !important;
+    }
+
+    html.theme-light .sidebar-search-input {
+      background: rgba(15, 23, 42, 0.03) !important;
+      border-color: rgba(15, 23, 42, 0.08) !important;
+      color: #0f172a !important;
+    }
+    html.theme-eyeprotect .sidebar-search-input {
+      background: rgba(67, 52, 34, 0.03) !important;
+      border: 1px solid #c8c6be !important;
+      color: #4a3728 !important;
+    }
+    html.theme-light .sidebar-search-input::placeholder {
+      color: #94a3b8 !important;
+    }
+    html.theme-eyeprotect .sidebar-search-input::placeholder {
+      color: #a89f91 !important;
+    }
+
+    html.theme-light .sidebar-toggle-btn {
+      background: rgba(255, 255, 255, 0.9) !important;
+      border-color: rgba(15, 23, 42, 0.08) !important;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .sidebar-toggle-btn {
+      background: rgba(255, 255, 255, 0.9) !important;
+      border-color: rgba(67, 52, 34, 0.08) !important;
+      box-shadow: 0 4px 20px rgba(67, 52, 34, 0.08) !important;
+    }
+
+    html.theme-light .back-to-features-btn {
+      color: #0f172a !important;
+      background: #e2e8f0 !important;
+      border: 1px solid #cbd5e1 !important;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05) !important;
+    }
+    html.theme-light .back-to-features-btn:hover {
+      background: #cbd5e1 !important;
+      border-color: var(--theme-color) !important;
+      color: var(--theme-color) !important;
+      box-shadow: 0 0 15px var(--theme-glow) !important;
+    }
+
+    html.theme-eyeprotect .back-to-features-btn {
+      color: #433422 !important;
+      background: #e8e6df !important;
+      border: 1px solid #c8c6be !important;
+      box-shadow: 0 4px 12px rgba(67, 52, 34, 0.05) !important;
+    }
+    html.theme-eyeprotect .back-to-features-btn:hover {
+      background: #c8c6be !important;
+      border-color: var(--theme-color) !important;
+      color: var(--theme-color) !important;
+      box-shadow: 0 0 15px var(--theme-glow) !important;
+    }
+
+    html.theme-light .hamburger-line {
+      background: #0f172a !important;
+    }
+    html.theme-eyeprotect .hamburger-line {
+      background: #433422 !important;
+    }
+
+    /* 3D background canvas core brightness and color inversion filter */
+    html.theme-light #canvas-container {
+      background-color: #9897A9 !important;
+      opacity: 1 !important;
+    }
+    html.theme-light #canvas-container canvas {
+      mix-blend-mode: normal !important;
+      filter: none !important;
+      opacity: 1 !important;
+    }
+    html.theme-eyeprotect #canvas-container {
+      background-color: #9897A9 !important;
+      opacity: 1 !important;
+    }
+    html.theme-eyeprotect #canvas-container canvas {
+      mix-blend-mode: normal !important;
+      filter: none !important;
+      opacity: 1 !important;
+    }
+
+    /* Keep Search Input Borders Visible in Light Themes */
+    html.theme-light #global-search-input {
+      border: 1px solid #cbd5e1 !important;
+      background: rgba(15, 23, 42, 0.04) !important;
+    }
+    html.theme-eyeprotect #global-search-input {
+      border: 1px solid #c8c6be !important;
+      background: rgba(107, 78, 61, 0.04) !important;
+    }
+
+    /* Heading Logo Gradients */
+    html.theme-light .brand-name {
+      background: linear-gradient(135deg, #0f172a 0%, var(--theme-color) 100%) !important;
+      -webkit-text-fill-color: transparent !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+    }
+    html.theme-eyeprotect .brand-name {
+      background: linear-gradient(135deg, #4a3728 0%, var(--theme-color) 100%) !important;
+      -webkit-text-fill-color: transparent !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+    }
+
+    /* High-contrast labels */
+    html.theme-light .tracker-label {
+      background: #ffffff !important;
+      border: 1px solid var(--theme-color) !important;
+      color: #0f172a !important;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+    }
+    html.theme-eyeprotect .tracker-label {
+      background: #faf9f5 !important;
+      border: 1px solid var(--theme-color) !important;
+      color: #4a3728 !important;
+      box-shadow: 0 4px 12px rgba(67, 52, 34, 0.08) !important;
+    }
+
+    /* HUD Theme Button Styling */
+    .theme-btn-hud {
+      border: 1px solid var(--panel-border);
+      color: var(--text-secondary);
+      cursor: pointer;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      justify-content: center;
+      align-items: center;
+      transition: all 0.2s;
+      display: flex;
+      flex-shrink: 0;
+      margin-right: 12px;
+      outline: none;
+    }
+    .theme-btn-hud:hover {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--theme-color);
+      box-shadow: 0 0 8px var(--theme-glow);
+    }
+    html.theme-light .theme-btn-hud {
+      background: rgba(15, 23, 42, 0.05) !important;
+      border-color: rgba(15, 23, 42, 0.08) !important;
+      color: #475569 !important;
+    }
+    html.theme-light .theme-btn-hud:hover {
+      background: rgba(15, 23, 42, 0.1) !important;
+      border-color: var(--theme-color) !important;
+      color: var(--theme-color) !important;
+      box-shadow: 0 0 8px var(--theme-glow) !important;
+    }
+    html.theme-eyeprotect .theme-btn-hud {
+      background: rgba(67, 52, 34, 0.05) !important;
+      border-color: rgba(67, 52, 34, 0.08) !important;
+      color: #7c6b57 !important;
+    }
+    html.theme-eyeprotect .theme-btn-hud:hover {
+      background: rgba(67, 52, 34, 0.1) !important;
+      border-color: var(--theme-color) !important;
+      color: var(--theme-color) !important;
+      box-shadow: 0 0 8px var(--theme-glow) !important;
+    }
+
+    /* Course Catalog Accordion Styling */
+    .sidebar-group {
+      background: rgba(255, 255, 255, 0.02) !important;
+      border: 1px solid rgba(255, 255, 255, 0.05) !important;
+      border-radius: 10px !important;
+      padding: 6px 10px !important;
+      margin-bottom: 14px !important;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
+    }
+
+    .sidebar-group:hover {
+      border-color: var(--theme-color) !important;
+      background: rgba(255, 255, 255, 0.04) !important;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3), 0 0 10px var(--theme-glow) !important;
+    }
+
+    /* Light Theme override */
+    html.theme-light .sidebar-group {
+      background: rgba(15, 23, 42, 0.02) !important;
+      border: 1px solid rgba(15, 23, 42, 0.06) !important;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04) !important;
+    }
+
+    html.theme-light .sidebar-group:hover {
+      background: #ffffff !important;
+      border-color: var(--theme-color) !important;
+      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06), 0 0 10px var(--theme-glow) !important;
+    }
+
+    /* Eye Comfort Theme override */
+    html.theme-eyeprotect .sidebar-group {
+      background: rgba(67, 52, 34, 0.02) !important;
+      border: 1px solid rgba(67, 52, 34, 0.06) !important;
+      box-shadow: 0 2px 8px rgba(67, 52, 34, 0.04) !important;
+    }
+
+    html.theme-eyeprotect .sidebar-group:hover {
+      background: #faf8f3 !important;
+      border-color: var(--theme-color) !important;
+      box-shadow: 0 6px 16px rgba(67, 52, 34, 0.06), 0 0 10px var(--theme-glow) !important;
+    }
+
+    /* Expand / Collapse items visibility */
+    .sidebar-group.collapsed .sidebar-course-item {
+      display: none !important;
+      opacity: 0 !important;
+      height: 0 !important;
+      overflow: hidden !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+
+    /* Group header styling for interactivity */
+    .sidebar-group-header {
+      cursor: pointer !important;
+      user-select: none !important;
+      display: flex !important;
+      justify-content: space-between !important;
+      align-items: center !important;
+      width: 100% !important;
+      border-left: none !important; /* remove original thin line */
+      padding: 6px 4px 6px 6px !important;
+      transition: color 0.2s ease !important;
+    }
+
+    /* Hover effect for header */
+    .sidebar-group-header:hover {
+      color: var(--theme-color) !important;
+    }
+
+    /* Accordion chevron */
+    .sidebar-group-header::after {
+      content: '' !important;
+      display: inline-block !important;
+      width: 6px !important;
+      height: 6px !important;
+      border-right: 2px solid var(--text-secondary) !important;
+      border-bottom: 2px solid var(--text-secondary) !important;
+      transform: rotate(45deg) !important; /* default: point down (expanded) */
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease !important;
+      margin-left: auto !important;
+      margin-right: 4px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .sidebar-group-header:hover::after {
+      border-color: var(--theme-color) !important;
+    }
+
+    /* Rotate chevron to point right when collapsed */
+    .sidebar-group.collapsed .sidebar-group-header::after {
+      transform: rotate(-45deg) !important;
+    }
+  </style>
+  <script>
+    function updateThemeIcon(theme) {
+      const btn = document.getElementById('theme-cycle-btn');
+      if (!btn) return;
+      
+      const svg = document.getElementById('theme-btn-icon');
+      if (!svg) return;
+      
+      btn.title = 'Current Theme: ' + theme + '. Click to cycle.';
+      
+      if (theme === 'light') {
+        svg.innerHTML = `
+          <circle cx="12" cy="12" r="5"></circle>
+          <line x1="12" y1="1" x2="12" y2="3"></line>
+          <line x1="12" y1="21" x2="12" y2="23"></line>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+          <line x1="1" y1="12" x2="3" y2="12"></line>
+          <line x1="21" y1="12" x2="23" y2="12"></line>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+        `;
+        svg.style.color = '';
+      } else if (theme === 'eyeprotect') {
+        svg.innerHTML = `
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+          <circle cx="12" cy="12" r="3"></circle>
+        `;
+        svg.style.color = '#d97706';
+      } else {
+        svg.innerHTML = `
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+        `;
+        svg.style.color = '';
+      }
+    }
+
+    function syncTheme() {
+      try {
+        let savedTheme = 'dark';
+        try {
+          const parentClass = window.parent.document.documentElement.className;
+          if (parentClass.includes('theme-light')) {
+            savedTheme = 'light';
+          } else if (parentClass.includes('theme-eyeprotect')) {
+            savedTheme = 'eyeprotect';
+          }
+        } catch (e) {
+          savedTheme = localStorage.getItem('globalTheme') || 'dark';
+        }
+        
+        const html = document.documentElement;
+        html.classList.remove('theme-light', 'theme-dark', 'theme-eyeprotect');
+        html.classList.add('theme-' + savedTheme);
+        
+        updateThemeIcon(savedTheme);
+      } catch (e) {
+        console.error("Theme sync error", e);
+      }
+    }
+
+    // Run sync instantly and set observer/interval
+    syncTheme();
+    window.addEventListener('DOMContentLoaded', () => {
+      // Set click listener
+      const themeBtn = document.getElementById('theme-cycle-btn');
+      if (themeBtn) {
+        themeBtn.addEventListener('click', () => {
+          const html = document.documentElement;
+          let currentTheme = 'dark';
+          if (html.classList.contains('theme-light')) {
+            currentTheme = 'light';
+          } else if (html.classList.contains('theme-eyeprotect')) {
+            currentTheme = 'eyeprotect';
+          }
+          
+          let nextTheme = 'dark';
+          if (currentTheme === 'dark') nextTheme = 'light';
+          else if (currentTheme === 'light') nextTheme = 'eyeprotect';
+          
+          // Save locally
+          localStorage.setItem('globalTheme', nextTheme);
+          
+          // Sync internally
+          syncTheme();
+          
+          // Post message to Next.js parent frame
+          try {
+            window.parent.postMessage({ type: 'sync-theme', theme: nextTheme }, '*');
+          } catch (err) {
+            console.error("Failed to notify parent theme change", err);
+          }
+        });
+      }
+      
+      // Click delegation for expand/collapse of Course Catalog groups
+      const sidebarCourseList = document.getElementById('sidebar-course-list');
+      if (sidebarCourseList) {
+        sidebarCourseList.addEventListener('click', (e) => {
+          const header = e.target.closest('.sidebar-group-header');
+          if (header) {
+            const group = header.closest('.sidebar-group');
+            if (group) {
+              group.classList.toggle('collapsed');
+            }
+          }
+        });
+
+        // Automatically collapse new groups when added/rendered
+        const observer = new MutationObserver(() => {
+          const groups = sidebarCourseList.querySelectorAll('.sidebar-group:not([data-processed])');
+          groups.forEach((group) => {
+            group.setAttribute('data-processed', 'true');
+            group.classList.add('collapsed');
+          });
+        });
+        observer.observe(sidebarCourseList, { childList: true, subtree: true });
+      }
+      
+      syncTheme();
+      setInterval(syncTheme, 400);
+    });
+  </script>
 </head>
 
 <body>
@@ -81,6 +898,11 @@
           </div>
           <div class="global-search-results" id="global-search-results"></div>
         </div>
+
+        <!-- Theme Cycle Button -->
+        <button id="theme-cycle-btn" class="theme-btn-hud" title="Cycle theme mode">
+          <svg id="theme-btn-icon" class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
+        </button>
 
         <!-- Back to Features Button -->
         <button id="back-to-features-btn" class="back-to-features-btn" title="Back to features selection page">
