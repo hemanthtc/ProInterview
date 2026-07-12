@@ -1003,7 +1003,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             />
                             {photoMenuOpen && (
                                 <>
-                                    <div className="fixed inset-0 z-40" onClick={() => setPhotoMenuOpen(false)} />
+                                    <div className="fixed top-0 left-0 w-full h-full z-40" onClick={() => setPhotoMenuOpen(false)} />
                                     <div className="absolute top-[110%] left-1/2 -translate-x-1/2 bg-[#16161a] border border-white/10 rounded-xl shadow-2xl p-1 z-50 w-48 flex flex-col gap-0.5 overflow-hidden">
                                         <button
                                             type="button"
