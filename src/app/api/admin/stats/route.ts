@@ -14,6 +14,12 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "adminId is required." }, { status: 400 });
         }
 
+        // Mark the requesting admin as online
+        await OrgAdmin.findOneAndUpdate(
+            { identifier: adminId },
+            { isOnline: true, lastActive: new Date() }
+        );
+
         // ── User totals (excluding any legacy/other organization accounts) ────
         const totalUsers = await User.countDocuments({ isVerified: true, isOrganization: { $ne: true } as any });
         const totalUnverified = await User.countDocuments({ isVerified: false, isOrganization: { $ne: true } as any });

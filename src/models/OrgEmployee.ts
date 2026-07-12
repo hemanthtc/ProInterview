@@ -40,7 +40,10 @@ const OrgEmployeeSchema: Schema<IOrgEmployee> = new Schema(
     }
 );
 
-const OrgEmployee: Model<IOrgEmployee> =
-    mongoose.models.OrgEmployee || mongoose.model<IOrgEmployee>("OrgEmployee", OrgEmployeeSchema);
+if (mongoose.models.OrgEmployee) {
+    delete mongoose.models.OrgEmployee;
+}
+
+const OrgEmployee: Model<IOrgEmployee> = mongoose.model<IOrgEmployee>("OrgEmployee", OrgEmployeeSchema);
 
 export default OrgEmployee;

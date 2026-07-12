@@ -36,7 +36,10 @@ const OrgAdminSchema: Schema<IOrgAdmin> = new Schema(
     }
 );
 
-const OrgAdmin: Model<IOrgAdmin> =
-    mongoose.models.OrgAdmin || mongoose.model<IOrgAdmin>("OrgAdmin", OrgAdminSchema);
+if (mongoose.models.OrgAdmin) {
+    delete mongoose.models.OrgAdmin;
+}
+
+const OrgAdmin: Model<IOrgAdmin> = mongoose.model<IOrgAdmin>("OrgAdmin", OrgAdminSchema);
 
 export default OrgAdmin;

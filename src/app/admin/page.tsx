@@ -864,11 +864,12 @@ export default function AdminDashboard() {
                                                     </div>
 
                                                     <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0 ${
-                                                        adm.isVerified
-                                                            ? "bg-emerald-500/10 text-emerald-400 ring-1 ring-emerald-500/20"
-                                                            : "bg-amber-500/10 text-amber-400 ring-1 ring-amber-500/20"
+                                                        adm.isOnline
+                                                            ? "bg-emerald-500/10 text-emerald-450 ring-1 ring-emerald-500/20"
+                                                            : "bg-red-500/10 text-red-450 ring-1 ring-red-500/20"
                                                     }`}>
-                                                        {adm.isVerified ? "Active" : "Pending"}
+                                                        <span className={`w-1 h-1 rounded-full ${adm.isOnline ? "bg-emerald-400 animate-pulse" : "bg-red-400"}`} />
+                                                        {adm.isOnline ? "Active" : "Inactive"}
                                                     </span>
                                                 </div>
                                             ))
