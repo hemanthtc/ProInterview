@@ -701,6 +701,132 @@
     .sidebar-group.collapsed .sidebar-group-header::after {
       transform: rotate(-45deg) !important;
     }
+
+    /* Soft outlines and shadows for Light and Eye Comfort modes to make cards distinct */
+    html.theme-light .holo-book-card {
+      border: 1px solid #94a3b8 !important;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06) !important;
+    }
+    html.theme-eyeprotect .holo-book-card {
+      border: 1px solid #b8ac90 !important;
+      box-shadow: 0 4px 12px rgba(67, 52, 34, 0.06) !important;
+    }
+    html.theme-light .holo-book-card:hover,
+    html.theme-eyeprotect .holo-book-card:hover {
+      border-color: var(--theme-color) !important;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 0 10px var(--theme-glow) !important;
+    }
+
+    /* Soft border for sidebar categories in light/comfort modes */
+    html.theme-light .sidebar-group {
+      border: 1px solid rgba(15, 23, 42, 0.12) !important;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04) !important;
+    }
+    html.theme-eyeprotect .sidebar-group {
+      border: 1px solid rgba(67, 52, 34, 0.12) !important;
+      box-shadow: 0 2px 6px rgba(67, 52, 34, 0.04) !important;
+    }
+
+    /* Visible lines below the headers */
+    html.theme-light .shelf-header,
+    html.theme-light .book-reader-header {
+      border-bottom: 2px solid rgba(15, 23, 42, 0.15) !important;
+    }
+    html.theme-eyeprotect .shelf-header,
+    html.theme-eyeprotect .book-reader-header {
+      border-bottom: 2px solid rgba(67, 52, 34, 0.15) !important;
+    }
+
+    /* Inner card mock covers styling (the icon box) */
+    html.theme-light .holo-book-cover-mock {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.05) 0%, rgba(15, 23, 42, 0.02) 100%) !important;
+      border: 1px solid rgba(15, 23, 42, 0.1) !important;
+    }
+    html.theme-eyeprotect .holo-book-cover-mock {
+      background: linear-gradient(135deg, rgba(67, 52, 34, 0.05) 0%, rgba(67, 52, 34, 0.02) 100%) !important;
+      border: 1px solid rgba(67, 52, 34, 0.1) !important;
+    }
+
+    /* Highly visible scrollbars in Light & Eye Comfort modes */
+    html.theme-light .books-grid-wrapper::-webkit-scrollbar,
+    html.theme-light .sidebar-course-list::-webkit-scrollbar,
+    html.theme-light .page-half::-webkit-scrollbar {
+      width: 8px !important;
+    }
+    html.theme-eyeprotect .books-grid-wrapper::-webkit-scrollbar,
+    html.theme-eyeprotect .sidebar-course-list::-webkit-scrollbar,
+    html.theme-eyeprotect .page-half::-webkit-scrollbar {
+      width: 8px !important;
+    }
+
+    html.theme-light .books-grid-wrapper::-webkit-scrollbar-track,
+    html.theme-light .sidebar-course-list::-webkit-scrollbar-track,
+    html.theme-light .page-half::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.04) !important;
+      border-radius: 4px !important;
+    }
+    html.theme-eyeprotect .books-grid-wrapper::-webkit-scrollbar-track,
+    html.theme-eyeprotect .sidebar-course-list::-webkit-scrollbar-track,
+    html.theme-eyeprotect .page-half::-webkit-scrollbar-track {
+      background: rgba(67, 52, 34, 0.04) !important;
+      border-radius: 4px !important;
+    }
+
+    html.theme-light .books-grid-wrapper::-webkit-scrollbar-thumb,
+    html.theme-light .sidebar-course-list::-webkit-scrollbar-thumb,
+    html.theme-light .page-half::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.3) !important;
+      border-radius: 4px !important;
+    }
+    html.theme-eyeprotect .books-grid-wrapper::-webkit-scrollbar-thumb,
+    html.theme-eyeprotect .sidebar-course-list::-webkit-scrollbar-thumb,
+    html.theme-eyeprotect .page-half::-webkit-scrollbar-thumb {
+      background: rgba(67, 52, 34, 0.3) !important;
+      border-radius: 4px !important;
+    }
+
+    html.theme-light .books-grid-wrapper::-webkit-scrollbar-thumb:hover,
+    html.theme-light .sidebar-course-list::-webkit-scrollbar-thumb:hover,
+    html.theme-light .page-half::-webkit-scrollbar-thumb:hover {
+      background: rgba(15, 23, 42, 0.5) !important;
+    }
+    html.theme-eyeprotect .books-grid-wrapper::-webkit-scrollbar-thumb:hover,
+    html.theme-eyeprotect .sidebar-course-list::-webkit-scrollbar-thumb:hover,
+    html.theme-eyeprotect .page-half::-webkit-scrollbar-thumb:hover {
+      background: rgba(67, 52, 34, 0.5) !important;
+    }
+
+    /* Solid black circular borders for Close buttons */
+    html.theme-light .shelf-close-btn,
+    html.theme-eyeprotect .shelf-close-btn,
+    html.theme-light .page-close-btn,
+    html.theme-eyeprotect .page-close-btn {
+      border: 2px solid #000000 !important;
+      color: #000000 !important;
+      background: #ffffff !important;
+      border-radius: 50% !important;
+      width: 36px !important;
+      height: 36px !important;
+      font-size: 1.2rem !important;
+      display: flex !important;
+      justify-content: center !important;
+      align-items: center !important;
+      line-height: 1 !important;
+      z-index: 105 !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    html.theme-light .shelf-close-btn:hover,
+    html.theme-eyeprotect .shelf-close-btn:hover,
+    html.theme-light .page-close-btn:hover,
+    html.theme-eyeprotect .page-close-btn:hover {
+      background: #ef4444 !important;
+      color: #ffffff !important;
+      border-color: #ef4444 !important;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+    }
   </style>
   <script>
     function updateThemeIcon(theme) {
@@ -739,18 +865,25 @@
       }
     }
 
+    let isTransitioningTheme = false;
+
     function syncTheme() {
       try {
-        let savedTheme = 'dark';
-        try {
-          const parentClass = window.parent.document.documentElement.className;
-          if (parentClass.includes('theme-light')) {
-            savedTheme = 'light';
-          } else if (parentClass.includes('theme-eyeprotect')) {
-            savedTheme = 'eyeprotect';
+        let savedTheme = localStorage.getItem('globalTheme') || 'dark';
+        
+        if (!isTransitioningTheme) {
+          try {
+            const parentClass = window.parent.document.documentElement.className;
+            if (parentClass.includes('theme-eyeprotect')) {
+              savedTheme = 'eyeprotect';
+            } else if (parentClass.includes('theme-light')) {
+              savedTheme = 'light';
+            } else {
+              savedTheme = 'dark';
+            }
+          } catch (e) {
+            // cross-origin fallback, already handled via localStorage
           }
-        } catch (e) {
-          savedTheme = localStorage.getItem('globalTheme') || 'dark';
         }
         
         const html = document.documentElement;
@@ -772,16 +905,22 @@
         themeBtn.addEventListener('click', () => {
           const html = document.documentElement;
           let currentTheme = 'dark';
-          if (html.classList.contains('theme-light')) {
-            currentTheme = 'light';
-          } else if (html.classList.contains('theme-eyeprotect')) {
+          if (html.classList.contains('theme-eyeprotect')) {
             currentTheme = 'eyeprotect';
+          } else if (html.classList.contains('theme-light')) {
+            currentTheme = 'light';
           }
           
           let nextTheme = 'dark';
           if (currentTheme === 'dark') nextTheme = 'light';
           else if (currentTheme === 'light') nextTheme = 'eyeprotect';
           
+          // Set transition state to prevent parent checks from resetting child theme
+          isTransitioningTheme = true;
+          setTimeout(() => {
+            isTransitioningTheme = false;
+          }, 800);
+
           // Save locally
           localStorage.setItem('globalTheme', nextTheme);
           
