@@ -825,7 +825,46 @@
       background: #ef4444 !important;
       color: #ffffff !important;
       border-color: #ef4444 !important;
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+    }
+
+    /* Visible reader control buttons in Light Mode */
+    html.theme-light .reader-btn {
+      background: #ffffff !important;
+      border: 1px solid rgba(15, 23, 42, 0.15) !important;
+      color: var(--text-primary) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    }
+    html.theme-light .reader-btn:hover {
+      background: var(--theme-color) !important;
+      border-color: var(--theme-color) !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 12px var(--theme-glow) !important;
+    }
+    html.theme-light .reader-btn:disabled {
+      background: #e2e8f0 !important;
+      border-color: #cbd5e1 !important;
+      color: rgba(15, 23, 42, 0.3) !important;
+      opacity: 1 !important;
+    }
+
+    /* Visible reader control buttons in Eye Comfort Mode */
+    html.theme-eyeprotect .reader-btn {
+      background: #fffdf7 !important;
+      border: 1px solid rgba(67, 52, 34, 0.15) !important;
+      color: var(--text-primary) !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+    }
+    html.theme-eyeprotect .reader-btn:hover {
+      background: var(--theme-color) !important;
+      border-color: var(--theme-color) !important;
+      color: #ffffff !important;
+      box-shadow: 0 0 12px var(--theme-glow) !important;
+    }
+    html.theme-eyeprotect .reader-btn:disabled {
+      background: #e8e2d0 !important;
+      border-color: #dcd2ba !important;
+      color: rgba(67, 52, 34, 0.3) !important;
+      opacity: 1 !important;
     }
   </style>
   <script>
