@@ -48,11 +48,15 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        return NextResponse.json({
+        const responseData: any = {
             success: true,
             message: "Recovery code sent.",
-            otpCode: generatedOtp
-        });
+        };
+        if (account.type !== "email") {
+            responseData.otpCode = generatedOtp;
+        }
+
+        return NextResponse.json(responseData);
     } catch (error: any) {
         console.error("Forgot password API error:", error);
         return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
