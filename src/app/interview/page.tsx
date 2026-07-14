@@ -9,8 +9,26 @@ import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageIt
 
 export default function InterviewRoom() {
     const router = useRouter();
-    const videoRef = useRef<HTMLVideoElement>(null);
+    const videoElementRef = useRef<HTMLVideoElement | null>(null);
+    const streamRef = useRef<MediaStream | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    const stopCamera = useCallback(() => {
+        if (streamRef.current) {
+            streamRef.current.getTracks().forEach((track) => track.stop());
+            streamRef.current = null;
+        }
+        if (videoElementRef.current) {
+            videoElementRef.current.srcObject = null;
+        }
+    }, []);
+
+    const videoRef = useCallback((node: HTMLVideoElement | null) => {
+        videoElementRef.current = node;
+        if (node && streamRef.current) {
+            node.srcObject = streamRef.current;
+        }
+    }, []);
 
     const [messages, setMessages] = useState<{ role: "assistant" | "user"; content: string; attachment?: string }[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -132,9 +150,9 @@ export default function InterviewRoom() {
         }
 
         faceDetectionIntervalRef.current = setInterval(() => {
-            if (!videoRef.current || !canvasRef.current || isCallEnded) return;
+            if (!videoElementRef.current || !canvasRef.current || isCallEnded) return;
 
-            const video = videoRef.current;
+            const video = videoElementRef.current;
             const canvas = canvasRef.current;
             const ctx = canvas.getContext("2d");
             if (!ctx || video.videoWidth === 0) return;
@@ -204,15 +222,11 @@ export default function InterviewRoom() {
             }
         }
 
-        if (videoRef.current?.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach((track) => track.stop());
-            videoRef.current.srcObject = null;
-        }
+        stopCamera();
 
         setVideoActive(false);
         setIsListening(false);
-    }, [stopFaceDetection]);
+    }, [stopFaceDetection, stopCamera]);
 
     useEffect(() => {
         if (isCallEnded || terminatedForCheating) {
@@ -251,7 +265,6 @@ export default function InterviewRoom() {
         setResumeText(text || "");
 
         let isMounted = true;
-        const videoNode = videoRef.current;
 
         // Camera setup
         const startCamera = async () => {
@@ -262,11 +275,13 @@ export default function InterviewRoom() {
                     return;
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                if (isMounted && videoRef.current) {
-                    videoRef.current.srcObject = stream;
+                streamRef.current = stream;
+                if (isMounted && videoElementRef.current) {
+                    videoElementRef.current.srcObject = stream;
                     setVideoActive(true);
-                } else {
+                } else if (!isMounted) {
                     stream.getTracks().forEach(track => track.stop());
+                    streamRef.current = null;
                 }
             } catch (err) {
                 console.error("Camera access error:", err);
@@ -290,10 +305,28 @@ export default function InterviewRoom() {
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                    latestTranscript += event.results[i][0].transcript;
                 }
-                setUserInput(prev => prev + latestTranscript + " ");
+                if (latestTranscript.trim()) {
+                    userInputRef.current = latestTranscript.trim();
+                    setUserInput(latestTranscript.trim());
+                }
             };
+
+            recognitionRef.current.onerror = (event: any) => {
+                console.error("Speech recognition error:", event.error);
+                if (event.error === "not-allowed") {
+                    setIsListening(false);
+                }
+            };
+
             recognitionRef.current.onend = () => {
-                setIsListening(false);
+                // If call is not ended and we are still listening, restart it
+                if (!isCallEndedRef.current && isListeningRef.current) {
+                    try {
+                        recognitionRef.current.start();
+                    } catch (e) {
+                        console.error("Failed to restart speech recognition", e);
+                    }
+                }
             };
         }
 
@@ -332,13 +365,7 @@ export default function InterviewRoom() {
         return () => {
             isMounted = false;
             isCallEndedRef.current = true;
-            if (videoNode) {
-                const stream = videoNode.srcObject as MediaStream;
-                if (stream) {
-                    stream.getTracks().forEach((track) => track.stop());
-                }
-                videoNode.srcObject = null;
-            }
+            stopCamera();
             window.speechSynthesis.cancel();
             stopFaceDetection();
         };
@@ -494,12 +521,12 @@ export default function InterviewRoom() {
         setIsSpeaking(false);
 
         // Take a camera snapshot if video is active
-        if (videoRef.current && canvasRef.current && videoActive) {
+        if (videoElementRef.current && canvasRef.current && videoActive) {
             const context = canvasRef.current.getContext('2d');
             if (context) {
-                canvasRef.current.width = videoRef.current.videoWidth || 640;
-                canvasRef.current.height = videoRef.current.videoHeight || 480;
-                context.drawImage(videoRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+                canvasRef.current.width = videoElementRef.current.videoWidth || 640;
+                canvasRef.current.height = videoElementRef.current.videoHeight || 480;
+                context.drawImage(videoElementRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
                 const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.5);
                 if (snapshotsRef.current.length < 15) { 
                     snapshotsRef.current.push(dataUrl.split(',')[1]);
@@ -541,11 +568,7 @@ export default function InterviewRoom() {
 
     const toggleVideo = async () => {
         if (videoActive) {
-            if (videoRef.current?.srcObject) {
-                const stream = videoRef.current.srcObject as MediaStream;
-                stream.getTracks().forEach((track) => track.stop());
-                videoRef.current.srcObject = null;
-            }
+            stopCamera();
             setVideoActive(false);
         } else {
             setVideoActive(true);
@@ -556,8 +579,9 @@ export default function InterviewRoom() {
                     return;
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                if (videoRef.current) {
-                    videoRef.current.srcObject = stream;
+                streamRef.current = stream;
+                if (videoElementRef.current) {
+                    videoElementRef.current.srcObject = stream;
                 }
             } catch (err) {
                 console.error("Camera access error:", err);
@@ -577,11 +601,7 @@ export default function InterviewRoom() {
             savedAt: Date.now()
         };
         setStorageItem("pausedInterviewSession", JSON.stringify(sessionToSave));
-        // Stop stream
-        if (videoRef.current?.srcObject) {
-            const stream = videoRef.current.srcObject as MediaStream;
-            stream.getTracks().forEach(track => track.stop());
-        }
+        stopCamera();
         router.push("/");
     };
 
