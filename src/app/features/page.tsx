@@ -90,6 +90,8 @@ function FeaturesContent() {
     const [roadmapCompany, setRoadmapCompany] = useState("");
     const [roadmapLocation, setRoadmapLocation] = useState("");
     const [roadmapAdditional, setRoadmapAdditional] = useState("");
+    const [roadmapImages, setRoadmapImages] = useState<File[]>([]);
+    const [roadmapImageError, setRoadmapImageError] = useState("");
     const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
     const [roadmapResult, setRoadmapResult] = useState<any>(null);
     const [roadmapTasksChecked, setRoadmapTasksChecked] = useState<Record<string, boolean>>({});
@@ -1246,6 +1248,39 @@ function FeaturesContent() {
         setIsGeneratingRoadmap(true);
         setRoadmapResult(null);
         setRoadmapTasksChecked({});
+        setRoadmapImageError("");
+        const hasRoadmapImages = roadmapImages.length > 0;
+        const hasRequiredTextInputs = roadmapCourse.trim() && roadmapCompany.trim() && roadmapLocation.trim() && roadmapAdditional.trim();
+
+        const allowedImageTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
+        const maxImages = 4;
+        const maxImageSizeBytes = 5 * 1024 * 1024;
+
+        if (roadmapImages.length > maxImages) {
+            setRoadmapImageError(`Upload up to ${maxImages} images for roadmap generation.`);
+            setIsGeneratingRoadmap(false);
+            return;
+        }
+
+        const invalidImage = roadmapImages.find((file) => !allowedImageTypes.has(file.type) || file.size <= 0);
+        if (invalidImage) {
+            setRoadmapImageError(`Unsupported image type for ${invalidImage.name}. Use JPEG, PNG, WEBP, or GIF.`);
+            setIsGeneratingRoadmap(false);
+            return;
+        }
+
+        const oversizedImage = roadmapImages.find((file) => file.size > maxImageSizeBytes);
+        if (oversizedImage) {
+            setRoadmapImageError(`Image ${oversizedImage.name} is too large. Keep each image under 5 MB.`);
+            setIsGeneratingRoadmap(false);
+            return;
+        }
+
+        if (!hasRoadmapImages && !hasRequiredTextInputs) {
+            setRoadmapImageError("Upload at least one image, or fill in Course, Company, Location, and Additional Requirements.");
+            setIsGeneratingRoadmap(false);
+            return;
+        }
 
         const useMockFallbackRoadmap = () => {
             const mockData = {
@@ -1305,15 +1340,16 @@ function FeaturesContent() {
         };
 
         try {
+            const formData = new FormData();
+            formData.append("course", roadmapCourse);
+            formData.append("company", roadmapCompany);
+            formData.append("location", roadmapLocation);
+            formData.append("additionalInfo", roadmapAdditional);
+            roadmapImages.forEach((file) => formData.append("roadmapImages", file));
+
             const res = await fetch("/api/generate-roadmap", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    course: roadmapCourse,
-                    company: roadmapCompany,
-                    location: roadmapLocation,
-                    additionalInfo: roadmapAdditional,
-                }),
+                body: formData,
             });
             const data = await res.json();
             if (res.ok) {
@@ -1337,6 +1373,10 @@ function FeaturesContent() {
                 setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
                 setStorageItem("activeRoadmapId", newRoadmap.id);
             } else {
+                if (res.status === 400 && data?.error) {
+                    setRoadmapImageError(data.error);
+                    return;
+                }
                 console.warn("Roadmap API returned error, using mock fallback:", data.error);
                 useMockFallbackRoadmap();
             }
@@ -1376,6 +1416,8 @@ function FeaturesContent() {
         setActiveModal("roadmap_generator");
         setActiveTool("roadmap_generator");
         setActiveRoadmapId(null);
+        setRoadmapImages([]);
+        setRoadmapImageError("");
         setRoadmapResult(null);
         setRoadmapTasksChecked({});
         setExpandedPhases({ 0: true });
@@ -1394,6 +1436,8 @@ function FeaturesContent() {
         setRoadmapAdditional(road.additionalInfo);
         setRoadmapResult(road.roadmapData);
         setRoadmapTasksChecked(road.tasksChecked || {});
+        setRoadmapImages([]);
+        setRoadmapImageError("");
         setExpandedPhases({ 0: true });
     };
 
@@ -1442,6 +1486,8 @@ function FeaturesContent() {
         setRoadmapCompany("");
         setRoadmapLocation("");
         setRoadmapAdditional("");
+        setRoadmapImages([]);
+        setRoadmapImageError("");
         setRoadmapResult(null);
         setRoadmapTasksChecked({});
         setExpandedPhases({ 0: true });
@@ -3605,10 +3651,81 @@ function FeaturesContent() {
                                     />
                                 </div>
 
+                                <div className="flex items-center gap-3 py-1">
+                                    <div className="h-px flex-1 bg-white/10" />
+                                    <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40">or text</span>
+                                    <div className="h-px flex-1 bg-white/10" />
+                                </div>
+
+                                <div>
+                                    <label className="text-xs font-semibold text-white/70 block mb-1">Reference Images</label>
+                                    <div className="border border-dashed border-white/10 rounded-xl p-5 flex flex-col items-center justify-center hover:border-emerald-500/50 transition-colors relative bg-black/20 cursor-pointer">
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            onChange={(e) => {
+                                                const files = Array.from(e.target.files || []);
+                                                const allowedImageTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
+                                                const maxImages = 4;
+                                                const maxImageSizeBytes = 5 * 1024 * 1024;
+                                                const invalidFile = files.find((file) => !allowedImageTypes.has(file.type) || file.size <= 0);
+                                                if (invalidFile) {
+                                                    setRoadmapImageError(`Unsupported image type for ${invalidFile.name}. Use JPEG, PNG, WEBP, or GIF.`);
+                                                    e.target.value = "";
+                                                    return;
+                                                }
+
+                                                const oversizedFile = files.find((file) => file.size > maxImageSizeBytes);
+                                                if (oversizedFile) {
+                                                    setRoadmapImageError(`Image ${oversizedFile.name} is too large. Keep each image under 5 MB.`);
+                                                    e.target.value = "";
+                                                    return;
+                                                }
+
+                                                if (roadmapImages.length + files.length > maxImages) {
+                                                    setRoadmapImageError(`Upload up to ${maxImages} images for roadmap generation.`);
+                                                    e.target.value = "";
+                                                    return;
+                                                }
+
+                                                setRoadmapImageError("");
+                                                setRoadmapImages((prev) => [...prev, ...files]);
+                                                e.target.value = "";
+                                            }}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                        <UploadCloud className="w-8 h-8 text-white/40 mb-2" />
+                                        <span className="text-xs text-white/60 font-medium text-center">Drop screenshots, notes, or brief images here</span>
+                                        <span className="text-[10px] text-white/35 mt-1 text-center">Up to 4 images, 5 MB each</span>
+                                    </div>
+
+                                    {roadmapImageError && (
+                                        <p className="mt-2 text-[11px] font-medium text-red-300">{roadmapImageError}</p>
+                                    )}
+
+                                    {roadmapImages.length > 0 && (
+                                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                                            {roadmapImages.map((file, idx) => (
+                                                <div key={`${file.name}-${idx}`} className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md text-[10px] font-semibold">
+                                                    <span>{file.name}</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setRoadmapImages((prev) => prev.filter((_, i) => i !== idx))}
+                                                        className="text-emerald-400 hover:text-white transition-colors"
+                                                    >
+                                                        <X className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 <button
                                     type="button"
                                     onClick={handleGenerateRoadmap}
-                                    disabled={isGeneratingRoadmap || !roadmapCourse.trim()}
+                                    disabled={isGeneratingRoadmap || (!roadmapImages.length && (!roadmapCourse.trim() || !roadmapCompany.trim() || !roadmapLocation.trim() || !roadmapAdditional.trim()))}
                                     className="px-6 py-3.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 transition-colors rounded-xl font-bold text-white flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed shadow-lg shadow-emerald-600/20 w-full sm:w-auto"
                                 >
                                     {isGeneratingRoadmap ? (

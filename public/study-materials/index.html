@@ -172,8 +172,8 @@
   <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>HyperDimensional Study Lab</title>
-  <script type="module" crossorigin src="./assets/index-CWESAtmN.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-0J4_c6iO.css">
+  <script type="module" crossorigin src="./assets/index-B5g01hCC.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-D5qMbtj1.css">
   <style>
     /* Light Mode Variable Overrides */
     html.theme-light, body.theme-light {
@@ -1150,8 +1150,14 @@
     <div id="reader-3d-container">
       <!-- Interactive paper book layout -->
       <div class="flat-content-panel" id="flat-book-panel">
+        <button class="page-fullscreen-btn" id="page-fullscreen-btn" title="Toggle Fullscreen">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
+          </svg>
+        </button>
         <button class="page-close-btn" id="page-close-btn">&times;</button>
         <div class="page-half left-page">
+          <div class="page-running-header">Java Developer Manual</div>
           <h1 class="page-title" id="book-page-title-left">Chapter Title</h1>
           <div class="page-content" id="book-page-content-left">
             <!-- Left page content (HTML) -->
@@ -1162,6 +1168,7 @@
           </div>
         </div>
         <div class="page-half right-page">
+          <div class="page-running-header" id="page-running-header-right">Advanced Architecture</div>
           <h1 class="page-title" id="book-page-title-right">Detail View</h1>
           <div class="page-content" id="book-page-content-right">
             <!-- Right page content (HTML) -->

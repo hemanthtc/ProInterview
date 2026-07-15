@@ -3,11 +3,47 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function POST(req: NextRequest) {
     try {
-        const { course, company, location, additionalInfo } = await req.json();
+        const formData = await req.formData();
+        const course = (formData.get("course") as string) || "";
+        const company = (formData.get("company") as string) || "";
+        const location = (formData.get("location") as string) || "";
+        const additionalInfo = (formData.get("additionalInfo") as string) || "";
+        const roadmapImages = formData.getAll("roadmapImages") as File[];
+        const hasImages = roadmapImages.length > 0;
 
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY environment variable" }, { status: 500 });
+        }
+
+        const allowedImageTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
+        const maxImages = 4;
+        const maxImageSizeBytes = 5 * 1024 * 1024;
+
+        if (roadmapImages.length > maxImages) {
+            return NextResponse.json({ error: `Upload up to ${maxImages} images for roadmap generation.` }, { status: 400 });
+        }
+
+        const invalidImage = roadmapImages.find((file) => !allowedImageTypes.has(file.type) || file.size <= 0);
+        if (invalidImage) {
+            return NextResponse.json({ error: `Unsupported image type for "${invalidImage.name}". Use JPEG, PNG, WEBP, or GIF.` }, { status: 400 });
+        }
+
+        const validImages = roadmapImages.filter((file) => allowedImageTypes.has(file.type) && file.size > 0);
+
+        const oversizedImage = roadmapImages.find((file) => file.size > maxImageSizeBytes);
+        if (oversizedImage) {
+            return NextResponse.json({ error: `Image "${oversizedImage.name}" is too large. Keep each image under 5 MB.` }, { status: 400 });
+        }
+
+        if (roadmapImages.length > 0 && validImages.length === 0) {
+            return NextResponse.json({ error: "Only JPEG, PNG, WEBP, or GIF images are supported for roadmap uploads." }, { status: 400 });
+        }
+
+        if (!hasImages && (!course.trim() || !company.trim() || !location.trim() || !additionalInfo.trim())) {
+            return NextResponse.json({
+                error: "Course, company, location, and additional requirements are required when no roadmap images are uploaded."
+            }, { status: 400 });
         }
 
         const genAI = new GoogleGenerativeAI(API_KEY);
@@ -23,6 +59,7 @@ Inputs:
 - Target Company: ${company || "Not specified"}
 - Location: ${location || "Not specified"}
 - Additional Context / Skills: ${additionalInfo || "Not specified"}
+${validImages.length > 0 ? `- Uploaded reference images: ${validImages.length} image(s). Use the visual content to extract requirements, topics, constraints, and any text shown in screenshots, diagrams, notes, or interview briefs. When images are present, treat the text fields above as optional hints.` : "- Uploaded reference images: None. The text fields above are required."}
 
 Generate a detailed roadmap and return a JSON object with the following structure:
 1. "overview": A concise paragraph (under 100 words) summarizing the prep strategy. Tailor it to the company and location if provided.
@@ -37,10 +74,23 @@ Generate a detailed roadmap and return a JSON object with the following structur
 
 Respond ONLY with a valid JSON block matching this structure. Do not write any markdown code blocks or explanatory text outside of the JSON.`;
 
+        const promptParts: any[] = [{ text: systemPrompt }];
+
+        for (const image of validImages) {
+            const arrayBuffer = await image.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            promptParts.push({
+                inlineData: {
+                    data: base64,
+                    mimeType: image.type || "image/png",
+                }
+            });
+        }
+
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                result = await model.generateContent(systemPrompt);
+                result = await model.generateContent(promptParts);
                 break;
             } catch (retryErr: any) {
                 const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
