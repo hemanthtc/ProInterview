@@ -21,11 +21,27 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
   const [currentStyle, setCurrentStyle] = useState<ResumeStyle>(TEMPLATES[0].style);
   
   const [activeTab, setActiveTab] = useState<'form' | 'templates' | 'style'>('form');
+  const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
   const [zoom, setZoom] = useState<number>(0.9); // zoom level 0.7 - 1.2
   const [showPrintGuide, setShowPrintGuide] = useState<boolean>(false);
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isAILoading, setIsAILoading] = useState<boolean>(false);
+
+  // Auto scaling for mobile preview
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        const calculatedZoom = (window.innerWidth - 32) / 794;
+        setZoom(Math.max(0.4, Math.min(1.0, calculatedZoom)));
+      } else {
+        setZoom(0.9);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [showAIModal, setShowAIModal] = useState<boolean>(false);
   const [aiTargetRoles, setAiTargetRoles] = useState<string>('');
   const [aiTargetCompanies, setAiTargetCompanies] = useState<string>('');
@@ -413,9 +429,27 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
 
   return (
     <div className={`resume-builder-pro ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+      {/* Mobile Toggle View Tabs (No Print) */}
+      <div className="mobile-view-selector no-print">
+        <button 
+          type="button" 
+          className={`view-btn ${mobileView === 'editor' ? 'active' : ''}`}
+          onClick={() => setMobileView('editor')}
+        >
+          Editor
+        </button>
+        <button 
+          type="button" 
+          className={`view-btn ${mobileView === 'preview' ? 'active' : ''}`}
+          onClick={() => setMobileView('preview')}
+        >
+          Preview
+        </button>
+      </div>
+
       <div className="app-container">
         {/* 1. LEFT SIDEBAR PANEL */}
-        <aside className="sidebar-panel no-print">
+        <aside className={`sidebar-panel no-print ${mobileView === 'editor' ? 'mobile-visible' : 'mobile-hidden'}`}>
           {/* Navigation / Branding */}
           <div className="nav-header">
             <div className="brand">
@@ -544,7 +578,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
         </aside>
 
         {/* 2. RIGHT PREVIEW CANVAS */}
-        <main className="preview-canvas-container">
+        <main className={`preview-canvas-container ${mobileView === 'preview' ? 'mobile-visible' : 'mobile-hidden'}`}>
           
           {/* Floating Zoom and Tip Controllers */}
           <div className="no-print" style={{

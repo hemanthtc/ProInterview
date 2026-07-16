@@ -1772,21 +1772,21 @@ function FeaturesContent() {
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
             {activeModal !== "study_materials" && (
-                <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+                <header className="px-4 sm:px-8 py-4 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
                             <Video className="w-5 h-5 text-white" />
                         </div>
                         <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
                     </div>
-                    <nav className="flex gap-6 text-sm font-medium text-white/70 items-center">
+                    <nav className="flex flex-wrap justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-white/70 items-center">
                         {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
                         {isLoggedIn && (
                             <button 
                                 onClick={toggleMode}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
+                                className={`flex items-center gap-2 px-2.5 py-1 rounded-full border transition-all text-[10px] sm:text-xs ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
                             >
-                                <span className={`w-2 h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
                                 {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
                             </button>
                         )}

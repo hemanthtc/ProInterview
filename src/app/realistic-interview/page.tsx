@@ -86,6 +86,7 @@ export default function RealisticInterviewRoom() {
     const remoteStreamRef = useRef<MediaStream | null>(null);
 
     const [interactionMode, setInteractionMode] = useState<"chat" | "code" | "draw">("chat");
+    const [mobileWorkspaceView, setMobileWorkspaceView] = useState<"transcript" | "workspace">("workspace");
     const [codeContent, setCodeContent] = useState("");
 
     // Resizable split-pane logic for practical modes
@@ -1244,7 +1245,7 @@ export default function RealisticInterviewRoom() {
     if (!isAuthChecked) return null;
 
     return (
-        <div className="min-h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
+        <div className="min-h-screen lg:h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
             {/* Ambient dynamic glassmorphism background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen opacity-50 animate-[pulse_8s_ease-in-out_infinite]"></div>
@@ -1295,12 +1296,13 @@ export default function RealisticInterviewRoom() {
                 </motion.div>
             )}
 
-<main className={`flex-1 flex flex-col lg:flex-row p-4 gap-4 relative ${interactionMode !== "chat" ? "max-w-none px-6" : "max-w-[1600px]"} mx-auto w-full transition-all duration-500`}>
+            <main className={`flex-grow flex flex-col lg:flex-row p-4 gap-4 relative ${interactionMode !== "chat" ? "max-w-none px-4 lg:px-6" : "max-w-[1600px]"} mx-auto w-full min-h-0 transition-all duration-500`}>
                 {interactionMode === "chat" ? (
                     <>
                         {/* ===== LEFT SIDE: Videos + Controls (Default Chat Layout) ===== */}
-                        <div className="flex flex-col gap-4 flex-1">
-                            <div className="grid gap-4 grid-cols-1 md:grid-cols-2 flex-1">
+                        <div className="flex flex-col gap-4 flex-1 min-h-0">
+                            {/* Desktop Video Grid */}
+                            <div className="hidden lg:grid gap-4 grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
                                 {/* AI Video - Animated Human Face */}
                                 <div className="relative bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center min-h-[300px]">
                                     <div className="absolute top-3 left-3 inline-flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg text-xs font-semibold z-10">
@@ -1442,41 +1444,124 @@ export default function RealisticInterviewRoom() {
                                 </div>
                             </div>
 
+                            {/* Mobile/Tablet Video Frame (Picture in Picture) */}
+                            <div className="lg:hidden relative w-full h-[220px] sm:h-[280px] bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center shrink-0">
+                                <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg text-[10px] font-semibold z-10">
+                                    ProInterview <Volume2 className={`w-2.5 h-2.5 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
+                                </div>
+
+                                <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 p-0.5 rounded-lg text-[8px] font-bold z-30">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSwitchAvatarType("svg")}
+                                        className={`px-1.5 py-0.5 rounded transition-all ${avatarType === "svg" ? "bg-indigo-600 text-white" : "text-white/50"}`}
+                                    >
+                                        SVG
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSwitchAvatarType("d-id")}
+                                        className={`px-1.5 py-0.5 rounded transition-all ${avatarType === "d-id" ? "bg-indigo-600 text-white" : "text-white/50"}`}
+                                    >
+                                        D-ID
+                                    </button>
+                                </div>
+
+                                <div className="relative flex items-center justify-center z-0 w-full h-full">
+                                    {avatarType === "svg" ? (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0d0d1e] to-[#0a0a14] p-4 overflow-hidden">
+                                            <div className="relative w-28 h-28 flex items-center justify-center">
+                                                <motion.div
+                                                    className="absolute inset-0 rounded-full border border-indigo-500/25"
+                                                    animate={isSpeaking ? { scale: [1, 1.3, 1], opacity: [0.15, 0.45, 0.15] } : { scale: 1, opacity: 0.08 }}
+                                                    transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
+                                                />
+                                                <motion.div
+                                                    className="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.35)] relative z-10"
+                                                    animate={isSpeaking ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+                                                    transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
+                                                >
+                                                    <Volume2 className="w-6 h-6 text-white animate-pulse" />
+                                                </motion.div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {isDidAvailable === true && (avatarVideoUrl || (streamIdRef.current && sessionIdRef.current)) && (
+                                                <video
+                                                    ref={setAvatarVideoRef}
+                                                    src={avatarVideoUrl || undefined}
+                                                    className="object-cover w-full h-full absolute inset-0 z-20"
+                                                    playsInline
+                                                    autoPlay
+                                                    onPlay={() => setIsSpeaking(true)}
+                                                    onEnded={() => setIsSpeaking(false)}
+                                                />
+                                            )}
+                                            <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0f0f24] to-[#0a0a14]">
+                                                <img
+                                                    src="https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg"
+                                                    alt="ProInterview"
+                                                    className={`object-cover w-full h-full transition-all duration-700 ${isSpeaking ? "brightness-110 contrast-105" : "brightness-90 contrast-100"}`}
+                                                />
+                                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />
+                                                {isAvatarGenerating && (
+                                                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-20">
+                                                        <Loader2 className="w-6 h-6 animate-spin text-indigo-400 mb-1" />
+                                                        <span className="text-[9px] text-white/80 bg-black/60 px-2 py-0.5 rounded animate-pulse">Generating...</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* User Video Overlay */}
+                                <div className="absolute bottom-3 right-3 w-20 sm:w-28 h-28 sm:h-36 rounded-xl overflow-hidden border border-white/20 shadow-2xl z-20 bg-black">
+                                    <video ref={videoRef} autoPlay playsInline muted className={`object-cover w-full h-full transform scale-x-[-1] absolute inset-0 ${videoActive ? "block" : "hidden"}`} />
+                                    {!videoActive && (
+                                        <div className="w-full h-full flex items-center justify-center text-white/20 relative z-0">
+                                            <VideoOff className="w-6 h-6" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Controls */}
-                            <div className="bg-[#111] border border-white/5 rounded-2xl p-4 flex items-center justify-center gap-6">
+                            <div className="bg-[#111] border border-white/5 rounded-2xl p-3 sm:p-4 flex items-center justify-center gap-4 sm:gap-6 shrink-0">
                                 <div className="flex flex-col items-center gap-1">
                                     <button
                                         onClick={toggleVideo}
-                                        className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${videoActive ? "bg-white/10 hover:bg-white/20" : "bg-red-500/20 text-red-500"}`}
+                                        className={`w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all ${videoActive ? "bg-white/10 hover:bg-white/20" : "bg-red-500/20 text-red-500"}`}
                                     >
-                                        {videoActive ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                                        {videoActive ? <Video className="w-5 h-5 sm:w-6 sm:h-6" /> : <VideoOff className="w-5 h-5 sm:w-6 sm:h-6" />}
                                     </button>
-                                    <span className="text-[10px] text-white/40 font-medium">Camera</span>
+                                    <span className="text-[9px] sm:text-[10px] text-white/40 font-medium">Camera</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-1">
                                     <button
                                         onClick={pauseCall}
-                                        className="w-14 h-14 rounded-full flex items-center justify-center transition-all bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-500"
+                                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-500"
                                     >
-                                        <Pause className="w-6 h-6" />
+                                        <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
                                     </button>
-                                    <span className="text-[10px] text-white/40 font-medium">Pause</span>
+                                    <span className="text-[9px] sm:text-[10px] text-white/40 font-medium">Pause</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-1">
                                     <button
                                         onClick={endCall}
-                                        className="w-14 h-14 rounded-full flex items-center justify-center transition-all bg-red-600 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white"
+                                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all bg-red-600 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white"
                                     >
-                                        <PhoneOff className="w-6 h-6" />
+                                        <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6" />
                                     </button>
-                                    <span className="text-[10px] text-white/40 font-medium">End</span>
+                                    <span className="text-[9px] sm:text-[10px] text-white/40 font-medium">End</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* ===== RIGHT SIDE: Chat / Transcript Panel ===== */}
-                        <div className="flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden lg:w-96 h-[600px] lg:h-auto">
-                            <div className="p-3 border-b border-white/10 bg-black/20 font-semibold flex items-center justify-between">
+                        <div className="flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden w-full lg:w-96 h-[360px] lg:h-auto min-h-0 flex-1 lg:flex-initial">
+                            <div className="p-3 sm:p-4 border-b border-white/10 bg-black/20 font-semibold flex items-center justify-between shrink-0">
                                 <span className="text-sm">Transcript</span>
                                 <div className="flex items-center gap-2">
                                     <span className="text-xs font-normal text-white/40 flex items-center gap-1.5">
@@ -1554,23 +1639,44 @@ export default function RealisticInterviewRoom() {
                             </div>
                         </div>
                     </>
-                ) : (
-                    <div id="practical-split-container" className="flex-1 flex flex-row gap-2 relative w-full h-full min-h-[600px]">
-                        {/* ===== LEFT SIDE: Transcript & Controls (Width: practicalPanelRatio%) ===== */}
-                        <div style={{ width: `${practicalPanelRatio}%` }} className="flex flex-col gap-3 h-full shrink-0 min-w-[200px]">
+                          ) : (
+                    <div id="practical-split-container" className="flex-grow flex flex-col lg:flex-row gap-2 relative w-full h-full min-h-0">
+                        {/* Mobilized toggle tabs for workspace modes */}
+                        <div className="lg:hidden flex border border-white/10 rounded-xl overflow-hidden mb-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setMobileWorkspaceView("transcript")}
+                                className={`flex-grow py-2 text-xs font-bold transition-all cursor-pointer ${mobileWorkspaceView === "transcript" ? "bg-indigo-600 text-white" : "bg-white/5 text-white/60"}`}
+                            >
+                                Show Transcript
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMobileWorkspaceView("workspace")}
+                                className={`flex-grow py-2 text-xs font-bold transition-all cursor-pointer ${mobileWorkspaceView === "workspace" ? "bg-indigo-600 text-white" : "bg-white/5 text-white/60"}`}
+                            >
+                                Show Editor / Canvas
+                            </button>
+                        </div>
+
+                        {/* ===== LEFT SIDE: Transcript & Controls ===== */}
+                        <div 
+                            style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? `${practicalPanelRatio}%` : undefined }} 
+                            className={`flex-col gap-3 h-full shrink-0 lg:min-w-[200px] w-full lg:w-auto min-h-0 ${mobileWorkspaceView === "transcript" ? "flex" : "hidden lg:flex"}`}
+                        >
                             {/* Chat / Transcript Panel (Compact) */}
-                            <div className="flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden flex-1 min-h-0">
+                            <div className="flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden flex-grow min-h-0">
                                 <div className="p-3 border-b border-white/10 bg-black/20 font-semibold flex items-center justify-between shrink-0">
                                     <span className="text-sm">Transcript</span>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 scroll-smooth">
+                                <div className="flex-grow overflow-y-auto p-3 flex flex-col gap-3 scroll-smooth min-h-0">
                                     {(() => {
                                         const lastAssistantIndex = messages.map(m => m.role).lastIndexOf("assistant");
                                         const displayMessages = lastAssistantIndex >= 0 ? messages.slice(lastAssistantIndex) : messages;
                                         return displayMessages.map((msg, idx) => (
                                             <div key={idx} className={`flex flex-col max-w-[90%] ${msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"}`}>
                                                 <span className="text-[10px] text-white/40 mb-0.5 px-1">{msg.role === "user" ? "You" : "AI"}</span>
-                                                <div className={`p-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap relative overflow-hidden transition-all duration-300 ${msg.role === "user" ? "bg-indigo-600 rounded-br-none" : "bg-white/10 rounded-bl-none"} ${(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-400/50" : "border border-transparent"}`}>
+                                                <div className={`p-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap relative overflow-hidden transition-all duration-300 ${msg.role === "user" ? "bg-indigo-600 rounded-br-none" : "bg-white/10 rounded-bl-none"} ${(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-400/50" : "border border-transparent"}`}>
                                                     {(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) && (
                                                         <div className="absolute inset-0 bg-indigo-500/10 animate-pulse pointer-events-none" />
                                                     )}
@@ -1585,7 +1691,7 @@ export default function RealisticInterviewRoom() {
                                     {isLoading && (
                                         <div className="mr-auto items-start max-w-[80%] flex flex-col">
                                             <span className="text-[10px] text-white/40 mb-0.5 px-1">AI</span>
-                                            <div className="p-3 rounded-xl bg-white/5 rounded-bl-none flex items-center gap-2 text-white/60 text-sm">
+                                            <div className="p-3 rounded-xl bg-white/5 rounded-bl-none flex items-center gap-2 text-white/60 text-xs sm:text-sm">
                                                 <Loader2 className="w-4 h-4 animate-spin" /> Thinking...
                                             </div>
                                         </div>
@@ -1601,7 +1707,7 @@ export default function RealisticInterviewRoom() {
                                             onChange={(e) => setUserInput(e.target.value)}
                                             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                                             placeholder="Type a message..."
-                                            className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 text-white"
+                                            className="flex-grow min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-indigo-500 text-white"
                                         />
                                         <button
                                             onClick={() => {
@@ -1628,7 +1734,7 @@ export default function RealisticInterviewRoom() {
                                         </button>
                                     </div>
                                     {isListening && (
-                                        <div className="text-xs text-green-400 mt-1.5 ml-1 animate-pulse flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-400"></div> Listening...</div>
+                                        <div className="text-[10px] sm:text-xs text-green-400 mt-1.5 ml-1 animate-pulse flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-400"></div> Listening...</div>
                                     )}
                                 </div>
                             </div>
@@ -1665,14 +1771,14 @@ export default function RealisticInterviewRoom() {
                         {/* ===== RESIZER DIVIDER BAR ===== */}
                         <div 
                             onMouseDown={handleMouseDown} 
-                            className="w-1.5 hover:w-2 bg-white/10 hover:bg-indigo-500/50 cursor-col-resize transition-all h-auto self-stretch rounded-full mx-1 z-30 flex items-center justify-center group shrink-0"
+                            className="hidden lg:flex w-1.5 hover:w-2 bg-white/10 hover:bg-indigo-500/50 cursor-col-resize transition-all h-auto self-stretch rounded-full mx-1 z-30 items-center justify-center group shrink-0"
                             title="Drag to resize panels"
                         >
                             <div className="w-1 h-8 rounded-full bg-white/20 group-hover:bg-white/50" />
                         </div>
 
                         {/* ===== RIGHT SIDE: Workspace Panel (Code / Canvas) (Flex-1) ===== */}
-                        <div className="flex-1 flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-2xl min-w-0 h-full relative">
+                        <div className={`flex-grow flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-2xl min-w-0 h-full relative min-h-0 ${mobileWorkspaceView === "workspace" ? "flex" : "hidden lg:flex"}`}>
                             {/* Code/Draw Header */}
                             <div className="p-3 border-b border-white/10 bg-black/20 flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-2">
@@ -1699,12 +1805,12 @@ export default function RealisticInterviewRoom() {
 
                             {/* Code Editor Panel */}
                             {interactionMode === "code" && (
-                                <div className="flex-1 flex flex-col p-4 gap-3 min-h-0">
+                                <div className="flex-grow flex flex-col p-4 gap-3 min-h-0">
                                     <textarea
                                         value={codeContent}
                                         onChange={(e) => setCodeContent(e.target.value)}
                                         placeholder="Write your code solution here..."
-                                        className="flex-1 min-h-0 bg-[#0a0a0a] border border-white/10 rounded-xl p-4 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-none leading-relaxed text-white"
+                                        className="flex-grow min-h-0 bg-[#0a0a0a] border border-white/10 rounded-xl p-4 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-none leading-relaxed text-white"
                                         spellCheck={false}
                                     />
                                     <div className="flex items-center gap-3 shrink-0">
@@ -1732,8 +1838,8 @@ export default function RealisticInterviewRoom() {
 
                             {/* Drawing Canvas Panel */}
                             {interactionMode === "draw" && (
-                                <div className="flex-1 flex flex-col p-4 gap-3 min-h-0">
-                                    <div className="flex-1 bg-white rounded-xl overflow-hidden border border-white/10 relative min-h-0">
+                                <div className="flex-grow flex flex-col p-4 gap-3 min-h-0">
+                                    <div className="flex-grow bg-white rounded-xl overflow-hidden border border-white/10 relative min-h-0">
                                         <canvas
                                             ref={drawCanvasRef}
                                             width={800}
@@ -1772,7 +1878,7 @@ export default function RealisticInterviewRoom() {
                                             onClick={() => {
                                                 if(drawCanvasRef.current) {
                                                     const dataUrl = drawCanvasRef.current.toDataURL("image/png");
-                                                    handleSendMessage("I have attached my drawing for the diagram.", dataUrl);
+                                                    handleSendMessage("I have attached my drawing for the circuit/diagram.", dataUrl);
                                                     setInteractionMode("chat");
                                                 }
                                             }}

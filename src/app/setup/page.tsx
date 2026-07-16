@@ -184,8 +184,8 @@ export default function SetupPage() {
     if (!isAuthChecked) return null;
 
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center p-6 py-12">
-            <div className="max-w-xl w-full bg-[#111] p-8 rounded-2xl border border-white/10 shadow-2xl">
+        <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 sm:p-6 py-8 sm:py-12">
+            <div className="max-w-xl w-full bg-[#111] p-5 sm:p-8 rounded-2xl border border-white/10 shadow-2xl">
 
                 <button
                     onClick={() => router.push(isRealisticMode ? "/" : "/features")}
@@ -317,12 +317,12 @@ export default function SetupPage() {
                     <>
                         <div className="mt-6">
                             <label className="text-white/80 font-semibold mb-3 block">Select Interview Difficulty</label>
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
                                 {["basic", "intermediate", "advanced"].map((lvl) => (
                                     <button
                                         key={lvl}
                                         onClick={() => setLevel(lvl)}
-                                        className={`py-3 rounded-xl border capitalize font-semibold transition-all ${level === lvl ? "bg-indigo-600 border-indigo-500 text-white shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
+                                        className={`py-3 rounded-xl border capitalize font-semibold transition-all text-sm sm:text-base ${level === lvl ? "bg-indigo-600 border-indigo-500 text-white shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
                                     >
                                         {lvl}
                                     </button>
@@ -332,7 +332,7 @@ export default function SetupPage() {
 
                         <div className="mt-8">
                             <label className="text-white/80 font-semibold mb-3 flex items-center gap-2"><Cpu className="w-4 h-4"/> Select AI Provider</label>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 {[
                                     { id: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
                                     { id: "sarvam", label: "Sarvam AI", desc: "Focused on explicit constraints." }

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import "../components/prointerviewer/ProInterviewer.css";
@@ -16,6 +16,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
     title: "ProInterview",
     description: "Master your technical interviews with AI",
+};
+
+export const viewport: Viewport = {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5, // allows accessibility zoom but initiates standard scale
 };
 
 export default function RootLayout({

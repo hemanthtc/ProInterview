@@ -182,14 +182,14 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-[#050505] text-white selection:bg-indigo-500/30 flex flex-col font-sans">
-            <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+            <header className="px-4 sm:px-8 py-4 sm:py-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
                         <Video className="w-5 h-5 text-white" />
                     </div>
                     <span className="font-bold text-xl tracking-tight">ProInterview</span>
                 </div>
-                <nav className="flex gap-6 text-sm font-medium text-white/70 items-center">
+                <nav className="flex flex-wrap gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-white/70 items-center justify-center">
                     {!isRealisticMode && (
                         <Link 
                             href="/" 
@@ -205,9 +205,9 @@ export default function Home() {
                     {isLoggedIn && (
                         <button 
                             onClick={toggleMode}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
+                            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
                         >
-                            <span className={`w-2 h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
+                            <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
                             {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
                         </button>
                     )}
@@ -228,26 +228,26 @@ export default function Home() {
                     {/* Theme Toggle Button */}
                     <button 
                         onClick={cycleTheme}
-                        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                        className="p-2 sm:p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
                         title={`Current Theme: ${theme}. Click to switch.`}
                     >
-                        {theme === "dark" && <Moon className="w-4 h-4" />}
-                        {theme === "light" && <Sun className="w-4 h-4" />}
-                        {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                        {theme === "dark" && <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                        {theme === "light" && <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                        {theme === "eyeprotect" && <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />}
                     </button>
 
                     {isLoggedIn ? (
-                        <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
-                            <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
+                        <Link href="/profile" className="flex items-center gap-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-3.5 sm:px-5 flex-shrink-0 relative py-1.5 sm:py-2 rounded-full transition-colors font-bold ml-1 sm:ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
+                            <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[9px] sm:text-[10px]">US</div>
                             My Profile
                         </Link>
                     ) : (
-                        <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
+                        <Link href="/login" className="bg-white/10 hover:bg-white/20 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-white transition-colors font-bold ml-1 sm:ml-2">Log in</Link>
                     )}
                 </nav>
             </header>
 
-            <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden px-6 min-h-[90vh]">
+            <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden px-4 sm:px-6 min-h-[90vh]">
                 {/* Abstract shapes */}
                 <div className="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-[20%] right-[20%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
@@ -258,7 +258,7 @@ export default function Home() {
                         Powered by Google Gemini
                     </div>
 
-                    <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
+                    <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
                         <motion.span
                             initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -366,17 +366,17 @@ export default function Home() {
                         
                         <div className="space-y-3">
                             {pastSessions.map((s, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-4 bg-black/40 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-black/40 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                                     <div className="flex flex-col">
                                         <span className="font-semibold text-sm">Interview Session</span>
                                         <span className="text-xs text-white/50">{new Date(s.timestamp).toLocaleTimeString()}</span>
                                     </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex flex-col items-end">
+                                    <div className="flex items-center gap-4 justify-between sm:justify-end w-full sm:w-auto">
+                                        <div className="flex flex-col items-start sm:items-end">
                                             <span className="text-xs text-white/40">Score</span>
                                             <span className="font-bold text-indigo-300">{s.finalScore}/100</span>
                                         </div>
-                                        <button onClick={() => downloadTranscript(s)} className="p-2.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg transition-colors" title="Download Transcript">
+                                        <button onClick={() => downloadTranscript(s)} className="p-2.5 bg-indigo-600/10 text-indigo-400 hover:bg-indigo-600 hover:text-white rounded-lg transition-colors cursor-pointer" title="Download Transcript">
                                             <Download className="w-4 h-4" />
                                         </button>
                                     </div>

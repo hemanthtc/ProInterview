@@ -649,13 +649,13 @@ function LoginContent() {
                 )}
             </AnimatePresence>
 
-            <header className={`px-8 py-6 flex items-center justify-between border-b backdrop-blur-md sticky top-0 z-50 transition-colors duration-300 ${
+            <header className={`px-4 sm:px-8 py-4 sm:py-6 flex flex-col sm:flex-row gap-4 items-center justify-between border-b backdrop-blur-md sticky top-0 z-50 transition-colors duration-300 ${
                 isLight
                     ? "border-slate-200 bg-white/90 shadow-sm"
                     : "border-white/10 bg-[#050505]/80"
             }`}>
                 <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shadow-md">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0 shadow-md">
                         <Video className="w-5 h-5 text-white" />
                     </div>
                     <span className={`font-bold text-xl tracking-tight ${ isLight ? "text-slate-900" : "text-white" }`}>ProInterview</span>

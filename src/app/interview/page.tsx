@@ -45,6 +45,7 @@ export default function InterviewRoom() {
     const [isAuthChecked, setIsAuthChecked] = useState(false);
 
     const [interactionMode, setInteractionMode] = useState<"chat" | "code" | "draw">("chat");
+    const [mobileWorkspaceView, setMobileWorkspaceView] = useState<"transcript" | "workspace">("workspace");
     const [codeContent, setCodeContent] = useState("");
 
     // Resizable split-pane logic for practical modes
@@ -988,12 +989,13 @@ export default function InterviewRoom() {
                 </motion.div>
             )}
 
-            <main className={`flex-1 flex flex-col lg:flex-row p-6 gap-6 relative ${interactionMode !== "chat" ? "max-w-none px-6" : "max-w-7xl"} mx-auto w-full`}>
+            <main className={`flex-grow flex flex-col lg:flex-row p-4 lg:p-6 gap-4 lg:gap-6 relative ${interactionMode !== "chat" ? "max-w-none px-4 lg:px-6" : "max-w-7xl"} mx-auto w-full min-h-0`}>
                 {interactionMode === "chat" ? (
                     <>
                         {/* Videos Section */}
-                        <div className="flex-1 flex flex-col gap-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+                        <div className="flex-1 flex flex-col gap-4 lg:gap-6 min-h-0">
+                            {/* Desktop Video Grid */}
+                            <div className="hidden lg:grid grid-cols-1 md:grid-cols-2 gap-6 flex-1 min-h-0">
                                 {/* AI Video */}
                                 <div className="relative bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center min-h-[300px]">
                                     <div className="absolute top-4 left-4 inline-flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-lg text-xs font-semibold z-10">
@@ -1031,54 +1033,84 @@ export default function InterviewRoom() {
                                 </div>
                             </div>
 
+                            {/* Mobile/Tablet Video Frame (Picture in Picture) */}
+                            <div className="lg:hidden relative w-full h-[220px] sm:h-[280px] bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center shrink-0">
+                                {/* AI Video */}
+                                <div className="relative flex items-center justify-center z-0 w-full h-full">
+                                    {isSpeaking && (
+                                        <motion.div
+                                            animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.5, 0.3] }}
+                                            transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+                                            className="absolute w-36 h-36 bg-indigo-500/30 rounded-full blur-2xl"
+                                        />
+                                    )}
+                                    <div className={`w-20 h-20 z-10 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-3xl shadow-[0_0_30px_rgba(79,70,229,0.5)] transition-all duration-300 ${isSpeaking ? "scale-110 shadow-[0_0_60px_rgba(79,70,229,0.8)] border-2 border-white/20" : "border border-white/10"}`}>
+                                        🤖
+                                    </div>
+                                    <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg text-[10px] font-semibold z-10">
+                                        ProInterview <Volume2 className={`w-2.5 h-2.5 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
+                                    </div>
+                                </div>
+                                
+                                {/* User Video Overlay (Self Camera) */}
+                                <div className="absolute bottom-3 right-3 w-20 sm:w-28 h-28 sm:h-36 rounded-xl overflow-hidden border border-white/20 shadow-2xl z-20 bg-black">
+                                    <video ref={videoRef} autoPlay playsInline muted className={`object-cover w-full h-full transform scale-x-[-1] absolute inset-0 ${videoActive ? "block" : "hidden"}`} />
+                                    {!videoActive && (
+                                        <div className="w-full h-full flex items-center justify-center text-white/20 relative z-0">
+                                            <VideoOff className="w-6 h-6" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
                             {/* Controls */}
-                            <div className="bg-[#111] border border-white/5 rounded-2xl p-4 flex items-center justify-center gap-6">
+                            <div className="bg-[#111] border border-white/5 rounded-2xl p-3 sm:p-4 flex items-center justify-center gap-4 sm:gap-6 shrink-0">
                                 <div className="flex flex-col items-center gap-1">
                                     <button
                                         onClick={toggleVideo}
-                                        className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${videoActive ? "bg-white/10 hover:bg-white/20" : "bg-red-500/20 text-red-500"}`}
+                                        className={`w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all ${videoActive ? "bg-white/10 hover:bg-white/20" : "bg-red-500/20 text-red-500"}`}
                                     >
-                                        {videoActive ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
+                                        {videoActive ? <Video className="w-5 h-5 sm:w-6 sm:h-6" /> : <VideoOff className="w-5 h-5 sm:w-6 sm:h-6" />}
                                     </button>
-                                    <span className="text-[10px] text-white/40 font-medium">Camera</span>
+                                    <span className="text-[9px] sm:text-[10px] text-white/40 font-medium">Camera</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-1">
                                     <button
                                         onClick={pauseCall}
-                                        className="w-14 h-14 rounded-full flex items-center justify-center transition-all bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-500"
+                                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all bg-yellow-500/20 hover:bg-yellow-500/40 text-yellow-500"
                                     >
-                                        <Pause className="w-6 h-6" />
+                                        <Pause className="w-5 h-5 sm:w-6 sm:h-6" />
                                     </button>
-                                    <span className="text-[10px] text-white/40 font-medium">Pause</span>
+                                    <span className="text-[9px] sm:text-[10px] text-white/40 font-medium">Pause</span>
                                 </div>
                                 <div className="flex flex-col items-center gap-1">
                                     <button
                                         onClick={endCall}
-                                        className="w-14 h-14 rounded-full flex items-center justify-center transition-all bg-red-600 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white"
+                                        className="w-11 h-11 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all bg-red-600 hover:bg-red-500 shadow-[0_0_20px_rgba(220,38,38,0.5)] text-white"
                                     >
-                                        <PhoneOff className="w-6 h-6" />
+                                        <PhoneOff className="w-5 h-5 sm:w-6 sm:h-6" />
                                     </button>
-                                    <span className="text-[10px] text-white/40 font-medium">End</span>
+                                    <span className="text-[9px] sm:text-[10px] text-white/40 font-medium">End</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* Chat / Transcript Panel */}
-                        <div className="lg:w-96 flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden h-[600px] lg:h-auto">
-                            <div className="p-4 border-b border-white/10 bg-black/20 font-semibold mb-2 flex items-center justify-between">
-                                <span>Transcript</span>
+                        <div className="w-full lg:w-96 flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden h-[360px] lg:h-auto min-h-0 flex-1 lg:flex-initial">
+                            <div className="p-3 sm:p-4 border-b border-white/10 bg-black/20 font-semibold flex items-center justify-between shrink-0">
+                                <span className="text-sm">Transcript</span>
                                 <span className="text-xs font-normal text-white/40 flex items-center gap-1.5">
                                     <Mic className="w-3 h-3 text-white/40" /> Voice/Text Chat
                                 </span>
                             </div>
-                            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 scroll-smooth">
+                            <div className="flex-grow overflow-y-auto p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 scroll-smooth min-h-0">
                                 {(() => {
                                     const lastAssistantIndex = messages.map(m => m.role).lastIndexOf("assistant");
                                     const displayMessages = lastAssistantIndex >= 0 ? messages.slice(lastAssistantIndex) : messages;
                                     return displayMessages.map((msg, idx) => (
                                         <div key={idx} className={`flex flex-col max-w-[85%] ${msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"}`}>
-                                            <span className="text-xs text-white/40 mb-1 px-1">{msg.role === "user" ? "You" : "AI"}</span>
-                                            <div className={`p-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap relative overflow-hidden transition-all duration-300 ${msg.role === "user" ? "bg-indigo-600 rounded-br-none" : "bg-white/10 rounded-bl-none"} ${(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-400/50" : "border border-transparent"}`}>
+                                            <span className="text-[10px] sm:text-xs text-white/40 mb-1 px-1">{msg.role === "user" ? "You" : "AI"}</span>
+                                            <div className={`p-2.5 sm:p-3 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap relative overflow-hidden transition-all duration-300 ${msg.role === "user" ? "bg-indigo-600 rounded-br-none" : "bg-white/10 rounded-bl-none"} ${(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-400/50" : "border border-transparent"}`}>
                                                 {(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) && (
                                                     <div className="absolute inset-0 bg-indigo-500/10 animate-pulse pointer-events-none" />
                                                 )}
@@ -1092,8 +1124,8 @@ export default function InterviewRoom() {
                                 })()}
                                 {isLoading && (
                                     <div className="mr-auto items-start max-w-[80%] flex flex-col">
-                                        <span className="text-xs text-white/40 mb-1 px-1">AI</span>
-                                        <div className="p-4 rounded-xl bg-white/5 rounded-bl-none flex items-center gap-2 text-white/60 text-sm">
+                                        <span className="text-[10px] sm:text-xs text-white/40 mb-1 px-1">AI</span>
+                                        <div className="p-3 sm:p-4 rounded-xl bg-white/5 rounded-bl-none flex items-center gap-2 text-white/60 text-xs sm:text-sm">
                                             <Loader2 className="w-4 h-4 animate-spin" /> Thinking...
                                         </div>
                                     </div>
@@ -1101,7 +1133,7 @@ export default function InterviewRoom() {
                             </div>
 
                             {/* Input area */}
-                            <div className="p-4 bg-black/20 border-t border-white/10 relative">
+                            <div className="p-3 sm:p-4 bg-black/20 border-t border-white/10 relative shrink-0">
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="text"
@@ -1109,7 +1141,7 @@ export default function InterviewRoom() {
                                         onChange={(e) => setUserInput(e.target.value)}
                                         onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                                         placeholder="Type your answer or use the microphone..."
-                                        className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500"
+                                        className="flex-grow min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm focus:outline-none focus:border-indigo-500"
                                     />
                                     <button
                                         onClick={() => {
@@ -1123,41 +1155,62 @@ export default function InterviewRoom() {
                                                 setIsListening(true);
                                             }
                                         }}
-                                        className={`p-2.5 rounded-xl shrink-0 transition-colors ${isListening ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/30 animate-pulse" : "bg-white/10 hover:bg-white/20"}`}
+                                        className={`p-2 sm:p-2.5 rounded-xl shrink-0 transition-colors ${isListening ? "bg-green-500 hover:bg-green-600 shadow-lg shadow-green-500/30 animate-pulse" : "bg-white/10 hover:bg-white/20"}`}
                                     >
-                                        <Mic className={`w-5 h-5 ${isListening ? "text-black" : "text-white"}`} />
+                                        <Mic className={`w-4 h-4 sm:w-5 sm:h-5 ${isListening ? "text-black" : "text-white"}`} />
                                     </button>
                                     <button
                                         onClick={() => handleSendMessage()}
                                         disabled={!userInput.trim() || isLoading}
-                                        className="p-2.5 rounded-xl shrink-0 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+                                        className="p-2 sm:p-2.5 rounded-xl shrink-0 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors cursor-pointer"
                                     >
-                                        <Send className="w-5 h-5" />
+                                        <Send className="w-4 h-4 sm:w-5 sm:h-5" />
                                     </button>
                                 </div>
                                 {isListening && (
-                                    <div className="text-xs text-green-400 mt-2 ml-1 animate-pulse flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-400"></div> Listening...</div>
+                                    <div className="text-[10px] sm:text-xs text-green-400 mt-2 ml-1 animate-pulse flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-400"></div> Listening...</div>
                                 )}
                             </div>
                         </div>
                     </>
                 ) : (
-                    <div id="practical-split-container" className="flex-1 flex flex-row gap-2 relative w-full h-full min-h-[600px]">
-                        {/* ===== LEFT SIDE: Transcript & Controls (Width: practicalPanelRatio%) ===== */}
-                        <div style={{ width: `${practicalPanelRatio}%` }} className="flex flex-col gap-3 h-full shrink-0 min-w-[200px]">
+                    <div id="practical-split-container" className="flex-grow flex flex-col lg:flex-row gap-2 relative w-full h-full min-h-0">
+                        {/* Mobilized toggle tabs for workspace modes */}
+                        <div className="lg:hidden flex border border-white/10 rounded-xl overflow-hidden mb-2 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setMobileWorkspaceView("transcript")}
+                                className={`flex-grow py-2 text-xs font-bold transition-all cursor-pointer ${mobileWorkspaceView === "transcript" ? "bg-indigo-600 text-white" : "bg-white/5 text-white/60"}`}
+                            >
+                                Show Transcript
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMobileWorkspaceView("workspace")}
+                                className={`flex-grow py-2 text-xs font-bold transition-all cursor-pointer ${mobileWorkspaceView === "workspace" ? "bg-indigo-600 text-white" : "bg-white/5 text-white/60"}`}
+                            >
+                                Show Editor / Canvas
+                            </button>
+                        </div>
+
+                        {/* ===== LEFT SIDE: Transcript & Controls ===== */}
+                        <div 
+                            style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? `${practicalPanelRatio}%` : undefined }} 
+                            className={`flex-col gap-3 h-full shrink-0 lg:min-w-[200px] w-full lg:w-auto min-h-0 ${mobileWorkspaceView === "transcript" ? "flex" : "hidden lg:flex"}`}
+                        >
                             {/* Chat / Transcript Panel (Compact) */}
-                            <div className="flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden flex-1 min-h-0">
+                            <div className="flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden flex-grow min-h-0">
                                 <div className="p-3 border-b border-white/10 bg-black/20 font-semibold flex items-center justify-between shrink-0">
                                     <span className="text-sm">Transcript</span>
                                 </div>
-                                <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-3 scroll-smooth">
+                                <div className="flex-grow overflow-y-auto p-3 flex flex-col gap-3 scroll-smooth min-h-0">
                                     {(() => {
                                         const lastAssistantIndex = messages.map(m => m.role).lastIndexOf("assistant");
                                         const displayMessages = lastAssistantIndex >= 0 ? messages.slice(lastAssistantIndex) : messages;
                                         return displayMessages.map((msg, idx) => (
                                             <div key={idx} className={`flex flex-col max-w-[90%] ${msg.role === "user" ? "ml-auto items-end" : "mr-auto items-start"}`}>
                                                 <span className="text-[10px] text-white/40 mb-0.5 px-1">{msg.role === "user" ? "You" : "AI"}</span>
-                                                <div className={`p-2.5 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap relative overflow-hidden transition-all duration-300 ${msg.role === "user" ? "bg-indigo-600 rounded-br-none" : "bg-white/10 rounded-bl-none"} ${(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-400/50" : "border border-transparent"}`}>
+                                                <div className={`p-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap relative overflow-hidden transition-all duration-300 ${msg.role === "user" ? "bg-indigo-600 rounded-br-none" : "bg-white/10 rounded-bl-none"} ${(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "shadow-[0_0_20px_rgba(79,70,229,0.4)] border border-indigo-400/50" : "border border-transparent"}`}>
                                                     {(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) && (
                                                         <div className="absolute inset-0 bg-indigo-500/10 animate-pulse pointer-events-none" />
                                                     )}
@@ -1172,7 +1225,7 @@ export default function InterviewRoom() {
                                     {isLoading && (
                                         <div className="mr-auto items-start max-w-[80%] flex flex-col">
                                             <span className="text-[10px] text-white/40 mb-0.5 px-1">AI</span>
-                                            <div className="p-3 rounded-xl bg-white/5 rounded-bl-none flex items-center gap-2 text-white/60 text-sm">
+                                            <div className="p-3 rounded-xl bg-white/5 rounded-bl-none flex items-center gap-2 text-white/60 text-xs sm:text-sm">
                                                 <Loader2 className="w-4 h-4 animate-spin" /> Thinking...
                                             </div>
                                         </div>
@@ -1188,7 +1241,7 @@ export default function InterviewRoom() {
                                             onChange={(e) => setUserInput(e.target.value)}
                                             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
                                             placeholder="Type a message..."
-                                            className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 text-white"
+                                            className="flex-grow min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-indigo-500 text-white"
                                         />
                                         <button
                                             onClick={() => {
@@ -1215,7 +1268,7 @@ export default function InterviewRoom() {
                                         </button>
                                     </div>
                                     {isListening && (
-                                        <div className="text-xs text-green-400 mt-1.5 ml-1 animate-pulse flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-400"></div> Listening...</div>
+                                        <div className="text-[10px] sm:text-xs text-green-400 mt-1.5 ml-1 animate-pulse flex items-center gap-1"><div className="w-1.5 h-1.5 rounded-full bg-green-400"></div> Listening...</div>
                                     )}
                                 </div>
                             </div>
@@ -1252,14 +1305,14 @@ export default function InterviewRoom() {
                         {/* ===== RESIZER DIVIDER BAR ===== */}
                         <div 
                             onMouseDown={handleMouseDown} 
-                            className="w-1.5 hover:w-2 bg-white/10 hover:bg-indigo-500/50 cursor-col-resize transition-all h-auto self-stretch rounded-full mx-1 z-30 flex items-center justify-center group shrink-0"
+                            className="hidden lg:flex w-1.5 hover:w-2 bg-white/10 hover:bg-indigo-500/50 cursor-col-resize transition-all h-auto self-stretch rounded-full mx-1 z-30 items-center justify-center group shrink-0"
                             title="Drag to resize panels"
                         >
                             <div className="w-1 h-8 rounded-full bg-white/20 group-hover:bg-white/50" />
                         </div>
 
                         {/* ===== RIGHT SIDE: Workspace Panel (Code / Canvas) (Flex-1) ===== */}
-                        <div className="flex-1 flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-2xl min-w-0 h-full relative">
+                        <div className={`flex-grow flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-2xl min-w-0 h-full relative min-h-0 ${mobileWorkspaceView === "workspace" ? "flex" : "hidden lg:flex"}`}>
                             {/* Code/Draw Header */}
                             <div className="p-3 border-b border-white/10 bg-black/20 flex items-center justify-between shrink-0">
                                 <div className="flex items-center gap-2">
@@ -1286,12 +1339,12 @@ export default function InterviewRoom() {
 
                             {/* Code Editor Panel */}
                             {interactionMode === "code" && (
-                                <div className="flex-1 flex flex-col p-4 gap-3 min-h-0">
+                                <div className="flex-grow flex flex-col p-4 gap-3 min-h-0">
                                     <textarea
                                         value={codeContent}
                                         onChange={(e) => setCodeContent(e.target.value)}
                                         placeholder="Write your code solution here..."
-                                        className="flex-1 min-h-0 bg-[#0a0a0a] border border-white/10 rounded-xl p-4 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-none leading-relaxed text-white"
+                                        className="flex-grow min-h-0 bg-[#0a0a0a] border border-white/10 rounded-xl p-4 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-none leading-relaxed text-white"
                                         spellCheck={false}
                                     />
                                     <div className="flex items-center gap-3 shrink-0">
@@ -1319,8 +1372,8 @@ export default function InterviewRoom() {
 
                             {/* Drawing Canvas Panel */}
                             {interactionMode === "draw" && (
-                                <div className="flex-1 flex flex-col p-4 gap-3 min-h-0">
-                                    <div className="flex-1 bg-white rounded-xl overflow-hidden border border-white/10 relative min-h-0">
+                                <div className="flex-grow flex flex-col p-4 gap-3 min-h-0">
+                                    <div className="flex-grow bg-white rounded-xl overflow-hidden border border-white/10 relative min-h-0">
                                         <canvas
                                             ref={drawCanvasRef}
                                             width={800}

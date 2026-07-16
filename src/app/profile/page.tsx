@@ -931,33 +931,33 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             <div className="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
 
-            <header className="px-8 py-6 flex items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+            <header className="px-4 sm:px-8 py-4 sm:py-6 flex flex-col md:flex-row gap-4 items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                 <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
                         <Video className="w-5 h-5 text-white" />
                     </div>
                     <span className="font-bold text-xl tracking-tight">ProInterview</span>
                 </Link>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap justify-center items-center gap-3 sm:gap-4">
                     <button 
                         onClick={toggleMode}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm font-medium transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
+                        className={`flex items-center gap-2 px-2.5 py-1 rounded-full border text-xs font-medium transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
                     >
-                        <span className={`w-2 h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
                         {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
                     </button>
 
                     {/* Theme Toggle Button */}
                     <button 
                         onClick={cycleTheme}
-                        className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer w-9 h-9"
                         title={`Current Theme: ${theme}. Click to switch.`}
                     >
                         {theme === "dark" && <Moon className="w-4 h-4" />}
                         {theme === "light" && <Sun className="w-4 h-4" />}
                         {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
                     </button>
-                    <Link href="/" className="text-sm text-white/60 hover:text-white transition-colors flex items-center gap-2">
+                    <Link href="/" className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors flex items-center gap-1.5">
                         <ArrowLeft className="w-4 h-4" /> Back to Home
                     </Link>
                 </div>
