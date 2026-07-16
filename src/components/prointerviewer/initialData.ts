@@ -54,7 +54,8 @@ export const initialResumeData: ResumeData = {
       location: "Stanford, CA",
       startDate: "2015-09",
       endDate: "2019-06",
-      gpa: "3.85 / 4.00",
+      cgpa: "3.85 / 4.00",
+      percentage: "96%",
       description: "Specialized in Software Engineering and Database Systems. Recipient of Dean's List honors for 6 semesters. Tech Lead for the Stanford Web Development Club."
     }
   ],

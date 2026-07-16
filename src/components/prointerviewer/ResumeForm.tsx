@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import type { ResumeData, WorkExperience, Education, Skill, Language, Certification } from './types';
+import type { ResumeData, ResumeStyle, WorkExperience, Education, Skill, Language, Certification } from './types';
 import { 
-  User, Briefcase, GraduationCap, Code, Globe, Award, Plus, Trash2, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Image as ImageIcon, Sparkles 
+  User, Briefcase, GraduationCap, Code, Globe, Award, Plus, Trash2, ArrowUp, ArrowDown, ChevronDown, ChevronUp, Image as ImageIcon, Sparkles, ToggleLeft, ToggleRight, Sliders
 } from 'lucide-react';
 import { getStorageItem } from '../../utils/storage';
 
@@ -10,13 +10,27 @@ interface ResumeFormProps {
   onChangeData: (updatedData: ResumeData) => void;
   onAIAutofill?: () => void;
   isAILoading?: boolean;
+  style: ResumeStyle;
+  onChangeStyle: (updatedStyle: ResumeStyle) => void;
 }
 
-export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAIAutofill, isAILoading }) => {
+export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAIAutofill, isAILoading, style, onChangeStyle }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
+  };
+
+  const toggleSectionVisibility = (sectionKey: string) => {
+    const visibleSections = style.visibleSections || {};
+    const isVisible = visibleSections[sectionKey as keyof typeof visibleSections] ?? true;
+    onChangeStyle({
+      ...style,
+      visibleSections: {
+        ...visibleSections,
+        [sectionKey]: !isVisible
+      }
+    });
   };
 
   const handleSyncFromAccount = () => {
@@ -34,7 +48,17 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
       const storedEdu = JSON.parse(getStorageItem("userEducationData") || "{}");
       const newEdu: Education[] = [];
       
+      const getCgpaAndPercentage = (marks: string) => {
+        const clean = (marks || "").trim();
+        if (clean.includes('%')) {
+          return { percentage: clean, cgpa: "" };
+        } else {
+          return { percentage: "", cgpa: clean };
+        }
+      };
+
       if (storedEdu.ug?.institution) {
+        const scores = getCgpaAndPercentage(storedEdu.ug.marks);
         newEdu.push({
           id: `edu-ug-${Date.now()}`,
           institution: storedEdu.ug.institution,
@@ -42,12 +66,14 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           fieldOfStudy: storedEdu.ug.field || "",
           startDate: "",
           endDate: storedEdu.ug.year || "",
-          gpa: storedEdu.ug.marks || "",
+          cgpa: scores.cgpa,
+          percentage: scores.percentage,
           location: "",
           description: ""
         });
       }
       if (storedEdu.pg?.institution) {
+        const scores = getCgpaAndPercentage(storedEdu.pg.marks);
         newEdu.push({
           id: `edu-pg-${Date.now()}`,
           institution: storedEdu.pg.institution,
@@ -55,12 +81,14 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           fieldOfStudy: storedEdu.pg.field || "",
           startDate: "",
           endDate: storedEdu.pg.year || "",
-          gpa: storedEdu.pg.marks || "",
+          cgpa: scores.cgpa,
+          percentage: scores.percentage,
           location: "",
           description: ""
         });
       }
       if (storedEdu.twelfth?.institution) {
+        const scores = getCgpaAndPercentage(storedEdu.twelfth.marks);
         newEdu.push({
           id: `edu-12th-${Date.now()}`,
           institution: storedEdu.twelfth.institution,
@@ -68,12 +96,14 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           fieldOfStudy: storedEdu.twelfth.stream || "",
           startDate: "",
           endDate: storedEdu.twelfth.year || "",
-          gpa: storedEdu.twelfth.marks || "",
+          cgpa: scores.cgpa,
+          percentage: scores.percentage,
           location: "",
           description: ""
         });
       }
       if (storedEdu.tenth?.institution) {
+        const scores = getCgpaAndPercentage(storedEdu.tenth.marks);
         newEdu.push({
           id: `edu-10th-${Date.now()}`,
           institution: storedEdu.tenth.institution,
@@ -81,7 +111,8 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           fieldOfStudy: "",
           startDate: "",
           endDate: storedEdu.tenth.year || "",
-          gpa: storedEdu.tenth.marks || "",
+          cgpa: scores.cgpa,
+          percentage: scores.percentage,
           location: "",
           description: ""
         });
@@ -381,11 +412,23 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
             </div>
 
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label className="form-label">Professional Summary</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                <label className="form-label" style={{ margin: 0 }}>Professional Summary</label>
+                <button
+                  type="button"
+                  onClick={() => toggleSectionVisibility('summary')}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: (style.visibleSections?.summary ?? true) ? '#3b82f6' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0 }}
+                  title="Toggle visibility on resume"
+                >
+                  <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{(style.visibleSections?.summary ?? true) ? 'Visible' : 'Hidden'}</span>
+                  {(style.visibleSections?.summary ?? true) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                </button>
+              </div>
               <textarea
                 className="form-input"
                 value={data.personalInfo.summary}
                 onChange={(e) => handlePersonalChange('summary', e.target.value)}
+                style={{ opacity: (style.visibleSections?.summary ?? true) ? 1 : 0.6 }}
               />
             </div>
           </div>
@@ -393,14 +436,36 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
       </div>
 
       {/* 2. WORK EXPERIENCE ACCORDION */}
-      <div className="accordion-item">
-        <button className="accordion-header" onClick={() => toggleSection('experience')}>
-          <div className="accordion-header-left">
-            <Briefcase size={16} />
-            <span>Work Experience</span>
-          </div>
-          {expandedSection === 'experience' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+      <div className="accordion-item" style={{ opacity: (style.visibleSections?.experience ?? true) ? 1 : 0.6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <button type="button" className="accordion-header" onClick={() => toggleSection('experience')} style={{ flex: 1, borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+            <div className="accordion-header-left">
+              <Briefcase size={16} />
+              <span>Work Experience</span>
+            </div>
+            {expandedSection === 'experience' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleSectionVisibility('experience'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: (style.visibleSections?.experience ?? true) ? '#3b82f6' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.75rem 1rem',
+              borderLeft: '1px solid var(--panel-border)',
+              height: '100%'
+            }}
+            title="Toggle section visibility on resume"
+          >
+            <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{(style.visibleSections?.experience ?? true) ? 'Visible' : 'Hidden'}</span>
+            {(style.visibleSections?.experience ?? true) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          </button>
+        </div>
 
         {expandedSection === 'experience' && (
           <div className="accordion-content">
@@ -524,14 +589,36 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
       </div>
 
       {/* 3. EDUCATION ACCORDION */}
-      <div className="accordion-item">
-        <button className="accordion-header" onClick={() => toggleSection('education')}>
-          <div className="accordion-header-left">
-            <GraduationCap size={16} />
-            <span>Education</span>
-          </div>
-          {expandedSection === 'education' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+      <div className="accordion-item" style={{ opacity: (style.visibleSections?.education ?? true) ? 1 : 0.6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <button type="button" className="accordion-header" onClick={() => toggleSection('education')} style={{ flex: 1, borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+            <div className="accordion-header-left">
+              <GraduationCap size={16} />
+              <span>Education</span>
+            </div>
+            {expandedSection === 'education' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleSectionVisibility('education'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: (style.visibleSections?.education ?? true) ? '#3b82f6' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.75rem 1rem',
+              borderLeft: '1px solid var(--panel-border)',
+              height: '100%'
+            }}
+            title="Toggle section visibility on resume"
+          >
+            <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{(style.visibleSections?.education ?? true) ? 'Visible' : 'Hidden'}</span>
+            {(style.visibleSections?.education ?? true) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          </button>
+        </div>
 
         {expandedSection === 'education' && (
           <div className="accordion-content">
@@ -617,15 +704,28 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">GPA / Honors</label>
+                    <label className="form-label">CGPA</label>
                     <input
                       type="text"
                       className="form-input"
-                      value={edu.gpa}
-                      placeholder="e.g. 3.9 / 4.0"
-                      onChange={(e) => updateListField('education', edu.id, 'gpa', e.target.value)}
+                      value={edu.cgpa || ''}
+                      placeholder="e.g. 9.2 / 10"
+                      onChange={(e) => updateListField('education', edu.id, 'cgpa', e.target.value)}
                     />
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">Percentage</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={edu.percentage || ''}
+                      placeholder="e.g. 88%"
+                      onChange={(e) => updateListField('education', edu.id, 'percentage', e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Location</label>
                     <input
@@ -650,7 +750,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
 
             <button 
               className="btn-add"
-              onClick={() => addListItem('education', { institution: '', degree: '', fieldOfStudy: '', location: '', startDate: '', endDate: '', gpa: '', description: '' } as Education)}
+              onClick={() => addListItem('education', { institution: '', degree: '', fieldOfStudy: '', location: '', startDate: '', endDate: '', cgpa: '', percentage: '', description: '' } as Education)}
             >
               <Plus size={14} />
               <span>Add Education</span>
@@ -660,14 +760,36 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
       </div>
 
       {/* 4. PROJECTS ACCORDION */}
-      <div className="accordion-item">
-        <button className="accordion-header" onClick={() => toggleSection('projects')}>
-          <div className="accordion-header-left">
-            <Code size={16} />
-            <span>Projects</span>
-          </div>
-          {expandedSection === 'projects' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+      <div className="accordion-item" style={{ opacity: (style.visibleSections?.projects ?? true) ? 1 : 0.6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <button type="button" className="accordion-header" onClick={() => toggleSection('projects')} style={{ flex: 1, borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+            <div className="accordion-header-left">
+              <Code size={16} />
+              <span>Projects</span>
+            </div>
+            {expandedSection === 'projects' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleSectionVisibility('projects'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: (style.visibleSections?.projects ?? true) ? '#3b82f6' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.75rem 1rem',
+              borderLeft: '1px solid var(--panel-border)',
+              height: '100%'
+            }}
+            title="Toggle section visibility on resume"
+          >
+            <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{(style.visibleSections?.projects ?? true) ? 'Visible' : 'Hidden'}</span>
+            {(style.visibleSections?.projects ?? true) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          </button>
+        </div>
 
         {expandedSection === 'projects' && (
           <div className="accordion-content">
@@ -769,14 +891,36 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
       </div>
 
       {/* 5. SKILLS ACCORDION */}
-      <div className="accordion-item">
-        <button className="accordion-header" onClick={() => toggleSection('skills')}>
-          <div className="accordion-header-left">
-            <Code size={16} />
-            <span>Skills</span>
-          </div>
-          {expandedSection === 'skills' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+      <div className="accordion-item" style={{ opacity: (style.visibleSections?.skills ?? true) ? 1 : 0.6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <button type="button" className="accordion-header" onClick={() => toggleSection('skills')} style={{ flex: 1, borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+            <div className="accordion-header-left">
+              <Code size={16} />
+              <span>Skills</span>
+            </div>
+            {expandedSection === 'skills' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleSectionVisibility('skills'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: (style.visibleSections?.skills ?? true) ? '#3b82f6' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.75rem 1rem',
+              borderLeft: '1px solid var(--panel-border)',
+              height: '100%'
+            }}
+            title="Toggle section visibility on resume"
+          >
+            <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{(style.visibleSections?.skills ?? true) ? 'Visible' : 'Hidden'}</span>
+            {(style.visibleSections?.skills ?? true) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          </button>
+        </div>
 
         {expandedSection === 'skills' && (
           <div className="accordion-content">
@@ -836,14 +980,36 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
       </div>
 
       {/* 6. LANGUAGES ACCORDION */}
-      <div className="accordion-item">
-        <button className="accordion-header" onClick={() => toggleSection('languages')}>
-          <div className="accordion-header-left">
-            <Globe size={16} />
-            <span>Languages</span>
-          </div>
-          {expandedSection === 'languages' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+      <div className="accordion-item" style={{ opacity: (style.visibleSections?.languages ?? true) ? 1 : 0.6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <button type="button" className="accordion-header" onClick={() => toggleSection('languages')} style={{ flex: 1, borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+            <div className="accordion-header-left">
+              <Globe size={16} />
+              <span>Languages</span>
+            </div>
+            {expandedSection === 'languages' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleSectionVisibility('languages'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: (style.visibleSections?.languages ?? true) ? '#3b82f6' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.75rem 1rem',
+              borderLeft: '1px solid var(--panel-border)',
+              height: '100%'
+            }}
+            title="Toggle section visibility on resume"
+          >
+            <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{(style.visibleSections?.languages ?? true) ? 'Visible' : 'Hidden'}</span>
+            {(style.visibleSections?.languages ?? true) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          </button>
+        </div>
 
         {expandedSection === 'languages' && (
           <div className="accordion-content">
@@ -894,14 +1060,36 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
       </div>
 
       {/* 7. CERTIFICATIONS ACCORDION */}
-      <div className="accordion-item">
-        <button className="accordion-header" onClick={() => toggleSection('certifications')}>
-          <div className="accordion-header-left">
-            <Award size={16} />
-            <span>Certifications & Awards</span>
-          </div>
-          {expandedSection === 'certifications' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-        </button>
+      <div className="accordion-item" style={{ opacity: (style.visibleSections?.certifications ?? true) ? 1 : 0.6 }}>
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <button type="button" className="accordion-header" onClick={() => toggleSection('certifications')} style={{ flex: 1, borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+            <div className="accordion-header-left">
+              <Award size={16} />
+              <span>Certifications & Awards</span>
+            </div>
+            {expandedSection === 'certifications' ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+          </button>
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); toggleSectionVisibility('certifications'); }}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              color: (style.visibleSections?.certifications ?? true) ? '#3b82f6' : 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              padding: '0.75rem 1rem',
+              borderLeft: '1px solid var(--panel-border)',
+              height: '100%'
+            }}
+            title="Toggle section visibility on resume"
+          >
+            <span style={{ fontSize: '0.65rem', fontWeight: 600 }}>{(style.visibleSections?.certifications ?? true) ? 'Visible' : 'Hidden'}</span>
+            {(style.visibleSections?.certifications ?? true) ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+          </button>
+        </div>
 
         {expandedSection === 'certifications' && (
           <div className="accordion-content">
@@ -986,6 +1174,257 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           </div>
         )}
       </div>
+
+      {/* 8. CUSTOM SECTIONS ACCORDION */}
+      {data.customSections && data.customSections.map((sect, sectIndex) => (
+        <div key={sect.id} className="accordion-item">
+          <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+            <button type="button" className="accordion-header" onClick={() => toggleSection(sect.id)} style={{ flex: 1, borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}>
+              <div className="accordion-header-left">
+                <Sliders size={16} />
+                <span>{sect.title || 'Custom Section'}</span>
+              </div>
+              {expandedSection === sect.id ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (window.confirm(`Delete the entire custom section "${sect.title}"?`)) {
+                  const updatedSections = data.customSections.filter(s => s.id !== sect.id);
+                  onChangeData({
+                    ...data,
+                    customSections: updatedSections
+                  });
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: '#ef4444',
+                padding: '0.75rem 1rem',
+                borderLeft: '1px solid var(--panel-border)',
+                height: '100%'
+              }}
+              title="Delete custom section"
+            >
+              <Trash2 size={16} />
+            </button>
+          </div>
+
+          {expandedSection === sect.id && (
+            <div className="accordion-content">
+              <div className="form-group">
+                <label className="form-label">Section Title</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={sect.title}
+                  onChange={(e) => {
+                    const updated = data.customSections.map(s => {
+                      if (s.id === sect.id) {
+                        return { ...s, title: e.target.value };
+                      }
+                      return s;
+                    });
+                    onChangeData({ ...data, customSections: updated });
+                  }}
+                />
+              </div>
+
+              {sect.items.map((item, itemIndex) => (
+                <div key={item.id} className="list-item-card">
+                  <div className="list-item-header">
+                    <span className="list-item-title">{item.title || 'New Item'}</span>
+                    <div className="list-item-actions">
+                      <button 
+                        type="button"
+                        className="list-item-btn" 
+                        onClick={() => {
+                          if (itemIndex === 0) return;
+                          const reordered = [...sect.items];
+                          const temp = reordered[itemIndex];
+                          reordered[itemIndex] = reordered[itemIndex - 1];
+                          reordered[itemIndex - 1] = temp;
+                          const updated = data.customSections.map(s => {
+                            if (s.id === sect.id) return { ...s, items: reordered };
+                            return s;
+                          });
+                          onChangeData({ ...data, customSections: updated });
+                        }}
+                        disabled={itemIndex === 0}
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button 
+                        type="button"
+                        className="list-item-btn" 
+                        onClick={() => {
+                          if (itemIndex === sect.items.length - 1) return;
+                          const reordered = [...sect.items];
+                          const temp = reordered[itemIndex];
+                          reordered[itemIndex] = reordered[itemIndex + 1];
+                          reordered[itemIndex + 1] = temp;
+                          const updated = data.customSections.map(s => {
+                            if (s.id === sect.id) return { ...s, items: reordered };
+                            return s;
+                          });
+                          onChangeData({ ...data, customSections: updated });
+                        }}
+                        disabled={itemIndex === sect.items.length - 1}
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <button 
+                        type="button"
+                        className="list-item-btn btn-delete" 
+                        onClick={() => {
+                          const filtered = sect.items.filter(i => i.id !== item.id);
+                          const updated = data.customSections.map(s => {
+                            if (s.id === sect.id) return { ...s, items: filtered };
+                            return s;
+                          });
+                          onChangeData({ ...data, customSections: updated });
+                        }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Item Title</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={item.title}
+                      onChange={(e) => {
+                        const updatedItems = sect.items.map(i => {
+                          if (i.id === item.id) return { ...i, title: e.target.value };
+                          return i;
+                        });
+                        const updated = data.customSections.map(s => {
+                          if (s.id === sect.id) return { ...s, items: updatedItems };
+                          return s;
+                        });
+                        onChangeData({ ...data, customSections: updated });
+                      }}
+                    />
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Subtitle / Organization</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={item.subtitle || ''}
+                        onChange={(e) => {
+                          const updatedItems = sect.items.map(i => {
+                            if (i.id === item.id) return { ...i, subtitle: e.target.value };
+                            return i;
+                          });
+                          const updated = data.customSections.map(s => {
+                            if (s.id === sect.id) return { ...s, items: updatedItems };
+                            return s;
+                          });
+                          onChangeData({ ...data, customSections: updated });
+                        }}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Date / Range</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={item.date || ''}
+                        onChange={(e) => {
+                          const updatedItems = sect.items.map(i => {
+                            if (i.id === item.id) return { ...i, date: e.target.value };
+                            return i;
+                          });
+                          const updated = data.customSections.map(s => {
+                            if (s.id === sect.id) return { ...s, items: updatedItems };
+                            return s;
+                          });
+                          onChangeData({ ...data, customSections: updated });
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Description</label>
+                    <textarea
+                      className="form-input"
+                      rows={3}
+                      value={item.description || ''}
+                      onChange={(e) => {
+                        const updatedItems = sect.items.map(i => {
+                          if (i.id === item.id) return { ...i, description: e.target.value };
+                          return i;
+                        });
+                        const updated = data.customSections.map(s => {
+                          if (s.id === sect.id) return { ...s, items: updatedItems };
+                          return s;
+                        });
+                        onChangeData({ ...data, customSections: updated });
+                      }}
+                      style={{ resize: 'vertical' }}
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <button 
+                type="button"
+                className="btn-add"
+                onClick={() => {
+                  const newItem = {
+                    id: `cust-item-${Date.now()}`,
+                    title: '',
+                    subtitle: '',
+                    date: '',
+                    description: ''
+                  };
+                  const updated = data.customSections.map(s => {
+                    if (s.id === sect.id) return { ...s, items: [...s.items, newItem] };
+                    return s;
+                  });
+                  onChangeData({ ...data, customSections: updated });
+                }}
+              >
+                <Plus size={14} />
+                <span>Add Item</span>
+              </button>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Button to add a new custom section altogether */}
+      <button 
+        type="button"
+        className="btn-add"
+        onClick={() => {
+          const title = prompt("Enter a title for the new custom section (e.g., Volunteering, Patents):");
+          if (!title) return;
+          const newSect = {
+            id: `cust-${Date.now()}`,
+            title: title.trim(),
+            items: []
+          };
+          onChangeData({
+            ...data,
+            customSections: [...(data.customSections || []), newSect]
+          });
+        }}
+        style={{ marginTop: '0.75rem', width: '100%' }}
+      >
+        <Plus size={14} />
+        <span>Add Custom Section</span>
+      </button>
 
     </div>
   );

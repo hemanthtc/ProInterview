@@ -1053,7 +1053,9 @@ textarea.form-input {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: #1f2937;
+  background: var(--panel-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--panel-border);
   padding: 1.5rem;
   border-radius: 12px;
@@ -1063,214 +1065,116 @@ textarea.form-input {
   width: 90%;
 }
 
+.print-helper-modal strong {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.print-helper-modal .warning-text {
+  color: #f59e0b;
+}
+
+.print-helper-modal .print-guide-note {
+  margin: 0;
+  font-style: italic;
+  font-size: 0.75rem;
+  background: rgba(239, 68, 68, 0.08);
+  padding: 0.5rem 0.75rem;
+  border-left: 3px solid #ef4444;
+  border-radius: 0 6px 6px 0;
+  color: var(--text-main);
+}
+
 .modal-backdrop {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.7);
-  z-index: 99;
-}
 }
 
-/* High Fidelity Browser Print Core Rules */
-@media print {
-  /* Remove UI decorations completely */
-  .sidebar-panel,
-  .print-helper-modal,
-  .modal-backdrop,
-  .btn-floating,
-  .no-print {
-    display: none !important;
-  }
-
-  body, html {
-    background: #ffffff !important;
-    color: #000000 !important;
-    height: auto !important;
-    width: 100% !important;
-    overflow: visible !important;
-  }
-
-  .app-container {
-    display: block !important;
-    height: auto !important;
-    width: 100% !important;
-    overflow: visible !important;
-    background: none !important;
-  }
-
-  .preview-canvas-container {
-    display: block !important;
-    background: none !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    overflow: visible !important;
-    width: 100% !important;
-    height: auto !important;
-  }
-
-  .resume-page {
-    box-shadow: none !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: var(--page-padding, 2.5rem) !important;
-  padding-bottom: 0.2rem;
-  width: 100%;
-  position: relative;
-}
-
-.divider-accent-block .section-title-wrap::after {
-  content: '';
-  position: absolute;
-  bottom: -1px; left: 0;
-  width: 40px; height: 3px;
-  background-color: var(--primary-color);
-}
-
-.divider-pill-badges .section-title-wrap {
-  width: 100%;
-}
-
-.divider-pill-badges .section-title {
-  background-color: rgba(59, 130, 246, 0.08);
-  padding: 0.25rem 0.6rem;
-  border-radius: 4px;
-  font-size: 0.9em;
-  border-left: 3px solid var(--primary-color);
-}
-
-/* List Item Formatting inside Resume */
-.section-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.resume-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.15rem;
-}
-
-.resume-item-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-weight: 700;
-}
-
-.resume-item-org {
-  color: var(--primary-color);
-}
-
-.layout-two-column-bg .resume-item-org {
-  color: var(--sidebar-text);
-}
-
-.resume-item-sub {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  font-style: italic;
-  font-size: 0.9em;
-  color: var(--secondary-color);
-}
-
-.layout-two-column-bg .resume-item-sub {
-  color: var(--sidebar-text);
-  opacity: 0.8;
-}
-
-.resume-item-desc {
-  font-size: 0.9em;
-  white-space: pre-line;
-  margin-top: 0.25rem;
-  color: var(--text-color);
-}
-
-.layout-two-column-bg .resume-item-desc {
-  color: var(--sidebar-text);
-  opacity: 0.9;
-}
-
-/* Skills list rendering style */
-.skills-wrap {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem 0.5rem;
-}
-
-.skill-tag {
-  font-size: 0.85em;
-  background-color: rgba(59, 130, 246, 0.05);
-  border: 1px solid rgba(59, 130, 246, 0.12);
-  color: var(--text-color);
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-}
-
-.layout-two-column-bg .skill-tag {
-  background-color: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.12);
-  color: var(--sidebar-text);
-}
-
-.divider-pill-badges .skill-tag {
-  border-radius: 12px;
-  background-color: rgba(var(--primary-rgb, 59, 130, 246), 0.08);
-}
-
-/* Timeline specific layouts */
-.divider-timeline .section-list {
-  border-left: 2px dashed var(--divider-color, #e5e7eb);
-  padding-left: 1rem;
-  margin-left: 0.5rem;
-}
-
-.divider-timeline .resume-item {
-  position: relative;
-}
-
-.divider-timeline .resume-item::before {
-  content: '';
-  position: absolute;
-  left: calc(-1rem - 6px - 1px);
-  top: 5px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background-color: var(--primary-color);
-  border: 2px solid var(--bg-color, #ffffff);
-}
-
-/* Print Guide Overlay UI */
-.print-helper-modal {
+/* Saved Resumes Modal UI */
+.saved-resumes-modal {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: #1f2937;
-  border: 1px solid var(--panel-border);
-  padding: 1.5rem;
-  border-radius: 12px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-  z-index: 100;
-  max-width: 480px;
-  width: 90%;
+  z-index: 9999;
+  width: 95%;
+  max-width: 540px;
+  background: linear-gradient(145deg, #1a1a2e, #16213e);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: 1.25rem;
+  padding: 1.75rem;
+  box-shadow: 0 0 60px rgba(99, 102, 241, 0.15), 0 25px 50px rgba(0,0,0,0.5);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  box-sizing: border-box;
 }
 
-.modal-backdrop {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  z-index: 99;
+.saved-resume-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: all 0.2s ease;
+}
+
+.saved-resume-item.active {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.active-badge {
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+}
+
+.no-resumes-found {
+  background: rgba(0, 0, 0, 0.15);
+  color: var(--text-muted);
+}
+
+/* Action buttons in saved resumes modal */
+.saved-resume-item button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.7rem;
+  border: none;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.saved-resume-item .btn-load {
+  font-weight: 700;
+  background: rgba(99, 102, 241, 0.15);
+  color: #a5b4fc;
+}
+.saved-resume-item .btn-load:disabled {
+  background: rgba(255, 255, 255, 0.03);
+  color: #6b7280;
+  cursor: default;
+}
+
+.saved-resume-item .btn-rename {
+  background: rgba(255, 255, 255, 0.05);
+  color: #d1d5db;
+}
+
+.saved-resume-item .btn-delete {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
 }
 }
 
 /* High Fidelity Browser Print Core Rules */
 @media print {
   /* Remove UI decorations completely */
+  header,
+  nav,
+  footer,
+  aside,
   .sidebar-panel,
   .print-helper-modal,
+  .saved-resumes-modal,
   .modal-backdrop,
   .btn-floating,
   .no-print {
@@ -1283,6 +1187,14 @@ textarea.form-input {
     height: auto !important;
     width: 100% !important;
     overflow: visible !important;
+  }
+
+  /* Clear background colors and overflow on parent generic wrappers */
+  main, section, div {
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+    height: auto !important;
   }
 
   .app-container {
@@ -1301,6 +1213,15 @@ textarea.form-input {
     overflow: visible !important;
     width: 100% !important;
     height: auto !important;
+  }
+
+  .resume-pages-wrapper {
+    transform: none !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
   .resume-page {
@@ -1470,6 +1391,60 @@ html.theme-eyeprotect .resume-builder-pro {
   .list-item-card {
     background: #f8fafc !important;
     border: 1px solid var(--panel-border) !important;
+  }
+
+  /* Warning text contrast improvement in light modes */
+  .print-helper-modal .warning-text {
+    color: #b45309 !important;
+  }
+
+  /* Saved Resumes Modal overrides in light/comfort modes */
+  .saved-resumes-modal {
+    background: var(--panel-bg) !important;
+    border-color: var(--panel-border) !important;
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+  }
+
+  .saved-resume-item {
+    background: var(--app-bg) !important;
+    border-color: var(--panel-border) !important;
+  }
+
+  .saved-resume-item.active {
+    background: rgba(99, 102, 241, 0.08) !important;
+    border-color: rgba(99, 102, 241, 0.4) !important;
+  }
+
+  .active-badge {
+    background: rgba(37, 99, 235, 0.1) !important;
+    border-color: rgba(37, 99, 235, 0.2) !important;
+    color: #2563eb !important;
+  }
+
+  .no-resumes-found {
+    background: var(--app-bg) !important;
+    border: 1px solid var(--panel-border) !important;
+  }
+
+  .saved-resume-item .btn-load {
+    background: rgba(37, 99, 235, 0.1) !important;
+    color: #2563eb !important;
+  }
+
+  .saved-resume-item .btn-load:disabled {
+    background: #f1f5f9 !important;
+    color: #cbd5e1 !important;
+  }
+
+  .saved-resume-item .btn-rename {
+    background: #f1f5f9 !important;
+    border: 1px solid var(--panel-border) !important;
+    color: var(--text-main) !important;
+  }
+
+  .saved-resume-item .btn-delete {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #dc2626 !important;
   }
 }
 
@@ -1644,7 +1619,7 @@ html.theme-eyeprotect .resume-builder-pro .sidebar-panel {
   box-shadow: 0 0 10px rgba(37, 99, 235, 0.2);
 }
 
-@media (max-width: 1023px) {
+@media screen and (max-width: 1023px) {
   .resume-builder-pro {
     display: flex;
     flex-direction: column;

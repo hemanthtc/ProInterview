@@ -5,6 +5,7 @@ import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
 import ProfileData from "@/models/ProfileData";
 import mongoose from "mongoose";
+import bcryptjs from "bcryptjs";
 
 /**
  * Returns the correct Mongoose model based on accountType.
@@ -182,31 +183,53 @@ export async function DELETE(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const identifier = searchParams.get("identifier");
         const accountType = searchParams.get("accountType") || "user";
+        const mode = searchParams.get("mode") || "account";
+        const password = searchParams.get("password");
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
         const Model = getModel(accountType);
-        const deletedAccount = await Model.findOneAndDelete({ identifier });
-        if (!deletedAccount) {
+        const account = await Model.findOne({ identifier });
+        if (!account) {
             return NextResponse.json({ error: "Account not found." }, { status: 404 });
         }
 
-        // Delete ProfileData only for individual users
-        if (accountType === "user") {
-            await ProfileData.findOneAndDelete({ identifier });
+        // Check password if it is set in the database
+        if (account.password) {
+            if (!password) {
+                return NextResponse.json({ error: "Password is required for confirmation." }, { status: 400 });
+            }
+            const isMatch = await bcryptjs.compare(password, account.password);
+            if (!isMatch) {
+                return NextResponse.json({ error: "Incorrect password. Verification failed." }, { status: 401 });
+            }
         }
 
-        // If deleting an admin, also remove all their linked employees
-        if (accountType === "admin") {
-            await OrgEmployee.deleteMany({ adminId: identifier });
+        if (mode === "data_only") {
+            // Delete ProfileData only for individual users
+            if (accountType === "user") {
+                await ProfileData.findOneAndDelete({ identifier });
+            }
+            return NextResponse.json({
+                success: true,
+                message: "All generated profile and resume data wiped successfully from the database."
+            });
+        } else {
+            // Delete entire account
+            await Model.findOneAndDelete({ identifier });
+            if (accountType === "user") {
+                await ProfileData.findOneAndDelete({ identifier });
+            }
+            if (accountType === "admin") {
+                await OrgEmployee.deleteMany({ adminId: identifier });
+            }
+            return NextResponse.json({
+                success: true,
+                message: "Account and profile data deleted successfully from the database."
+            });
         }
-
-        return NextResponse.json({
-            success: true,
-            message: "Account deleted successfully from the database."
-        });
     } catch (error: any) {
         console.error("DELETE Profile API error:", error);
         return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });

@@ -8,7 +8,7 @@ import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
 import { getStorageItem, setStorageItem } from '../../utils/storage';
 import { 
-  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles
+  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save
 } from 'lucide-react';
 
 interface ProInterviewerAppProps {
@@ -43,6 +43,11 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   const [showAIModal, setShowAIModal] = useState<boolean>(false);
+  const [aiModalStep, setAiModalStep] = useState<'choice' | 'upload' | 'notes'>('choice');
+  const [resumeUploadFile, setResumeUploadFile] = useState<File | null>(null);
+  const [savedResumes, setSavedResumes] = useState<any[]>([]);
+  const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
+  const [showSavedResumesModal, setShowSavedResumesModal] = useState<boolean>(false);
   const [aiTargetRoles, setAiTargetRoles] = useState<string>('');
   const [aiTargetCompanies, setAiTargetCompanies] = useState<string>('');
   const [missingSectionsList, setMissingSectionsList] = useState<string[]>([]);
@@ -69,6 +74,20 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
         console.error("Failed to parse saved resume state safely", e);
       }
     }
+
+    // Load Saved Resumes
+    const storedResumes = getStorageItem("proSavedResumes");
+    if (storedResumes) {
+      try {
+        setSavedResumes(JSON.parse(storedResumes));
+      } catch (e) {
+        console.error("Failed to parse proSavedResumes", e);
+      }
+    }
+    const activeId = getStorageItem("proActiveResumeId");
+    if (activeId) {
+      setActiveResumeId(activeId);
+    }
   }, []);
 
   // Save changes to localStorage on any data or style update
@@ -80,6 +99,26 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
         templateId: activeTemplateId
       };
       setStorageItem("proResumeState", JSON.stringify(stateToSave));
+
+      if (activeResumeId) {
+        const stored = getStorageItem("proSavedResumes");
+        let list: any[] = [];
+        if (stored) {
+          try { list = JSON.parse(stored); } catch (e) {}
+        }
+        const idx = list.findIndex((r: any) => r.id === activeResumeId);
+        if (idx !== -1) {
+          list[idx] = {
+            ...list[idx],
+            updatedAt: Date.now(),
+            data: resumeData,
+            style: currentStyle,
+            templateId: activeTemplateId
+          };
+          setStorageItem("proSavedResumes", JSON.stringify(list));
+          setSavedResumes(list);
+        }
+      }
     } catch (e) {
       console.error("Failed to save resume state to local storage", e);
     }
@@ -162,6 +201,119 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
     }
   };
 
+  // --- MULTI-RESUME MANAGER FUNCTIONS ---
+  const handleCreateBlankResume = () => {
+    const defaultTitle = prompt("Enter a title for the new blank resume:", "New Resume");
+    if (defaultTitle === null) return;
+    
+    const newId = `resume-id-${Date.now()}`;
+    const newResume = {
+      id: newId,
+      title: defaultTitle.trim() || "Untitled Resume",
+      updatedAt: Date.now(),
+      data: initialResumeData,
+      style: TEMPLATES[0].style,
+      templateId: TEMPLATES[0].id
+    };
+
+    const list = [...savedResumes, newResume];
+    setSavedResumes(list);
+    setStorageItem("proSavedResumes", JSON.stringify(list));
+
+    setResumeData(initialResumeData);
+    setCurrentStyle(TEMPLATES[0].style);
+    setActiveTemplateId(TEMPLATES[0].id);
+    setActiveResumeId(newId);
+    setStorageItem("proActiveResumeId", newId);
+    
+    triggerToast(`Created and loaded blank resume: "${newResume.title}"`);
+  };
+
+  const handleLoadResume = (id: string) => {
+    const target = savedResumes.find(r => r.id === id);
+    if (!target) return;
+    
+    setResumeData(target.data);
+    setCurrentStyle(target.style);
+    setActiveTemplateId(target.templateId);
+    setActiveResumeId(id);
+    setStorageItem("proActiveResumeId", id);
+    
+    triggerToast(`Loaded resume: "${target.title}"`);
+  };
+
+  const handleRenameResume = (id: string) => {
+    const target = savedResumes.find(r => r.id === id);
+    if (!target) return;
+    
+    const newTitle = prompt("Rename resume title:", target.title);
+    if (!newTitle) return;
+
+    const list = savedResumes.map(r => {
+      if (r.id === id) {
+        return { ...r, title: newTitle.trim(), updatedAt: Date.now() };
+      }
+      return r;
+    });
+
+    setSavedResumes(list);
+    setStorageItem("proSavedResumes", JSON.stringify(list));
+    triggerToast(`Renamed resume to "${newTitle.trim()}"`);
+  };
+
+  const handleDeleteResume = (id: string) => {
+    const target = savedResumes.find(r => r.id === id);
+    if (!target) return;
+
+    if (!window.confirm(`Are you sure you want to delete the saved resume "${target.title}"?`)) {
+      return;
+    }
+
+    const list = savedResumes.filter(r => r.id !== id);
+    setSavedResumes(list);
+    setStorageItem("proSavedResumes", JSON.stringify(list));
+
+    if (activeResumeId === id) {
+      setActiveResumeId(null);
+      setStorageItem("proActiveResumeId", "");
+    }
+    triggerToast(`Deleted resume: "${target.title}"`);
+  };
+
+  const handleSaveCurrentAsCopy = () => {
+    const title = prompt("Enter a title for this copy:", resumeData.personalInfo.name ? `${resumeData.personalInfo.name}'s Resume Copy` : "My Resume Copy");
+    if (title === null) return;
+
+    const newId = `resume-id-${Date.now()}`;
+    const copyResume = {
+      id: newId,
+      title: title.trim() || "My Resume Copy",
+      updatedAt: Date.now(),
+      data: resumeData,
+      style: currentStyle,
+      templateId: activeTemplateId
+    };
+
+    const list = [...savedResumes, copyResume];
+    setSavedResumes(list);
+    setStorageItem("proSavedResumes", JSON.stringify(list));
+
+    setActiveResumeId(newId);
+    setStorageItem("proActiveResumeId", newId);
+    
+    triggerToast(`Saved current resume as copy: "${copyResume.title}"`);
+  };
+
+  const handleSave = () => {
+    if (activeResumeId) {
+      const active = savedResumes.find(r => r.id === activeResumeId);
+      const title = active ? active.title : "Resume";
+      triggerToast(`Changes saved successfully to "${title}"!`);
+    } else {
+      handleSaveCurrentAsCopy();
+    }
+  };
+
   // AI Autofill: opens the interactive modal and auto-imports account profile
   const handleAIAutofill = () => {
     // Auto-import profile details from account
@@ -189,7 +341,17 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
       try {
         const storedEdu = JSON.parse(getStorageItem("userEducationData") || "{}");
         const newEdu: Education[] = [];
+        const getCgpaAndPercentage = (marks: string) => {
+          const clean = (marks || "").trim();
+          if (clean.includes('%')) {
+            return { percentage: clean, cgpa: "" };
+          } else {
+            return { percentage: "", cgpa: clean };
+          }
+        };
+
         if (storedEdu.ug?.institution) {
+          const scores = getCgpaAndPercentage(storedEdu.ug.marks);
           newEdu.push({
             id: `edu-ug-${Date.now()}`,
             institution: storedEdu.ug.institution,
@@ -198,11 +360,13 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             location: "",
             startDate: "",
             endDate: storedEdu.ug.year || "",
-            gpa: storedEdu.ug.marks || "",
+            cgpa: scores.cgpa,
+            percentage: scores.percentage,
             description: ""
           });
         }
         if (storedEdu.pg?.institution) {
+          const scores = getCgpaAndPercentage(storedEdu.pg.marks);
           newEdu.push({
             id: `edu-pg-${Date.now()}`,
             institution: storedEdu.pg.institution,
@@ -211,11 +375,13 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             location: "",
             startDate: "",
             endDate: storedEdu.pg.year || "",
-            gpa: storedEdu.pg.marks || "",
+            cgpa: scores.cgpa,
+            percentage: scores.percentage,
             description: ""
           });
         }
         if (storedEdu.twelfth?.institution) {
+          const scores = getCgpaAndPercentage(storedEdu.twelfth.marks);
           newEdu.push({
             id: `edu-12th-${Date.now()}`,
             institution: storedEdu.twelfth.institution,
@@ -224,11 +390,13 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             location: "",
             startDate: "",
             endDate: storedEdu.twelfth.year || "",
-            gpa: storedEdu.twelfth.marks || "",
+            cgpa: scores.cgpa,
+            percentage: scores.percentage,
             description: ""
           });
         }
         if (storedEdu.tenth?.institution) {
+          const scores = getCgpaAndPercentage(storedEdu.tenth.marks);
           newEdu.push({
             id: `edu-10th-${Date.now()}`,
             institution: storedEdu.tenth.institution,
@@ -237,7 +405,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             location: "",
             startDate: "",
             endDate: storedEdu.tenth.year || "",
-            gpa: storedEdu.tenth.marks || "",
+            cgpa: scores.cgpa,
+            percentage: scores.percentage,
             description: ""
           });
         }
@@ -281,11 +450,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
       missing.push("certifications");
     }
 
-    if (missing.length === 0) {
-      triggerToast("All your resume sections are already populated!");
-      return;
-    }
-
+    setAiModalStep('choice');
+    setResumeUploadFile(null);
     setMissingSectionsList(missing);
     setAiTargetRoles(updatedPersonal.title || '');
     setShowAIModal(true);
@@ -327,6 +493,9 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
       formData.append('targetCompanies', aiTargetCompanies || 'Top Tech Companies');
       formData.append('userInput', Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '');
       formData.append('missingSections', missingSectionsList.join(','));
+      if (resumeUploadFile) {
+        formData.append('resumeFile', resumeUploadFile);
+      }
 
       const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
       const result = await res.json();
@@ -362,7 +531,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             location: edu.location || "",
             startDate: edu.startDate || "",
             endDate: edu.endDate || "",
-            gpa: edu.gpa || "",
+            cgpa: edu.cgpa || "",
+            percentage: edu.percentage || "",
             description: edu.description || ""
           }));
         }
@@ -460,6 +630,16 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               <button 
                 type="button"
                 className="btn btn-secondary" 
+                onClick={() => setShowSavedResumesModal(true)}
+                title="My Saved Resumes"
+                style={{ padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc' }}
+              >
+                <Folder size={13} />
+                <span>My Resumes</span>
+              </button>
+              <button 
+                type="button"
+                className="btn btn-secondary" 
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 title={isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
                 style={{ padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
@@ -537,6 +717,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 onChangeData={setResumeData}
                 onAIAutofill={handleAIAutofill}
                 isAILoading={isAILoading}
+                style={currentStyle}
+                onChangeStyle={setCurrentStyle}
               />
             )}
 
@@ -580,6 +762,47 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
         {/* 2. RIGHT PREVIEW CANVAS */}
         <main className={`preview-canvas-container ${mobileView === 'preview' ? 'mobile-visible' : 'mobile-hidden'}`}>
           
+          {/* Floating Save Controller */}
+          <div className="no-print" style={{
+            position: 'absolute',
+            top: '1rem',
+            left: '1.5rem',
+            zIndex: 5,
+            display: 'flex',
+            gap: '0.5rem',
+            alignItems: 'center'
+          }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={handleSave}
+              style={{
+                padding: '0.4rem 0.8rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+              }}
+            >
+              <Save size={14} />
+              <span>Save Resume</span>
+            </button>
+            {activeResumeId && (
+              <div style={{
+                background: 'rgba(15, 23, 42, 0.85)',
+                border: '1px solid var(--panel-border)',
+                padding: '0.45rem 0.6rem',
+                borderRadius: '8px',
+                fontSize: '0.7rem',
+                color: 'var(--text-muted)'
+              }}>
+                Editing: <strong style={{ color: 'var(--text-main)' }}>{savedResumes.find(r => r.id === activeResumeId)?.title}</strong>
+              </div>
+            )}
+          </div>
+
           {/* Floating Zoom and Tip Controllers */}
           <div className="no-print" style={{
             position: 'absolute',
@@ -637,14 +860,17 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
           </div>
 
           {/* Scaled paper sheets */}
-          <div style={{
-            minHeight: `${1123 * zoom}px`,
-            width: `${794 * zoom}px`,
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top center',
-            transition: 'transform 0.15s ease',
-            boxSizing: 'border-box'
-          }}>
+          <div 
+            className="resume-pages-wrapper"
+            style={{
+              minHeight: `${1123 * zoom}px`,
+              width: `${794 * zoom}px`,
+              transform: `scale(${zoom})`,
+              transformOrigin: 'top center',
+              transition: 'transform 0.15s ease',
+              boxSizing: 'border-box'
+            }}
+          >
             <ResumePreview 
               data={resumeData}
               style={currentStyle}
@@ -680,7 +906,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             <>
               <div className="modal-backdrop" onClick={() => setShowPrintGuide(false)} />
               <div className="print-helper-modal">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: '#60a5fa' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--input-focus)' }}>
                   <Printer size={18} />
                   <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>PDF Export Guide</h3>
                 </div>
@@ -691,14 +917,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                   <ol style={{ paddingLeft: '1.25rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
                     <li>Set <strong>Destination</strong> to <strong>Save as PDF</strong> (or Microsoft Print to PDF).</li>
                     <li>Click <strong>More settings</strong> to expand configuration options.</li>
-                    <li>Ensure <strong>Background graphics</strong> is checked <span style={{ color: '#f59e0b', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={10} />(Required for color themes!)</span></li>
+                    <li>Ensure <strong>Background graphics</strong> is checked <span className="warning-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={10} />(Required for color themes!)</span></li>
                     <li>Set <strong>Margins</strong> to <strong>None</strong> or <strong>Default</strong>.</li>
                     <li>Set <strong>Paper size</strong> to <strong>A4</strong> (or Letter) to match the template aspect ratio.</li>
                     <li>Untick <strong>Headers and footers</strong> to remove the browser date/URL timestamps from the page edges.</li>
+                    <li>Set <strong>Scale</strong> to <strong>100</strong> (Default) or select <strong>Fit to page width</strong>.</li>
                   </ol>
 
-                  <p style={{ margin: 0, fontStyle: 'italic', fontSize: '0.75rem', background: 'rgba(255,255,255,0.02)', padding: '0.4rem', borderLeft: '2px solid #ef4444' }}>
-                    Note: Any editing outlines or control bars will automatically be stripped from the printed page.
+                  <p className="print-guide-note">
+                    <strong>Note:</strong> Any editing outlines or control bars will automatically be stripped from the printed page.
                   </p>
                 </div>
 
@@ -714,13 +941,14 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
           {showAIModal && (
             <>
               <div 
+                className="modal-backdrop no-print"
                 onClick={() => { if (!isAILoading) { setShowAIModal(false); } }}
                 style={{
                   position: 'fixed', inset: 0, zIndex: 9998,
                   background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)'
                 }} 
               />
-              <div style={{
+              <div className="no-print" style={{
                 position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
                 zIndex: 9999, width: '95%', maxWidth: '540px',
                 background: 'linear-gradient(145deg, #1a1a2e, #16213e)',
@@ -749,229 +977,515 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                   </button>
                 </div>
 
-                <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
-                  Profile details and education (if available) are imported from your account. Fill in custom notes for the remaining empty sections below, and Gemini will generate them.
+                {aiModalStep === 'choice' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: 0, lineHeight: 1.6 }}>
+                      Choose how you want to autofill your resume details. You can import from an existing resume file or generate details based on your account profile.
+                    </p>
+                    
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiModalStep('upload');
+                          // Target all sections for extraction when uploading a resume
+                          setMissingSectionsList(["summary", "workExperience", "education", "projects", "skills", "languages", "certifications"]);
+                        }}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.25rem',
+                          alignItems: 'flex-start',
+                          padding: '1rem',
+                          background: 'rgba(139, 92, 246, 0.08)',
+                          border: '1px solid rgba(139, 92, 246, 0.25)',
+                          borderRadius: '0.75rem',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.2s ease',
+                          outline: 'none'
+                        }}
+                      >
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#a78bfa' }}>Upload Existing Resume / CV</span>
+                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Select a PDF, DOCX, or text file. AI will extract and structure your work experience, education, and skills.</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiModalStep('notes');
+                        }}
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.25rem',
+                          alignItems: 'flex-start',
+                          padding: '1rem',
+                          background: 'rgba(255, 255, 255, 0.02)',
+                          border: '1px solid rgba(255, 255, 255, 0.08)',
+                          borderRadius: '0.75rem',
+                          color: '#fff',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.2s ease',
+                          outline: 'none'
+                        }}
+                      >
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f3f4f6' }}>Create New from Profile Data</span>
+                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>No existing resume needed. AI will build your missing sections using your account details and custom notes.</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {aiModalStep === 'upload' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: 0, lineHeight: 1.6 }}>
+                      Upload your current resume or CV. Supported formats: <strong>PDF, TXT, DOCX</strong>.
+                    </p>
+                    
+                    <div style={{
+                      border: '2px dashed rgba(139, 92, 246, 0.3)',
+                      background: 'rgba(15, 23, 42, 0.4)',
+                      borderRadius: '0.75rem',
+                      padding: '2rem 1rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '0.75rem',
+                      cursor: 'pointer',
+                      position: 'relative'
+                    }}
+                    onClick={() => document.getElementById('ai-resume-file-input')?.click()}
+                    >
+                      <input
+                        type="file"
+                        id="ai-resume-file-input"
+                        accept=".pdf,.txt,.doc,.docx"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setResumeUploadFile(file);
+                          }
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      <FileText size={32} color="#8b5cf6" style={{ opacity: 0.8 }} />
+                      <span style={{ fontSize: '0.8rem', color: '#d1d5db', fontWeight: 600 }}>
+                        {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
+                      </span>
+                      <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                        {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 2MB'}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAiModalStep('choice')}
+                        style={{
+                          padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600,
+                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
+                          borderRadius: '0.5rem', color: '#9ca3af', cursor: 'pointer'
+                        }}
+                      >Back</button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!resumeUploadFile) {
+                            alert("Please upload a resume file first.");
+                            return;
+                          }
+                          setAiModalStep('notes');
+                        }}
+                        style={{
+                          padding: '0.5rem 1.25rem', fontSize: '0.8rem', fontWeight: 700,
+                          background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                          border: 'none', borderRadius: '0.5rem', color: '#fff',
+                          cursor: 'pointer'
+                        }}
+                      >Next: Preferences</button>
+                    </div>
+                  </div>
+                )}
+
+                {aiModalStep === 'notes' && (
+                  <>
+                    {resumeUploadFile ? (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        background: 'rgba(16, 185, 129, 0.08)',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                        borderRadius: '0.5rem',
+                        padding: '0.6rem 0.85rem',
+                        marginBottom: '1rem',
+                        fontSize: '0.75rem',
+                        color: '#6ee7b7'
+                      }}>
+                        <Check size={14} color="#10b981" />
+                        <span>Ready to import from: <strong>{resumeUploadFile.name}</strong></span>
+                      </div>
+                    ) : (
+                      <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
+                        Profile details and education (if available) are imported from your account. Fill in custom notes for the remaining empty sections below, and Gemini will generate them.
+                      </p>
+                    )}
+
+                    <div style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      gap: '0.85rem',
+                      maxHeight: '360px',
+                      overflowY: 'auto',
+                      paddingRight: '0.4rem',
+                      marginBottom: '1.25rem',
+                      boxSizing: 'border-box'
+                    }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>Target Roles</label>
+                          <input
+                            type="text"
+                            value={aiTargetRoles}
+                            onChange={(e) => setAiTargetRoles(e.target.value)}
+                            placeholder="e.g. Frontend Engineer"
+                            style={{
+                              width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>Target Companies</label>
+                          <input
+                            type="text"
+                            value={aiTargetCompanies}
+                            onChange={(e) => setAiTargetCompanies(e.target.value)}
+                            placeholder="e.g. Top Tech Companies"
+                            style={{
+                              width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {missingSectionsList.includes("summary") && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                            Profile Summary Notes {resumeUploadFile ? '(Optional override)' : '(Empty)'}
+                          </label>
+                          <textarea
+                            value={aiNotesSummary}
+                            onChange={(e) => setAiNotesSummary(e.target.value)}
+                            placeholder="Key expertise, leadership focus, or areas to highlight in your summary paragraph."
+                            rows={3}
+                            style={{
+                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {missingSectionsList.includes("workExperience") && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                            Work Experience Notes {resumeUploadFile ? '(Optional override)' : '(Empty)'}
+                          </label>
+                          <textarea
+                            value={aiNotesExperience}
+                            onChange={(e) => setAiNotesExperience(e.target.value)}
+                            placeholder={"Describe roles, companies, and achievements.\nExample:\n- Dev at Google (2022-present): built React UI pages, optimized speed 30%."}
+                            rows={4}
+                            style={{
+                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {missingSectionsList.includes("education") && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                            Education Details {resumeUploadFile ? '(Optional override)' : '(Empty)'}
+                          </label>
+                          <textarea
+                            value={aiNotesEducation}
+                            onChange={(e) => setAiNotesEducation(e.target.value)}
+                            placeholder="Degrees, institutions, CGPA, percentage, coursework, or years (e.g. Master's in CS, Stanford, 2022)."
+                            rows={3}
+                            style={{
+                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {missingSectionsList.includes("projects") && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                            Projects Details {resumeUploadFile ? '(Optional override)' : '(Empty)'}
+                          </label>
+                          <textarea
+                            value={aiNotesProjects}
+                            onChange={(e) => setAiNotesProjects(e.target.value)}
+                            placeholder="Specify projects, tech stacks, role, and results (e.g. E-Commerce Next.js app with Stripe backend)."
+                            rows={3}
+                            style={{
+                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {missingSectionsList.includes("skills") && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                            Skills & Keywords {resumeUploadFile ? '(Optional override)' : '(Empty)'}
+                          </label>
+                          <textarea
+                            value={aiNotesSkills}
+                            onChange={(e) => setAiNotesSkills(e.target.value)}
+                            placeholder="List skills and tools you want categorized (e.g. JavaScript, Python, AWS, Docker, Git)."
+                            rows={3}
+                            style={{
+                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {missingSectionsList.includes("languages") && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                            Languages Spoken {resumeUploadFile ? '(Optional override)' : '(Empty)'}
+                          </label>
+                          <textarea
+                            value={aiNotesLanguages}
+                            onChange={(e) => setAiNotesLanguages(e.target.value)}
+                            placeholder="Languages and fluency level (e.g. English - Native, Spanish - Conversational)."
+                            rows={2}
+                            style={{
+                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {missingSectionsList.includes("certifications") && (
+                        <div>
+                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                            Certifications {resumeUploadFile ? '(Optional override)' : '(Empty)'}
+                          </label>
+                          <textarea
+                            value={aiNotesCertifications}
+                            onChange={(e) => setAiNotesCertifications(e.target.value)}
+                            placeholder="AWS Solutions Architect from Amazon (2023), Scrum Master from Scrum.org (2022)."
+                            rows={2}
+                            style={{
+                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
+                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
+                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
+                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (resumeUploadFile) {
+                            setAiModalStep('upload');
+                          } else {
+                            setAiModalStep('choice');
+                          }
+                        }}
+                        disabled={isAILoading}
+                        style={{
+                          padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600,
+                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
+                          borderRadius: '0.5rem', color: '#9ca3af', cursor: 'pointer'
+                        }}
+                      >Back</button>
+                      <button
+                        type="button"
+                        onClick={handleAIGenerate}
+                        disabled={isAILoading}
+                        style={{
+                          padding: '0.5rem 1.25rem', fontSize: '0.8rem', fontWeight: 700,
+                          background: isAILoading ? 'rgba(139, 92, 246, 0.4)' : 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                          border: 'none', borderRadius: '0.5rem', color: '#fff',
+                          cursor: isAILoading ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '0.4rem',
+                          boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)'
+                        }}
+                      >
+                        <Sparkles size={14} style={isAILoading ? { animation: 'spin 1s linear infinite' } : {}} />
+                        {isAILoading ? 'Generating...' : 'Generate Resume'}
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Saved Resumes Modal */}
+          {showSavedResumesModal && (
+            <>
+              <div 
+                className="modal-backdrop no-print"
+                onClick={() => setShowSavedResumesModal(false)}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 9998,
+                  background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)'
+                }} 
+              />
+              <div className="saved-resumes-modal no-print">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{
+                      width: '2rem', height: '2rem', borderRadius: '0.5rem',
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <Folder size={14} color="#fff" />
+                    </div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>My Saved Resumes</h3>
+                  </div>
+                  <button 
+                    type="button" onClick={() => setShowSavedResumesModal(false)}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
+                  Wipe older copies or switch between resumes below. You currently have <strong>{savedResumes.length}</strong> saved resume version{savedResumes.length !== 1 ? 's' : ''}.
                 </p>
 
                 <div style={{ 
                   display: 'flex', 
                   flexDirection: 'column', 
-                  gap: '0.85rem',
-                  maxHeight: '360px',
+                  gap: '0.75rem',
+                  maxHeight: '320px',
                   overflowY: 'auto',
                   paddingRight: '0.4rem',
                   marginBottom: '1.25rem',
                   boxSizing: 'border-box'
                 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>Target Roles</label>
-                      <input
-                        type="text"
-                        value={aiTargetRoles}
-                        onChange={(e) => setAiTargetRoles(e.target.value)}
-                        placeholder="e.g. Frontend Engineer"
-                        style={{
-                          width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
+                  {savedResumes.length === 0 ? (
+                    <div className="no-resumes-found" style={{ padding: '2rem 1rem', textAlign: 'center', fontSize: '0.8rem', borderRadius: '8px' }}>
+                      No saved resumes found. Try saving your current resume as a copy!
                     </div>
+                  ) : (
+                    savedResumes.map((resume) => {
+                      const isActive = activeResumeId === resume.id;
+                      return (
+                        <div 
+                          key={resume.id} 
+                          className={`saved-resume-item ${isActive ? 'active' : ''}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '0.75rem 1rem',
+                            borderRadius: '0.75rem',
+                            gap: '0.75rem'
+                          }}
+                        >
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ fontSize: '0.85rem', fontWeight: isActive ? 700 : 600, color: isActive ? 'var(--input-focus)' : 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                                {resume.title}
+                              </span>
+                              {isActive && (
+                                <span className="active-badge" style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
+                                  Active
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: '0.15rem', display: 'block' }}>
+                              Last updated: {new Date(resume.updatedAt).toLocaleString()}
+                            </span>
+                          </div>
 
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>Target Companies</label>
-                      <input
-                        type="text"
-                        value={aiTargetCompanies}
-                        onChange={(e) => setAiTargetCompanies(e.target.value)}
-                        placeholder="e.g. Top Tech Companies"
-                        style={{
-                          width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  {missingSectionsList.includes("summary") && (
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
-                        Profile Summary Notes (Empty)
-                      </label>
-                      <textarea
-                        value={aiNotesSummary}
-                        onChange={(e) => setAiNotesSummary(e.target.value)}
-                        placeholder="Key expertise, leadership focus, or areas to highlight in your summary paragraph."
-                        rows={3}
-                        style={{
-                          width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {missingSectionsList.includes("workExperience") && (
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
-                        Work Experience Notes (Empty)
-                      </label>
-                      <textarea
-                        value={aiNotesExperience}
-                        onChange={(e) => setAiNotesExperience(e.target.value)}
-                        placeholder={"Describe roles, companies, and achievements.\nExample:\n- Dev at Google (2022-present): built React UI pages, optimized speed 30%."}
-                        rows={4}
-                        style={{
-                          width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {missingSectionsList.includes("education") && (
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
-                        Education Details (Empty)
-                      </label>
-                      <textarea
-                        value={aiNotesEducation}
-                        onChange={(e) => setAiNotesEducation(e.target.value)}
-                        placeholder="Degrees, institutions, GPA, coursework, or years (e.g. Master's in CS, Stanford, 2022)."
-                        rows={3}
-                        style={{
-                          width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {missingSectionsList.includes("projects") && (
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
-                        Projects Details (Empty)
-                      </label>
-                      <textarea
-                        value={aiNotesProjects}
-                        onChange={(e) => setAiNotesProjects(e.target.value)}
-                        placeholder="Specify projects, tech stacks, role, and results (e.g. E-Commerce Next.js app with Stripe backend)."
-                        rows={3}
-                        style={{
-                          width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {missingSectionsList.includes("skills") && (
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
-                        Skills & Keywords (Empty)
-                      </label>
-                      <textarea
-                        value={aiNotesSkills}
-                        onChange={(e) => setAiNotesSkills(e.target.value)}
-                        placeholder="List skills and tools you want categorized (e.g. JavaScript, Python, AWS, Docker, Git)."
-                        rows={3}
-                        style={{
-                          width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {missingSectionsList.includes("languages") && (
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
-                        Languages Spoken (Empty)
-                      </label>
-                      <textarea
-                        value={aiNotesLanguages}
-                        onChange={(e) => setAiNotesLanguages(e.target.value)}
-                        placeholder="Languages and fluency level (e.g. English - Native, Spanish - Conversational)."
-                        rows={2}
-                        style={{
-                          width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
-                  )}
-
-                  {missingSectionsList.includes("certifications") && (
-                    <div>
-                      <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
-                        Certifications (Empty)
-                      </label>
-                      <textarea
-                        value={aiNotesCertifications}
-                        onChange={(e) => setAiNotesCertifications(e.target.value)}
-                        placeholder="AWS Solutions Architect from Amazon (2023), Scrum Master from Scrum.org (2022)."
-                        rows={2}
-                        style={{
-                          width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                          background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                          borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                          resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                          boxSizing: 'border-box'
-                        }}
-                      />
-                    </div>
+                          <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              onClick={() => handleLoadResume(resume.id)}
+                              disabled={isActive}
+                              className="btn-load"
+                            >Load</button>
+                            <button
+                              type="button"
+                              onClick={() => handleRenameResume(resume.id)}
+                              className="btn-rename"
+                            >Rename</button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteResume(resume.id)}
+                              className="btn-delete"
+                            >Delete</button>
+                          </div>
+                        </div>
+                      );
+                    })
                   )}
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem' }}>
+                    <button
+                      type="button"
+                      onClick={handleSaveCurrentAsCopy}
+                      className="btn btn-primary"
+                      style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700 }}
+                    >Save Current Copy</button>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => { setShowAIModal(false); }}
-                    disabled={isAILoading}
-                    style={{
-                      padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600,
-                      background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
-                      borderRadius: '0.5rem', color: '#9ca3af', cursor: 'pointer'
-                    }}
-                  >Cancel</button>
-                  <button
-                    type="button"
-                    onClick={handleAIGenerate}
-                    disabled={isAILoading}
-                    style={{
-                      padding: '0.5rem 1.25rem', fontSize: '0.8rem', fontWeight: 700,
-                      background: isAILoading ? 'rgba(139, 92, 246, 0.4)' : 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                      border: 'none', borderRadius: '0.5rem', color: '#fff',
-                      cursor: isAILoading ? 'wait' : 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '0.4rem',
-                      boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)'
-                    }}
-                  >
-                    <Sparkles size={14} style={isAILoading ? { animation: 'spin 1s linear infinite' } : {}} />
-                    {isAILoading ? 'Generating...' : 'Generate Resume'}
-                  </button>
+                    onClick={() => setShowSavedResumesModal(false)}
+                    className="btn btn-secondary"
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600 }}
+                  >Close</button>
                 </div>
               </div>
             </>

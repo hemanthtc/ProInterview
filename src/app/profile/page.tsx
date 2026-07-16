@@ -28,6 +28,9 @@ export default function ProfilePage() {
 
     // Delete Account states
     const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deleteConfirmMode, setDeleteConfirmMode] = useState<'account' | 'data_only'>('account');
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [confirmError, setConfirmError] = useState("");
     const [isDeleting, setIsDeleting] = useState(false);
 
     // Profile photo states
@@ -610,32 +613,88 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
     const handleDeleteAccount = async () => {
         setIsDeleting(true);
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        setConfirmError("");
+        await new Promise(resolve => setTimeout(resolve, 800));
 
         const identifier = getStorageItem("userIdentifier") || userIdentifier;
+        const role = getStorageItem("userRole") || "user";
         try {
             if (identifier) {
-                await fetch(`/api/auth/profile?identifier=${encodeURIComponent(identifier)}`, {
+                const url = `/api/auth/profile?identifier=${encodeURIComponent(identifier)}&accountType=${role}&mode=${deleteConfirmMode}&password=${encodeURIComponent(confirmPassword)}`;
+                const res = await fetch(url, {
                     method: "DELETE"
                 });
+                const result = await res.json();
+                
+                if (!res.ok) {
+                    setConfirmError(result.error || "Failed to confirm request.");
+                    setIsDeleting(false);
+                    return;
+                }
             }
         } catch (err) {
             console.warn("Could not delete Cloud profile:", err);
+            setConfirmError("An error occurred. Please verify your connection.");
+            setIsDeleting(false);
+            return;
         }
 
-        if (identifier) {
-            clearUserScopedData(identifier);
+        if (deleteConfirmMode === "data_only") {
+            // Wipe generated inputs and browser keys
+            removeStorageItem("proResumeState");
+            removeStorageItem("userEducationData");
+            removeStorageItem("userResumeCvName");
+            removeStorageItem("userResumeCvText");
+            removeStorageItem("userProfilePhoto");
+            removeStorageItem("userGithub");
+            removeStorageItem("userLinkedin");
+            removeStorageItem("userPortfolio");
+            removeStorageItem("userPhone");
+            removeStorageItem("userAdditionalEmail");
+
+            setProfilePhoto("");
+            setAdditionalEmail("");
+            setGithub("");
+            setLinkedin("");
+            setPortfolioUrl("");
+            setResumeCvName("");
+            setResumeCvText("");
+            setPhone("");
+            
+            setEdu10thInstitution("");
+            setEdu10thBoard("");
+            setEdu10thMarks("");
+            setEdu12thInstitution("");
+            setEdu12thBoard("");
+            setEdu12thMarks("");
+            setEduUGInstitution("");
+            setEduUGCourse("");
+            setEduUGMarks("");
+            setEduPGInstitution("");
+            setEduPGCourse("");
+            setEduPGMarks("");
+
+            setIsDeleting(false);
+            setDeleteConfirmOpen(false);
+            setConfirmPassword("");
+            alert("All your profile details and generated resume configurations have been wiped successfully!");
+        } else {
+            // Complete account removal
+            if (identifier) {
+                clearUserScopedData(identifier);
+            }
+
+            removeStorageItem("userLoggedIn");
+            removeStorageItem("userName");
+            removeStorageItem("userIdentifier");
+            removeStorageItem("userType");
+            removeStorageItem("userRole");
+
+            setIsDeleting(false);
+            setDeleteConfirmOpen(false);
+            setConfirmPassword("");
+            router.push("/");
         }
-
-        removeStorageItem("userLoggedIn");
-        removeStorageItem("userName");
-        removeStorageItem("userIdentifier");
-        removeStorageItem("userType");
-        removeStorageItem("userRole");
-
-        setIsDeleting(false);
-        setDeleteConfirmOpen(false);
-        router.push("/");
     };
 
     const triggerFileInput = () => {
@@ -1552,17 +1611,36 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             </div>
 
                             {/* Danger Zone */}
-                            <div className="border-t border-white/10 pt-6 mt-4 col-span-1 sm:col-span-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                <div className="space-y-0.5">
-                                    <p className="text-sm font-extrabold text-red-500 uppercase tracking-wider">Danger Zone</p>
-                                    <p className="text-xs text-white/40">Permanently delete your profile, subscription plan, and all historical interview transcripts.</p>
+                            <div className="border-t border-white/10 pt-6 mt-4 col-span-1 sm:col-span-2 flex flex-col items-stretch gap-4">
+                                <p className="text-sm font-extrabold text-red-500 uppercase tracking-wider">Danger Zone</p>
+                                
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-bold text-white/80">Wipe Generated Data</p>
+                                        <p className="text-xs text-white/40">Erase all generated resume settings, educational details, social links, and uploaded files. Keep your account login credentials.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setDeleteConfirmMode('data_only'); setDeleteConfirmOpen(true); }}
+                                        className="flex items-center gap-2 bg-orange-500/10 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-500/20 hover:border-orange-600 px-5 py-2.5 rounded-xl transition-all font-bold text-xs shadow-lg shrink-0"
+                                    >
+                                        <X className="w-3.5 h-3.5" /> Wipe Generated Data
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setDeleteConfirmOpen(true)}
-                                    className="flex items-center gap-2 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 hover:border-red-600 px-5 py-2.5 rounded-xl transition-all font-bold text-xs shadow-lg shadow-red-950/20 shrink-0"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" /> Delete Account
-                                </button>
+
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-white/5 pt-4">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xs font-bold text-white/80">Delete Account</p>
+                                        <p className="text-xs text-white/40">Permanently delete your profile registration, login credentials, subscription plan, and all saved items forever.</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setDeleteConfirmMode('account'); setDeleteConfirmOpen(true); }}
+                                        className="flex items-center gap-2 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 hover:border-red-600 px-5 py-2.5 rounded-xl transition-all font-bold text-xs shadow-lg shrink-0"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" /> Delete Account
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -2219,17 +2297,34 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                         >
                             <div className="absolute -top-32 -right-32 w-64 h-64 bg-red-500/5 rounded-full blur-[80px] pointer-events-none" />
                             <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-red-500/5 rounded-full blur-[80px] pointer-events-none" />
-
+ 
                             <div className="flex flex-col items-center text-center relative z-10">
                                 <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-5 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
                                     <Trash2 className="w-8 h-8 animate-pulse" />
                                 </div>
-
-                                <h2 className="text-xl font-extrabold text-white mb-2">Delete Account Permanently?</h2>
+ 
+                                <h2 className="text-xl font-extrabold text-white mb-2">
+                                    {deleteConfirmMode === 'data_only' ? 'Wipe All Generated Data?' : 'Delete Account Permanently?'}
+                                </h2>
                                 <p className="text-sm text-white/60 leading-relaxed mb-6">
-                                    This action is irreversible. All of your profile details, education records, subscriptions, and interview transcripts will be deleted forever.
+                                    {deleteConfirmMode === 'data_only' 
+                                        ? 'This action is irreversible. All of your contact profile settings, educational history, social links, and resume assets will be cleared. Your login credentials will remain active.'
+                                        : 'This action is irreversible. All of your profile details, education records, subscriptions, and interview transcripts will be deleted forever.'}
                                 </p>
 
+                                <div className="w-full">
+                                    <input
+                                        type="password"
+                                        value={confirmPassword}
+                                        onChange={e => setConfirmPassword(e.target.value)}
+                                        placeholder="Confirm account password"
+                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white mb-4 placeholder:text-white/20 focus:outline-none focus:border-indigo-500 transition-all text-center"
+                                    />
+                                    {confirmError && (
+                                        <p className="text-xs text-red-500 font-bold mb-3">{confirmError}</p>
+                                    )}
+                                </div>
+ 
                                 <div className="flex flex-col sm:flex-row gap-3 w-full">
                                     <button
                                         type="button"
@@ -2240,16 +2335,20 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         {isDeleting ? (
                                             <>
                                                 <Loader2 className="w-4 h-4 animate-spin" />
-                                                Deleting...
+                                                Confirming...
                                             </>
                                         ) : (
-                                            "Yes, Delete My Account"
+                                            deleteConfirmMode === 'data_only' ? 'Yes, Wipe My Data' : 'Yes, Delete My Account'
                                         )}
                                     </button>
                                     <button
                                         type="button"
                                         disabled={isDeleting}
-                                        onClick={() => setDeleteConfirmOpen(false)}
+                                        onClick={() => {
+                                            setDeleteConfirmOpen(false);
+                                            setConfirmPassword("");
+                                            setConfirmError("");
+                                        }}
                                         className="flex-1 h-12 bg-white/5 hover:bg-white/10 disabled:opacity-50 transition-colors border border-white/10 rounded-xl font-bold text-white text-sm order-1 sm:order-2"
                                     >
                                         Cancel

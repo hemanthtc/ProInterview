@@ -30,7 +30,8 @@ export interface Education {
   location: string;
   startDate: string;
   endDate: string;
-  gpa: string;
+  cgpa?: string;
+  percentage?: string;
   description: string;
 }
 
@@ -127,6 +128,15 @@ export interface ResumeStyle {
   spacing: SpacingSize;
   margins: MarginSize;
   showAvatars: boolean;
+  visibleSections?: {
+    summary?: boolean;
+    experience?: boolean;
+    education?: boolean;
+    projects?: boolean;
+    skills?: boolean;
+    languages?: boolean;
+    certifications?: boolean;
+  };
 }
 
 export interface ResumeTemplate {

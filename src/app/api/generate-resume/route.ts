@@ -70,6 +70,12 @@ export async function POST(req: NextRequest) {
         const userInput = formData.get("userInput") as string;
         const missingSectionsRaw = formData.get("missingSections") as string || "summary,workExperience";
         const projectFiles = formData.getAll("projectFiles") as File[];
+        const resumeFile = formData.get("resumeFile") as File;
+
+        let resumeFileText = "";
+        if (resumeFile) {
+            resumeFileText = await extractTextFromFile(resumeFile);
+        }
 
         let projectText = "";
         for (const file of projectFiles) {
@@ -90,6 +96,10 @@ export async function POST(req: NextRequest) {
         const systemPrompt = `You are an expert resume writer.
 Generate professional resume details for a candidate with the following credentials.
 Generate ONLY the requested sections listed here: ${missingSectionsRaw}. Do not generate keys for any other sections.
+
+${resumeFileText ? `Existing Resume / CV Document (Use this text as the primary source of truth. Translate and clean it into the requested format):
+${resumeFileText}
+` : ""}
 
 Target Roles: ${preferredRoles || "Software Engineer"}
 Target Companies: ${targetCompanies || "Top Tech Companies"}
@@ -123,7 +133,8 @@ Return a valid JSON block matching this schema. ONLY include keys that are in th
       "location": "City, State or Country",
       "startDate": "Start Date",
       "endDate": "End Date",
-      "gpa": "Grade/GPA",
+      "cgpa": "Grade/CGPA (e.g. 9.2/10)",
+      "percentage": "Percentage score (e.g. 88%)",
       "description": "Coursework or honors"
     }
   ],

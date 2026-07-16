@@ -234,6 +234,54 @@ export const StyleCustomizer: React.FC<StyleCustomizerProps> = ({ style, onChang
         </div>
       </div>
 
+      {/* 7. Section Visibility Controls */}
+      <div>
+        <div className="customizer-section-title">
+          <Sliders size={13} />
+          <span>Section Visibility</span>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(0,0,0,0.15)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--panel-border)' }}>
+          {[
+            { key: 'summary', name: 'Profile Summary' },
+            { key: 'experience', name: 'Work Experience' },
+            { key: 'education', name: 'Education' },
+            { key: 'projects', name: 'Projects' },
+            { key: 'skills', name: 'Skills' },
+            { key: 'languages', name: 'Languages' },
+            { key: 'certifications', name: 'Certifications' }
+          ].map(section => {
+            const isVisible = style.visibleSections?.[section.key as keyof NonNullable<ResumeStyle['visibleSections']>] ?? true;
+            return (
+              <div key={section.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{section.name}</span>
+                <button
+                  onClick={() => {
+                    const visibleSections = style.visibleSections || {};
+                    onChangeStyle({
+                      ...style,
+                      visibleSections: {
+                        ...visibleSections,
+                        [section.key]: !isVisible
+                      }
+                    });
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'pointer',
+                    color: isVisible ? '#3b82f6' : 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {isVisible ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
     </div>
   );
 };

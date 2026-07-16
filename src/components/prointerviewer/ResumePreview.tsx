@@ -245,6 +245,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderSummary = () => {
+    if (style.visibleSections?.summary === false) return null;
     if (!data.personalInfo.summary) return null;
     return (
       <section className="resume-section">
@@ -263,6 +264,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderExperience = () => {
+    if (style.visibleSections?.experience === false) return null;
     if (data.workExperience.length === 0) return null;
     return (
       <section className="resume-section">
@@ -315,6 +317,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderEducation = () => {
+    if (style.visibleSections?.education === false) return null;
     if (data.education.length === 0) return null;
     return (
       <section className="resume-section">
@@ -343,10 +346,16 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
                   className="resume-item-org"
                 />
                 <span>
-                  {edu.gpa && (
+                  {edu.cgpa && (
                     <>
-                      GPA: <EditableText value={edu.gpa} onChange={(val) => handleUpdateEdu(edu.id, 'gpa', val)} placeholder="GPA" />
-                      {edu.location && ', '}
+                      CGPA: <EditableText value={edu.cgpa} onChange={(val) => handleUpdateEdu(edu.id, 'cgpa', val)} placeholder="CGPA" />
+                      {(edu.percentage || edu.location) && ' | '}
+                    </>
+                  )}
+                  {edu.percentage && (
+                    <>
+                      Percentage: <EditableText value={edu.percentage} onChange={(val) => handleUpdateEdu(edu.id, 'percentage', val)} placeholder="Percentage" />
+                      {edu.location && ' | '}
                     </>
                   )}
                   <EditableText value={edu.location} onChange={(val) => handleUpdateEdu(edu.id, 'location', val)} placeholder="Location" />
@@ -370,6 +379,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderProjects = () => {
+    if (style.visibleSections?.projects === false) return null;
     if (data.projects.length === 0) return null;
     return (
       <section className="resume-section">
@@ -422,6 +432,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderSkills = () => {
+    if (style.visibleSections?.skills === false) return null;
     if (data.skills.length === 0) return null;
     return (
       <section className="resume-section">
@@ -445,6 +456,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderLanguages = () => {
+    if (style.visibleSections?.languages === false) return null;
     if (data.languages.length === 0) return null;
     return (
       <section className="resume-section">
@@ -467,6 +479,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderCertifications = () => {
+    if (style.visibleSections?.certifications === false) return null;
     if (data.certifications.length === 0) return null;
     return (
       <section className="resume-section">
