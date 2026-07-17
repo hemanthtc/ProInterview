@@ -921,6 +921,14 @@
         border: none !important;
         box-shadow: none !important;
       }
+      .brand-section, .sidebar-toggle-btn {
+        transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+      }
+      .top-bar.search-active .brand-section,
+      .top-bar.search-active .sidebar-toggle-btn {
+        opacity: 0 !important;
+        pointer-events: none !important;
+      }
       .global-search-container {
         display: block !important;
         position: absolute !important;
@@ -939,9 +947,9 @@
       .global-search-container.expanded {
         width: calc(100% - 128px) !important;
         right: 116px !important;
-        background: var(--panel-bg) !important;
+        background: #0a0e17 !important;
         border: 1px solid var(--panel-border) !important;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
         border-radius: 20px !important;
       }
       #global-search-input {
@@ -1217,12 +1225,16 @@
       const searchContainer = document.querySelector('.global-search-container');
       const searchInput = document.getElementById('global-search-input');
       const searchIcon = document.querySelector('.global-search-icon');
+      const topBar = document.querySelector('.top-bar');
       
       if (searchContainer && searchInput && searchIcon) {
         searchIcon.addEventListener('click', (e) => {
           if (window.innerWidth <= 768) {
             e.stopPropagation();
             searchContainer.classList.toggle('expanded');
+            if (topBar) {
+              topBar.classList.toggle('search-active', searchContainer.classList.contains('expanded'));
+            }
             if (searchContainer.classList.contains('expanded')) {
               searchInput.focus();
             }
@@ -1236,6 +1248,9 @@
         document.addEventListener('click', () => {
           if (window.innerWidth <= 768) {
             searchContainer.classList.remove('expanded');
+            if (topBar) {
+              topBar.classList.remove('search-active');
+            }
           }
         });
       }
