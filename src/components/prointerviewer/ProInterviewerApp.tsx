@@ -23,6 +23,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
   const [activeTab, setActiveTab] = useState<'form' | 'templates' | 'style'>('form');
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
   const [zoom, setZoom] = useState<number>(0.9); // zoom level 0.7 - 1.2
+  const [contentHeight, setContentHeight] = useState<number>(1123);
   const [showPrintGuide, setShowPrintGuide] = useState<boolean>(false);
   const [guideExpanded, setGuideExpanded] = useState<boolean>(false);
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
@@ -765,7 +766,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
         >
           {/* Unified Preview Header Toolbar */}
           <div className="no-print" style={{
-            background: 'var(--bg-main)', // Opaque main color to completely hide scrolling content underneath
+            background: 'var(--app-bg)', // Opaque main color to completely hide scrolling content underneath
             borderBottom: '1px solid var(--panel-border)',
             padding: '0.75rem 1rem',
             display: 'flex',
@@ -906,7 +907,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               className="resume-preview-container-wrapper"
               style={{
                 width: '100%',
-                minHeight: `${1123 * zoom}px`,
+                minHeight: `${contentHeight * zoom}px`,
                 position: 'relative',
                 display: 'flex',
                 justifyContent: 'center',
@@ -918,7 +919,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 className="resume-pages-wrapper"
                 style={{
                   width: '794px',
-                  height: '1123px',
+                  height: `${contentHeight}px`,
                   transform: `translateX(-50%) scale(${zoom})`,
                   transformOrigin: 'top center',
                   position: 'absolute',
@@ -932,6 +933,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                   data={resumeData}
                   style={currentStyle}
                   onChangeData={setResumeData}
+                  onHeightChange={setContentHeight}
                 />
               </div>
             </div>

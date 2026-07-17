@@ -7,6 +7,7 @@ interface ResumePreviewProps {
   data: ResumeData;
   style: ResumeStyle;
   onChangeData: (updatedData: ResumeData) => void;
+  onHeightChange?: (height: number) => void;
 }
 
 // Inline Editable Text Component to avoid cursor jump
@@ -62,9 +63,39 @@ const EditableText: React.FC<EditableTextProps> = ({
   );
 };
 
-export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onChangeData }) => {
+export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onChangeData, onHeightChange }) => {
   const activePalette = COLOR_PALETTES.find(p => p.id === style.colorPaletteId) || COLOR_PALETTES[0];
   const activeFont = FONT_FAMILIES.find(f => f.id === style.fontFamilyId) || FONT_FAMILIES[0];
+
+  const pageRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!pageRef.current) return;
+
+    const measure = () => {
+      if (!pageRef.current) return;
+      const contentHeight = pageRef.current.scrollHeight;
+      if (onHeightChange) {
+        onHeightChange(contentHeight);
+      }
+    };
+
+    measure();
+    const timer = setTimeout(measure, 150);
+    
+    let resizeObserver: ResizeObserver | null = null;
+    if (typeof window !== 'undefined' && 'ResizeObserver' in window) {
+      resizeObserver = new ResizeObserver(measure);
+      resizeObserver.observe(pageRef.current);
+    }
+
+    return () => {
+      clearTimeout(timer);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+    };
+  }, [data, style, onHeightChange]);
 
   // Compile CSS Variables based on Style Configuration
   const compiledVariables = {
@@ -639,8 +670,9 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
 
   return (
     <div 
+      ref={pageRef}
       className={`resume-page ${activeFont.class}`} 
-      style={compiledVariables}
+      style={{ ...compiledVariables, height: 'auto', minHeight: '1123px' }}
       id="print-resume-page"
     >
       {renderHeader()}

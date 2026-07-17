@@ -1242,10 +1242,31 @@ textarea.form-input {
     max-width: 100% !important;
     height: auto !important;
     min-height: 0 !important;
-    page-break-after: avoid;
-    page-break-inside: avoid;
+    page-break-after: auto !important;
+    page-break-inside: auto !important;
     display: block !important;
     overflow: visible !important;
+  }
+
+  /* Prevent orphaned headings and split items across page breaks */
+  .resume-section {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+  }
+
+  .section-title-wrap {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  .resume-item {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .skills-wrap {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
   }
 
   /* Force print background graphics */
