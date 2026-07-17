@@ -8,7 +8,7 @@ import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
 import { getStorageItem, setStorageItem } from '../../utils/storage';
 import { 
-  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp
+  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2
 } from 'lucide-react';
 
 interface ProInterviewerAppProps {
@@ -242,6 +242,20 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
     setStorageItem("proActiveResumeId", id);
     
     triggerToast(`Loaded resume: "${target.title}"`);
+  };
+
+  const handleDownloadSavedResume = (id: string) => {
+    const target = savedResumes.find(r => r.id === id);
+    if (!target) return;
+
+    setResumeData(target.data);
+    setCurrentStyle(target.style);
+    setActiveTemplateId(target.templateId);
+    setActiveResumeId(id);
+    setStorageItem("proActiveResumeId", id);
+
+    setShowSavedResumesModal(false);
+    setShowPrintGuide(true);
   };
 
   const handleRenameResume = (id: string) => {
@@ -632,16 +646,6 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               <button 
                 type="button"
                 className="btn btn-secondary" 
-                onClick={() => setShowSavedResumesModal(true)}
-                title="My Saved Resumes"
-                style={{ padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderColor: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc' }}
-              >
-                <Folder size={13} />
-                <span>My Resumes</span>
-              </button>
-              <button 
-                type="button"
-                className="btn btn-secondary" 
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 title={isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
                 style={{ padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
@@ -815,6 +819,27 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               >
                 <Printer size={14} />
                 <span className="hidden sm:inline">Export</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowSavedResumesModal(true)}
+                title="My Saved Resumes"
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                  borderColor: 'rgba(99, 102, 241, 0.2)',
+                  color: '#a5b4fc'
+                }}
+              >
+                <Folder size={14} />
+                <span className="hidden sm:inline">My Resumes</span>
               </button>
               {activeResumeId && (
                 <div style={{
@@ -1524,23 +1549,41 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', gap: '0.35rem', flexShrink: 0, alignItems: 'center' }}>
                             <button
                               type="button"
                               onClick={() => handleLoadResume(resume.id)}
                               disabled={isActive}
                               className="btn-load"
-                            >Load</button>
+                              title="Load / View"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2rem', height: '2rem', padding: 0 }}
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDownloadSavedResume(resume.id)}
+                              className="btn-load"
+                              title="Download"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2rem', height: '2rem', padding: 0 }}
+                            >
+                              <Download size={14} />
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleRenameResume(resume.id)}
                               className="btn-rename"
+                              style={{ height: '2rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0 0.5rem' }}
                             >Rename</button>
                             <button
                               type="button"
                               onClick={() => handleDeleteResume(resume.id)}
                               className="btn-delete"
-                            >Delete</button>
+                              title="Delete"
+                              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2rem', height: '2rem', padding: 0 }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </div>
                       );
