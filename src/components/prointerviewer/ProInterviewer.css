@@ -2063,3 +2063,34 @@ html.theme-light .ai-autofill-btn {
   background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
   box-shadow: 0 0 12px rgba(124, 58, 237, 0.25) !important;
 }
+
+/* Final Priority Print Overrides - Force transparent/white backgrounds and clear page margin bars */
+@media print {
+  /* Reset body and html backgrounds to white */
+  html,
+  body,
+  html.theme-light body,
+  html.theme-eyeprotect body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  /* Reset all preview wrappers and parent containers to transparent background */
+  html.theme-light .resume-builder-pro,
+  html.theme-eyeprotect .resume-builder-pro,
+  .resume-builder-pro,
+  html.theme-light .app-container,
+  html.theme-eyeprotect .app-container,
+  .app-container,
+  html.theme-light .preview-canvas-container,
+  html.theme-eyeprotect .preview-canvas-container,
+  .preview-canvas-container,
+  .resume-preview-container-wrapper,
+  .resume-pages-scaler,
+  .resume-pages-wrapper {
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+}
