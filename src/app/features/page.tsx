@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal } from "lucide-react";
+import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
@@ -71,6 +71,7 @@ function FeaturesContent() {
     const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials">("analysis");
     const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | null>(null);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
 
 
@@ -1772,48 +1773,162 @@ function FeaturesContent() {
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
             {activeModal !== "study_materials" && (
-                <header className="px-4 sm:px-8 py-4 sm:py-6 flex flex-col md:flex-row items-center justify-between gap-4 border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                            <Video className="w-5 h-5 text-white" />
+                <>
+                    <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
+                                <Video className="w-5 h-5 text-white" />
+                            </div>
+                            <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
                         </div>
-                        <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
-                    </div>
-                    <nav className="flex flex-wrap justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-white/70 items-center">
-                        {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
-                        {isLoggedIn && (
-                            <button 
-                                onClick={toggleMode}
-                                className={`flex items-center gap-2 px-2.5 py-1 rounded-full border transition-all text-[10px] sm:text-xs ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
-                            >
-                                <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
-                                {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
-                            </button>
-                        )}
-                        {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
-                        {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
                         
-                        {/* Theme Toggle Button */}
-                        <button 
-                            onClick={cycleTheme}
-                            className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
-                            title={`Current Theme: ${theme}. Click to switch.`}
-                        >
-                            {theme === "dark" && <Moon className="w-4 h-4" />}
-                            {theme === "light" && <Sun className="w-4 h-4" />}
-                            {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
-                        </button>
+                        {/* Desktop Navigation */}
+                        <nav className="hidden md:flex justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-white/70 items-center">
+                            {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
+                            {isLoggedIn && (
+                                <button 
+                                    onClick={toggleMode}
+                                    className={`flex items-center gap-2 px-2.5 py-1 rounded-full border transition-all text-[10px] sm:text-xs ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
+                                    {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
+                                </button>
+                            )}
+                            {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
+                            {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
+                            
+                            {/* Theme Toggle Button */}
+                            <button 
+                                onClick={cycleTheme}
+                                className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                                title={`Current Theme: ${theme}. Click to switch.`}
+                            >
+                                {theme === "dark" && <Moon className="w-4 h-4" />}
+                                {theme === "light" && <Sun className="w-4 h-4" />}
+                                {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                            </button>
 
-                        {isLoggedIn ? (
-                            <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
-                                <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
-                                My Profile
-                            </Link>
-                        ) : (
-                            <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
-                        )}
-                    </nav>
-                </header>
+                            {isLoggedIn ? (
+                                <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
+                                    <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
+                                    My Profile
+                                </Link>
+                            ) : (
+                                <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
+                            )}
+                        </nav>
+
+                        {/* Mobile Navigation Header Buttons */}
+                        <div className="flex md:hidden items-center gap-2">
+                            {/* Theme Toggle Button directly accessible on Mobile */}
+                            <button 
+                                onClick={cycleTheme}
+                                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                                title={`Current Theme: ${theme}. Click to switch.`}
+                            >
+                                {theme === "dark" && <Moon className="w-3.5 h-3.5" />}
+                                {theme === "light" && <Sun className="w-3.5 h-3.5" />}
+                                {theme === "eyeprotect" && <Eye className="w-3.5 h-3.5 text-amber-400" />}
+                            </button>
+
+                            {/* Hamburger Button */}
+                            <button 
+                                onClick={() => setMobileMenuOpen(true)}
+                                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0"
+                                title="Open menu"
+                            >
+                                <Menu className="w-5 h-5" />
+                            </button>
+                        </div>
+                    </header>
+
+                    {/* Mobile Menu Drawer Overlay */}
+                    {mobileMenuOpen && (
+                        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col md:hidden animate-in fade-in duration-200">
+                            {/* Close header inside mobile overlay */}
+                            <div className="flex justify-between items-center p-6 border-b border-white/10">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
+                                        <Video className="w-5 h-5 text-white" />
+                                    </div>
+                                    <span className="font-bold text-xl tracking-tight">ProInterview</span>
+                                </div>
+                                <button 
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="p-2 bg-white/5 border border-white/10 rounded-full text-white/80 hover:text-white"
+                                    title="Close menu"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            {/* Navigation Links list */}
+                            <nav className="flex flex-col items-center justify-center flex-1 gap-6 p-6">
+                                {!isRealisticMode && (
+                                    <Link 
+                                        href="/" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                                    >
+                                        Home
+                                    </Link>
+                                )}
+                                {isLoggedIn && (
+                                    <button 
+                                        onClick={() => {
+                                            toggleMode();
+                                            setMobileMenuOpen(false);
+                                        }}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all text-sm font-semibold ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' : 'bg-orange-500/20 border-orange-500/50 text-orange-300'}`}
+                                    >
+                                        <span className={`w-2 h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
+                                        {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
+                                    </button>
+                                )}
+                                {!isRealisticMode && (
+                                    <Link 
+                                        href="/features" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-lg font-semibold text-indigo-400"
+                                    >
+                                        Features
+                                    </Link>
+                                )}
+                                {!isRealisticMode && (
+                                    <Link 
+                                        href="/#how-it-works" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                                    >
+                                        How it works
+                                    </Link>
+                                )}
+
+                                {/* Profile / Login in Menu */}
+                                <div className="w-full max-w-xs border-t border-white/10 my-4" />
+
+                                {isLoggedIn ? (
+                                    <Link 
+                                        href="/profile" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-6 py-3 rounded-full transition-colors font-bold w-full max-w-xs justify-center shadow-[0_0_15px_rgba(79,70,229,0.2)]"
+                                    >
+                                        <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
+                                        My Profile
+                                    </Link>
+                                ) : (
+                                    <Link 
+                                        href="/login" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-full text-white transition-colors font-bold w-full max-w-xs text-center"
+                                    >
+                                        Log in
+                                    </Link>
+                                )}
+                            </nav>
+                        </div>
+                    )}
+                </>
             )}
 
             {activeModal === "prointerviewer" ? (
