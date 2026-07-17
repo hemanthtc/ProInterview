@@ -1205,9 +1205,12 @@ textarea.form-input {
     background: none !important;
   }
 
+  html.theme-light .preview-canvas-container,
+  html.theme-eyeprotect .preview-canvas-container,
   .preview-canvas-container {
     display: block !important;
-    background: none !important;
+    background: transparent !important;
+    background-color: transparent !important;
     padding: 0 !important;
     margin: 0 !important;
     overflow: visible !important;
@@ -1219,6 +1222,17 @@ textarea.form-input {
     display: block !important;
     width: 100% !important;
     height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .resume-pages-scaler {
+    width: 100% !important;
+    height: auto !important;
+    display: block !important;
     overflow: visible !important;
     position: static !important;
   }
@@ -2048,4 +2062,18 @@ html.theme-eyeprotect .ai-autofill-btn {
 html.theme-light .ai-autofill-btn {
   background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
   box-shadow: 0 0 12px rgba(124, 58, 237, 0.25) !important;
+}
+
+/* Ensure all canvas wrappers are fully transparent during printing, overriding all theme colors */
+@media print {
+  html.theme-light .preview-canvas-container,
+  html.theme-eyeprotect .preview-canvas-container,
+  .preview-canvas-container,
+  .resume-preview-container-wrapper,
+  .resume-pages-scaler,
+  .resume-pages-wrapper {
+    background: transparent !important;
+    background-color: transparent !important;
+    box-shadow: none !important;
+  }
 }
