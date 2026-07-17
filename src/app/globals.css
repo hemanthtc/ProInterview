@@ -534,3 +534,33 @@ html.theme-eyeprotect button:has(svg.lucide-moon) {
 html.theme-eyeprotect button svg.lucide-eye {
   color: #b45309 !important; /* Warm amber */
 }
+
+/* Print overrides to force transparent/white backgrounds and eliminate margin bars globally */
+@media print {
+  html,
+  body,
+  html.theme-light,
+  html.theme-light body,
+  html.theme-eyeprotect,
+  html.theme-eyeprotect body,
+  .resume-builder-pro,
+  .app-container,
+  .preview-canvas-container,
+  .resume-preview-container-wrapper,
+  .resume-pages-scaler,
+  .resume-pages-wrapper {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+
+  /* Set scaling page elements to transparent background so they do not bleed parent colors */
+  .resume-preview-container-wrapper,
+  .resume-pages-scaler,
+  .resume-pages-wrapper,
+  .preview-canvas-container {
+    background: transparent !important;
+    background-color: transparent !important;
+  }
+}

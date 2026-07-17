@@ -2064,8 +2064,14 @@ html.theme-light .ai-autofill-btn {
   box-shadow: 0 0 12px rgba(124, 58, 237, 0.25) !important;
 }
 
-/* Ensure all canvas wrappers are fully transparent during printing, overriding all theme colors */
+/* Ensure all canvas wrappers, parent containers, and body backgrounds are fully transparent/white during printing, overriding all theme colors */
 @media print {
+  html.theme-light .resume-builder-pro,
+  html.theme-eyeprotect .resume-builder-pro,
+  .resume-builder-pro,
+  html.theme-light .app-container,
+  html.theme-eyeprotect .app-container,
+  .app-container,
   html.theme-light .preview-canvas-container,
   html.theme-eyeprotect .preview-canvas-container,
   .preview-canvas-container,
@@ -2075,5 +2081,15 @@ html.theme-light .ai-autofill-btn {
     background: transparent !important;
     background-color: transparent !important;
     box-shadow: none !important;
+  }
+
+  /* Force print page body background strictly to white */
+  html,
+  body,
+  html.theme-light body,
+  html.theme-eyeprotect body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #000000 !important;
   }
 }
