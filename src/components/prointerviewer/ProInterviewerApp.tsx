@@ -8,7 +8,7 @@ import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
 import { getStorageItem, setStorageItem } from '../../utils/storage';
 import { 
-  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save
+  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 interface ProInterviewerAppProps {
@@ -24,6 +24,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
   const [mobileView, setMobileView] = useState<'editor' | 'preview'>('editor');
   const [zoom, setZoom] = useState<number>(0.9); // zoom level 0.7 - 1.2
   const [showPrintGuide, setShowPrintGuide] = useState<boolean>(false);
+  const [guideExpanded, setGuideExpanded] = useState<boolean>(false);
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isAILoading, setIsAILoading] = useState<boolean>(false);
@@ -647,16 +648,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
                 <span>{isFullscreen ? "Exit" : "Full"}</span>
               </button>
-              <button 
-                type="button"
-                className="btn btn-primary" 
-                onClick={() => setShowPrintGuide(true)}
-                title="Download as PDF / Print"
-                style={{ padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
-              >
-                <Printer size={13} />
-                <span>Export</span>
-              </button>
+
               {onClose && (
                 <button 
                   type="button"
@@ -789,6 +781,24 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               <Save size={14} />
               <span>Save Resume</span>
             </button>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setShowPrintGuide(true)}
+              title="Download as PDF / Print"
+              style={{
+                padding: '0.4rem 0.8rem',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+              }}
+            >
+              <Printer size={14} />
+              <span>Export</span>
+            </button>
             {activeResumeId && (
               <div style={{
                 background: 'rgba(15, 23, 42, 0.85)',
@@ -868,7 +878,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               transform: `scale(${zoom})`,
               transformOrigin: 'top center',
               transition: 'transform 0.15s ease',
-              boxSizing: 'border-box'
+              boxSizing: 'border-box',
+              marginTop: '30px'
             }}
           >
             <ResumePreview 
@@ -901,37 +912,53 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             </div>
           )}
 
-          {/* PRINT / PDF DOWNLOAD HELP MODAL */}
+                    {/* PRINT / PDF DOWNLOAD HELP MODAL */}
           {showPrintGuide && (
             <>
               <div className="modal-backdrop" onClick={() => setShowPrintGuide(false)} />
               <div className="print-helper-modal">
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--input-focus)' }}>
-                  <Printer size={18} />
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>PDF Export Guide</h3>
+                <div 
+                  onClick={() => setGuideExpanded(!guideExpanded)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    marginBottom: '1rem', 
+                    color: 'var(--input-focus)',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Printer size={18} />
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>PDF Export Guide</h3>
+                  </div>
+                  {guideExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
                 </div>
                 
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                  <p style={{ margin: 0 }}>To print or download your resume as a clean, pixel-perfect PDF document, verify these settings in the browser print window:</p>
-                  
-                  <ol style={{ paddingLeft: '1.25rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                    <li>Set <strong>Destination</strong> to <strong>Save as PDF</strong> (or Microsoft Print to PDF).</li>
-                    <li>Click <strong>More settings</strong> to expand configuration options.</li>
-                    <li>Ensure <strong>Background graphics</strong> is checked <span className="warning-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={10} />(Required for color themes!)</span></li>
-                    <li>Set <strong>Margins</strong> to <strong>None</strong> or <strong>Default</strong>.</li>
-                    <li>Set <strong>Paper size</strong> to <strong>A4</strong> (or Letter) to match the template aspect ratio.</li>
-                    <li>Untick <strong>Headers and footers</strong> to remove the browser date/URL timestamps from the page edges.</li>
-                    <li>Set <strong>Scale</strong> to <strong>100</strong> (Default) or select <strong>Fit to page width</strong>.</li>
-                  </ol>
+                {guideExpanded && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.65rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.75rem' }} className="animate-in fade-in duration-200">
+                    <p style={{ margin: 0 }}>To print or download your resume as a clean, pixel-perfect PDF document, verify these settings in the browser print window:</p>
+                    
+                    <ol style={{ paddingLeft: '1.25rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <li>Set <strong>Destination</strong> to <strong>Save as PDF</strong> (or Microsoft Print to PDF).</li>
+                      <li>Click <strong>More settings</strong> to expand configuration options.</li>
+                      <li>Ensure <strong>Background graphics</strong> is checked <span className="warning-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={10} />(Required for color themes!)</span></li>
+                      <li>Set <strong>Margins</strong> to <strong>None</strong> or <strong>Default</strong>.</li>
+                      <li>Set <strong>Paper size</strong> to <strong>A4</strong> (or Letter) to match the template aspect ratio.</li>
+                      <li>Untick <strong>Headers and footers</strong> to remove the browser date/URL timestamps from the page edges.</li>
+                      <li>Set <strong>Scale</strong> to <strong>100</strong> (Default) or select <strong>Fit to page width</strong>.</li>
+                    </ol>
 
-                  <p className="print-guide-note">
-                    <strong>Note:</strong> Any editing outlines or control bars will automatically be stripped from the printed page.
-                  </p>
-                </div>
+                    <p className="print-guide-note">
+                      <strong>Note:</strong> Any editing outlines or control bars will automatically be stripped from the printed page.
+                    </p>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.25rem' }}>
                   <button type="button" className="btn btn-secondary" onClick={() => setShowPrintGuide(false)}>Cancel</button>
-                  <button type="button" className="btn btn-primary" onClick={handlePrint}>Open Print Dialog</button>
+                  <button type="button" className="btn btn-primary" onClick={handlePrint}>Download</button>
                 </div>
               </div>
             </>
