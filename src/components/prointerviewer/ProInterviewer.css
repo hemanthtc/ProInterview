@@ -1168,7 +1168,7 @@ textarea.form-input {
 /* High Fidelity Browser Print Core Rules */
 @media print {
   /* Remove UI decorations completely */
-  header,
+  header:not(.resume-header),
   nav,
   footer,
   aside,
@@ -1237,7 +1237,7 @@ textarea.form-input {
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
-    padding: var(--page-padding, 2.5rem) !important;
+    padding: 0 !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
