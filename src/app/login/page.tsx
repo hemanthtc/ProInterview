@@ -649,7 +649,7 @@ function LoginContent() {
                 )}
             </AnimatePresence>
 
-            <header className={`px-4 sm:px-8 py-4 sm:py-6 flex flex-col sm:flex-row gap-4 items-center justify-between border-b backdrop-blur-md sticky top-0 z-50 transition-colors duration-300 ${
+            <header className={`px-4 sm:px-8 py-4 sm:py-5 flex flex-row gap-4 items-center justify-between border-b backdrop-blur-md sticky top-0 z-50 transition-colors duration-300 ${
                 isLight
                     ? "border-slate-200 bg-white/90 shadow-sm"
                     : "border-white/10 bg-[#050505]/80"
@@ -658,27 +658,28 @@ function LoginContent() {
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0 shadow-md">
                         <Video className="w-5 h-5 text-white" />
                     </div>
-                    <span className={`font-bold text-xl tracking-tight ${ isLight ? "text-slate-900" : "text-white" }`}>ProInterview</span>
+                    <span className={`font-bold text-xl tracking-tight hidden sm:inline ${ isLight ? "text-slate-900" : "text-white" }`}>ProInterview</span>
+                    <span className={`font-bold text-lg tracking-tight sm:hidden ${ isLight ? "text-slate-900" : "text-white" }`}>Pro</span>
                 </Link>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                     {/* Theme Toggle Button */}
                     <button 
                         onClick={cycleTheme}
-                        className={`p-2.5 border rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer ${
+                        className={`p-2 border rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer w-8 h-8 sm:w-10 sm:h-10 ${
                             isLight
                                 ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-600 hover:text-slate-900"
                                 : "bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white"
                         }`}
                         title={`Current Theme: ${theme}. Click to switch.`}
                     >
-                        {theme === "dark" && <Moon className="w-4 h-4" />}
-                        {theme === "light" && <Sun className="w-4 h-4" />}
-                        {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-500" />}
+                        {theme === "dark" && <Moon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                        {theme === "light" && <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+                        {theme === "eyeprotect" && <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500" />}
                     </button>
-                    <Link href="/" className={`text-sm transition-colors flex items-center gap-2 ${
+                    <Link href="/" className={`text-xs sm:text-sm transition-colors flex items-center gap-1 ${
                         isLight ? "text-slate-500 hover:text-slate-900" : "text-white/60 hover:text-white"
                     }`}>
-                        <ArrowLeft className="w-4 h-4" /> Back to Home
+                        <ArrowLeft className="w-4 h-4" /> <span className="hidden sm:inline">Back to Home</span>
                     </Link>
                 </div>
             </header>
