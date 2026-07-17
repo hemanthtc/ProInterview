@@ -1859,7 +1859,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             initial={{ scale: 0.95, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 20 }}
-                            className="bg-gradient-to-b from-[#16161a] to-[#0c0c0e] border border-white/10 rounded-3xl p-6 md:p-8 max-w-4xl w-full shadow-[0_20px_50px_rgba(79,70,229,0.25)] relative overflow-hidden"
+                            className="bg-gradient-to-b from-[#16161a] to-[#0c0c0e] border border-white/10 rounded-3xl p-6 md:p-8 max-w-4xl w-full shadow-[0_20px_50px_rgba(79,70,229,0.25)] relative overflow-y-auto max-h-[90vh] scrollbar-thin"
                         >
                             {/* Decorative background lights */}
                             <div className="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
@@ -2130,7 +2130,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         </div>
                                     </div>
  
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative z-10">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
                                         {/* Free Tier Card */}
                                         <div className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${subscriptionPlan === "Free Tier" ? "bg-indigo-500/5 border-indigo-500/40 shadow-[0_0_15px_rgba(79,70,229,0.1)]" : "bg-white/5 border-white/5 hover:border-white/10"}`}>
                                             <div>
