@@ -2069,6 +2069,8 @@ html.theme-light .ai-autofill-btn {
   /* Reset body and html backgrounds to white */
   html,
   body,
+  html.theme-light,
+  html.theme-eyeprotect,
   html.theme-light body,
   html.theme-eyeprotect body {
     background: #ffffff !important;
