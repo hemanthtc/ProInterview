@@ -72,6 +72,7 @@ function FeaturesContent() {
     const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | null>(null);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
 
 
 
@@ -1442,11 +1443,14 @@ function FeaturesContent() {
         setExpandedPhases({ 0: true });
     };
 
-    const handleDeleteRoadmap = (id: string, e: React.MouseEvent) => {
+        const handleDeleteRoadmap = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        const conf = confirm("Are you sure you want to delete this roadmap?");
-        if (!conf) return;
-        
+        setRoadmapToDelete(id);
+    };
+
+    const confirmDeleteRoadmap = () => {
+        if (!roadmapToDelete) return;
+        const id = roadmapToDelete;
         const updatedList = savedRoadmaps.filter(r => r.id !== id);
         setSavedRoadmaps(updatedList);
         setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
@@ -1477,6 +1481,7 @@ function FeaturesContent() {
                 setExpandedPhases({ 0: true });
             }
         }
+        setRoadmapToDelete(null);
     };
 
     const handleCreateNewRoadmap = () => {
@@ -4287,6 +4292,66 @@ function FeaturesContent() {
                                     className="px-5 py-3 bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white font-bold rounded-xl transition-colors text-sm cursor-pointer"
                                 >
                                     Skip
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Delete Roadmap Confirmation Popup */}
+            <AnimatePresence>
+                {roadmapToDelete && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                        onClick={() => setRoadmapToDelete(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.85, opacity: 0, y: 30 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.85, opacity: 0, y: 30 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="bg-[#111] border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl shadow-black/50 relative"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setRoadmapToDelete(null)}
+                                className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer"
+                                title="Close popup"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center shrink-0">
+                                    <Trash2 className="w-6 h-6 text-red-500" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-extrabold text-white mb-1">Delete Roadmap?</h3>
+                                    <p className="text-sm text-white/50 leading-relaxed">
+                                        Are you sure you want to delete this preparation roadmap? This action cannot be undone.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={confirmDeleteRoadmap}
+                                    className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition-colors text-sm cursor-pointer"
+                                >
+                                    Delete
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setRoadmapToDelete(null)}
+                                    className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-bold py-3 rounded-xl transition-colors text-sm cursor-pointer"
+                                >
+                                    Cancel
                                 </button>
                             </div>
                         </motion.div>
