@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { initialResumeData } from './initialData';
 import { TEMPLATES } from './templates';
 import type { ResumeData, ResumeStyle, ResumeTemplate, Education } from './types';
@@ -30,20 +30,26 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isAILoading, setIsAILoading] = useState<boolean>(false);
 
-  // Auto scaling for mobile preview
+  const [isManualZoom, setIsManualZoom] = useState<boolean>(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Auto scaling for mobile preview using ResizeObserver on the container bounds
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth < 1024) {
-        const calculatedZoom = (window.innerWidth - 32) / 794;
-        setZoom(Math.max(0.4, Math.min(1.0, calculatedZoom)));
-      } else {
-        setZoom(0.9);
+    if (isManualZoom || !containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width } = entry.contentRect;
+        if (width > 0) {
+          const calculatedZoom = (width - 32) / 794;
+          setZoom(Math.max(0.35, Math.min(1.2, calculatedZoom)));
+        }
       }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [isManualZoom]);
   const [showAIModal, setShowAIModal] = useState<boolean>(false);
   const [aiModalStep, setAiModalStep] = useState<'choice' | 'upload' | 'notes'>('choice');
   const [resumeUploadFile, setResumeUploadFile] = useState<File | null>(null);
@@ -880,18 +886,30 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 <button 
                   type="button"
                   className="btn-icon" 
-                  onClick={() => setZoom(Math.max(0.6, zoom - 0.05))} 
+                  onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }} 
                   style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
                 >
                   <ZoomOut size={14} />
                 </button>
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', minWidth: '35px', textAlign: 'center' }}>
+                <span 
+                  onClick={() => setIsManualZoom(false)}
+                  title="Click to reset to Auto Fit"
+                  style={{ 
+                    fontSize: '0.75rem', 
+                    fontWeight: 600, 
+                    color: isManualZoom ? 'var(--text-muted)' : 'var(--input-focus)', 
+                    minWidth: '35px', 
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
                   {Math.round(zoom * 100)}%
                 </span>
                 <button 
                   type="button"
                   className="btn-icon" 
-                  onClick={() => setZoom(Math.min(1.2, zoom + 0.05))}
+                  onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
                   style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
                 >
                   <ZoomIn size={14} />
@@ -929,6 +947,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
           >
             {/* Centering Wrapper and Scaled A4 sheets */}
             <div
+              ref={containerRef}
               className="resume-preview-container-wrapper"
               style={{
                 width: '100%',
