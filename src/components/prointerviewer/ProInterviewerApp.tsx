@@ -1302,43 +1302,32 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 width: '100%',
                 minHeight: `${contentHeight * zoom}px`,
                 position: 'relative',
-                display: 'block',
-                overflow: 'visible',
-                paddingBottom: '2.5rem',
-                boxSizing: 'border-box'
+                display: 'flex',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                paddingBottom: '2.5rem'
               }}
             >
-              {/* Centering wrapper that matches scaled dimensions exactly to define standard scroll bounds */}
-              <div
+              <div 
+                className="resume-pages-wrapper"
                 style={{
-                  width: `${794 * zoom}px`,
-                  height: `${contentHeight * zoom}px`,
-                  margin: '0 auto',
-                  position: 'relative',
+                  width: '794px',
+                  height: `${contentHeight}px`,
+                  transform: `translateX(-50%) scale(${zoom})`,
+                  transformOrigin: 'top center',
+                  position: 'absolute',
+                  top: 0,
+                  left: '50%',
+                  transition: 'transform 0.15s ease',
                   boxSizing: 'border-box'
                 }}
               >
-                <div 
-                  className="resume-pages-wrapper"
-                  style={{
-                    width: '794px',
-                    height: `${contentHeight}px`,
-                    transform: `scale(${zoom})`,
-                    transformOrigin: 'top left',
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    transition: 'transform 0.15s ease',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <ResumePreview 
-                    data={resumeData}
-                    style={currentStyle}
-                    onChangeData={setResumeData}
-                    onHeightChange={setContentHeight}
-                  />
-                </div>
+                <ResumePreview 
+                  data={resumeData}
+                  style={currentStyle}
+                  onChangeData={setResumeData}
+                  onHeightChange={setContentHeight}
+                />
               </div>
             </div>
           </div>
