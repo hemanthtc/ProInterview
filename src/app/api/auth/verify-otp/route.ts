@@ -3,6 +3,7 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
+import { setSessionCookie } from "@/utils/auth";
 
 /**
  * Finds an account document across the correct collection based on accountType.
@@ -53,6 +54,13 @@ export async function POST(req: NextRequest) {
                 (account as any).lastActive = new Date();
             }
             await account.save();
+
+            // Set secure HttpOnly session cookie
+            await setSessionCookie({
+                identifier: account.identifier,
+                role: accountType as any,
+                isOrganization
+            });
 
             return NextResponse.json({
                 success: true,

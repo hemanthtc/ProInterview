@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
+import { clearSessionCookie } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
@@ -17,6 +18,9 @@ export async function POST(req: NextRequest) {
         } else if (accountType === "employee") {
             await OrgEmployee.findOneAndUpdate({ identifier }, { isOnline: false });
         }
+
+        // Clear secure HttpOnly session cookie
+        await clearSessionCookie();
 
         return NextResponse.json({ success: true, message: "Logged out successfully from server." });
     } catch (error: any) {

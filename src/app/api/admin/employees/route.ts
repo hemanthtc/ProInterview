@@ -3,6 +3,14 @@ import connectDB from "@/utils/db";
 import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
 import bcryptjs from "bcryptjs";
+import { getVerifiedSession } from "@/utils/auth";
+
+// Auth verification helper
+async function verifyAdminAccess(req: NextRequest, targetAdminId: string) {
+    const session = await getVerifiedSession();
+    if (!session || session.role !== "admin") return false;
+    return targetAdminId.trim().toLowerCase() === session.identifier.trim().toLowerCase();
+}
 
 // GET — list all employees under an admin
 export async function GET(req: NextRequest) {
@@ -13,6 +21,12 @@ export async function GET(req: NextRequest) {
 
         if (!adminId) {
             return NextResponse.json({ error: "adminId is required." }, { status: 400 });
+        }
+
+        // Verify request belongs to authenticated admin session
+        const isAuthorized = await verifyAdminAccess(req, adminId);
+        if (!isAuthorized) {
+            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 
         const employees = await OrgEmployee.find({ adminId })
@@ -33,6 +47,12 @@ export async function POST(req: NextRequest) {
 
         if (!adminId || !identifier || !password || !displayName) {
             return NextResponse.json({ error: "adminId, identifier, displayName and password are required." }, { status: 400 });
+        }
+
+        // Verify request belongs to authenticated admin session
+        const isAuthorized = await verifyAdminAccess(req, adminId);
+        if (!isAuthorized) {
+            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 
         // Verify admin exists
@@ -87,6 +107,12 @@ export async function DELETE(req: NextRequest) {
 
         if (!identifier || !adminId) {
             return NextResponse.json({ error: "identifier and adminId are required." }, { status: 400 });
+        }
+
+        // Verify request belongs to authenticated admin session
+        const isAuthorized = await verifyAdminAccess(req, adminId);
+        if (!isAuthorized) {
+            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 
         const deleted = await OrgEmployee.findOneAndDelete({ identifier, adminId });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import JSZip from "jszip";
+import { isSafeUrl } from "@/utils/ssrf";
 
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
@@ -47,6 +48,13 @@ async function fetchUrlText(url: string) {
     if (!url) return "";
     try {
         if (!url.startsWith("http")) url = "https://" + url;
+
+        // Verify URL is safe from SSRF before fetching
+        const safe = await isSafeUrl(url);
+        if (!safe) {
+            return `\n--- [Failed to fetch website: ${url} (Unsafe/Local URL blocked)] ---\n`;
+        }
+
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 1500);
         const res = await fetch(url, { signal: controller.signal });

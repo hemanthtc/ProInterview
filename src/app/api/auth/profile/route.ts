@@ -6,6 +6,7 @@ import OrgEmployee from "@/models/OrgEmployee";
 import ProfileData from "@/models/ProfileData";
 import mongoose from "mongoose";
 import bcryptjs from "bcryptjs";
+import { getVerifiedSession } from "@/utils/auth";
 
 /**
  * Returns the correct Mongoose model based on accountType.
@@ -21,6 +22,13 @@ function getModel(accountType: string): mongoose.Model<any> {
     }
 }
 
+// User session check helper to prevent IDOR / privilege bypass
+async function verifyUserAccess(req: NextRequest, targetIdentifier: string) {
+    const session = await getVerifiedSession();
+    if (!session) return false;
+    return targetIdentifier.trim().toLowerCase() === session.identifier.trim().toLowerCase();
+}
+
 // GET profile details
 export async function GET(req: NextRequest) {
     try {
@@ -31,6 +39,12 @@ export async function GET(req: NextRequest) {
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
+        }
+
+        // Verify request belongs to authenticated user session
+        const isAuthorized = await verifyUserAccess(req, identifier);
+        if (!isAuthorized) {
+            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 
         const Model = getModel(accountType);
@@ -110,10 +124,24 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
+        // Verify request belongs to authenticated user session
+        const isAuthorized = await verifyUserAccess(req, identifier);
+        if (!isAuthorized) {
+            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
+        }
+
         const Model = getModel(accountType);
         const account = await Model.findOne({ identifier });
         if (!account) {
             return NextResponse.json({ error: "Account not found." }, { status: 404 });
+        }
+
+        // Prevent normal users from altering their subscription plan via profile updates
+        const session = await getVerifiedSession();
+        if (subscriptionPlan !== undefined && subscriptionPlan !== account.subscriptionPlan) {
+            if (!session || session.role !== "admin") {
+                return NextResponse.json({ error: "Cannot manually alter subscription plan." }, { status: 403 });
+            }
         }
 
         // Update base credential fields
@@ -188,6 +216,12 @@ export async function DELETE(req: NextRequest) {
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
+        }
+
+        // Verify request belongs to authenticated user session
+        const isAuthorized = await verifyUserAccess(req, identifier);
+        if (!isAuthorized) {
+            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 
         const Model = getModel(accountType);

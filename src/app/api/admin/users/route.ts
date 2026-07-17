@@ -3,14 +3,18 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import ProfileData from "@/models/ProfileData";
 import OrgAdmin from "@/models/OrgAdmin";
+import { getVerifiedSession } from "@/utils/auth";
 
-// Admin auth check helper
-async function checkAdminAuth(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
-    const adminId = searchParams.get("adminId") || req.headers.get("x-admin-id");
-    if (!adminId) return false;
-    const admin = await OrgAdmin.findOne({ identifier: adminId });
-    return !!admin;
+// Admin auth check helper using secure sessions
+async function checkAdminAuth(req: NextRequest, targetAdminId?: string) {
+    const session = await getVerifiedSession();
+    if (!session || session.role !== "admin") return false;
+
+    // If a target adminId is provided (e.g. from query parameters or body), it must match the session identifier
+    if (targetAdminId && targetAdminId.trim().toLowerCase() !== session.identifier.trim().toLowerCase()) {
+        return false;
+    }
+    return true;
 }
 
 // POST — Verify an unverified user account
@@ -23,9 +27,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "identifier and adminId are required." }, { status: 400 });
         }
 
-        // Verify requester is indeed an admin
-        const isAdmin = await OrgAdmin.findOne({ identifier: adminId });
-        if (!isAdmin) {
+        // Verify requester is indeed the logged-in admin
+        const authorized = await checkAdminAuth(req, adminId);
+        if (!authorized) {
             return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 
@@ -59,9 +63,9 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: "identifier and adminId are required." }, { status: 400 });
         }
 
-        // Verify requester is indeed an admin
-        const isAdmin = await OrgAdmin.findOne({ identifier: adminId });
-        if (!isAdmin) {
+        // Verify requester is indeed the logged-in admin
+        const authorized = await checkAdminAuth(req, adminId);
+        if (!authorized) {
             return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 

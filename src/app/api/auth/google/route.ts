@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
+import { setSessionCookie } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
@@ -58,6 +59,13 @@ export async function POST(req: NextRequest) {
             },
             { upsert: true, new: true }
         );
+
+        // Set secure HttpOnly session cookie
+        await setSessionCookie({
+            identifier: user.identifier,
+            role: "user",
+            isOrganization: false
+        });
 
         // Return user credentials to the client
         return NextResponse.json({

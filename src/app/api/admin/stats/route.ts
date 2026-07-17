@@ -3,6 +3,7 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import OrgEmployee from "@/models/OrgEmployee";
 import OrgAdmin from "@/models/OrgAdmin";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function GET(req: NextRequest) {
     try {
@@ -12,6 +13,12 @@ export async function GET(req: NextRequest) {
 
         if (!adminId) {
             return NextResponse.json({ error: "adminId is required." }, { status: 400 });
+        }
+
+        // Verify request belongs to authenticated admin session
+        const session = await getVerifiedSession();
+        if (!session || session.role !== "admin" || adminId.trim().toLowerCase() !== session.identifier.trim().toLowerCase()) {
+            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
 
         // Mark the requesting admin as online

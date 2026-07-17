@@ -752,141 +752,189 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
         </aside>
 
         {/* 2. RIGHT PREVIEW CANVAS */}
-        <main className={`preview-canvas-container ${mobileView === 'preview' ? 'mobile-visible' : 'mobile-hidden'}`}>
-          
-          {/* Floating Save Controller */}
-          <div className="no-print" style={{
-            position: 'absolute',
-            top: '1rem',
-            left: '1.5rem',
-            zIndex: 5,
+        <main 
+          className={`preview-canvas-container ${mobileView === 'preview' ? 'mobile-visible' : 'mobile-hidden'}`}
+          style={{
             display: 'flex',
-            gap: '0.5rem',
-            alignItems: 'center'
+            flexDirection: 'column',
+            position: 'relative',
+            padding: 0,
+            overflow: 'hidden', // Main canvas is static, scroll is managed inside bottom viewport
+            height: '100%'
+          }}
+        >
+          {/* Unified Preview Header Toolbar */}
+          <div className="no-print" style={{
+            background: 'var(--bg-main)', // Opaque main color to completely hide scrolling content underneath
+            borderBottom: '1px solid var(--panel-border)',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            width: '100%'
           }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={handleSave}
-              style={{
-                padding: '0.4rem 0.8rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-              }}
-            >
-              <Save size={14} />
-              <span>Save Resume</span>
-            </button>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setShowPrintGuide(true)}
-              title="Download as PDF / Print"
-              style={{
-                padding: '0.4rem 0.8rem',
-                fontSize: '0.75rem',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-              }}
-            >
-              <Printer size={14} />
-              <span>Export</span>
-            </button>
-            {activeResumeId && (
+            {/* Left Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSave}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                <Save size={14} />
+                <span className="hidden sm:inline">Save Resume</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowPrintGuide(true)}
+                title="Download as PDF / Print"
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                }}
+              >
+                <Printer size={14} />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+              {activeResumeId && (
+                <div style={{
+                  background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
+                  border: '1px solid var(--panel-border)',
+                  padding: '0.4rem 0.6rem',
+                  borderRadius: '8px',
+                  fontSize: '0.7rem',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  maxWidth: '120px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }} title={savedResumes.find(r => r.id === activeResumeId)?.title}>
+                  <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
+                  <span className="hidden sm:inline" style={{ marginRight: '0.2rem' }}>Editing:</span>
+                  <strong style={{ color: 'var(--text-main)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    {savedResumes.find(r => r.id === activeResumeId)?.title}
+                  </strong>
+                </div>
+              )}
+            </div>
+
+            {/* Right Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
               <div style={{
-                background: 'rgba(15, 23, 42, 0.85)',
+                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
                 border: '1px solid var(--panel-border)',
-                padding: '0.45rem 0.6rem',
+                padding: '0.3rem 0.5rem',
                 borderRadius: '8px',
-                fontSize: '0.7rem',
-                color: 'var(--text-muted)'
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
               }}>
-                Editing: <strong style={{ color: 'var(--text-main)' }}>{savedResumes.find(r => r.id === activeResumeId)?.title}</strong>
+                <button 
+                  type="button"
+                  className="btn-icon" 
+                  onClick={() => setZoom(Math.max(0.6, zoom - 0.05))} 
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', minWidth: '35px', textAlign: 'center' }}>
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button 
+                  type="button"
+                  className="btn-icon" 
+                  onClick={() => setZoom(Math.min(1.2, zoom + 0.05))}
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
+                >
+                  <ZoomIn size={14} />
+                </button>
               </div>
-            )}
-          </div>
 
-          {/* Floating Zoom and Tip Controllers */}
-          <div className="no-print" style={{
-            position: 'absolute',
-            top: '1rem',
-            right: '1.5rem',
-            display: 'flex',
-            gap: '0.5rem',
-            zIndex: 5,
-            alignItems: 'center'
-          }}>
-            <div style={{
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid var(--panel-border)',
-              padding: '0.3rem 0.5rem',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <button 
-                type="button"
-                className="btn-icon" 
-                onClick={() => setZoom(Math.max(0.6, zoom - 0.05))} 
-                style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
-              >
-                <ZoomOut size={14} />
-              </button>
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-main)', minWidth: '35px', textAlign: 'center' }}>
-                {Math.round(zoom * 100)}%
-              </span>
-              <button 
-                type="button"
-                className="btn-icon" 
-                onClick={() => setZoom(Math.min(1.2, zoom + 0.05))}
-                style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
-              >
-                <ZoomIn size={14} />
-              </button>
-            </div>
-            
-            <div style={{
-              background: 'rgba(15, 23, 42, 0.85)',
-              border: '1px solid var(--panel-border)',
-              padding: '0.4rem 0.6rem',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              color: 'var(--text-muted)',
-              fontSize: '0.7rem'
-            }}>
-              <Info size={12} className="brand-icon" />
-              <span>Click any text directly on the page to edit inline!</span>
+              {/* Tip */}
+              <div className="hidden lg:flex" style={{
+                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
+                border: '1px solid var(--panel-border)',
+                padding: '0.4rem 0.6rem',
+                borderRadius: '8px',
+                alignItems: 'center',
+                gap: '0.35rem',
+                color: 'var(--text-muted)',
+                fontSize: '0.7rem'
+              }}>
+                <Info size={12} className="brand-icon" />
+                <span>Click any text directly on the page to edit inline!</span>
+              </div>
             </div>
           </div>
 
-          {/* Scaled paper sheets */}
+          {/* Scrollable canvas area positioned strictly below the header */}
           <div 
-            className="resume-pages-wrapper"
             style={{
-              minHeight: `${1123 * zoom}px`,
-              width: `${794 * zoom}px`,
-              transform: `scale(${zoom})`,
-              transformOrigin: 'top center',
-              transition: 'transform 0.15s ease',
-              boxSizing: 'border-box',
-              marginTop: '30px'
+              flex: 1,
+              overflowY: 'auto',
+              width: '100%',
+              paddingTop: '10px', // Exact 10px spacing from the header bottom edge
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
             }}
           >
-            <ResumePreview 
-              data={resumeData}
-              style={currentStyle}
-              onChangeData={setResumeData}
-            />
+            {/* Centering Wrapper and Scaled A4 sheets */}
+            <div
+              className="resume-preview-container-wrapper"
+              style={{
+                width: '100%',
+                minHeight: `${1123 * zoom}px`,
+                position: 'relative',
+                display: 'flex',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                paddingBottom: '2.5rem'
+              }}
+            >
+              <div 
+                className="resume-pages-wrapper"
+                style={{
+                  width: '794px',
+                  height: '1123px',
+                  transform: `translateX(-50%) scale(${zoom})`,
+                  transformOrigin: 'top center',
+                  position: 'absolute',
+                  top: 0,
+                  left: '50%',
+                  transition: 'transform 0.15s ease',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <ResumePreview 
+                  data={resumeData}
+                  style={currentStyle}
+                  onChangeData={setResumeData}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Success Alert Toast Notification */}

@@ -5,15 +5,19 @@ import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
 import bcryptjs from "bcryptjs";
 import { sendVerificationEmail } from "@/utils/mailer";
+import crypto from "crypto";
 
 // Seed default organization accounts into their dedicated collections
 async function seedDefaultOrgAccounts() {
     try {
+        const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD || "H#m@nth!8286";
+        const seedEmployeePassword = process.env.SEED_EMPLOYEE_PASSWORD || "Password123";
+
         // --- Seed real admin account ---
         const adminId = "hemanthtchemu2003@gmail.com";
         const adminExists = await OrgAdmin.findOne({ identifier: adminId });
         if (!adminExists) {
-            const adminHashed = await bcryptjs.hash("H#m@nth!8286", 10);
+            const adminHashed = await bcryptjs.hash(seedAdminPassword, 10);
             await OrgAdmin.create({
                 identifier: adminId,
                 password: adminHashed,
@@ -29,7 +33,7 @@ async function seedDefaultOrgAccounts() {
         const employeeId = "emp123";
         const employeeExists = await OrgEmployee.findOne({ identifier: employeeId });
         if (!employeeExists) {
-            const employeeHashed = await bcryptjs.hash("Password123", 10);
+            const employeeHashed = await bcryptjs.hash(seedEmployeePassword, 10);
             await OrgEmployee.create({
                 identifier: employeeId,
                 password: employeeHashed,
