@@ -1310,6 +1310,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               }}
             >
               <div
+                className="resume-pages-scaler"
                 style={{
                   display: 'inline-block',
                   textAlign: 'left',
