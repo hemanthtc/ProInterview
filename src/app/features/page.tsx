@@ -3119,7 +3119,7 @@ function FeaturesContent() {
 
                         {activeModal === "email_analyser" && (
                             <div className="space-y-6 text-left">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 pr-16">
                                     <div className="w-10 h-10 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400">
                                         <Mail className="w-5 h-5" />
                                     </div>
@@ -3631,7 +3631,7 @@ function FeaturesContent() {
 
                         {activeModal === "roadmap_generator" && (
                             <div className="space-y-6 text-left">
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-3 pr-16">
                                     <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
                                         <Map className="w-5 h-5" />
                                     </div>
