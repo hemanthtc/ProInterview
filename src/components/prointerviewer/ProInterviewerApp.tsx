@@ -1302,32 +1302,45 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 width: '100%',
                 minHeight: `${contentHeight * zoom}px`,
                 position: 'relative',
-                display: 'flex',
-                justifyContent: 'center',
-                overflow: 'hidden',
+                display: 'block',
+                textAlign: 'center',
+                overflowX: 'auto',
+                overflowY: 'hidden',
                 paddingBottom: '2.5rem'
               }}
             >
-              <div 
-                className="resume-pages-wrapper"
+              <div
                 style={{
-                  width: '794px',
-                  height: `${contentHeight}px`,
-                  transform: `translateX(-50%) scale(${zoom})`,
-                  transformOrigin: 'top center',
-                  position: 'absolute',
-                  top: 0,
-                  left: '50%',
-                  transition: 'transform 0.15s ease',
-                  boxSizing: 'border-box'
+                  display: 'inline-block',
+                  textAlign: 'left',
+                  width: `${794 * zoom}px`,
+                  height: `${contentHeight * zoom}px`,
+                  overflow: 'hidden',
+                  position: 'relative',
+                  verticalAlign: 'top'
                 }}
               >
-                <ResumePreview 
-                  data={resumeData}
-                  style={currentStyle}
-                  onChangeData={setResumeData}
-                  onHeightChange={setContentHeight}
-                />
+                <div 
+                  className="resume-pages-wrapper"
+                  style={{
+                    width: '794px',
+                    height: `${contentHeight}px`,
+                    transform: `scale(${zoom})`,
+                    transformOrigin: 'top left',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    transition: 'transform 0.15s ease',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <ResumePreview 
+                    data={resumeData}
+                    style={currentStyle}
+                    onChangeData={setResumeData}
+                    onHeightChange={setContentHeight}
+                  />
+                </div>
               </div>
             </div>
           </div>
