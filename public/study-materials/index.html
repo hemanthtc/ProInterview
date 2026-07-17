@@ -874,16 +874,104 @@
       opacity: 1 !important;
     }
 
+    /* Menu Toggle Position and Search Styling for General Layout */
+    .top-bar {
+      position: relative !important;
+    }
+    .sidebar-toggle-btn {
+      position: absolute !important;
+      left: 20px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      margin: 0 !important;
+      z-index: 50 !important;
+    }
+
     /* High Fidelity Mobile/Tablet Responsive overrides */
     @media (max-width: 768px) {
       .top-bar {
-        padding: 0 12px 0 60px !important;
+        padding: 0 12px 0 52px !important;
         height: 60px !important;
       }
-      .brand-name,
-      .breadcrumb-container,
-      .global-search-container {
+      .breadcrumb-container {
         display: none !important;
+      }
+      .brand-section {
+        display: flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+      }
+      .brand-name {
+        display: block !important;
+        font-size: 1.05rem !important;
+        font-weight: 700 !important;
+      }
+      .brand-icon {
+        display: inline-block !important;
+        width: 8px !important;
+        height: 8px !important;
+      }
+      .sidebar-toggle-btn {
+        left: 12px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 36px !important;
+        height: 36px !important;
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+      }
+      .global-search-container {
+        display: block !important;
+        position: absolute !important;
+        right: 116px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 36px !important;
+        height: 36px !important;
+        border-radius: 18px !important;
+        overflow: hidden !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        background: transparent !important;
+        border: none !important;
+        z-index: 60 !important;
+      }
+      .global-search-container.expanded {
+        width: calc(100% - 128px) !important;
+        right: 116px !important;
+        background: var(--panel-bg) !important;
+        border: 1px solid var(--panel-border) !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+        border-radius: 20px !important;
+      }
+      #global-search-input {
+        opacity: 0 !important;
+        width: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.2s, width 0.3s !important;
+        padding: 8px 12px 8px 34px !important;
+        background: transparent !important;
+        border: none !important;
+      }
+      .global-search-container.expanded #global-search-input {
+        opacity: 1 !important;
+        width: 100% !important;
+        pointer-events: auto !important;
+      }
+      .global-search-icon {
+        cursor: pointer !important;
+        pointer-events: auto !important;
+        left: 9px !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        width: 18px !important;
+        height: 18px !important;
+      }
+      .global-search-results {
+        width: 100% !important;
+        left: 0 !important;
+        right: 0 !important;
+        top: 100% !important;
       }
       .back-to-features-btn {
         padding: 8px !important;
@@ -906,12 +994,6 @@
       .sidebar-backdrop {
         top: 60px !important;
         height: calc(100vh - 60px) !important;
-      }
-      .sidebar-toggle-btn {
-        top: 10px !important;
-        left: 10px !important;
-        width: 40px !important;
-        height: 40px !important;
       }
       .shelf-hologram-overlay {
         padding: 20px 16px !important;
@@ -1131,6 +1213,32 @@
           }
         });
       }
+      // Click listener for Expandable Search on Mobile
+      const searchContainer = document.querySelector('.global-search-container');
+      const searchInput = document.getElementById('global-search-input');
+      const searchIcon = document.querySelector('.global-search-icon');
+      
+      if (searchContainer && searchInput && searchIcon) {
+        searchIcon.addEventListener('click', (e) => {
+          if (window.innerWidth <= 768) {
+            e.stopPropagation();
+            searchContainer.classList.toggle('expanded');
+            if (searchContainer.classList.contains('expanded')) {
+              searchInput.focus();
+            }
+          }
+        });
+        
+        searchContainer.addEventListener('click', (e) => {
+          e.stopPropagation();
+        });
+        
+        document.addEventListener('click', () => {
+          if (window.innerWidth <= 768) {
+            searchContainer.classList.remove('expanded');
+          }
+        });
+      }
       
       // Click delegation for expand/collapse of Course Catalog groups
       const sidebarCourseList = document.getElementById('sidebar-course-list');
@@ -1165,13 +1273,6 @@
 <body>
   <!-- 3D Canvas Background -->
   <div id="canvas-container"></div>
-
-  <!-- Sidebar Toggle Button -->
-  <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Browse Courses">
-    <span class="hamburger-line"></span>
-    <span class="hamburger-line"></span>
-    <span class="hamburger-line"></span>
-  </button>
 
   <!-- Sidebar Backdrop -->
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -1209,6 +1310,13 @@
 
     <!-- Top Bar HUD -->
     <header class="top-bar interactive-panel">
+      <!-- Sidebar Toggle Button -->
+      <button class="sidebar-toggle-btn" id="sidebar-toggle-btn" title="Browse Courses">
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+        <span class="hamburger-line"></span>
+      </button>
+
       <div class="brand-section">
         <div class="brand-icon"></div>
         <span class="brand-name">Study Materials</span>
