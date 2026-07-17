@@ -889,7 +889,9 @@
 
     /* High Fidelity Mobile/Tablet Responsive overrides */
     @media (max-width: 768px) {
-      .top-bar {
+      .top-bar,
+      html.theme-light .top-bar,
+      html.theme-eyeprotect .top-bar {
         padding: 0 12px 0 52px !important;
         height: 60px !important;
       }
@@ -951,6 +953,18 @@
         border: 1px solid var(--panel-border) !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
         border-radius: 20px !important;
+      }
+      html.theme-light .global-search-container.expanded {
+        background: #ffffff !important;
+      }
+      html.theme-eyeprotect .global-search-container.expanded {
+        background: #f4f3ee !important;
+      }
+      html.theme-light #global-search-input::placeholder {
+        color: #94a3b8 !important;
+      }
+      html.theme-eyeprotect #global-search-input::placeholder {
+        color: #a89f91 !important;
       }
       #global-search-input {
         opacity: 0 !important;
@@ -1229,14 +1243,26 @@
       
       if (searchContainer && searchInput && searchIcon) {
         searchIcon.addEventListener('click', (e) => {
+          e.stopPropagation();
           if (window.innerWidth <= 768) {
-            e.stopPropagation();
-            searchContainer.classList.toggle('expanded');
-            if (topBar) {
-              topBar.classList.toggle('search-active', searchContainer.classList.contains('expanded'));
+            if (searchContainer.classList.contains('expanded') && searchInput.value.trim().length > 0) {
+              const firstResult = document.querySelector('#global-search-results .search-result-item');
+              if (firstResult) {
+                firstResult.click();
+              }
+            } else {
+              searchContainer.classList.toggle('expanded');
+              if (topBar) {
+                topBar.classList.toggle('search-active', searchContainer.classList.contains('expanded'));
+              }
+              if (searchContainer.classList.contains('expanded')) {
+                searchInput.focus();
+              }
             }
-            if (searchContainer.classList.contains('expanded')) {
-              searchInput.focus();
+          } else {
+            const firstResult = document.querySelector('#global-search-results .search-result-item');
+            if (firstResult) {
+              firstResult.click();
             }
           }
         });
