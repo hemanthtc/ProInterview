@@ -866,6 +866,144 @@
       color: rgba(67, 52, 34, 0.3) !important;
       opacity: 1 !important;
     }
+
+    /* High Fidelity Mobile/Tablet Responsive overrides */
+    @media (max-width: 768px) {
+      .top-bar {
+        padding: 0 12px 0 60px !important;
+        height: 60px !important;
+      }
+      .brand-name,
+      .breadcrumb-container,
+      .global-search-container {
+        display: none !important;
+      }
+      .back-to-features-btn {
+        padding: 8px !important;
+        font-size: 0 !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 36px !important;
+        height: 36px !important;
+        display: inline-flex !important;
+      }
+      .back-to-features-btn svg {
+        margin: 0 !important;
+        width: 16px !important;
+        height: 16px !important;
+      }
+      .course-sidebar {
+        top: 72px !important;
+        height: calc(100vh - 84px) !important;
+      }
+      .sidebar-backdrop {
+        top: 60px !important;
+        height: calc(100vh - 60px) !important;
+      }
+      .sidebar-toggle-btn {
+        top: 10px !important;
+        left: 10px !important;
+        width: 40px !important;
+        height: 40px !important;
+      }
+      .shelf-hologram-overlay {
+        padding: 20px 16px !important;
+      }
+      .shelf-header {
+        margin-bottom: 20px !important;
+        padding-bottom: 12px !important;
+      }
+      .shelf-title {
+        font-size: 1.4rem !important;
+      }
+      .shelf-close-btn {
+        width: 36px !important;
+        height: 36px !important;
+      }
+      .row-books-list {
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)) !important;
+        gap: 16px !important;
+      }
+      .holo-book-card {
+        padding: 12px !important;
+        gap: 8px !important;
+      }
+      .holo-book-cover-mock {
+        height: 100px !important;
+      }
+      .holo-book-icon {
+        font-size: 1.6rem !important;
+      }
+      .holo-book-title {
+        font-size: 0.8rem !important;
+      }
+      .holo-book-desc {
+        display: none !important;
+      }
+      .book-reader-header {
+        height: 50px !important;
+        padding: 0 16px 0 60px !important;
+      }
+      .reader-title-sec {
+        gap: 8px !important;
+      }
+      #reader-book-title {
+        font-size: 0.9rem !important;
+      }
+      #reader-chapter-title {
+        font-size: 0.7rem !important;
+      }
+      .flat-content-panel {
+        grid-template-columns: 1fr !important;
+        width: 95% !important;
+        height: 80% !important;
+        max-height: none !important;
+        overflow-y: auto !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+      }
+      .flat-content-panel::after {
+        display: none !important;
+      }
+      .page-half {
+        overflow-y: visible !important;
+        height: auto !important;
+      }
+      .left-page {
+        border-right: none !important;
+        border-bottom: 1px dashed rgba(0, 0, 0, 0.1) !important;
+        border-radius: 6px 6px 0 0 !important;
+        padding: 24px !important;
+      }
+      .right-page {
+        border-radius: 0 0 6px 6px !important;
+        padding: 24px !important;
+      }
+      .page-title {
+        font-size: 1.2rem !important;
+        margin-bottom: 12px !important;
+      }
+      .page-content {
+        font-size: 0.85rem !important;
+        line-height: 1.6 !important;
+      }
+      .reader-hud-controls {
+        bottom: 12px !important;
+      }
+      .reader-btn {
+        padding: 8px 16px !important;
+        font-size: 0.8rem !important;
+      }
+      .page-fullscreen-btn {
+        right: 50px !important;
+        top: 16px !important;
+      }
+      .page-close-btn {
+        right: 16px !important;
+        top: 10px !important;
+      }
+    }
   </style>
   <script>
     function updateThemeIcon(theme) {
@@ -971,6 +1109,18 @@
             window.parent.postMessage({ type: 'sync-theme', theme: nextTheme }, '*');
           } catch (err) {
             console.error("Failed to notify parent theme change", err);
+          }
+        });
+      }
+
+      // Click listener for Back to Features button
+      const backBtn = document.getElementById('back-to-features-btn');
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          try {
+            window.parent.postMessage('back-to-features', '*');
+          } catch (err) {
+            console.error("Failed to notify parent back to features", err);
           }
         });
       }
