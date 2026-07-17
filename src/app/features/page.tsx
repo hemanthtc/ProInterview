@@ -3710,7 +3710,7 @@ function FeaturesContent() {
                                                         <button
                                                             type="button"
                                                             onClick={(e) => handleDeleteRoadmap(road.id, e)}
-                                                            className="absolute top-3.5 right-3 text-white/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                                            className={isLight ? "absolute top-2 right-2 p-1.5 rounded-full transition-all cursor-pointer z-10 md:opacity-0 md:group-hover:opacity-100 text-slate-400 hover:text-red-600 hover:bg-slate-200 bg-slate-100" : "absolute top-2 right-2 p-1.5 rounded-full transition-all cursor-pointer z-10 md:opacity-0 md:group-hover:opacity-100 text-white/40 hover:text-red-400 hover:bg-white/10 bg-black/40"}
                                                             title="Delete Roadmap"
                                                         >
                                                             <X className="w-3.5 h-3.5" />
