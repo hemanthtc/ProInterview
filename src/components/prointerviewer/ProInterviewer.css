@@ -2034,3 +2034,18 @@ html.theme-eyeprotect .ai-modal-back-btn {
 html.theme-eyeprotect .ai-modal-info-box {
   border: 1.5px solid #059669 !important;
 }
+
+/* ========================================================
+   AI Autofill Button Visibility & Brightness Overrides
+   ======================================================== */
+
+html.theme-eyeprotect .ai-autofill-btn {
+  background: linear-gradient(135deg, #a78bfa, #818cf8) !important;
+  filter: brightness(1.25) contrast(1.1) !important;
+  box-shadow: 0 0 15px rgba(167, 139, 250, 0.6) !important;
+}
+
+html.theme-light .ai-autofill-btn {
+  background: linear-gradient(135deg, #7c3aed, #4f46e5) !important;
+  box-shadow: 0 0 12px rgba(124, 58, 237, 0.25) !important;
+}

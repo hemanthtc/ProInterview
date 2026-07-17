@@ -240,6 +240,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           {onAIAutofill && (
             <button
               type="button"
+              className="ai-autofill-btn"
               onClick={(e) => { e.stopPropagation(); onAIAutofill(); }}
               disabled={isAILoading}
               title="Autofill all resume fields using AI"
