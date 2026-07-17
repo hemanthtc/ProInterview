@@ -672,7 +672,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
 
       <div className="app-container">
         {/* 1. LEFT SIDEBAR PANEL */}
-        <aside className={`sidebar-panel no-print ${mobileView === 'editor' ? 'mobile-visible' : 'mobile-hidden'}`}>
+        <aside className={`sidebar-panel no-print ${mobileView === 'editor' ? 'mobile-visible' : 'mobile-hidden'}`} style={{ position: 'relative' }}>
           {/* Navigation / Branding */}
           <div className="nav-header">
             <div className="brand">
@@ -791,306 +791,6 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               <span>Reset Profile Data</span>
             </button>
           </div>
-        </aside>
-
-        {/* 2. RIGHT PREVIEW CANVAS */}
-        <main 
-          className={`preview-canvas-container ${mobileView === 'preview' ? 'mobile-visible' : 'mobile-hidden'}`}
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            position: 'relative',
-            padding: 0,
-            overflow: 'hidden', // Main canvas is static, scroll is managed inside bottom viewport
-            height: '100%'
-          }}
-        >
-          {/* Unified Preview Header Toolbar */}
-          <div className="no-print" style={{
-            background: 'var(--app-bg)', // Opaque main color to completely hide scrolling content underneath
-            borderBottom: '1px solid var(--panel-border)',
-            padding: '0.75rem 1rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '0.75rem',
-            position: 'sticky',
-            top: 0,
-            zIndex: 10,
-            width: '100%'
-          }}>
-            {/* Left Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSave}
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
-                }}
-              >
-                <Save size={14} />
-                <span className="hidden sm:inline">Save Resume</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowPrintGuide(true)}
-                title="Download as PDF / Print"
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
-                }}
-              >
-                <Printer size={14} />
-                <span className="hidden sm:inline">Export</span>
-              </button>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => setShowSavedResumesModal(true)}
-                title="My Saved Resumes"
-                style={{
-                  padding: '0.4rem 0.8rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                  borderColor: 'rgba(99, 102, 241, 0.2)',
-                  color: '#a5b4fc'
-                }}
-              >
-                <Folder size={14} />
-                <span className="hidden sm:inline">My Resumes</span>
-              </button>
-              {activeResumeId && (
-                <div style={{
-                  background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
-                  border: '1px solid var(--panel-border)',
-                  padding: '0.4rem 0.6rem',
-                  borderRadius: '8px',
-                  fontSize: '0.7rem',
-                  color: 'var(--text-muted)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.25rem',
-                  maxWidth: '120px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
-                }} title={savedResumes.find(r => r.id === activeResumeId)?.title}>
-                  <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
-                  <span className="hidden sm:inline" style={{ marginRight: '0.2rem' }}>Editing:</span>
-                  <strong style={{ color: 'var(--text-main)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                    {savedResumes.find(r => r.id === activeResumeId)?.title}
-                  </strong>
-                </div>
-              )}
-            </div>
-
-            {/* Right Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-              <div style={{
-                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
-                border: '1px solid var(--panel-border)',
-                padding: '0.3rem 0.5rem',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                <button 
-                  type="button"
-                  className="btn-icon" 
-                  onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }} 
-                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <span 
-                  onClick={() => setIsManualZoom(false)}
-                  title="Click to reset to Auto Fit"
-                  style={{ 
-                    fontSize: '0.75rem', 
-                    fontWeight: 600, 
-                    color: isManualZoom ? 'var(--text-muted)' : 'var(--input-focus)', 
-                    minWidth: '35px', 
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    userSelect: 'none'
-                  }}
-                >
-                  {Math.round(zoom * 100)}%
-                </span>
-                <button 
-                  type="button"
-                  className="btn-icon" 
-                  onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
-                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
-                >
-                  <ZoomIn size={14} />
-                </button>
-              </div>
-
-              {/* Tip */}
-              <div className="hidden lg:flex" style={{
-                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
-                border: '1px solid var(--panel-border)',
-                padding: '0.4rem 0.6rem',
-                borderRadius: '8px',
-                alignItems: 'center',
-                gap: '0.35rem',
-                color: 'var(--text-muted)',
-                fontSize: '0.7rem'
-              }}>
-                <Info size={12} className="brand-icon" />
-                <span>Click any text directly on the page to edit inline!</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Scrollable canvas area positioned strictly below the header */}
-          <div 
-            style={{
-              flex: 1,
-              overflowY: 'auto',
-              width: '100%',
-              paddingTop: '10px', // Exact 10px spacing from the header bottom edge
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
-            }}
-          >
-            {/* Centering Wrapper and Scaled A4 sheets */}
-            <div
-              ref={containerRef}
-              className="resume-preview-container-wrapper"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
-              style={{
-                width: '100%',
-                minHeight: `${contentHeight * zoom}px`,
-                position: 'relative',
-                display: 'flex',
-                justifyContent: 'center',
-                overflow: 'hidden',
-                paddingBottom: '2.5rem'
-              }}
-            >
-              <div 
-                className="resume-pages-wrapper"
-                style={{
-                  width: '794px',
-                  height: `${contentHeight}px`,
-                  transform: `translateX(-50%) scale(${zoom})`,
-                  transformOrigin: 'top center',
-                  position: 'absolute',
-                  top: 0,
-                  left: '50%',
-                  transition: 'transform 0.15s ease',
-                  boxSizing: 'border-box'
-                }}
-              >
-                <ResumePreview 
-                  data={resumeData}
-                  style={currentStyle}
-                  onChangeData={setResumeData}
-                  onHeightChange={setContentHeight}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Success Alert Toast Notification */}
-          {showSuccessToast && (
-            <div style={{
-              position: 'fixed',
-              bottom: '1.5rem',
-              right: '1.5rem',
-              background: '#10b981',
-              color: 'white',
-              padding: '0.6rem 1.2rem',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-              zIndex: 100,
-              fontSize: '0.85rem',
-              fontWeight: 500
-            }}>
-              <Check size={14} />
-              <span>{showSuccessToast}</span>
-            </div>
-          )}
-
-                    {/* PRINT / PDF DOWNLOAD HELP MODAL */}
-          {showPrintGuide && (
-            <>
-              <div className="modal-backdrop" onClick={() => setShowPrintGuide(false)} />
-              <div className="print-helper-modal">
-                <div 
-                  onClick={() => setGuideExpanded(!guideExpanded)}
-                  style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between', 
-                    marginBottom: '1rem', 
-                    color: 'var(--input-focus)',
-                    cursor: 'pointer',
-                    userSelect: 'none'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Printer size={18} />
-                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>PDF Export Guide</h3>
-                  </div>
-                  {guideExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
-                </div>
-                
-                {guideExpanded && (
-                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.65rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.75rem' }} className="animate-in fade-in duration-200">
-                    <p style={{ margin: 0 }}>To print or download your resume as a clean, pixel-perfect PDF document, verify these settings in the browser print window:</p>
-                    
-                    <ol style={{ paddingLeft: '1.25rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                      <li>Set <strong>Destination</strong> to <strong>Save as PDF</strong> (or Microsoft Print to PDF).</li>
-                      <li>Click <strong>More settings</strong> to expand configuration options.</li>
-                      <li>Ensure <strong>Background graphics</strong> is checked <span className="warning-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={10} />(Required for color themes!)</span></li>
-                      <li>Set <strong>Margins</strong> to <strong>None</strong> or <strong>Default</strong>.</li>
-                      <li>Set <strong>Paper size</strong> to <strong>A4</strong> (or Letter) to match the template aspect ratio.</li>
-                      <li>Untick <strong>Headers and footers</strong> to remove the browser date/URL timestamps from the page edges.</li>
-                      <li>Set <strong>Scale</strong> to <strong>100</strong> (Default) or select <strong>Fit to page width</strong>.</li>
-                    </ol>
-
-                    <p className="print-guide-note">
-                      <strong>Note:</strong> Any editing outlines or control bars will automatically be stripped from the printed page.
-                    </p>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.25rem' }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowPrintGuide(false)}>Cancel</button>
-                  <button type="button" className="btn btn-primary" onClick={handlePrint}>Download</button>
-                </div>
-              </div>
-            </>
-          )}
 
           {/* AI Resume Assistant Modal */}
           {showAIModal && (
@@ -1099,17 +799,18 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 className="modal-backdrop no-print"
                 onClick={() => { if (!isAILoading) { setShowAIModal(false); } }}
                 style={{
-                  position: 'fixed', inset: 0, zIndex: 9998,
+                  position: 'absolute', inset: 0, zIndex: 9998,
                   background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)'
                 }} 
               />
               <div className="no-print" style={{
-                position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                zIndex: 9999, width: '95%', maxWidth: '540px',
+                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                zIndex: 9999, width: '95%', maxWidth: '400px',
+                maxHeight: '95%', overflowY: 'auto',
                 background: 'linear-gradient(145deg, #1a1a2e, #16213e)',
                 border: '1px solid rgba(139, 92, 246, 0.3)',
-                borderRadius: '1.25rem', padding: '1.75rem',
-                boxShadow: '0 0 60px rgba(139, 92, 246, 0.15), 0 25px 50px rgba(0,0,0,0.5)',
+                borderRadius: '1.25rem', padding: '1.5rem',
+                boxShadow: '0 0 40px rgba(139, 92, 246, 0.15), 0 20px 40px rgba(0,0,0,0.5)',
                 color: '#f3f4f6', fontFamily: "'Inter', sans-serif",
                 boxSizing: 'border-box'
               }}>
@@ -1212,11 +913,11 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                       cursor: 'pointer',
                       position: 'relative'
                     }}
-                    onClick={() => document.getElementById('ai-resume-file-input')?.click()}
+                    onClick={() => document.getElementById('ai-resume-file-input-sidebar')?.click()}
                     >
                       <input
                         type="file"
-                        id="ai-resume-file-input"
+                        id="ai-resume-file-input-sidebar"
                         accept=".pdf,.txt,.doc,.docx"
                         onChange={(e) => {
                           const file = e.target.files?.[0];
@@ -1520,6 +1221,308 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               </div>
             </>
           )}
+        </aside>
+
+        {/* 2. RIGHT PREVIEW CANVAS */}
+        <main 
+          className={`preview-canvas-container ${mobileView === 'preview' ? 'mobile-visible' : 'mobile-hidden'}`}
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            position: 'relative',
+            padding: 0,
+            overflow: 'hidden', // Main canvas is static, scroll is managed inside bottom viewport
+            height: '100%'
+          }}
+        >
+          {/* Unified Preview Header Toolbar */}
+          <div className="no-print" style={{
+            background: 'var(--app-bg)', // Opaque main color to completely hide scrolling content underneath
+            borderBottom: '1px solid var(--panel-border)',
+            padding: '0.75rem 1rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            position: 'sticky',
+            top: 0,
+            zIndex: 10,
+            width: '100%'
+          }}>
+            {/* Left Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSave}
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                }}
+              >
+                <Save size={14} />
+                <span className="hidden sm:inline">Save Resume</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowPrintGuide(true)}
+                title="Download as PDF / Print"
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                }}
+              >
+                <Printer size={14} />
+                <span className="hidden sm:inline">Export</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowSavedResumesModal(true)}
+                title="My Saved Resumes"
+                style={{
+                  padding: '0.4rem 0.8rem',
+                  fontSize: '0.75rem',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                  borderColor: 'rgba(99, 102, 241, 0.2)',
+                  color: '#a5b4fc'
+                }}
+              >
+                <Folder size={14} />
+                <span className="hidden sm:inline">My Resumes</span>
+              </button>
+              {activeResumeId && (
+                <div style={{
+                  background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
+                  border: '1px solid var(--panel-border)',
+                  padding: '0.4rem 0.6rem',
+                  borderRadius: '8px',
+                  fontSize: '0.7rem',
+                  color: 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.25rem',
+                  maxWidth: '120px',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }} title={savedResumes.find(r => r.id === activeResumeId)?.title}>
+                  <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
+                  <span className="hidden sm:inline" style={{ marginRight: '0.2rem' }}>Editing:</span>
+                  <strong style={{ color: 'var(--text-main)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                    {savedResumes.find(r => r.id === activeResumeId)?.title}
+                  </strong>
+                </div>
+              )}
+            </div>
+
+            {/* Right Actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <div style={{
+                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
+                border: '1px solid var(--panel-border)',
+                padding: '0.3rem 0.5rem',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <button 
+                  type="button"
+                  className="btn-icon" 
+                  onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }} 
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <span 
+                  onClick={() => setIsManualZoom(false)}
+                  title="Click to reset to Auto Fit"
+                  style={{ 
+                    fontSize: '0.75rem', 
+                    fontWeight: 600, 
+                    color: isManualZoom ? 'var(--text-muted)' : 'var(--input-focus)', 
+                    minWidth: '35px', 
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button 
+                  type="button"
+                  className="btn-icon" 
+                  onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
+                >
+                  <ZoomIn size={14} />
+                </button>
+              </div>
+
+              {/* Tip */}
+              <div className="hidden lg:flex" style={{
+                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
+                border: '1px solid var(--panel-border)',
+                padding: '0.4rem 0.6rem',
+                borderRadius: '8px',
+                alignItems: 'center',
+                gap: '0.35rem',
+                color: 'var(--text-muted)',
+                fontSize: '0.7rem'
+              }}>
+                <Info size={12} className="brand-icon" />
+                <span>Click any text directly on the page to edit inline!</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Scrollable canvas area positioned strictly below the header */}
+          <div 
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              width: '100%',
+              paddingTop: '10px', // Exact 10px spacing from the header bottom edge
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
+            }}
+          >
+            {/* Centering Wrapper and Scaled A4 sheets */}
+            <div
+              ref={containerRef}
+              className="resume-preview-container-wrapper"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{
+                width: '100%',
+                minHeight: `${contentHeight * zoom}px`,
+                position: 'relative',
+                display: 'flex',
+                justifyContent: 'center',
+                overflow: 'hidden',
+                paddingBottom: '2.5rem'
+              }}
+            >
+              <div 
+                className="resume-pages-wrapper"
+                style={{
+                  width: '794px',
+                  height: `${contentHeight}px`,
+                  transform: `translateX(-50%) scale(${zoom})`,
+                  transformOrigin: 'top center',
+                  position: 'absolute',
+                  top: 0,
+                  left: '50%',
+                  transition: 'transform 0.15s ease',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <ResumePreview 
+                  data={resumeData}
+                  style={currentStyle}
+                  onChangeData={setResumeData}
+                  onHeightChange={setContentHeight}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Success Alert Toast Notification */}
+          {showSuccessToast && (
+            <div style={{
+              position: 'fixed',
+              bottom: '1.5rem',
+              right: '1.5rem',
+              background: '#10b981',
+              color: 'white',
+              padding: '0.6rem 1.2rem',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.4rem',
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              zIndex: 100,
+              fontSize: '0.85rem',
+              fontWeight: 500
+            }}>
+              <Check size={14} />
+              <span>{showSuccessToast}</span>
+            </div>
+          )}
+
+                    {/* PRINT / PDF DOWNLOAD HELP MODAL */}
+          {showPrintGuide && (
+            <>
+              <div className="modal-backdrop" onClick={() => setShowPrintGuide(false)} />
+              <div className="print-helper-modal">
+                <div 
+                  onClick={() => setGuideExpanded(!guideExpanded)}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    marginBottom: '1rem', 
+                    color: 'var(--input-focus)',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Printer size={18} />
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)' }}>PDF Export Guide</h3>
+                  </div>
+                  {guideExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+                </div>
+                
+                {guideExpanded && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.65rem', borderTop: '1px solid var(--panel-border)', paddingTop: '0.75rem' }} className="animate-in fade-in duration-200">
+                    <p style={{ margin: 0 }}>To print or download your resume as a clean, pixel-perfect PDF document, verify these settings in the browser print window:</p>
+                    
+                    <ol style={{ paddingLeft: '1.25rem', margin: '0.25rem 0', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <li>Set <strong>Destination</strong> to <strong>Save as PDF</strong> (or Microsoft Print to PDF).</li>
+                      <li>Click <strong>More settings</strong> to expand configuration options.</li>
+                      <li>Ensure <strong>Background graphics</strong> is checked <span className="warning-text" style={{ fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '2px' }}><AlertTriangle size={10} />(Required for color themes!)</span></li>
+                      <li>Set <strong>Margins</strong> to <strong>None</strong> or <strong>Default</strong>.</li>
+                      <li>Set <strong>Paper size</strong> to <strong>A4</strong> (or Letter) to match the template aspect ratio.</li>
+                      <li>Untick <strong>Headers and footers</strong> to remove the browser date/URL timestamps from the page edges.</li>
+                      <li>Set <strong>Scale</strong> to <strong>100</strong> (Default) or select <strong>Fit to page width</strong>.</li>
+                    </ol>
+
+                    <p className="print-guide-note">
+                      <strong>Note:</strong> Any editing outlines or control bars will automatically be stripped from the printed page.
+                    </p>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.25rem' }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setShowPrintGuide(false)}>Cancel</button>
+                  <button type="button" className="btn btn-primary" onClick={handlePrint}>Download</button>
+                </div>
+              </div>
+            </>
+          )}
+
+
 
           {/* Saved Resumes Modal */}
           {showSavedResumesModal && (
