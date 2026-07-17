@@ -668,6 +668,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     );
   };
 
+  const activeMarginValue = style.margins === 'narrow' ? '1.6rem' : style.margins === 'wide' ? '3.6rem' : '2.6rem';
+
   return (
     <div 
       ref={pageRef}
@@ -675,6 +677,14 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
       style={{ ...compiledVariables, height: 'auto', minHeight: '1123px' }}
       id="print-resume-page"
     >
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page {
+            size: A4;
+            margin: ${activeMarginValue};
+          }
+        }
+      `}} />
       {renderHeader()}
       {renderLayoutContent()}
     </div>
