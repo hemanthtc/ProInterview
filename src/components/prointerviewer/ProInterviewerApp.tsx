@@ -796,24 +796,10 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
           {showAIModal && (
             <>
               <div 
-                className="modal-backdrop no-print"
+                className="ai-modal-backdrop"
                 onClick={() => { if (!isAILoading) { setShowAIModal(false); } }}
-                style={{
-                  position: 'absolute', inset: 0, zIndex: 9998,
-                  background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)'
-                }} 
               />
-              <div className="no-print" style={{
-                position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-                zIndex: 9999, width: '95%', maxWidth: '400px',
-                maxHeight: '95%', overflowY: 'auto',
-                background: 'linear-gradient(145deg, #1a1a2e, #16213e)',
-                border: '1px solid rgba(139, 92, 246, 0.3)',
-                borderRadius: '1.25rem', padding: '1.5rem',
-                boxShadow: '0 0 40px rgba(139, 92, 246, 0.15), 0 20px 40px rgba(0,0,0,0.5)',
-                color: '#f3f4f6', fontFamily: "'Inter', sans-serif",
-                boxSizing: 'border-box'
-              }}>
+              <div className="no-print ai-modal-body">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <div style={{
@@ -823,11 +809,12 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                     }}>
                       <Sparkles size={14} color="#fff" />
                     </div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700 }}>AI Resume Assistant</h3>
+                    <h3 className="ai-modal-title">AI Resume Assistant</h3>
                   </div>
                   <button 
-                    type="button" onClick={() => { if (!isAILoading) setShowAIModal(false); }}
-                    style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', padding: '0.25rem' }}
+                    type="button" 
+                    onClick={() => { if (!isAILoading) setShowAIModal(false); }}
+                    className="ai-modal-close-btn"
                   >
                     <X size={18} />
                   </button>
@@ -835,7 +822,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
 
                 {aiModalStep === 'choice' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: 0, lineHeight: 1.6 }}>
+                    <p className="ai-modal-desc">
                       Choose how you want to autofill your resume details. You can import from an existing resume file or generate details based on your account profile.
                     </p>
                     
@@ -847,24 +834,10 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                           // Target all sections for extraction when uploading a resume
                           setMissingSectionsList(["summary", "workExperience", "education", "projects", "skills", "languages", "certifications"]);
                         }}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.25rem',
-                          alignItems: 'flex-start',
-                          padding: '1rem',
-                          background: 'rgba(139, 92, 246, 0.08)',
-                          border: '1px solid rgba(139, 92, 246, 0.25)',
-                          borderRadius: '0.75rem',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          transition: 'all 0.2s ease',
-                          outline: 'none'
-                        }}
+                        className="ai-modal-choice-btn-primary"
                       >
                         <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#a78bfa' }}>Upload Existing Resume / CV</span>
-                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>Select a PDF, DOCX, or text file. AI will extract and structure your work experience, education, and skills.</span>
+                        <span className="ai-modal-desc" style={{ fontSize: '0.75rem' }}>Select a PDF, DOCX, or text file. AI will extract and structure your work experience, education, and skills.</span>
                       </button>
 
                       <button
@@ -872,24 +845,10 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                         onClick={() => {
                           setAiModalStep('notes');
                         }}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.25rem',
-                          alignItems: 'flex-start',
-                          padding: '1rem',
-                          background: 'rgba(255, 255, 255, 0.02)',
-                          border: '1px solid rgba(255, 255, 255, 0.08)',
-                          borderRadius: '0.75rem',
-                          color: '#fff',
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          transition: 'all 0.2s ease',
-                          outline: 'none'
-                        }}
+                        className="ai-modal-choice-btn-secondary"
                       >
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#f3f4f6' }}>Create New from Profile Data</span>
-                        <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>No existing resume needed. AI will build your missing sections using your account details and custom notes.</span>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Create New from Profile Data</span>
+                        <span className="ai-modal-desc" style={{ fontSize: '0.75rem' }}>No existing resume needed. AI will build your missing sections using your account details and custom notes.</span>
                       </button>
                     </div>
                   </div>
@@ -897,23 +856,13 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
 
                 {aiModalStep === 'upload' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <p style={{ fontSize: '0.85rem', color: '#9ca3af', margin: 0, lineHeight: 1.6 }}>
+                    <p className="ai-modal-desc">
                       Upload your current resume or CV. Supported formats: <strong>PDF, TXT, DOCX</strong>.
                     </p>
                     
-                    <div style={{
-                      border: '2px dashed rgba(139, 92, 246, 0.3)',
-                      background: 'rgba(15, 23, 42, 0.4)',
-                      borderRadius: '0.75rem',
-                      padding: '2rem 1rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '0.75rem',
-                      cursor: 'pointer',
-                      position: 'relative'
-                    }}
-                    onClick={() => document.getElementById('ai-resume-file-input-sidebar')?.click()}
+                    <div 
+                      className="ai-modal-upload-box"
+                      onClick={() => document.getElementById('ai-resume-file-input-sidebar')?.click()}
                     >
                       <input
                         type="file"
@@ -928,10 +877,10 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                         style={{ display: 'none' }}
                       />
                       <FileText size={32} color="#8b5cf6" style={{ opacity: 0.8 }} />
-                      <span style={{ fontSize: '0.8rem', color: '#d1d5db', fontWeight: 600 }}>
+                      <span className="ai-modal-upload-text">
                         {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
                       </span>
-                      <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>
+                      <span className="ai-modal-upload-sub">
                         {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 2MB'}
                       </span>
                     </div>
@@ -940,11 +889,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                       <button
                         type="button"
                         onClick={() => setAiModalStep('choice')}
-                        style={{
-                          padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600,
-                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
-                          borderRadius: '0.5rem', color: '#9ca3af', cursor: 'pointer'
-                        }}
+                        className="ai-modal-back-btn"
                       >Back</button>
                       <button
                         type="button"
@@ -969,23 +914,12 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                 {aiModalStep === 'notes' && (
                   <>
                     {resumeUploadFile ? (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        background: 'rgba(16, 185, 129, 0.08)',
-                        border: '1px solid rgba(16, 185, 129, 0.25)',
-                        borderRadius: '0.5rem',
-                        padding: '0.6rem 0.85rem',
-                        marginBottom: '1rem',
-                        fontSize: '0.75rem',
-                        color: '#6ee7b7'
-                      }}>
+                      <div className="ai-modal-info-box">
                         <Check size={14} color="#10b981" />
                         <span>Ready to import from: <strong>{resumeUploadFile.name}</strong></span>
                       </div>
                     ) : (
-                      <p style={{ fontSize: '0.78rem', color: '#9ca3af', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
+                      <p className="ai-modal-desc" style={{ fontSize: '0.78rem', margin: '0 0 1.25rem 0' }}>
                         Profile details and education (if available) are imported from your account. Fill in custom notes for the remaining empty sections below, and Gemini will generate them.
                       </p>
                     )}
@@ -1002,41 +936,31 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                     }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>Target Roles</label>
+                          <label className="ai-modal-label">Target Roles</label>
                           <input
                             type="text"
                             value={aiTargetRoles}
                             onChange={(e) => setAiTargetRoles(e.target.value)}
                             placeholder="e.g. Frontend Engineer"
-                            style={{
-                              width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
                           />
                         </div>
 
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>Target Companies</label>
+                          <label className="ai-modal-label">Target Companies</label>
                           <input
                             type="text"
                             value={aiTargetCompanies}
                             onChange={(e) => setAiTargetCompanies(e.target.value)}
                             placeholder="e.g. Top Tech Companies"
-                            style={{
-                              width: '100%', padding: '0.5rem 0.65rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
                           />
                         </div>
                       </div>
 
                       {missingSectionsList.includes("summary") && (
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                          <label className="ai-modal-label">
                             Profile Summary Notes {resumeUploadFile ? '(Optional override)' : '(Empty)'}
                           </label>
                           <textarea
@@ -1044,20 +968,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             onChange={(e) => setAiNotesSummary(e.target.value)}
                             placeholder="Key expertise, leadership focus, or areas to highlight in your summary paragraph."
                             rows={3}
-                            style={{
-                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
+                            style={{ resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif" }}
                           />
                         </div>
                       )}
 
                       {missingSectionsList.includes("workExperience") && (
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                          <label className="ai-modal-label">
                             Work Experience Notes {resumeUploadFile ? '(Optional override)' : '(Empty)'}
                           </label>
                           <textarea
@@ -1065,20 +984,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             onChange={(e) => setAiNotesExperience(e.target.value)}
                             placeholder={"Describe roles, companies, and achievements.\nExample:\n- Dev at Google (2022-present): built React UI pages, optimized speed 30%."}
                             rows={4}
-                            style={{
-                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
+                            style={{ resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif" }}
                           />
                         </div>
                       )}
 
                       {missingSectionsList.includes("education") && (
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                          <label className="ai-modal-label">
                             Education Details {resumeUploadFile ? '(Optional override)' : '(Empty)'}
                           </label>
                           <textarea
@@ -1086,20 +1000,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             onChange={(e) => setAiNotesEducation(e.target.value)}
                             placeholder="Degrees, institutions, CGPA, percentage, coursework, or years (e.g. Master's in CS, Stanford, 2022)."
                             rows={3}
-                            style={{
-                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
+                            style={{ resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif" }}
                           />
                         </div>
                       )}
 
                       {missingSectionsList.includes("projects") && (
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                          <label className="ai-modal-label">
                             Projects Details {resumeUploadFile ? '(Optional override)' : '(Empty)'}
                           </label>
                           <textarea
@@ -1107,20 +1016,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             onChange={(e) => setAiNotesProjects(e.target.value)}
                             placeholder="Specify projects, tech stacks, role, and results (e.g. E-Commerce Next.js app with Stripe backend)."
                             rows={3}
-                            style={{
-                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
+                            style={{ resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif" }}
                           />
                         </div>
                       )}
 
                       {missingSectionsList.includes("skills") && (
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                          <label className="ai-modal-label">
                             Skills & Keywords {resumeUploadFile ? '(Optional override)' : '(Empty)'}
                           </label>
                           <textarea
@@ -1128,20 +1032,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             onChange={(e) => setAiNotesSkills(e.target.value)}
                             placeholder="List skills and tools you want categorized (e.g. JavaScript, Python, AWS, Docker, Git)."
                             rows={3}
-                            style={{
-                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
+                            style={{ resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif" }}
                           />
                         </div>
                       )}
 
                       {missingSectionsList.includes("languages") && (
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                          <label className="ai-modal-label">
                             Languages Spoken {resumeUploadFile ? '(Optional override)' : '(Empty)'}
                           </label>
                           <textarea
@@ -1149,20 +1048,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             onChange={(e) => setAiNotesLanguages(e.target.value)}
                             placeholder="Languages and fluency level (e.g. English - Native, Spanish - Conversational)."
                             rows={2}
-                            style={{
-                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
+                            style={{ resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif" }}
                           />
                         </div>
                       )}
 
                       {missingSectionsList.includes("certifications") && (
                         <div>
-                          <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#d1d5db', marginBottom: '0.2rem', display: 'block' }}>
+                          <label className="ai-modal-label">
                             Certifications {resumeUploadFile ? '(Optional override)' : '(Empty)'}
                           </label>
                           <textarea
@@ -1170,13 +1064,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                             onChange={(e) => setAiNotesCertifications(e.target.value)}
                             placeholder="AWS Solutions Architect from Amazon (2023), Scrum Master from Scrum.org (2022)."
                             rows={2}
-                            style={{
-                              width: '100%', padding: '0.55rem 0.7rem', fontSize: '0.78rem',
-                              background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(255,255,255,0.1)',
-                              borderRadius: '0.5rem', color: '#f3f4f6', outline: 'none',
-                              resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif",
-                              boxSizing: 'border-box'
-                            }}
+                            className="ai-modal-input"
+                            style={{ resize: 'vertical', lineHeight: 1.4, fontFamily: "'Inter', sans-serif" }}
                           />
                         </div>
                       )}
@@ -1193,11 +1082,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                           }
                         }}
                         disabled={isAILoading}
-                        style={{
-                          padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600,
-                          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)',
-                          borderRadius: '0.5rem', color: '#9ca3af', cursor: 'pointer'
-                        }}
+                        className="ai-modal-back-btn"
                       >Back</button>
                       <button
                         type="button"
