@@ -32,6 +32,37 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
 
   const [isManualZoom, setIsManualZoom] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ distance: number; initialZoom: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      touchStartRef.current = { distance: dist, initialZoom: zoom };
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2 && touchStartRef.current) {
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = dist / touchStartRef.current.distance;
+      const newZoom = Math.max(0.35, Math.min(1.5, touchStartRef.current.initialZoom * factor));
+      setZoom(newZoom);
+      setIsManualZoom(true);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    touchStartRef.current = null;
+  };
 
   // Auto scaling for mobile preview using ResizeObserver on the container bounds
   useEffect(() => {
@@ -949,6 +980,9 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             <div
               ref={containerRef}
               className="resume-preview-container-wrapper"
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
               style={{
                 width: '100%',
                 minHeight: `${contentHeight * zoom}px`,
