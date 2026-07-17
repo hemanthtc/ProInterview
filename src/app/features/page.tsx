@@ -1776,7 +1776,7 @@ function FeaturesContent() {
     if (!isAuthChecked) return null;
 
     return (
-        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-screen overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
+        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
             {activeModal !== "study_materials" && (
                 <>
                     <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
