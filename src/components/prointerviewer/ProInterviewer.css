@@ -2068,6 +2068,37 @@ html.theme-light .ai-autofill-btn {
   box-shadow: 0 0 12px rgba(124, 58, 237, 0.25) !important;
 }
 
+/* ========================================================
+   Responsive Preview Toolbar Layout
+   ======================================================== */
+.preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .preview-toolbar {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 0.5rem !important;
+  }
+  .preview-toolbar .left-actions {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  .preview-toolbar .center-actions {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  .preview-toolbar .right-actions {
+    justify-content: center !important;
+    width: 100% !important;
+  }
+}
+
 /* Final Priority Print Overrides - Force transparent/white backgrounds and clear page margin bars */
 @media print {
   /* Reset body and html backgrounds to white */

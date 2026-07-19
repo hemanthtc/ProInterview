@@ -74,6 +74,7 @@ function FeaturesContent() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
     const [isAtsWarningActive, setIsAtsWarningActive] = useState<boolean>(false);
+    const [builderMobileView, setBuilderMobileView] = useState<'editor' | 'preview'>('editor');
 
 
 
@@ -1778,17 +1779,19 @@ function FeaturesContent() {
 
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
-            {activeModal !== "study_materials" && (
+            {activeModal !== "study_materials" && (activeModal !== "prointerviewer" || builderMobileView !== "preview") && (
                 <>
                     <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                                <Video className="w-5 h-5 text-white" />
+                        <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
+                                    <Video className="w-5 h-5 text-white" />
+                                </div>
+                                <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
                             </div>
-                            <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
                             {activeModal === "prointerviewer" && isAtsWarningActive && (
                                 <div 
-                                    className="hidden md:flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                                    className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg lg:ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)] w-fit"
                                     style={{
                                         fontSize: '0.82rem',
                                         fontWeight: 600,
@@ -1964,6 +1967,7 @@ function FeaturesContent() {
                             setActiveTool("analysis");
                         }} 
                         onAtsWarningChange={setIsAtsWarningActive}
+                        onMobileViewChange={setBuilderMobileView}
                     />
                 </div>
             ) : activeModal === "study_materials" ? (

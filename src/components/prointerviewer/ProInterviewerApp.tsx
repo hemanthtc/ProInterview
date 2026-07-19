@@ -14,9 +14,10 @@ import {
 interface ProInterviewerAppProps {
   onClose?: () => void;
   onAtsWarningChange?: (show: boolean) => void;
+  onMobileViewChange?: (view: 'editor' | 'preview') => void;
 }
 
-export default function ProInterviewerApp({ onClose, onAtsWarningChange }: ProInterviewerAppProps) {
+export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobileViewChange }: ProInterviewerAppProps) {
   const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
   const [activeTemplateId, setActiveTemplateId] = useState<string>(TEMPLATES[0].id);
   const [currentStyle, setCurrentStyle] = useState<ResumeStyle>(TEMPLATES[0].style);
@@ -182,6 +183,13 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange }: ProIn
     document.addEventListener('click', handleOutsideClick);
     return () => document.removeEventListener('click', handleOutsideClick);
   }, [showInfoTip]);
+
+  // Notify parent component when mobileView changes
+  useEffect(() => {
+    if (onMobileViewChange) {
+      onMobileViewChange(mobileView);
+    }
+  }, [mobileView, onMobileViewChange]);
 
   // Apply a prebuilt template
   const handleSelectTemplate = (template: ResumeTemplate) => {
@@ -1267,22 +1275,18 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange }: ProIn
           }}
         >
           {/* Unified Preview Header Toolbar */}
-          <div className="no-print" style={{
+          <div className="no-print preview-toolbar" style={{
             background: 'var(--app-bg)', // Opaque main color to completely hide scrolling content underneath
             borderBottom: '1px solid var(--panel-border)',
             padding: '0.75rem 1rem',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            gap: '0.75rem',
             position: 'sticky',
             top: 0,
             zIndex: 10,
-            width: '100%'
+            width: '100%',
+            boxSizing: 'border-box'
           }}>
             {/* Left Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: '1 1 0%', minWidth: 'auto' }}>
+            <div className="left-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', minWidth: 'auto' }}>
               <button
                 type="button"
                 className="btn btn-primary"
@@ -1382,7 +1386,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange }: ProIn
             </div>
 
             {/* Center Section: Active file name */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: '0 0 auto' }}>
+            <div className="center-actions" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               {activeResumeId && (
                 <div style={{
                   background: 'transparent',
@@ -1406,7 +1410,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange }: ProIn
             </div>
 
             {/* Right Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: '1 1 0%', justifyContent: 'flex-end', minWidth: 'auto' }}>
+            <div className="right-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 'auto' }}>
               <div style={{
                 background: 'transparent',
                 border: '1px solid var(--panel-border)',
