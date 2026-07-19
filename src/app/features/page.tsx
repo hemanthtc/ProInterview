@@ -73,6 +73,7 @@ function FeaturesContent() {
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
+    const [isAtsWarningActive, setIsAtsWarningActive] = useState<boolean>(false);
 
 
 
@@ -1785,6 +1786,25 @@ function FeaturesContent() {
                                 <Video className="w-5 h-5 text-white" />
                             </div>
                             <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
+                            {activeModal === "prointerviewer" && isAtsWarningActive && (
+                                <div 
+                                    className="hidden md:flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
+                                    style={{
+                                        fontSize: '0.82rem',
+                                        fontWeight: 600,
+                                        color: isLight ? (theme === "eyeprotect" ? "#000000" : "#1e1b4b") : "#e0e7ff",
+                                        backgroundColor: isLight ? (theme === "eyeprotect" ? "rgba(245, 158, 11, 0.15)" : "rgba(79, 70, 229, 0.08)") : "rgba(99, 102, 241, 0.12)",
+                                        border: `1.5px solid ${isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "rgba(99, 102, 241, 0.3)"}`
+                                    }}
+                                >
+                                    <AlertTriangle 
+                                        size={14} 
+                                        color={isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "#818cf8"} 
+                                        style={{ flexShrink: 0 }} 
+                                    />
+                                    <span>If you are a fresher or a college student, then select ATS templates.</span>
+                                </div>
+                            )}
                         </div>
                         
                         {/* Desktop Navigation */}
@@ -1938,10 +1958,13 @@ function FeaturesContent() {
 
             {activeModal === "prointerviewer" ? (
                 <div className="flex-1 flex flex-col overflow-hidden relative bg-[#0b0f19]">
-                    <ProInterviewerApp onClose={() => {
-                        setActiveModal(null);
-                        setActiveTool("analysis");
-                    }} />
+                    <ProInterviewerApp 
+                        onClose={() => {
+                            setActiveModal(null);
+                            setActiveTool("analysis");
+                        }} 
+                        onAtsWarningChange={setIsAtsWarningActive}
+                    />
                 </div>
             ) : activeModal === "study_materials" ? (
                 <div className={`flex-1 w-full h-full relative overflow-hidden transition-colors duration-300 ${

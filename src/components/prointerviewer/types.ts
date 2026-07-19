@@ -142,7 +142,7 @@ export interface ResumeStyle {
 export interface ResumeTemplate {
   id: string;
   name: string;
-  category: 'Modern' | 'Creative' | 'Professional' | 'Academic' | 'Technical' | 'Minimalist';
+  category: 'Modern' | 'Creative' | 'Professional' | 'Academic' | 'Technical' | 'Minimalist' | 'ATS Friendly';
   description: string;
   style: ResumeStyle;
 }

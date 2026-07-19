@@ -111,7 +111,9 @@ export const FONT_FAMILIES: FontFamily[] = [
   { id: "inter", name: "Inter (Modern Sans)", class: "font-sans" },
   { id: "playfair", name: "Playfair Display (Elegant Serif)", class: "font-serif" },
   { id: "fira-code", name: "Fira Code (Clean Monospace)", class: "font-mono" },
-  { id: "outfit", name: "Outfit (Geometric Modern)", class: "font-outfit" }
+  { id: "outfit", name: "Outfit (Geometric Modern)", class: "font-outfit" },
+  { id: "arial", name: "Arial (Standard Sans)", class: "font-arial" },
+  { id: "times-new-roman", name: "Times New Roman (Standard Serif)", class: "font-times" }
 ];
 
 export const TEMPLATES: ResumeTemplate[] = [
@@ -803,6 +805,109 @@ export const TEMPLATES: ResumeTemplate[] = [
       fontSize: "md",
       spacing: "relaxed",
       margins: "wide",
+      showAvatars: false
+    }
+  },
+  // --- ATS FRIENDLY TEMPLATES ---
+  {
+    id: "tmpl-ats-35",
+    name: "The Zen Minimalist (ATS)",
+    category: "ATS Friendly",
+    description: "Extreme focus on margins, whitespace, and bare typography. Simple grey headings. Highly ATS friendly.",
+    style: {
+      layout: "single-column",
+      headerStyle: "minimalist",
+      colorPaletteId: "monochrome-slate",
+      fontFamilyId: "inter",
+      dividerStyle: "simple",
+      fontSize: "md",
+      spacing: "relaxed",
+      margins: "wide",
+      showAvatars: false
+    }
+  },
+  {
+    id: "tmpl-ats-36",
+    name: "The Clean Sheet (ATS)",
+    category: "ATS Friendly",
+    description: "A compact single-column sheet that fits an entire career onto exactly one page with a simple divider accent. Highly ATS friendly.",
+    style: {
+      layout: "single-column",
+      headerStyle: "minimalist",
+      colorPaletteId: "monochrome-slate",
+      fontFamilyId: "inter",
+      dividerStyle: "accent-block",
+      fontSize: "sm",
+      spacing: "compact",
+      margins: "narrow",
+      showAvatars: false
+    }
+  },
+  {
+    id: "tmpl-ats-39",
+    name: "The Classic Slate Sheet (ATS)",
+    category: "ATS Friendly",
+    description: "Centered heading with clean standard sans-serif layout. Standard corporate look done with premium spacing. Highly ATS friendly.",
+    style: {
+      layout: "single-column",
+      headerStyle: "accent-line",
+      colorPaletteId: "monochrome-slate",
+      fontFamilyId: "inter",
+      dividerStyle: "simple",
+      fontSize: "md",
+      spacing: "normal",
+      margins: "normal",
+      showAvatars: false
+    }
+  },
+  {
+    id: "tmpl-ats-22",
+    name: "The Scholar (ATS)",
+    category: "ATS Friendly",
+    description: "Strict serif font, compact margins, and extended lists. Classic CV design for research researchers and teachers. Highly ATS friendly.",
+    style: {
+      layout: "single-column",
+      headerStyle: "minimalist",
+      colorPaletteId: "monochrome-slate",
+      fontFamilyId: "playfair",
+      dividerStyle: "simple",
+      fontSize: "sm",
+      spacing: "compact",
+      margins: "normal",
+      showAvatars: false
+    }
+  },
+  {
+    id: "tmpl-ats-1",
+    name: "The Executive Director (ATS)",
+    category: "ATS Friendly",
+    description: "Traditional single-column layout with a minimalist header and classic navy accents, ideal for corporate leadership. Highly ATS friendly.",
+    style: {
+      layout: "single-column",
+      headerStyle: "minimalist",
+      colorPaletteId: "classic-navy",
+      fontFamilyId: "playfair",
+      dividerStyle: "simple",
+      fontSize: "md",
+      spacing: "normal",
+      margins: "normal",
+      showAvatars: false
+    }
+  },
+  {
+    id: "tmpl-ats-28",
+    name: "The Silicon Valley Engineer (ATS)",
+    category: "ATS Friendly",
+    description: "Monospace coding font, markdown-style headers, and clean tags. Tailored for engineers and sysadmins. Highly ATS friendly.",
+    style: {
+      layout: "single-column",
+      headerStyle: "minimalist",
+      colorPaletteId: "monochrome-slate",
+      fontFamilyId: "fira-code",
+      dividerStyle: "simple",
+      fontSize: "sm",
+      spacing: "compact",
+      margins: "narrow",
       showAvatars: false
     }
   }

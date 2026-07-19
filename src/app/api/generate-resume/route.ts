@@ -71,6 +71,8 @@ export async function POST(req: NextRequest) {
         const missingSectionsRaw = formData.get("missingSections") as string || "summary,workExperience";
         const projectFiles = formData.getAll("projectFiles") as File[];
         const resumeFile = formData.get("resumeFile") as File;
+        const optimizeAts = formData.get("optimizeAts") as string;
+        const targetPages = formData.get("targetPages") as string || "1";
 
         let resumeFileText = "";
         if (resumeFile) {
@@ -85,6 +87,26 @@ export async function POST(req: NextRequest) {
             projectText += await fetchUrlText(portfolioUrl);
         }
 
+        let parsedInputText = "";
+        let parsedResumeDataText = "";
+        if (userInput) {
+            try {
+                const parsed = JSON.parse(userInput);
+                if (parsed && typeof parsed === 'object') {
+                    if (parsed.instructions) {
+                        parsedInputText = parsed.instructions;
+                    }
+                    if (parsed.existingResume) {
+                        parsedResumeDataText = `\nExisting Resume Details (use this source of truth to extract, clean, and optimize candidate data):\n${JSON.stringify(parsed.existingResume, null, 2)}\n`;
+                    }
+                } else {
+                    parsedInputText = userInput;
+                }
+            } catch (e) {
+                parsedInputText = userInput;
+            }
+        }
+
         const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
         if (!GEMINI_API_KEY) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY in environment" }, { status: 500 });
@@ -93,7 +115,7 @@ export async function POST(req: NextRequest) {
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.7 } });
 
-        const systemPrompt = `You are an expert resume writer.
+        let systemPrompt = `You are an expert resume writer.
 Generate professional resume details for a candidate with the following credentials.
 Generate ONLY the requested sections listed here: ${missingSectionsRaw}. Do not generate keys for any other sections.
 
@@ -101,14 +123,16 @@ ${resumeFileText ? `Existing Resume / CV Document (Use this text as the primary 
 ${resumeFileText}
 ` : ""}
 
+${parsedResumeDataText ? parsedResumeDataText : ""}
+
 Target Roles: ${preferredRoles || "Software Engineer"}
 Target Companies: ${targetCompanies || "Top Tech Companies"}
 GitHub Profile: ${github || "Not specified"}
 LinkedIn Profile: ${linkedin || "Not specified"}
 Portfolio Website: ${portfolioUrl || "Not specified"}
 
-${userInput ? `Candidate's Background & Notes (incorporate this to write accurate, highly-tailored resume details):
-${userInput}
+${parsedInputText ? `Candidate's Background & Notes (incorporate this to write accurate, highly-tailored resume details):
+${parsedInputText}
 ` : ""}Additional Code / Projects / Files context:
 ${projectText || "No project files provided."}
 
@@ -171,6 +195,16 @@ Return a valid JSON block matching this schema. ONLY include keys that are in th
 }
 
 Respond ONLY with a valid JSON block. Do not write any markdown code blocks (e.g. \`\`\`json) or explanatory text outside of the JSON. Ensure it parses cleanly with JSON.parse.`;
+
+        if (optimizeAts === "true") {
+            systemPrompt += `
+CRITICAL ATS OPTIMIZATION RULES:
+1. Under the "projects" key, write exactly one concise line or a single extremely concise sentence for each project description describing what was built and the main errors or challenges solved. Do not include multiple bullet points or long paragraphs for projects.
+2. Under "workExperience", condense the descriptions into clean, high-impact bullet points.
+3. The user requested a ${targetPages}-page resume. You MUST condense and budget the length of the text (summary, experience descriptions, project descriptions, skills list) so that all generated fields are highly compact and easily fit onto exactly ${targetPages} page(s) when rendered.
+4. Do not include any images, progress bars, charts, or non-text representations. Respond with structured text only.
+`;
+        }
 
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {

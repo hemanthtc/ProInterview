@@ -7,6 +7,8 @@
   .font-serif { font-family: 'Playfair Display', 'Merriweather', Georgia, serif; }
   .font-mono { font-family: 'Fira Code', 'Courier New', Courier, monospace; }
   .font-outfit { font-family: 'Outfit', sans-serif; }
+  .font-arial { font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif; }
+  .font-times { font-family: 'Times New Roman', Times, Baskerville, Georgia, serif; }
 
   /* Custom Scrollbar Styles */
   ::-webkit-scrollbar {
@@ -1900,14 +1902,14 @@ html.theme-light .ai-modal-upload-sub {
 }
 
 html.theme-light .ai-modal-choice-btn-primary {
-  background: rgba(139, 92, 246, 0.04);
-  border: 1.5px solid rgba(139, 92, 246, 0.6) !important;
-  color: #0f172a;
+  background: rgba(37, 99, 235, 0.1) !important;
+  border: 2px solid #2563eb !important;
+  color: #2563eb !important;
 }
 
 html.theme-light .ai-modal-choice-btn-primary:hover {
-  background: rgba(139, 92, 246, 0.08);
-  border-color: rgba(139, 92, 246, 0.8) !important;
+  background: rgba(37, 99, 235, 0.15) !important;
+  border-color: #1d4ed8 !important;
 }
 
 .ai-modal-choice-btn-secondary {
@@ -2034,7 +2036,9 @@ html.theme-eyeprotect .ai-modal-upload-box {
 }
 
 html.theme-eyeprotect .ai-modal-choice-btn-primary {
-  border: 2px solid #6366f1 !important;
+  border: 2.5px solid #2563eb !important;
+  background: rgba(37, 99, 235, 0.12) !important;
+  color: #2563eb !important;
 }
 
 html.theme-eyeprotect .ai-modal-choice-btn-secondary {

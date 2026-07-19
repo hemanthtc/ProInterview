@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { initialResumeData } from './initialData';
 import { TEMPLATES } from './templates';
 import type { ResumeData, ResumeStyle, ResumeTemplate, Education } from './types';
-import { TemplateSelector } from './TemplateSelector';
+import { TemplateSelector, CategoryType } from './TemplateSelector';
 import { StyleCustomizer } from './StyleCustomizer';
 import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
@@ -13,9 +13,10 @@ import {
 
 interface ProInterviewerAppProps {
   onClose?: () => void;
+  onAtsWarningChange?: (show: boolean) => void;
 }
 
-export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
+export default function ProInterviewerApp({ onClose, onAtsWarningChange }: ProInterviewerAppProps) {
   const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
   const [activeTemplateId, setActiveTemplateId] = useState<string>(TEMPLATES[0].id);
   const [currentStyle, setCurrentStyle] = useState<ResumeStyle>(TEMPLATES[0].style);
@@ -29,6 +30,15 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isAILoading, setIsAILoading] = useState<boolean>(false);
+
+  // ATS Optimization States
+  const [selectedTemplateCategory, setSelectedTemplateCategory] = useState<CategoryType>('All');
+  const [showAtsWarning, setShowAtsWarning] = useState<boolean>(true);
+  const [showAtsOptimizeModal, setShowAtsOptimizeModal] = useState<boolean>(false);
+  const [atsTargetPages, setAtsTargetPages] = useState<'1' | '2'>('1');
+  const [atsTargetRole, setAtsTargetRole] = useState<string>('');
+  const [atsTargetCompany, setAtsTargetCompany] = useState<string>('');
+  const [showInfoTip, setShowInfoTip] = useState<boolean>(false);
 
   const [isManualZoom, setIsManualZoom] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -162,6 +172,16 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
       console.error("Failed to save resume state to local storage", e);
     }
   }, [resumeData, currentStyle, activeTemplateId]);
+
+  // Collapse info tip popover when clicking outside
+  useEffect(() => {
+    if (!showInfoTip) return;
+    const handleOutsideClick = () => {
+      setShowInfoTip(false);
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => document.removeEventListener('click', handleOutsideClick);
+  }, [showInfoTip]);
 
   // Apply a prebuilt template
   const handleSelectTemplate = (template: ResumeTemplate) => {
@@ -650,6 +670,127 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
     }
   };
 
+  // ATS AI Optimization
+  const handleATSOptimize = async () => {
+    setIsAILoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('github', resumeData.personalInfo.github || '');
+      formData.append('linkedin', resumeData.personalInfo.linkedin || '');
+      formData.append('portfolioUrl', resumeData.personalInfo.website || '');
+      formData.append('preferredRoles', atsTargetRole || resumeData.personalInfo.title || 'Software Engineer');
+      formData.append('targetCompanies', atsTargetCompany || 'Top Tech Companies');
+      formData.append('optimizeAts', 'true');
+      formData.append('targetPages', atsTargetPages);
+      formData.append('missingSections', 'summary,workExperience,education,projects,skills,languages,certifications');
+      
+      const optimizationPrompt = {
+        instructions: `Optimize this resume to be strictly ATS-compliant. Budget the length to fit within exactly ${atsTargetPages} page(s). Under 'projects', summarize each project in exactly one line describing the content and the main challenges/errors resolved. Under 'workExperience', write high-impact bulleted achievements.`,
+        existingResume: resumeData
+      };
+      formData.append('userInput', JSON.stringify(optimizationPrompt));
+
+      const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
+      const result = await res.json();
+
+      if (result.error) {
+        alert('ATS optimization failed: ' + result.error);
+      } else {
+        const updatedData = { ...resumeData };
+
+        if (result.summary) {
+          updatedData.personalInfo = { ...updatedData.personalInfo, summary: result.summary };
+        }
+
+        if (Array.isArray(result.workExperience)) {
+          updatedData.workExperience = result.workExperience.map((job: any, index: number) => ({
+            id: `exp-ats-${Date.now()}-${index}`,
+            company: job.company || "",
+            position: job.position || "",
+            location: job.location || "",
+            startDate: job.startDate || "",
+            endDate: job.endDate || "",
+            current: !!job.current,
+            description: job.description || ""
+          }));
+        }
+
+        if (Array.isArray(result.education)) {
+          updatedData.education = result.education.map((edu: any, index: number) => ({
+            id: `edu-ats-${Date.now()}-${index}`,
+            institution: edu.institution || "",
+            degree: edu.degree || "",
+            fieldOfStudy: edu.fieldOfStudy || "",
+            location: edu.location || "",
+            startDate: edu.startDate || "",
+            endDate: edu.endDate || "",
+            cgpa: edu.cgpa || "",
+            percentage: edu.percentage || "",
+            description: edu.description || ""
+          }));
+        }
+
+        if (Array.isArray(result.projects)) {
+          updatedData.projects = result.projects.map((proj: any, index: number) => ({
+            id: `proj-ats-${Date.now()}-${index}`,
+            name: proj.name || "",
+            description: proj.description || "",
+            technologies: Array.isArray(proj.technologies) ? proj.technologies : [],
+            link: proj.link || "",
+            role: proj.role || ""
+          }));
+        }
+
+        if (Array.isArray(result.skills)) {
+          updatedData.skills = result.skills.map((skill: any, index: number) => ({
+            id: `skill-ats-${Date.now()}-${index}`,
+            name: skill.name || "",
+            level: skill.level || "",
+            category: skill.category || ""
+          }));
+        }
+
+        if (Array.isArray(result.languages)) {
+          updatedData.languages = result.languages.map((lang: any, index: number) => ({
+            id: `lang-ats-${Date.now()}-${index}`,
+            name: lang.name || "",
+            proficiency: lang.proficiency || ""
+          }));
+        }
+
+        if (Array.isArray(result.certifications)) {
+          updatedData.certifications = result.certifications.map((cert: any, index: number) => ({
+            id: `cert-ats-${Date.now()}-${index}`,
+            name: cert.name || "",
+            issuer: cert.issuer || "",
+            date: cert.date || "",
+            link: cert.link || ""
+          }));
+        }
+
+        setResumeData(updatedData);
+        setShowAtsOptimizeModal(false);
+        triggerToast('Resume optimized successfully for ATS compliance!');
+      }
+    } catch (err: any) {
+      alert('ATS optimization error: ' + (err.message || 'Unknown error'));
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  const userRole = (getStorageItem("userRole") || "").toLowerCase();
+  const userType = (getStorageItem("userType") || "").toLowerCase();
+  const isStudentOrFresher = userRole === 'student' || userRole === 'fresher' || userType === 'student' || userType === 'fresher' || resumeData.workExperience.length === 0;
+  const isTemplateAtsFriendly = activeTemplateId.startsWith('tmpl-ats-');
+  const shouldShowAtsWarning = showAtsWarning && !isTemplateAtsFriendly;
+
+  useEffect(() => {
+    if (onAtsWarningChange) {
+      onAtsWarningChange(shouldShowAtsWarning);
+    }
+  }, [shouldShowAtsWarning, onAtsWarningChange]);
+
   return (
     <div className={`resume-builder-pro ${isFullscreen ? 'fullscreen-mode' : ''}`}>
       {/* Mobile Toggle View Tabs (No Print) */}
@@ -715,6 +856,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             </div>
           </div>
 
+          {/* Warning banner note moved to global header */}
+
           {/* Tab Controllers */}
           <nav className="panel-tabs">
             <button 
@@ -760,6 +903,8 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               <TemplateSelector
                 activeTemplateId={activeTemplateId}
                 onSelectTemplate={handleSelectTemplate}
+                selectedCategory={selectedTemplateCategory}
+                onCategoryChange={setSelectedTemplateCategory}
               />
             )}
 
@@ -767,6 +912,7 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
               <StyleCustomizer 
                 style={currentStyle} 
                 onChangeStyle={setCurrentStyle} 
+                isAtsFriendly={isTemplateAtsFriendly}
               />
             )}
           </div>
@@ -1136,66 +1282,110 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             width: '100%'
           }}>
             {/* Left Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: '1 1 0%', minWidth: 'auto' }}>
               <button
                 type="button"
                 className="btn btn-primary"
                 onClick={handleSave}
+                title="Save Resume"
                 style={{
-                  padding: '0.4rem 0.8rem',
+                  padding: '0.4rem 0.6rem',
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)'
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                  height: '2rem',
+                  borderRadius: '6px'
                 }}
               >
                 <Save size={14} />
-                <span className="hidden sm:inline">Save Resume</span>
               </button>
               <button
                 type="button"
-                className="btn btn-secondary"
                 onClick={() => setShowPrintGuide(true)}
                 title="Download as PDF / Print"
                 style={{
-                  padding: '0.4rem 0.8rem',
+                  padding: '0.4rem 0.6rem',
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                  backgroundColor: '#10b981',
+                  border: '1px solid #059669',
+                  color: '#fff',
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  height: '2rem'
                 }}
               >
-                <Printer size={14} />
-                <span className="hidden sm:inline">Export</span>
+                <Download size={14} />
               </button>
               <button
                 type="button"
-                className="btn btn-secondary"
+                className="btn"
                 onClick={() => setShowSavedResumesModal(true)}
                 title="My Saved Resumes"
                 style={{
-                  padding: '0.4rem 0.8rem',
+                  padding: '0.4rem 0.6rem',
                   fontSize: '0.75rem',
                   fontWeight: 700,
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.35rem',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                  backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                  borderColor: 'rgba(99, 102, 241, 0.2)',
-                  color: '#a5b4fc'
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                  background: 'transparent',
+                  border: '1px solid var(--panel-border)',
+                  color: 'var(--text-main)',
+                  height: '2rem',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
                 }}
               >
                 <Folder size={14} />
-                <span className="hidden sm:inline">My Resumes</span>
               </button>
+
+              {/* ATS AI Optimizer positioned next to My Resumes */}
+              {isTemplateAtsFriendly && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => {
+                    setAtsTargetRole(resumeData.personalInfo.title || aiTargetRoles || '');
+                    setAtsTargetCompany(aiTargetCompanies || getStorageItem("targetCompany") || 'Top Tech Companies');
+                    setShowAtsOptimizeModal(true);
+                  }}
+                  title="Optimize with AI for ATS compliance and layout"
+                  style={{
+                    padding: '0.4rem 0.8rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)',
+                    backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    borderRadius: '8px',
+                    color: '#c084fc',
+                    cursor: 'pointer',
+                    height: '2rem'
+                  }}
+                >
+                  <Sparkles size={14} />
+                  <span>ATS AI Optimizer</span>
+                </button>
+              )}
+            </div>
+
+            {/* Center Section: Active file name */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: '0 0 auto' }}>
               {activeResumeId && (
                 <div style={{
-                  background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
+                  background: 'transparent',
                   border: '1px solid var(--panel-border)',
                   padding: '0.4rem 0.6rem',
                   borderRadius: '8px',
@@ -1204,14 +1394,11 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.25rem',
-                  maxWidth: '120px',
-                  whiteSpace: 'nowrap',
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis'
+                  whiteSpace: 'nowrap'
                 }} title={savedResumes.find(r => r.id === activeResumeId)?.title}>
                   <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
-                  <span className="hidden sm:inline" style={{ marginRight: '0.2rem' }}>Editing:</span>
-                  <strong style={{ color: 'var(--text-main)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                  <span style={{ marginRight: '0.2rem' }}>Editing:</span>
+                  <strong style={{ color: 'var(--text-main)' }}>
                     {savedResumes.find(r => r.id === activeResumeId)?.title}
                   </strong>
                 </div>
@@ -1219,21 +1406,23 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
             </div>
 
             {/* Right Actions */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', flex: '1 1 0%', justifyContent: 'flex-end', minWidth: 'auto' }}>
               <div style={{
-                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
+                background: 'transparent',
                 border: '1px solid var(--panel-border)',
                 padding: '0.3rem 0.5rem',
                 borderRadius: '8px',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.5rem'
+                gap: '0.5rem',
+                height: '2rem',
+                boxSizing: 'border-box'
               }}>
                 <button 
                   type="button"
                   className="btn-icon" 
                   onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }} 
-                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
                   <ZoomOut size={14} />
                 </button>
@@ -1256,26 +1445,59 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                   type="button"
                   className="btn-icon" 
                   onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
-                  style={{ padding: '0.2rem', background: 'transparent', border: 'none' }}
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                 >
                   <ZoomIn size={14} />
                 </button>
               </div>
 
-              {/* Tip */}
-              <div className="hidden lg:flex" style={{
-                background: 'var(--panel-bg)', // Dynamic contrast background for light/dark/eyeprotect compatibility
-                border: '1px solid var(--panel-border)',
-                padding: '0.4rem 0.6rem',
-                borderRadius: '8px',
-                alignItems: 'center',
-                gap: '0.35rem',
-                color: 'var(--text-muted)',
-                fontSize: '0.7rem'
-              }}>
-                <Info size={12} className="brand-icon" />
-                <span>Click any text directly on the page to edit inline!</span>
-              </div>
+              {/* Info Tip popover button */}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowInfoTip(!showInfoTip); }}
+                title="Show editing tip"
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--panel-border)',
+                  borderRadius: '8px',
+                  width: '2rem',
+                  height: '2rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  color: showInfoTip ? 'var(--input-focus)' : 'var(--text-muted)',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <Info size={14} />
+                {showInfoTip && (
+                  <div 
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      position: 'absolute',
+                      top: '2.5rem',
+                      right: 0,
+                      background: 'var(--panel-bg)',
+                      border: '1px solid var(--panel-border)',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '8px',
+                      fontSize: '0.7rem',
+                      color: 'var(--text-main)',
+                      whiteSpace: 'nowrap',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                      zIndex: 20,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    <Info size={12} className="brand-icon" style={{ flexShrink: 0 }} />
+                    <span>Click any text directly on the page to edit inline!</span>
+                  </div>
+                )}
+              </button>
             </div>
           </div>
 
@@ -1561,6 +1783,114 @@ export default function ProInterviewerApp({ onClose }: ProInterviewerAppProps) {
                     className="btn btn-secondary"
                     style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600 }}
                   >Close</button>
+                </div>
+              </div>
+            </>
+          )}
+          {/* ATS AI OPTIMIZER MODAL */}
+          {showAtsOptimizeModal && (
+            <>
+              <div 
+                className="ai-modal-backdrop"
+                onClick={() => { if (!isAILoading) { setShowAtsOptimizeModal(false); } }}
+              />
+              <div className="no-print ai-modal-body" style={{ maxWidth: '450px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{
+                      width: '2rem', height: '2rem', borderRadius: '0.5rem',
+                      background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <Sparkles size={14} color="#fff" />
+                    </div>
+                    <h3 className="ai-modal-title">ATS AI Optimizer</h3>
+                  </div>
+                  <button 
+                    type="button" 
+                    onClick={() => { if (!isAILoading) setShowAtsOptimizeModal(false); }}
+                    className="ai-modal-close-btn"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                  <p className="ai-modal-desc" style={{ fontSize: '0.78rem', margin: 0 }}>
+                    Gemini will restructure, optimize, and compress your information to fit clean ATS formats and page constraints.
+                  </p>
+
+                  <div>
+                    <label className="ai-modal-label">Target Role</label>
+                    <input
+                      type="text"
+                      value={atsTargetRole}
+                      onChange={(e) => setAtsTargetRole(e.target.value)}
+                      placeholder="e.g. Frontend Engineer"
+                      className="ai-modal-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="ai-modal-label">Target Company</label>
+                    <input
+                      type="text"
+                      value={atsTargetCompany}
+                      onChange={(e) => setAtsTargetCompany(e.target.value)}
+                      placeholder="e.g. Google"
+                      className="ai-modal-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="ai-modal-label">Target Page Count</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.25rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAtsTargetPages('1')}
+                        className={atsTargetPages === '1' ? 'ai-modal-choice-btn-primary' : 'ai-modal-choice-btn-secondary'}
+                        style={{ padding: '0.6rem', textAlign: 'center', height: 'auto', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center', cursor: 'pointer' }}
+                      >
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: atsTargetPages === '1' ? 'var(--input-focus)' : 'inherit' }}>Single Page</span>
+                        <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>(Recommended for freshers)</span>
+                      </button>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setAtsTargetPages('2')}
+                        className={atsTargetPages === '2' ? 'ai-modal-choice-btn-primary' : 'ai-modal-choice-btn-secondary'}
+                        style={{ padding: '0.6rem', textAlign: 'center', height: 'auto', display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'center', cursor: 'pointer' }}
+                      >
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: atsTargetPages === '2' ? 'var(--input-focus)' : 'inherit' }}>Two Pages</span>
+                        <span style={{ fontSize: '0.65rem', opacity: 0.7 }}>(For detailed experience)</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowAtsOptimizeModal(false)}
+                    disabled={isAILoading}
+                    className="ai-modal-back-btn"
+                  >Cancel</button>
+                  <button
+                    type="button"
+                    onClick={handleATSOptimize}
+                    disabled={isAILoading}
+                    style={{
+                      padding: '0.5rem 1.25rem', fontSize: '0.8rem', fontWeight: 700,
+                      background: isAILoading ? 'rgba(139, 92, 246, 0.4)' : 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                      border: 'none', borderRadius: '0.5rem', color: '#fff',
+                      cursor: isAILoading ? 'wait' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '0.4rem',
+                      boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)'
+                    }}
+                  >
+                    <Sparkles size={14} style={isAILoading ? { animation: 'spin 1s linear infinite' } : {}} />
+                    {isAILoading ? 'Optimizing...' : 'Optimize & Restructure'}
+                  </button>
                 </div>
               </div>
             </>

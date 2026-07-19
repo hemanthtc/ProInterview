@@ -6,9 +6,10 @@ import { Type, Palette, Layout, Columns, Sliders, ToggleLeft, ToggleRight } from
 interface StyleCustomizerProps {
   style: ResumeStyle;
   onChangeStyle: (updatedStyle: ResumeStyle) => void;
+  isAtsFriendly?: boolean;
 }
 
-export const StyleCustomizer: React.FC<StyleCustomizerProps> = ({ style, onChangeStyle }) => {
+export const StyleCustomizer: React.FC<StyleCustomizerProps> = ({ style, onChangeStyle, isAtsFriendly }) => {
   const updateStyleField = <K extends keyof ResumeStyle>(field: K, value: ResumeStyle[K]) => {
     onChangeStyle({
       ...style,
@@ -110,15 +111,21 @@ export const StyleCustomizer: React.FC<StyleCustomizerProps> = ({ style, onChang
           <span>Structure Layout</span>
         </div>
         <div className="toggle-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.25rem' }}>
-          {layouts.map(layout => (
-            <button
-              key={layout.id}
-              className={`toggle-btn ${style.layout === layout.id ? 'active' : ''}`}
-              onClick={() => updateStyleField('layout', layout.id)}
-            >
-              {layout.name}
-            </button>
-          ))}
+          {layouts.map(layout => {
+            const isLayoutDisabled = isAtsFriendly && layout.id !== 'single-column';
+            return (
+              <button
+                key={layout.id}
+                className={`toggle-btn ${style.layout === layout.id ? 'active' : ''}`}
+                onClick={() => !isLayoutDisabled && updateStyleField('layout', layout.id)}
+                disabled={isLayoutDisabled}
+                style={isLayoutDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                title={isLayoutDisabled ? "Multi-column layouts are not ATS friendly" : undefined}
+              >
+                {layout.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -129,15 +136,21 @@ export const StyleCustomizer: React.FC<StyleCustomizerProps> = ({ style, onChang
           <span>Header Style</span>
         </div>
         <div className="toggle-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem', marginBottom: '0.5rem' }}>
-          {headers.map(header => (
-            <button
-              key={header.id}
-              className={`toggle-btn ${style.headerStyle === header.id ? 'active' : ''}`}
-              onClick={() => updateStyleField('headerStyle', header.id)}
-            >
-              {header.name}
-            </button>
-          ))}
+          {headers.map(header => {
+            const isHeaderDisabled = isAtsFriendly && header.id !== 'minimalist' && header.id !== 'accent-line';
+            return (
+              <button
+                key={header.id}
+                className={`toggle-btn ${style.headerStyle === header.id ? 'active' : ''}`}
+                onClick={() => !isHeaderDisabled && updateStyleField('headerStyle', header.id)}
+                disabled={isHeaderDisabled}
+                style={isHeaderDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                title={isHeaderDisabled ? "Highly decorated headers are not ATS friendly" : undefined}
+              >
+                {header.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -148,15 +161,21 @@ export const StyleCustomizer: React.FC<StyleCustomizerProps> = ({ style, onChang
           <span>Section Dividers</span>
         </div>
         <div className="toggle-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.25rem' }}>
-          {dividers.map(divider => (
-            <button
-              key={divider.id}
-              className={`toggle-btn ${style.dividerStyle === divider.id ? 'active' : ''}`}
-              onClick={() => updateStyleField('dividerStyle', divider.id)}
-            >
-              {divider.name}
-            </button>
-          ))}
+          {dividers.map(divider => {
+            const isDividerDisabled = isAtsFriendly && divider.id !== 'simple' && divider.id !== 'accent-block';
+            return (
+              <button
+                key={divider.id}
+                className={`toggle-btn ${style.dividerStyle === divider.id ? 'active' : ''}`}
+                onClick={() => !isDividerDisabled && updateStyleField('dividerStyle', divider.id)}
+                disabled={isDividerDisabled}
+                style={isDividerDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}
+                title={isDividerDisabled ? "Complex/timeline dividers are not ATS friendly" : undefined}
+              >
+                {divider.name}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -219,17 +238,20 @@ export const StyleCustomizer: React.FC<StyleCustomizerProps> = ({ style, onChang
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--panel-border)' }}>
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Show Profile Image</span>
           <button
-            onClick={() => updateStyleField('showAvatars', !style.showAvatars)}
+            onClick={() => !isAtsFriendly && updateStyleField('showAvatars', !style.showAvatars)}
+            disabled={isAtsFriendly}
             style={{
               background: 'transparent',
               border: 'none',
-              cursor: 'pointer',
-              color: style.showAvatars ? '#3b82f6' : 'var(--text-muted)',
+              cursor: isAtsFriendly ? 'not-allowed' : 'pointer',
+              color: isAtsFriendly ? 'var(--text-muted)' : style.showAvatars ? '#3b82f6' : 'var(--text-muted)',
               display: 'flex',
-              alignItems: 'center'
+              alignItems: 'center',
+              opacity: isAtsFriendly ? 0.5 : 1
             }}
+            title={isAtsFriendly ? "Profile images are not ATS friendly" : undefined}
           >
-            {style.showAvatars ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+            {(!isAtsFriendly && style.showAvatars) ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
           </button>
         </div>
       </div>

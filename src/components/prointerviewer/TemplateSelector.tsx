@@ -6,27 +6,42 @@ import { Search, Grid, Info } from 'lucide-react';
 interface TemplateSelectorProps {
   activeTemplateId: string;
   onSelectTemplate: (template: ResumeTemplate) => void;
+  selectedCategory?: CategoryType;
+  onCategoryChange?: (category: CategoryType) => void;
 }
 
-type CategoryType = 'All' | 'Professional' | 'Modern' | 'Creative' | 'Academic' | 'Technical' | 'Minimalist';
+export type CategoryType = 'All' | 'Professional' | 'Modern' | 'Creative' | 'Academic' | 'Technical' | 'Minimalist' | 'ATS Friendly';
 
 export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
   activeTemplateId,
-  onSelectTemplate
+  onSelectTemplate,
+  selectedCategory,
+  onCategoryChange
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('All');
+  const [localCategory, setLocalCategory] = useState<CategoryType>('All');
 
-  const categories: CategoryType[] = ['All', 'Professional', 'Modern', 'Creative', 'Academic', 'Technical', 'Minimalist'];
+  const activeCategory = selectedCategory !== undefined ? selectedCategory : localCategory;
+  const handleCategoryChange = (cat: CategoryType) => {
+    if (onCategoryChange) {
+      onCategoryChange(cat);
+    } else {
+      setLocalCategory(cat);
+    }
+  };
+
+  const categories: CategoryType[] = ['All', 'Professional', 'Modern', 'Creative', 'Academic', 'Technical', 'Minimalist', 'ATS Friendly'];
 
   const filteredTemplates = useMemo(() => {
     return TEMPLATES.filter(tmpl => {
       const matchesSearch = tmpl.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             tmpl.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesCategory = selectedCategory === 'All' || tmpl.category === selectedCategory;
+      const matchesCategory = activeCategory === 'All' 
+        ? !tmpl.id.startsWith('tmpl-ats-')
+        : tmpl.category === activeCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchQuery, selectedCategory]);
+  }, [searchQuery, activeCategory]);
 
   // Renders a stylized thumbnail representation of the template's layout style
   const renderTemplateMock = (tmpl: ResumeTemplate) => {
@@ -110,8 +125,8 @@ export const TemplateSelector: React.FC<TemplateSelectorProps> = ({
         {categories.map(cat => (
           <button
             key={cat}
-            className={`filter-badge ${selectedCategory === cat ? 'active' : ''}`}
-            onClick={() => setSelectedCategory(cat)}
+            className={`filter-badge ${activeCategory === cat ? 'active' : ''}`}
+            onClick={() => handleCategoryChange(cat)}
           >
             {cat}
           </button>
