@@ -1303,13 +1303,13 @@ textarea.form-input {
 
 /* Light Mode Overrides for Left Sidebar panels */
 html.theme-light .resume-builder-pro {
-  --app-bg: #f8fafc;
+  --app-bg: #f1f5f9;
   --panel-bg: #ffffff;
   --panel-border: #cbd5e1;
   --text-main: #0f172a;
   --text-muted: #64748b;
-  --input-bg: #ffffff;
-  --input-border: #cbd5e1;
+  --input-bg: #f8fafc;
+  --input-border: #94a3b8;
   --input-focus: #2563eb;
 }
 
@@ -1323,6 +1323,14 @@ html.theme-eyeprotect .resume-builder-pro {
   --input-bg: #ffffff;
   --input-border: #8c8578;
   --input-focus: #2563eb;
+}
+
+/* Ensure the editor workspace container background adapts to the theme */
+html.theme-light .app-container {
+  background: var(--app-bg) !important;
+}
+html.theme-eyeprotect .app-container {
+  background: var(--app-bg) !important;
 }
 
 /* Common overrides for Light & Eye Comfort modes to ensure proper legibility */
