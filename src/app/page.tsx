@@ -182,8 +182,20 @@ export default function Home() {
     };
 
     return (
-        <div className="min-h-screen bg-[#050505] text-white selection:bg-indigo-500/30 flex flex-col font-sans">
-            <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+        <div 
+            className="min-h-screen selection:bg-indigo-500/30 flex flex-col font-sans transition-colors duration-300"
+            style={{
+                backgroundColor: theme === "light" ? "#f8fafc" : theme === "eyeprotect" ? "#f4eae1" : "#050505",
+                color: theme === "light" ? "#0f172a" : theme === "eyeprotect" ? "#000000" : "#ffffff"
+            }}
+        >
+            <header 
+                className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b backdrop-blur-md sticky top-0 z-50 transition-colors duration-300"
+                style={{
+                    backgroundColor: theme === "light" ? "rgba(248, 250, 252, 0.85)" : theme === "eyeprotect" ? "rgba(244, 234, 225, 0.85)" : "rgba(5, 5, 5, 0.85)",
+                    borderBottomColor: theme === "light" ? "rgba(15, 23, 42, 0.1)" : theme === "eyeprotect" ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)"
+                }}
+            >
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
                         <Video className="w-5 h-5 text-white" />
@@ -389,13 +401,13 @@ export default function Home() {
                             initial={{ opacity: 0, y: 30 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                            className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 inline-block"
+                            className={`inline-block transition-colors duration-300 ${theme === "light" ? "text-indigo-600" : theme === "eyeprotect" ? "text-amber-800" : "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"}`}
                         >
                             technical interview
                         </motion.span>
                     </h1>
 
-                    <p className="text-lg md:text-xl text-white/60 mb-12 max-w-2xl leading-relaxed">
+                    <p className={`text-lg md:text-xl mb-12 max-w-2xl leading-relaxed transition-colors duration-300 ${theme === "light" ? "text-slate-900/70" : theme === "eyeprotect" ? "text-black/70" : "text-white/60"}`}>
                         {isRealisticMode 
                             ? "Simulate a real-world company interview under hiring manager conditions. Get professional technical and behavioral feedback tailored to your background."
                             : "Upload your resume and practice with our highly realistic AI interviewer. Get tailored questions, real-time voice interaction, and actionable feedback."}
