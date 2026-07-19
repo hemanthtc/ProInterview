@@ -1307,10 +1307,56 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               alignItems: 'center',
               justifyContent: 'space-between',
               width: '100%',
-              gap: '0.75rem'
+              gap: '0.5rem'
             }}>
-              {/* Active filename badge (if any) */}
-              <div style={{ flex: 1, minWidth: 0 }}>
+              {/* LEFT: Zoom controls — always visible, no drawer needed */}
+              <div style={{
+                background: 'transparent',
+                border: '1px solid var(--panel-border)',
+                padding: '0.3rem 0.5rem',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                height: '2rem',
+                boxSizing: 'border-box',
+                flexShrink: 0
+              }}>
+                <button
+                  type="button"
+                  className="btn-icon"
+                  onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }}
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <span
+                  onClick={() => setIsManualZoom(false)}
+                  title="Click to reset to Auto Fit"
+                  style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: isManualZoom ? 'var(--text-muted)' : 'var(--input-focus)',
+                    minWidth: '32px',
+                    textAlign: 'center',
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  {Math.round(zoom * 100)}%
+                </span>
+                <button
+                  type="button"
+                  className="btn-icon"
+                  onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
+                  style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }}
+                >
+                  <ZoomIn size={14} />
+                </button>
+              </div>
+
+              {/* CENTER: Active filename badge */}
+              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
                 {activeResumeId && (
                   <div style={{
                     background: 'transparent',
@@ -1333,7 +1379,8 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                   </div>
                 )}
               </div>
-              
+
+              {/* RIGHT: Info icon + Show/Hide Options toggle */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                 {/* Info Note icon permanently shown on Mobile */}
                 <button
@@ -1357,7 +1404,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 >
                   <Info size={14} />
                   {showInfoTip && (
-                    <div 
+                    <div
                       onClick={(e) => e.stopPropagation()}
                       style={{
                         position: 'absolute',
@@ -1535,52 +1582,6 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 )}
               </div>
 
-              {/* Right Actions */}
-              <div className="right-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 'auto' }}>
-                <div style={{
-                  background: 'transparent',
-                  border: '1px solid var(--panel-border)',
-                  padding: '0.3rem 0.5rem',
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.5rem',
-                  height: '2rem',
-                  boxSizing: 'border-box'
-                }}>
-                  <button 
-                    type="button"
-                    className="btn-icon" 
-                    onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }} 
-                    style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  >
-                    <ZoomOut size={14} />
-                  </button>
-                  <span 
-                    onClick={() => setIsManualZoom(false)}
-                    title="Click to reset to Auto Fit"
-                    style={{ 
-                      fontSize: '0.75rem', 
-                      fontWeight: 600, 
-                      color: isManualZoom ? 'var(--text-muted)' : 'var(--input-focus)', 
-                      minWidth: '35px', 
-                      textAlign: 'center',
-                      cursor: 'pointer',
-                      userSelect: 'none'
-                    }}
-                  >
-                    {Math.round(zoom * 100)}%
-                  </span>
-                  <button 
-                    type="button"
-                    className="btn-icon" 
-                    onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
-                    style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                  >
-                    <ZoomIn size={14} />
-                  </button>
-                </div>
-              </div>
             </div>
           </div>
 
