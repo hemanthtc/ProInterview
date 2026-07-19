@@ -12,9 +12,10 @@ interface ResumeFormProps {
   isAILoading?: boolean;
   style: ResumeStyle;
   onChangeStyle: (updatedStyle: ResumeStyle) => void;
+  onConfirm?: (options: { title: string; message: string; onConfirm: () => void }) => void;
 }
 
-export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAIAutofill, isAILoading, style, onChangeStyle }) => {
+export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAIAutofill, isAILoading, style, onChangeStyle, onConfirm }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const toggleSection = (section: string) => {
@@ -1191,12 +1192,21 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                if (window.confirm(`Delete the entire custom section "${sect.title}"?`)) {
+                const deleteAction = () => {
                   const updatedSections = data.customSections.filter(s => s.id !== sect.id);
                   onChangeData({
                     ...data,
                     customSections: updatedSections
                   });
+                };
+                if (onConfirm) {
+                  onConfirm({
+                    title: "Delete Custom Section?",
+                    message: `Delete the entire custom section "${sect.title}"? All items and contents under this section will be permanently deleted.`,
+                    onConfirm: deleteAction
+                  });
+                } else if (window.confirm(`Delete the entire custom section "${sect.title}"?`)) {
+                  deleteAction();
                 }
               }}
               style={{

@@ -235,6 +235,15 @@ function FeaturesContent() {
     const [savedResumes, setSavedResumes] = useState<SavedResume[]>([]);
     const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
     const [selectedTemplateId, setSelectedTemplateId] = useState<string>("modern");
+    
+    // Custom dialog modal state for alert & confirmation
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        message: string;
+        type: "confirm" | "alert";
+        onConfirm?: () => void;
+    }>({ isOpen: false, title: "", message: "", type: "confirm" });
 
     const syncAccountDetailsFromStorage = () => {
         setGithub(getStorageItem("userGithub") || "");
@@ -690,38 +699,47 @@ function FeaturesContent() {
         e.stopPropagation();
         
         if (savedResumes.length <= 1) {
-            alert("You must keep at least one resume profile in the database.");
+            setConfirmModal({
+                isOpen: true,
+                title: "Cannot Delete Resume",
+                message: "You must keep at least one resume profile in the database.",
+                type: "alert"
+            });
             return;
         }
         
-        if (!confirm("Are you sure you want to delete this resume profile?")) {
-            return;
-        }
-        
-        const newList = savedResumes.filter(r => r.id !== id);
-        setSavedResumes(newList);
-        setStorageItem("savedResumesDatabase", JSON.stringify(newList));
-        
-        if (activeResumeId === id) {
-            const nextActive = newList[0];
-            setActiveResumeId(nextActive.id);
-            setStorageItem("activeResumeId", nextActive.id);
-            
-            setResName(nextActive.name);
-            setResEmail(nextActive.email);
-            setResPhone(nextActive.phone);
-            setResSummary(nextActive.summary);
-            setResSkills(nextActive.skills);
-            setResExperience(nextActive.experience);
-            setResEducation(nextActive.education);
-            setResProjects(nextActive.projects || "");
-            setResInternships(nextActive.internships || "");
-            setResCertifications(nextActive.certifications || "");
-            setResAwards(nextActive.awards || "");
-            setResAccentColor(nextActive.accentColor || "indigo");
-            setResFontSize(nextActive.fontSize || 1.0);
-            setSelectedTemplateId(nextActive.templateId || "modern");
-        }
+        setConfirmModal({
+            isOpen: true,
+            title: "Delete Resume Profile?",
+            message: "Are you sure you want to delete this resume profile? All sections associated with this profile will be permanently deleted.",
+            type: "confirm",
+            onConfirm: () => {
+                const newList = savedResumes.filter(r => r.id !== id);
+                setSavedResumes(newList);
+                setStorageItem("savedResumesDatabase", JSON.stringify(newList));
+                
+                if (activeResumeId === id) {
+                    const nextActive = newList[0];
+                    setActiveResumeId(nextActive.id);
+                    setStorageItem("activeResumeId", nextActive.id);
+                    
+                    setResName(nextActive.name);
+                    setResEmail(nextActive.email);
+                    setResPhone(nextActive.phone);
+                    setResSummary(nextActive.summary);
+                    setResSkills(nextActive.skills);
+                    setResExperience(nextActive.experience);
+                    setResEducation(nextActive.education);
+                    setResProjects(nextActive.projects || "");
+                    setResInternships(nextActive.internships || "");
+                    setResCertifications(nextActive.certifications || "");
+                    setResAwards(nextActive.awards || "");
+                    setResAccentColor(nextActive.accentColor || "indigo");
+                    setResFontSize(nextActive.fontSize || 1.0);
+                    setSelectedTemplateId(nextActive.templateId || "modern");
+                }
+            }
+        });
     };
 
     const updateActiveResume = (updates: Partial<SavedResume>) => {
@@ -4382,6 +4400,93 @@ function FeaturesContent() {
                                 >
                                     Cancel
                                 </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Custom Alert/Confirm Popup */}
+            <AnimatePresence>
+                {confirmModal.isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+                        onClick={() => {
+                            if (confirmModal.type === "alert") {
+                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                            }
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.85, opacity: 0, y: 30 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.85, opacity: 0, y: 30 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className="bg-[#111] border border-white/10 rounded-3xl p-8 max-w-sm w-full shadow-2xl shadow-black/50 relative"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <button
+                                type="button"
+                                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer"
+                                title="Close popup"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            <div className="flex items-start gap-4 mb-6">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                                    confirmModal.type === "confirm" 
+                                        ? "bg-red-500/10 border border-red-500/20" 
+                                        : "bg-amber-500/10 border border-amber-500/20"
+                                }`}>
+                                    {confirmModal.type === "confirm" ? (
+                                        <Trash2 className="w-6 h-6 text-red-500" />
+                                    ) : (
+                                        <AlertTriangle className="w-6 h-6 text-amber-500" />
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-extrabold text-white mb-1">{confirmModal.title}</h3>
+                                    <p className="text-sm text-white/50 leading-relaxed">
+                                        {confirmModal.message}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3">
+                                {confirmModal.type === "confirm" ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (confirmModal.onConfirm) confirmModal.onConfirm();
+                                                setConfirmModal(prev => ({ ...prev, isOpen: false }));
+                                            }}
+                                            className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition-colors text-sm cursor-pointer"
+                                        >
+                                            Delete
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                            className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-bold py-3 rounded-xl transition-colors text-sm cursor-pointer"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                                        className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition-colors text-sm cursor-pointer"
+                                    >
+                                        Okay
+                                    </button>
+                                )}
                             </div>
                         </motion.div>
                     </motion.div>

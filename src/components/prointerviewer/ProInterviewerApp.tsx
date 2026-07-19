@@ -45,8 +45,20 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const [isManualZoom, setIsManualZoom] = useState<boolean>(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ distance: number; initialZoom: number } | null>(null);
+  
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
-  // Register touch event listeners programmatically with passive: false to fix Samsung Browser pinch-to-zoom
+  const zoomRef = useRef(zoom);
+  useEffect(() => {
+    zoomRef.current = zoom;
+  });
+
+  // Register touch & wheel event listeners programmatically with passive: false to fix pinch-to-zoom
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -57,7 +69,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           e.touches[0].clientX - e.touches[1].clientX,
           e.touches[0].clientY - e.touches[1].clientY
         );
-        touchStartRef.current = { distance: dist, initialZoom: zoom };
+        touchStartRef.current = { distance: dist, initialZoom: zoomRef.current };
       }
     };
 
@@ -81,16 +93,27 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       touchStartRef.current = null;
     };
 
+    const onWheel = (e: WheelEvent) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.0015;
+        setZoom(prev => Math.max(0.35, Math.min(1.5, prev + delta)));
+        setIsManualZoom(true);
+      }
+    };
+
     container.addEventListener('touchstart', onTouchStart, { passive: true });
     container.addEventListener('touchmove', onTouchMove, { passive: false });
     container.addEventListener('touchend', onTouchEnd, { passive: true });
+    container.addEventListener('wheel', onWheel, { passive: false });
 
     return () => {
       container.removeEventListener('touchstart', onTouchStart);
       container.removeEventListener('touchmove', onTouchMove);
       container.removeEventListener('touchend', onTouchEnd);
+      container.removeEventListener('wheel', onWheel);
     };
-  }, [zoom, isManualZoom]);
+  }, []);
 
   // Auto scaling for mobile preview using ResizeObserver on the container bounds
   useEffect(() => {
@@ -234,12 +257,17 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
   // Reset to initial mock data
   const handleReset = () => {
-    if (window.confirm("Are you sure you want to reset the resume back to the default profile? All your edits will be lost.")) {
-      setResumeData(initialResumeData);
-      setActiveTemplateId(TEMPLATES[0].id);
-      setCurrentStyle(TEMPLATES[0].style);
-      triggerToast("Reset to default profile data");
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Reset Profile Data",
+      message: "Are you sure you want to reset the resume back to the default profile? All your edits will be lost.",
+      onConfirm: () => {
+        setResumeData(initialResumeData);
+        setActiveTemplateId(TEMPLATES[0].id);
+        setCurrentStyle(TEMPLATES[0].style);
+        triggerToast("Reset to default profile data");
+      }
+    });
   };
 
   // Back up data to JSON
@@ -363,19 +391,22 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     const target = savedResumes.find(r => r.id === id);
     if (!target) return;
 
-    if (!window.confirm(`Are you sure you want to delete the saved resume "${target.title}"?`)) {
-      return;
-    }
+    setConfirmDialog({
+      isOpen: true,
+      title: "Delete Saved Resume",
+      message: `Are you sure you want to delete the saved resume "${target.title}"?`,
+      onConfirm: () => {
+        const list = savedResumes.filter(r => r.id !== id);
+        setSavedResumes(list);
+        setStorageItem("proSavedResumes", JSON.stringify(list));
 
-    const list = savedResumes.filter(r => r.id !== id);
-    setSavedResumes(list);
-    setStorageItem("proSavedResumes", JSON.stringify(list));
-
-    if (activeResumeId === id) {
-      setActiveResumeId(null);
-      setStorageItem("proActiveResumeId", "");
-    }
-    triggerToast(`Deleted resume: "${target.title}"`);
+        if (activeResumeId === id) {
+          setActiveResumeId(null);
+          setStorageItem("proActiveResumeId", "");
+        }
+        triggerToast(`Deleted resume: "${target.title}"`);
+      }
+    });
   };
 
   const handleSaveCurrentAsCopy = () => {
@@ -921,6 +952,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 isAILoading={isAILoading}
                 style={currentStyle}
                 onChangeStyle={setCurrentStyle}
+                onConfirm={(opts) => setConfirmDialog({ isOpen: true, ...opts })}
               />
             )}
 
@@ -1274,6 +1306,53 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     </div>
                   </>
                 )}
+              </div>
+            </>
+          )}
+
+          {/* CUSTOM CONFIRMATION MODAL (Renders inside aside to cover only the edit column) */}
+          {confirmDialog.isOpen && (
+            <>
+              <div 
+                className="ai-modal-backdrop"
+                onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                style={{ position: 'absolute', zIndex: 9998 }}
+              />
+              <div className="no-print ai-modal-body" style={{ position: 'absolute', zIndex: 9999, maxWidth: '380px' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                  <div style={{
+                    width: '2rem', height: '2rem', borderRadius: '0.5rem',
+                    background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <AlertTriangle size={16} color="#ef4444" />
+                  </div>
+                  <div>
+                    <h3 className="ai-modal-title" style={{ fontSize: '1rem', fontWeight: 800 }}>{confirmDialog.title}</h3>
+                    <p className="ai-modal-desc" style={{ fontSize: '0.78rem', marginTop: '0.35rem', lineHeight: '1.4' }}>{confirmDialog.message}</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                    className="ai-modal-back-btn"
+                    style={{ fontSize: '0.75rem', padding: '0.4rem 0.85rem' }}
+                  >Cancel</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      confirmDialog.onConfirm();
+                      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                    }}
+                    style={{
+                      padding: '0.4rem 1rem', fontSize: '0.75rem', fontWeight: 700,
+                      background: 'rgb(220, 38, 38)', border: 'none', borderRadius: '0.5rem', color: '#fff',
+                      cursor: 'pointer', boxShadow: '0 0 15px rgba(220, 38, 38, 0.2)'
+                    }}
+                  >Confirm</button>
+                </div>
               </div>
             </>
           )}
@@ -2073,6 +2152,8 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               </div>
             </>
           )}
+
+
 
         </main>
       </div>

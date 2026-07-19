@@ -32,6 +32,9 @@ export default function ProfilePage() {
     const [confirmPassword, setConfirmPassword] = useState("");
     const [confirmError, setConfirmError] = useState("");
     const [isDeleting, setIsDeleting] = useState(false);
+    
+    // Toast success/info messages state
+    const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" | "info" }>({ show: false, message: "", type: "success" });
 
     // Profile photo states
     const [profilePhoto, setProfilePhoto] = useState<string>("");
@@ -679,7 +682,10 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             setIsDeleting(false);
             setDeleteConfirmOpen(false);
             setConfirmPassword("");
-            alert("All your profile details and generated resume configurations have been wiped successfully!");
+            setToast({ show: true, message: "All your profile details and generated resume configurations have been wiped successfully!", type: "success" });
+            setTimeout(() => {
+                setToast(prev => ({ ...prev, show: false }));
+            }, 4000);
         } else {
             // Complete account removal
             if (identifier) {
@@ -2499,6 +2505,33 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                 </button>
                             </div>
                         </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Custom Wiped Data Success Toast */}
+            <AnimatePresence>
+                {toast.show && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                        className="fixed bottom-6 right-6 z-50 bg-[#111] border border-green-500/30 rounded-2xl p-4 shadow-2xl shadow-black/50 flex items-center gap-3 max-w-sm"
+                    >
+                        <div className="w-8 h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 flex-shrink-0">
+                            <Check className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-xs text-white/40 uppercase font-bold tracking-wider">Success</p>
+                            <p className="text-xs text-white/95 font-medium leading-tight">{toast.message}</p>
+                        </div>
+                        <button 
+                            onClick={() => setToast(prev => ({ ...prev, show: false }))} 
+                            className="text-white/40 hover:text-white transition-colors cursor-pointer"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>
