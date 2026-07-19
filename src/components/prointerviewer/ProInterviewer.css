@@ -2087,23 +2087,58 @@ html.theme-light .ai-autofill-btn {
   gap: 0.75rem;
 }
 
+/* Mobile toolbar header display overrides */
+.mobile-toolbar-header {
+  display: none !important;
+}
+
+.toolbar-actions-container {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
 @media (max-width: 640px) {
-  .preview-toolbar {
+  .mobile-toolbar-header {
+    display: flex !important;
+  }
+  
+  .toolbar-actions-container.collapsed {
+    display: none !important;
+  }
+  
+  .toolbar-actions-container.expanded {
+    display: flex !important;
     flex-direction: column;
     align-items: stretch !important;
     gap: 0.5rem !important;
+    margin-top: 0.5rem;
+    animation: toolbar-slide-down 0.2s ease-out;
   }
-  .preview-toolbar .left-actions {
+  
+  .toolbar-actions-container .left-actions,
+  .toolbar-actions-container .center-actions,
+  .toolbar-actions-container .right-actions {
     justify-content: center !important;
     width: 100% !important;
   }
-  .preview-toolbar .center-actions {
-    justify-content: center !important;
-    width: 100% !important;
+  
+  /* Hide the duplicate filename badge inside the actions panel on mobile */
+  .toolbar-actions-container .center-actions {
+    display: none !important;
   }
-  .preview-toolbar .right-actions {
-    justify-content: center !important;
-    width: 100% !important;
+}
+
+@keyframes toolbar-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
