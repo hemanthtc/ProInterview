@@ -31,6 +31,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const [showSuccessToast, setShowSuccessToast] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [isAILoading, setIsAILoading] = useState<boolean>(false);
+  const [isToolbarExpanded, setIsToolbarExpanded] = useState<boolean>(false);
 
   // ATS Optimization States
   const [selectedTemplateCategory, setSelectedTemplateCategory] = useState<CategoryType>('All');
@@ -1285,223 +1286,333 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             width: '100%',
             boxSizing: 'border-box'
           }}>
-            {/* Left Actions */}
-            <div className="left-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', minWidth: 'auto' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={handleSave}
-                title="Save Resume"
-                style={{
-                  padding: '0.4rem 0.6rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
-                  height: '2rem',
-                  borderRadius: '6px'
-                }}
-              >
-                <Save size={14} />
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPrintGuide(true)}
-                title="Download as PDF / Print"
-                style={{
-                  padding: '0.4rem 0.6rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
-                  backgroundColor: '#10b981',
-                  border: '1px solid #059669',
-                  color: '#fff',
-                  cursor: 'pointer',
-                  borderRadius: '6px',
-                  height: '2rem'
-                }}
-              >
-                <Download size={14} />
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => setShowSavedResumesModal(true)}
-                title="My Saved Resumes"
-                style={{
-                  padding: '0.4rem 0.6rem',
-                  fontSize: '0.75rem',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
-                  background: 'transparent',
-                  border: '1px solid var(--panel-border)',
-                  color: 'var(--text-main)',
-                  height: '2rem',
-                  borderRadius: '6px',
-                  cursor: 'pointer'
-                }}
-              >
-                <Folder size={14} />
-              </button>
+            {/* Mobile Toolbar Header: Always visible on mobile, hidden on desktop */}
+            <div className="mobile-toolbar-header" style={{
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              width: '100%',
+              gap: '0.75rem'
+            }}>
+              {/* Active filename badge (if any) */}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {activeResumeId && (
+                  <div style={{
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '8px',
+                    fontSize: '0.7rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis'
+                  }}>
+                    <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {savedResumes.find(r => r.id === activeResumeId)?.title}
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                {/* Info Note icon permanently shown on Mobile */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setShowInfoTip(!showInfoTip); }}
+                  title="Show editing tip"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '8px',
+                    width: '2rem',
+                    height: '2rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    color: showInfoTip ? 'var(--input-focus)' : 'var(--text-muted)',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <Info size={14} />
+                  {showInfoTip && (
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        top: '2.5rem',
+                        right: 0,
+                        background: 'var(--panel-bg)',
+                        border: '1px solid var(--panel-border)',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.7rem',
+                        color: 'var(--text-main)',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        zIndex: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <Info size={12} className="brand-icon" style={{ flexShrink: 0 }} />
+                      <span>Click any text directly on the page to edit inline!</span>
+                    </div>
+                  )}
+                </button>
 
-              {/* ATS AI Optimizer positioned next to My Resumes */}
-              {isTemplateAtsFriendly && (
+                {/* Expand/Collapse Toggle Button */}
                 <button
                   type="button"
                   className="btn"
-                  onClick={() => {
-                    setAtsTargetRole(resumeData.personalInfo.title || aiTargetRoles || '');
-                    setAtsTargetCompany(aiTargetCompanies || getStorageItem("targetCompany") || 'Top Tech Companies');
-                    setShowAtsOptimizeModal(true);
-                  }}
-                  title="Optimize with AI for ATS compliance and layout"
+                  onClick={() => setIsToolbarExpanded(!isToolbarExpanded)}
                   style={{
-                    padding: '0.4rem 0.8rem',
+                    padding: '0.4rem 0.6rem',
                     fontSize: '0.75rem',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.35rem',
-                    boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)',
-                    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    gap: '0.25rem',
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
                     borderRadius: '8px',
-                    color: '#c084fc',
+                    color: 'var(--text-main)',
                     cursor: 'pointer',
                     height: '2rem'
                   }}
                 >
-                  <Sparkles size={14} />
-                  <span>ATS AI Optimizer</span>
+                  {isToolbarExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  <span>{isToolbarExpanded ? 'Hide Options' : 'Show Options'}</span>
                 </button>
-              )}
+              </div>
             </div>
 
-            {/* Center Section: Active file name */}
-            <div className="center-actions" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              {activeResumeId && (
+            {/* Actions panel: Hidden when collapsed, slides down when expanded */}
+            <div className={`toolbar-actions-container ${isToolbarExpanded ? 'expanded' : 'collapsed'}`}>
+              {/* Left Actions */}
+              <div className="left-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', minWidth: 'auto' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSave}
+                  title="Save Resume"
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                    height: '2rem',
+                    borderRadius: '6px'
+                  }}
+                >
+                  <Save size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPrintGuide(true)}
+                  title="Download as PDF / Print"
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.2)',
+                    backgroundColor: '#10b981',
+                    border: '1px solid #059669',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    borderRadius: '6px',
+                    height: '2rem'
+                  }}
+                >
+                  <Download size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setShowSavedResumesModal(true)}
+                  title="My Saved Resumes"
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    color: 'var(--text-main)',
+                    height: '2rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Folder size={14} />
+                </button>
+
+                {/* ATS AI Optimizer positioned next to My Resumes */}
+                {isTemplateAtsFriendly && (
+                  <button
+                    type="button"
+                    className="btn"
+                    onClick={() => {
+                      setAtsTargetRole(resumeData.personalInfo.title || aiTargetRoles || '');
+                      setAtsTargetCompany(aiTargetCompanies || getStorageItem("targetCompany") || 'Top Tech Companies');
+                      setShowAtsOptimizeModal(true);
+                    }}
+                    title="Optimize with AI for ATS compliance and layout"
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      boxShadow: '0 4px 12px rgba(139, 92, 246, 0.2)',
+                      backgroundColor: 'rgba(139, 92, 246, 0.15)',
+                      border: '1px solid rgba(139, 92, 246, 0.3)',
+                      borderRadius: '8px',
+                      color: '#c084fc',
+                      cursor: 'pointer',
+                      height: '2rem'
+                    }}
+                  >
+                    <Sparkles size={14} />
+                    <span>ATS AI Optimizer</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Center Section: Active file name */}
+              <div className="center-actions" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                {activeResumeId && (
+                  <div style={{
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    padding: '0.4rem 0.6rem',
+                    borderRadius: '8px',
+                    fontSize: '0.7rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    whiteSpace: 'nowrap'
+                  }} title={savedResumes.find(r => r.id === activeResumeId)?.title}>
+                    <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
+                    <span style={{ marginRight: '0.2rem' }}>Editing:</span>
+                    <strong style={{ color: 'var(--text-main)' }}>
+                      {savedResumes.find(r => r.id === activeResumeId)?.title}
+                    </strong>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Actions */}
+              <div className="right-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 'auto' }}>
                 <div style={{
                   background: 'transparent',
                   border: '1px solid var(--panel-border)',
-                  padding: '0.4rem 0.6rem',
+                  padding: '0.3rem 0.5rem',
                   borderRadius: '8px',
-                  fontSize: '0.7rem',
-                  color: 'var(--text-muted)',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.25rem',
-                  whiteSpace: 'nowrap'
-                }} title={savedResumes.find(r => r.id === activeResumeId)?.title}>
-                  <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
-                  <span style={{ marginRight: '0.2rem' }}>Editing:</span>
-                  <strong style={{ color: 'var(--text-main)' }}>
-                    {savedResumes.find(r => r.id === activeResumeId)?.title}
-                  </strong>
-                </div>
-              )}
-            </div>
-
-            {/* Right Actions */}
-            <div className="right-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end', minWidth: 'auto' }}>
-              <div style={{
-                background: 'transparent',
-                border: '1px solid var(--panel-border)',
-                padding: '0.3rem 0.5rem',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                height: '2rem',
-                boxSizing: 'border-box'
-              }}>
-                <button 
-                  type="button"
-                  className="btn-icon" 
-                  onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }} 
-                  style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                  <ZoomOut size={14} />
-                </button>
-                <span 
-                  onClick={() => setIsManualZoom(false)}
-                  title="Click to reset to Auto Fit"
-                  style={{ 
-                    fontSize: '0.75rem', 
-                    fontWeight: 600, 
-                    color: isManualZoom ? 'var(--text-muted)' : 'var(--input-focus)', 
-                    minWidth: '35px', 
-                    textAlign: 'center',
-                    cursor: 'pointer',
-                    userSelect: 'none'
-                  }}
-                >
-                  {Math.round(zoom * 100)}%
-                </span>
-                <button 
-                  type="button"
-                  className="btn-icon" 
-                  onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
-                  style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
-                >
-                  <ZoomIn size={14} />
-                </button>
-              </div>
-
-              {/* Info Tip popover button */}
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); setShowInfoTip(!showInfoTip); }}
-                title="Show editing tip"
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--panel-border)',
-                  borderRadius: '8px',
-                  width: '2rem',
+                  gap: '0.5rem',
                   height: '2rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  color: showInfoTip ? 'var(--input-focus)' : 'var(--text-muted)',
                   boxSizing: 'border-box'
-                }}
-              >
-                <Info size={14} />
-                {showInfoTip && (
-                  <div 
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      position: 'absolute',
-                      top: '2.5rem',
-                      right: 0,
-                      background: 'var(--panel-bg)',
-                      border: '1px solid var(--panel-border)',
-                      padding: '0.5rem 0.75rem',
-                      borderRadius: '8px',
-                      fontSize: '0.7rem',
-                      color: 'var(--text-main)',
-                      whiteSpace: 'nowrap',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                      zIndex: 20,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem'
+                }}>
+                  <button 
+                    type="button"
+                    className="btn-icon" 
+                    onClick={() => { setZoom(Math.max(0.35, zoom - 0.05)); setIsManualZoom(true); }} 
+                    style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <ZoomOut size={14} />
+                  </button>
+                  <span 
+                    onClick={() => setIsManualZoom(false)}
+                    title="Click to reset to Auto Fit"
+                    style={{ 
+                      fontSize: '0.75rem', 
+                      fontWeight: 600, 
+                      color: isManualZoom ? 'var(--text-muted)' : 'var(--input-focus)', 
+                      minWidth: '35px', 
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      userSelect: 'none'
                     }}
                   >
-                    <Info size={12} className="brand-icon" style={{ flexShrink: 0 }} />
-                    <span>Click any text directly on the page to edit inline!</span>
-                  </div>
-                )}
-              </button>
+                    {Math.round(zoom * 100)}%
+                  </span>
+                  <button 
+                    type="button"
+                    className="btn-icon" 
+                    onClick={() => { setZoom(Math.min(1.2, zoom + 0.05)); setIsManualZoom(true); }}
+                    style={{ padding: '0.2rem', background: 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    <ZoomIn size={14} />
+                  </button>
+                </div>
+
+                {/* Info Tip popover button */}
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setShowInfoTip(!showInfoTip); }}
+                  title="Show editing tip"
+                  style={{
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '8px',
+                    width: '2rem',
+                    height: '2rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    color: showInfoTip ? 'var(--input-focus)' : 'var(--text-muted)',
+                    boxSizing: 'border-box'
+                  }}
+                >
+                  <Info size={14} />
+                  {showInfoTip && (
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        top: '2.5rem',
+                        right: 0,
+                        background: 'var(--panel-bg)',
+                        border: '1px solid var(--panel-border)',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '8px',
+                        fontSize: '0.7rem',
+                        color: 'var(--text-main)',
+                        whiteSpace: 'nowrap',
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        zIndex: 20,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.35rem'
+                      }}
+                    >
+                      <Info size={12} className="brand-icon" style={{ flexShrink: 0 }} />
+                      <span>Click any text directly on the page to edit inline!</span>
+                    </div>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
