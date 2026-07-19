@@ -358,6 +358,7 @@ function FeaturesContent() {
         if (savedTheme) {
             setTheme(savedTheme);
             document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
         }
         
         const stored = getStorageItem("interviewSessions");
@@ -758,6 +759,7 @@ function FeaturesContent() {
         setTheme(nextTheme);
         localStorage.setItem("globalTheme", nextTheme);
         document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
+        document.documentElement.style.colorScheme = nextTheme === "eyeprotect" ? "light" : nextTheme;
     };
 
     const handleResume = () => {

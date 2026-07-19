@@ -2119,9 +2119,13 @@ html.theme-light .ai-autofill-btn {
   }
   
   .toolbar-actions-container .left-actions,
-  .toolbar-actions-container .center-actions,
-  .toolbar-actions-container .right-actions {
+  .toolbar-actions-container .center-actions {
     justify-content: center !important;
+    width: 100% !important;
+  }
+  
+  .toolbar-actions-container .right-actions {
+    justify-content: flex-start !important;
     width: 100% !important;
   }
   

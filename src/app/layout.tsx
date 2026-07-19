@@ -35,18 +35,21 @@ export default function RootLayout({
                 <script
                     dangerouslySetInnerHTML={{
                         __html: `
-                            try {
-                                 const savedTheme = localStorage.getItem("globalTheme");
-                                 if (savedTheme) {
-                                     if (savedTheme === "eyeprotect") {
-                                         document.documentElement.className = "theme-light theme-eyeprotect";
-                                     } else {
-                                         document.documentElement.className = "theme-" + savedTheme;
-                                     }
-                                 } else {
-                                     document.documentElement.className = "theme-dark";
-                                 }
-                            } catch (e) {}
+                             try {
+                                  const savedTheme = localStorage.getItem("globalTheme");
+                                  if (savedTheme) {
+                                      if (savedTheme === "eyeprotect") {
+                                          document.documentElement.className = "theme-light theme-eyeprotect";
+                                          document.documentElement.style.colorScheme = "light";
+                                      } else {
+                                          document.documentElement.className = "theme-" + savedTheme;
+                                          document.documentElement.style.colorScheme = savedTheme;
+                                      }
+                                  } else {
+                                      document.documentElement.className = "theme-dark";
+                                      document.documentElement.style.colorScheme = "dark";
+                                  }
+                             } catch (e) {}
                         `
                     }}
                 />

@@ -138,6 +138,7 @@ export default function AdminDashboard() {
             document.documentElement.className = savedTheme === "eyeprotect"
                 ? "theme-light theme-eyeprotect"
                 : `theme-${savedTheme}`;
+            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
         }
     }, [router]);
 
@@ -291,6 +292,7 @@ export default function AdminDashboard() {
         setTheme(next);
         localStorage.setItem("globalTheme", next);
         document.documentElement.className = `theme-${next}`;
+        document.documentElement.style.colorScheme = next;
     };
 
     // Helper to get subscription plan count for a given billing cycle

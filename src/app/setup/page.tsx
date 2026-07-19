@@ -41,6 +41,7 @@ export default function SetupPage() {
         const savedTheme = localStorage.getItem("globalTheme") as any || "dark";
         setTheme(savedTheme);
         document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+        document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
 
         const syncFromAccountDetails = () => {
             const portfolio = getStorageItem("userPortfolio") || "";

@@ -46,35 +46,51 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ distance: number; initialZoom: number } | null>(null);
 
-  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      touchStartRef.current = { distance: dist, initialZoom: zoom };
-    }
-  };
+  // Register touch event listeners programmatically with passive: false to fix Samsung Browser pinch-to-zoom
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2 && touchStartRef.current) {
-      if (e.cancelable) {
-        e.preventDefault();
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        touchStartRef.current = { distance: dist, initialZoom: zoom };
       }
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      const factor = dist / touchStartRef.current.distance;
-      const newZoom = Math.max(0.35, Math.min(1.5, touchStartRef.current.initialZoom * factor));
-      setZoom(newZoom);
-      setIsManualZoom(true);
-    }
-  };
+    };
 
-  const handleTouchEnd = () => {
-    touchStartRef.current = null;
-  };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStartRef.current) {
+        if (e.cancelable) {
+          e.preventDefault();
+        }
+        const dist = Math.hypot(
+          e.touches[0].clientX - e.touches[1].clientX,
+          e.touches[0].clientY - e.touches[1].clientY
+        );
+        const factor = dist / touchStartRef.current.distance;
+        const newZoom = Math.max(0.35, Math.min(1.5, touchStartRef.current.initialZoom * factor));
+        setZoom(newZoom);
+        setIsManualZoom(true);
+      }
+    };
+
+    const onTouchEnd = () => {
+      touchStartRef.current = null;
+    };
+
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [zoom, isManualZoom]);
 
   // Auto scaling for mobile preview using ResizeObserver on the container bounds
   useEffect(() => {
@@ -1564,54 +1580,6 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     <ZoomIn size={14} />
                   </button>
                 </div>
-
-                {/* Info Tip popover button */}
-                <button
-                  type="button"
-                  onClick={(e) => { e.stopPropagation(); setShowInfoTip(!showInfoTip); }}
-                  title="Show editing tip"
-                  style={{
-                    background: 'transparent',
-                    border: '1px solid var(--panel-border)',
-                    borderRadius: '8px',
-                    width: '2rem',
-                    height: '2rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    color: showInfoTip ? 'var(--input-focus)' : 'var(--text-muted)',
-                    boxSizing: 'border-box'
-                  }}
-                >
-                  <Info size={14} />
-                  {showInfoTip && (
-                    <div 
-                      onClick={(e) => e.stopPropagation()}
-                      style={{
-                        position: 'absolute',
-                        top: '2.5rem',
-                        right: 0,
-                        background: 'var(--panel-bg)',
-                        border: '1px solid var(--panel-border)',
-                        padding: '0.5rem 0.75rem',
-                        borderRadius: '8px',
-                        fontSize: '0.7rem',
-                        color: 'var(--text-main)',
-                        whiteSpace: 'nowrap',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                        zIndex: 20,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.35rem'
-                      }}
-                    >
-                      <Info size={12} className="brand-icon" style={{ flexShrink: 0 }} />
-                      <span>Click any text directly on the page to edit inline!</span>
-                    </div>
-                  )}
-                </button>
               </div>
             </div>
           </div>
@@ -1632,9 +1600,6 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             <div
               ref={containerRef}
               className="resume-preview-container-wrapper"
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
               style={{
                 width: '100%',
                 minHeight: `${contentHeight * zoom}px`,
