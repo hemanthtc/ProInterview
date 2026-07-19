@@ -1309,7 +1309,33 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               width: '100%',
               gap: '0.5rem'
             }}>
-              {/* LEFT: Zoom controls — always visible, no drawer needed */}
+              {/* LEFT: Show/Hide Options toggle button (previously zoom position) */}
+              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() => setIsToolbarExpanded(!isToolbarExpanded)}
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    borderRadius: '8px',
+                    color: 'var(--text-main)',
+                    cursor: 'pointer',
+                    height: '2rem'
+                  }}
+                >
+                  {isToolbarExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  <span>{isToolbarExpanded ? 'Hide Options' : 'Show Options'}</span>
+                </button>
+              </div>
+
+              {/* CENTER: Zoom controls (previously icon position) */}
               <div style={{
                 background: 'transparent',
                 border: '1px solid var(--panel-border)',
@@ -1355,34 +1381,8 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 </button>
               </div>
 
-              {/* CENTER: Active filename badge */}
-              <div style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
-                {activeResumeId && (
-                  <div style={{
-                    background: 'transparent',
-                    border: '1px solid var(--panel-border)',
-                    padding: '0.4rem 0.6rem',
-                    borderRadius: '8px',
-                    fontSize: '0.7rem',
-                    color: 'var(--text-muted)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>
-                    <FileText size={12} style={{ color: 'var(--input-focus)', flexShrink: 0 }} />
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {savedResumes.find(r => r.id === activeResumeId)?.title}
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              {/* RIGHT: Info icon + Show/Hide Options toggle */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                {/* Info Note icon permanently shown on Mobile */}
+              {/* RIGHT: Info Note icon permanently shown on Mobile (previously show options position) */}
+              <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setShowInfoTip(!showInfoTip); }}
@@ -1428,30 +1428,6 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                       <span>Click any text directly on the page to edit inline!</span>
                     </div>
                   )}
-                </button>
-
-                {/* Expand/Collapse Toggle Button */}
-                <button
-                  type="button"
-                  className="btn"
-                  onClick={() => setIsToolbarExpanded(!isToolbarExpanded)}
-                  style={{
-                    padding: '0.4rem 0.6rem',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.25rem',
-                    background: 'transparent',
-                    border: '1px solid var(--panel-border)',
-                    borderRadius: '8px',
-                    color: 'var(--text-main)',
-                    cursor: 'pointer',
-                    height: '2rem'
-                  }}
-                >
-                  {isToolbarExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                  <span>{isToolbarExpanded ? 'Hide Options' : 'Show Options'}</span>
                 </button>
               </div>
             </div>
