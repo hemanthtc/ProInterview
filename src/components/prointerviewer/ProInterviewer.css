@@ -2105,32 +2105,8 @@ html.theme-light .ai-autofill-btn {
     display: flex !important;
   }
   
-  .toolbar-actions-container.collapsed {
-    display: none !important;
-  }
-  
-  .toolbar-actions-container.expanded {
-    display: flex !important;
-    flex-direction: column;
-    align-items: stretch !important;
-    gap: 0.5rem !important;
-    margin-top: 0.5rem;
-    animation: toolbar-slide-down 0.2s ease-out;
-  }
-  
-  .toolbar-actions-container .left-actions,
-  .toolbar-actions-container .center-actions {
-    justify-content: center !important;
-    width: 100% !important;
-  }
-  
-  .toolbar-actions-container .right-actions {
-    justify-content: flex-start !important;
-    width: 100% !important;
-  }
-  
-  /* Hide the duplicate filename badge inside the actions panel on mobile */
-  .toolbar-actions-container .center-actions {
+  /* Hide the entire desktop actions drawer on mobile - all actions are in the mobile header */
+  .toolbar-actions-container {
     display: none !important;
   }
 }
