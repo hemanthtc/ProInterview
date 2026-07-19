@@ -791,7 +791,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const userType = (getStorageItem("userType") || "").toLowerCase();
   const isStudentOrFresher = userRole === 'student' || userRole === 'fresher' || userType === 'student' || userType === 'fresher' || resumeData.workExperience.length === 0;
   const isTemplateAtsFriendly = activeTemplateId.startsWith('tmpl-ats-');
-  const shouldShowAtsWarning = showAtsWarning && !isTemplateAtsFriendly;
+  const shouldShowAtsWarning = showAtsWarning;
 
   useEffect(() => {
     if (onAtsWarningChange) {
