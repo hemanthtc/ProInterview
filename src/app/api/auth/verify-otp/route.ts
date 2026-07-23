@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
 
         // If login or register flow, verify and clear OTP
         if (flowType === "register" || flowType === "login") {
+            account.isVerified = true;
             // Mark online status if this is an organization account
             if (accountType === "admin" || accountType === "employee") {
                 (account as any).isOnline = true;

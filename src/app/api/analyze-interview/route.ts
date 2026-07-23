@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getVerifiedSession } from "@/utils/auth";
 
 function getQuotaFallback(transcript: string) {
     return NextResponse.json({
@@ -14,6 +15,12 @@ function getQuotaFallback(transcript: string) {
 export async function POST(req: NextRequest) {
     let transcript = "";
     try {
+        // Enforce active session
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });

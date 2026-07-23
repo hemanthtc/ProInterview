@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
             message: "Verification code sent.",
             accountType: resolvedOrgRole  // helps the frontend pass accountType to verify-otp
         };
-        if (account.type !== "email") {
+        if (resolvedOrgRole !== "admin" && resolvedOrgRole !== "employee" && account.type !== "email") {
             responseData.otpCode = generatedOtp;
         }
 

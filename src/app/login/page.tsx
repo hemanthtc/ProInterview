@@ -421,7 +421,7 @@ function LoginContent() {
             const res = await fetch("/api/auth/forgot-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ identifier: forgotIdentifier.trim() })
+                body: JSON.stringify({ identifier: forgotIdentifier.trim(), accountType })
             });
 
             const data = await safeParseJson(res);
@@ -438,7 +438,7 @@ function LoginContent() {
         } finally {
             setLoading(false);
         }
-    }, [forgotIdentifier]);
+    }, [forgotIdentifier, accountType]);
 
     const handleResetPasswordSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
@@ -460,7 +460,8 @@ function LoginContent() {
                 body: JSON.stringify({
                     identifier: forgotIdentifier.trim(),
                     otp: enteredOtp,
-                    newPassword: newPassword.trim()
+                    newPassword: newPassword.trim(),
+                    accountType
                 })
             });
 
@@ -483,7 +484,7 @@ function LoginContent() {
         } finally {
             setLoading(false);
         }
-    }, [forgotIdentifier, otpInputs, newPassword]);
+    }, [forgotIdentifier, otpInputs, newPassword, accountType]);
 
     const handleOtpInputChange = (index: number, val: string) => {
         const cleanedVal = val.replace(/[^0-9]/g, "").slice(-1);
@@ -516,7 +517,9 @@ function LoginContent() {
         if (otpStep === "forgot_password") {
             return {
                 title: "Forgot Password",
-                subtitle: "Enter your registered credentials below to request a password reset verification."
+                subtitle: accountType === "admin" || accountType === "employee"
+                    ? "Enter your registered ID below to request a password reset verification via email."
+                    : "Enter your registered credentials below to request a password reset verification."
             };
         }
         if (otpStep === "reset_password") {
@@ -1090,7 +1093,14 @@ function LoginContent() {
                                         </button>
                                         <button 
                                             type="button" 
-                                            onClick={() => setError("Please contact system administrator to recover your password.")}
+                                            onClick={() => {
+                                                const orgIdentifier = orgSubMode === "admin" ? adminId.trim() : employeeId.trim();
+                                                setOtpStep("forgot_password");
+                                                setError("");
+                                                setPassword("");
+                                                setForgotIdentifier(orgIdentifier);
+                                                setAccountType(orgSubMode === "admin" ? "admin" : "employee");
+                                            }}
                                             className={`transition-colors cursor-pointer ${ isLight ? "hover:text-purple-800" : "hover:text-purple-300" }`}
                                         >
                                             Forgot Password?
@@ -1227,7 +1237,7 @@ function LoginContent() {
                         <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 relative z-20">
                             <div className="space-y-1">
                                 <label className={`text-xs font-bold uppercase tracking-wider block ml-1 ${ isLight ? "text-slate-500" : "text-white/50" }`}>
-                                    Email Address or Phone Number
+                                    {accountType === "admin" ? "Administration ID" : accountType === "employee" ? "Employee ID" : "Email Address or Phone Number"}
                                 </label>
                                 <div className="relative">
                                     <Mail className={`w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 ${ isLight ? "text-slate-400" : "text-white/30" }`} />
@@ -1240,7 +1250,7 @@ function LoginContent() {
                                                 ? "bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-indigo-500 focus:ring-indigo-200"
                                                 : "bg-black/50 border-white/10 text-white focus:border-indigo-500 focus:ring-indigo-500"
                                         }`}
-                                        placeholder="name@company.com or +91XXXXXXXXXX"
+                                        placeholder={accountType === "admin" ? "e.g. admin123" : accountType === "employee" ? "e.g. emp123" : "name@company.com or +91XXXXXXXXXX"}
                                         required
                                     />
                                 </div>

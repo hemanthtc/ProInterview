@@ -1191,8 +1191,10 @@ textarea.form-input {
     overflow: visible !important;
   }
 
-  /* Clear background colors and overflow on parent generic wrappers */
-  main, section, div {
+  /* Clear background colors on app-level wrappers only (NOT resume content) */
+  main,
+  section:not(.resume-section),
+  div:not(.resume-page):not([class*="header-"]):not(.layout-two-column-bg):not(.resume-sidebar-col):not(.resume-body):not(.resume-main-col):not(.resume-item):not(.resume-item-top):not(.resume-item-sub):not(.section-title-wrap):not(.contact-grid):not(.contact-item):not(.skills-wrap):not(.skill-tag):not(.section-list):not(.name-title):not(.header-details):not(.accent-bar):not(.avatar-box):not([class*="layout-"]):not([class*="divider-"]) {
     background: transparent !important;
     box-shadow: none !important;
     overflow: visible !important;
@@ -1253,7 +1255,7 @@ textarea.form-input {
     box-shadow: none !important;
     border: none !important;
     margin: 0 !important;
-    padding: 0 !important;
+    padding: var(--page-padding, 2.5rem) !important;
     width: 100% !important;
     max-width: 100% !important;
     height: auto !important;
@@ -1262,6 +1264,42 @@ textarea.form-input {
     page-break-inside: auto !important;
     display: block !important;
     overflow: visible !important;
+    background-color: var(--bg-color, #ffffff) !important;
+  }
+
+  /* Preserve resume-internal themed backgrounds */
+  .resume-page .header-bold-banner {
+    background-color: var(--banner-bg, var(--primary-color)) !important;
+    color: var(--banner-text, #ffffff) !important;
+  }
+
+  .resume-page .layout-two-column-bg {
+    background-color: var(--sidebar-bg, #f9fafb) !important;
+  }
+
+  .resume-page .skill-tag {
+    background-color: rgba(59, 130, 246, 0.05) !important;
+    border: 1px solid rgba(59, 130, 246, 0.12) !important;
+  }
+
+  .resume-page .layout-two-column-bg .skill-tag {
+    background-color: rgba(255, 255, 255, 0.08) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  .resume-page .divider-pill-badges .section-title {
+    background-color: rgba(59, 130, 246, 0.08) !important;
+  }
+
+  .resume-page .accent-bar {
+    background-color: var(--primary-color) !important;
+  }
+
+  /* Hide editable element editing hints in print */
+  .editable-element {
+    outline: none !important;
+    box-shadow: none !important;
+    background-color: transparent !important;
   }
 
   /* Prevent orphaned headings and split items across page breaks */
@@ -1273,14 +1311,31 @@ textarea.form-input {
   .section-title-wrap {
     page-break-after: avoid !important;
     break-after: avoid !important;
+    break-after: avoid-page !important;
+  }
+
+  /* Force display: block on items in print so Chromium respects break-inside: avoid */
+  .resume-section,
+  .resume-item,
+  .section-list,
+  .skills-wrap {
+    display: block !important;
   }
 
   .resume-item {
     page-break-inside: avoid !important;
     break-inside: avoid !important;
+    break-inside: avoid-page !important;
   }
 
   .skills-wrap {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+    break-inside: avoid-page !important;
+  }
+
+  .skill-tag {
+    display: inline-block !important;
     page-break-inside: avoid !important;
     break-inside: avoid !important;
   }
@@ -1293,7 +1348,6 @@ textarea.form-input {
 
   @page {
     size: A4;
-    margin: 0;
   }
 }
 

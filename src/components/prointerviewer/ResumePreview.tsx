@@ -668,12 +668,13 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     );
   };
 
+
   const activeMarginValue = style.margins === 'narrow' ? '1.6rem' : style.margins === 'wide' ? '3.6rem' : '2.6rem';
 
   return (
     <div 
       ref={pageRef}
-      className={`resume-page ${activeFont.class}`} 
+      className={`resume-page ${activeFont.class} divider-${style.dividerStyle}`} 
       style={{ ...compiledVariables, height: 'auto', minHeight: '1123px' }}
       id="print-resume-page"
     >
@@ -681,7 +682,19 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         @media print {
           @page {
             size: A4;
-            margin: ${activeMarginValue};
+            margin: 10mm !important;
+          }
+          .resume-page {
+            padding: var(--page-padding, 2.5rem) !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          .resume-page .resume-section {
+            margin-top: 0.6rem !important;
+          }
+          .resume-page .section-title-wrap {
+            margin-bottom: 0.35rem !important;
           }
         }
       `}} />

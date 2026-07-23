@@ -2833,10 +2833,22 @@ function FeaturesContent() {
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                                                         {q.options.map((opt: string, oIdx: number) => {
                                                             let optStyle = "bg-white/[0.02] border-white/5 text-white/60";
-                                                            if (oIdx === q.correctAnswer) {
-                                                                optStyle = "bg-green-500/15 border-green-500/30 text-green-400 font-bold";
-                                                            } else if (oIdx === selected) {
-                                                                optStyle = "bg-red-500/15 border-red-500/30 text-red-400 font-bold";
+                                                            if (isLight) {
+                                                                if (oIdx === q.correctAnswer) {
+                                                                    optStyle = "bg-green-50 border-green-500 text-green-700 font-bold shadow-[0_0_10px_rgba(34,197,94,0.05)]";
+                                                                } else if (oIdx === selected) {
+                                                                    optStyle = "bg-red-50 border-red-400 text-red-750 font-bold shadow-[0_0_10px_rgba(239,68,68,0.05)]";
+                                                                } else {
+                                                                    optStyle = theme === "eyeprotect"
+                                                                        ? "bg-[#f5e6d3] border-amber-900/35 text-amber-900"
+                                                                        : "bg-slate-50 border-slate-200 text-slate-700";
+                                                                }
+                                                            } else {
+                                                                if (oIdx === q.correctAnswer) {
+                                                                    optStyle = "bg-green-500/15 border-green-500/30 text-green-400 font-bold";
+                                                                } else if (oIdx === selected) {
+                                                                    optStyle = "bg-red-500/15 border-red-500/30 text-red-400 font-bold";
+                                                                }
                                                             }
                                                             return (
                                                                 <div key={oIdx} className={`mcq-option-item px-4 py-2.5 rounded-xl border text-xs flex items-center justify-between ${optStyle}`}>
@@ -3143,8 +3155,20 @@ function FeaturesContent() {
                                         const isSelected = mockTestMCQAnswers[currentMCQ.id] === oIdx;
                                         
                                         let optStyle = "bg-black/35 border-white/5 text-white/70 hover:border-white/20 hover:text-white";
-                                        if (isSelected) {
-                                            optStyle = "bg-pink-500/5 border-pink-500/40 text-pink-400 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]";
+                                        if (isLight) {
+                                            if (theme === "eyeprotect") {
+                                                optStyle = isSelected
+                                                    ? "bg-[#ebdac2] border-amber-800 text-amber-900 font-bold shadow-[0_0_15px_rgba(217,119,6,0.1)]"
+                                                    : "bg-[#f5e6d3] border-amber-900/40 text-amber-950 hover:border-amber-900 hover:bg-[#ebd9c2]/50";
+                                            } else {
+                                                optStyle = isSelected
+                                                    ? "bg-pink-50 border-pink-500 text-pink-650 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]"
+                                                    : "bg-white border-slate-300 text-slate-800 hover:border-slate-400 hover:bg-slate-50";
+                                            }
+                                        } else {
+                                            if (isSelected) {
+                                                optStyle = "bg-pink-500/5 border-pink-500/40 text-pink-400 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]";
+                                            }
                                         }
 
                                         return (
@@ -3159,9 +3183,19 @@ function FeaturesContent() {
                                             >
                                                 <span>{opt}</span>
                                                 <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                                                    isSelected ? "border-pink-500 bg-pink-500/20 text-pink-400" : "border-white/20"
+                                                    isSelected 
+                                                        ? isLight 
+                                                            ? theme === "eyeprotect"
+                                                                ? "border-amber-800 bg-amber-800/20 text-amber-900"
+                                                                : "border-pink-500 bg-pink-500/20 text-pink-500"
+                                                            : "border-pink-500 bg-pink-500/20 text-pink-400" 
+                                                        : isLight
+                                                            ? theme === "eyeprotect"
+                                                                ? "border-amber-900/30"
+                                                                : "border-slate-400"
+                                                            : "border-white/20"
                                                 }`}>
-                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
+                                                    {isSelected && <div className={`w-1.5 h-1.5 rounded-full ${theme === "eyeprotect" ? "bg-amber-800" : "bg-pink-500"}`} />}
                                                 </div>
                                             </button>
                                         );
@@ -3623,23 +3657,31 @@ function FeaturesContent() {
                                     setShowAnalysis(false);
                                     setShowResume(false);
                                 }}
-                                className="group bg-[#0d0d12]/60 hover:bg-[#12121a]/80 backdrop-blur-sm border border-indigo-500/20 hover:border-indigo-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(79,70,229,0.05)] hover:shadow-[0_0_40px_rgba(79,70,229,0.15)]"
+                                className={`group bg-[#0d0d12]/60 hover:bg-[#12121a]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(79,70,229,0.05)] hover:shadow-[0_0_40px_rgba(79,70,229,0.15)] ${
+                                    isLight ? "border-indigo-500/45 hover:border-indigo-600" : "border-indigo-500/20 hover:border-indigo-500/50"
+                                }`}
                             >
-                                <div className="w-12 h-12 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                    isLight ? "bg-indigo-500/20 border border-indigo-500/30 text-indigo-700" : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
+                                }`}>
                                     <Sparkles className="w-6 h-6" />
                                 </div>
-                                <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors">Pre-Interview Analysis</h3>
+                                <h3 className={`text-lg font-bold group-hover:text-indigo-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-indigo-700" : "text-white"}`}>Pre-Interview Analysis</h3>
                             </div>
 
                             {/* Card B: Start Interview Session */}
                             <div 
                                 onClick={() => launchInterviewSetup(isRealisticMode ? "realistic" : "technical")}
-                                className="group bg-[#0d0d12]/60 hover:bg-[#12121a]/80 backdrop-blur-sm border border-sky-500/20 hover:border-sky-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(14,165,233,0.05)] hover:shadow-[0_0_40px_rgba(14,165,233,0.15)]"
+                                className={`group bg-[#0d0d12]/60 hover:bg-[#12121a]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(14,165,233,0.05)] hover:shadow-[0_0_40px_rgba(14,165,233,0.15)] ${
+                                    isLight ? "border-sky-500/45 hover:border-sky-600" : "border-sky-500/20 hover:border-sky-500/50"
+                                }`}
                             >
-                                <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                    isLight ? "bg-sky-500/20 border border-sky-500/30 text-sky-700" : "bg-sky-500/10 border border-sky-500/20 text-sky-400"
+                                }`}>
                                     <Play className="w-6 h-6" />
                                 </div>
-                                <h3 className="text-lg font-bold text-white group-hover:text-sky-400 transition-colors">Start Interview Session</h3>
+                                <h3 className={`text-lg font-bold group-hover:text-sky-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-sky-700" : "text-white"}`}>Start Interview Session</h3>
                             </div>
 
                             {!isRealisticMode && (
@@ -3653,12 +3695,16 @@ function FeaturesContent() {
                                             setActiveQuizCategory(null);
                                             setIsMockTestMode(false);
                                         }}
-                                        className="group bg-[#0d0d12]/60 hover:bg-[#1a1215]/80 backdrop-blur-sm border border-pink-500/20 hover:border-pink-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(236,72,153,0.05)] hover:shadow-[0_0_40px_rgba(236,72,153,0.15)]"
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#1a1215]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(236,72,153,0.05)] hover:shadow-[0_0_40px_rgba(236,72,153,0.15)] ${
+                                            isLight ? "border-pink-500/45 hover:border-pink-600" : "border-pink-500/20 hover:border-pink-500/50"
+                                        }`}
                                     >
-                                        <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-pink-500/20 border border-pink-500/30 text-pink-700" : "bg-pink-500/10 border border-pink-500/20 text-pink-400"
+                                        }`}>
                                             <ListTodo className="w-6 h-6" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-white group-hover:text-pink-400 transition-colors">Mock Aptitude</h3>
+                                        <h3 className={`text-lg font-bold group-hover:text-pink-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-pink-700" : "text-white"}`}>Mock Aptitude</h3>
                                     </div>
 
                                     {/* Card D: AI Email Analyser */}
@@ -3667,12 +3713,16 @@ function FeaturesContent() {
                                             setActiveModal("email_analyser");
                                             setActiveTool("email_analyser");
                                         }}
-                                        className="group bg-[#0d0d12]/60 hover:bg-[#121a18]/80 backdrop-blur-sm border border-teal-500/20 hover:border-teal-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(20,184,166,0.05)] hover:shadow-[0_0_40px_rgba(20,184,166,0.15)]"
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#121a18]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(20,184,166,0.05)] hover:shadow-[0_0_40px_rgba(20,184,166,0.15)] ${
+                                            isLight ? "border-teal-500/45 hover:border-teal-600" : "border-teal-500/20 hover:border-teal-500/50"
+                                        }`}
                                     >
-                                        <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-teal-500/20 border border-teal-500/30 text-teal-700" : "bg-teal-500/10 border border-teal-500/20 text-teal-400"
+                                        }`}>
                                             <Mail className="w-6 h-6" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-white group-hover:text-teal-400 transition-colors">AI Email Analyser</h3>
+                                        <h3 className={`text-lg font-bold group-hover:text-teal-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-teal-700" : "text-white"}`}>AI Email Analyser</h3>
                                     </div>
 
                                     {/* Card E: Preparation Roadmap Generator */}
@@ -3683,23 +3733,31 @@ function FeaturesContent() {
                                             // Reset roadmap tasks checked state
                                             setRoadmapTasksChecked({});
                                         }}
-                                        className="group bg-[#0d0d12]/60 hover:bg-[#121a15]/80 backdrop-blur-sm border border-emerald-500/20 hover:border-emerald-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(16,185,129,0.05)] hover:shadow-[0_0_40px_rgba(16,185,129,0.15)]"
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#121a15]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(16,185,129,0.05)] hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] ${
+                                            isLight ? "border-emerald-500/45 hover:border-emerald-600" : "border-emerald-500/20 hover:border-emerald-500/50"
+                                        }`}
                                     >
-                                        <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-700" : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                                        }`}>
                                             <Map className="w-6 h-6" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">Roadmap Generator</h3>
+                                        <h3 className={`text-lg font-bold group-hover:text-emerald-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-emerald-700" : "text-white"}`}>Roadmap Generator</h3>
                                     </div>
 
                                     {/* Card F: Pro Interviewer Code */}
                                     <div 
                                         onClick={launchProInterviewer}
-                                        className="group bg-[#0d0d12]/60 hover:bg-[#1f1a12]/80 backdrop-blur-sm border border-amber-500/20 hover:border-amber-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(245,158,11,0.05)] hover:shadow-[0_0_40px_rgba(245,158,11,0.15)]"
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#1f1a12]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(245,158,11,0.05)] hover:shadow-[0_0_40px_rgba(245,158,11,0.15)] ${
+                                            isLight ? "border-amber-500/45 hover:border-amber-600" : "border-amber-500/20 hover:border-amber-500/50"
+                                        }`}
                                     >
-                                        <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-amber-500/20 border border-amber-500/30 text-amber-700" : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+                                        }`}>
                                             <Code className="w-6 h-6" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">Resume Builder</h3>
+                                        <h3 className={`text-lg font-bold group-hover:text-amber-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-amber-700" : "text-white"}`}>Resume Builder</h3>
                                     </div>
 
                                     {/* Card G: Study Materials */}
@@ -3708,12 +3766,16 @@ function FeaturesContent() {
                                             setActiveModal("study_materials");
                                             setActiveTool("study_materials");
                                         }}
-                                        className="group bg-[#0d0d12]/60 hover:bg-[#18121a]/80 backdrop-blur-sm border border-purple-500/20 hover:border-purple-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(168,85,247,0.05)] hover:shadow-[0_0_40px_rgba(168,85,247,0.15)]"
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#18121a]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(168,85,247,0.05)] hover:shadow-[0_0_40px_rgba(168,85,247,0.15)] ${
+                                            isLight ? "border-purple-500/45 hover:border-purple-600" : "border-purple-500/20 hover:border-purple-500/50"
+                                        }`}
                                     >
-                                        <div className="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-purple-500/20 border border-purple-500/30 text-purple-700" : "bg-purple-500/10 border border-purple-500/20 text-purple-400"
+                                        }`}>
                                             <BookOpen className="w-6 h-6" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors">Study Materials</h3>
+                                        <h3 className={`text-lg font-bold group-hover:text-purple-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-purple-700" : "text-white"}`}>Study Materials</h3>
                                     </div>
 
                                     {/* Card H: My Progress */}
@@ -3722,12 +3784,16 @@ function FeaturesContent() {
                                             setActiveModal("progress");
                                             setActiveTool("progress");
                                         }}
-                                        className="group bg-[#0d0d12]/60 hover:bg-[#12171a]/80 backdrop-blur-sm border border-sky-500/20 hover:border-sky-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(14,165,233,0.05)] hover:shadow-[0_0_40px_rgba(14,165,233,0.15)]"
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#12171a]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(14,165,233,0.05)] hover:shadow-[0_0_40px_rgba(14,165,233,0.15)] ${
+                                            isLight ? "border-sky-500/45 hover:border-sky-600" : "border-sky-500/20 hover:border-sky-500/50"
+                                        }`}
                                     >
-                                        <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-sky-500/20 border border-sky-500/30 text-sky-700" : "bg-sky-500/10 border border-sky-500/20 text-sky-400"
+                                        }`}>
                                             <TrendingUp className="w-6 h-6" />
                                         </div>
-                                        <h3 className="text-lg font-bold text-white group-hover:text-sky-400 transition-colors">My Progress</h3>
+                                        <h3 className={`text-lg font-bold group-hover:text-sky-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-sky-700" : "text-white"}`}>My Progress</h3>
                                     </div>
                                 </>
                             )}
@@ -6050,28 +6116,52 @@ function FeaturesContent() {
 
                                                 <div className="grid grid-cols-1 gap-3">
                                                     {currentQ.options.map((opt: string, oIdx: number) => {
-                                                        const isSelected = quizSelectedOption === oIdx;
-                                                        let optStyle = "bg-black/35 border-white/5 text-white/70 hover:border-white/20 hover:text-white";
-                                                        if (isSelected) {
-                                                            optStyle = "bg-pink-500/5 border-pink-500/40 text-pink-400 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]";
-                                                        }
-                                                        return (
-                                                            <button
-                                                                key={oIdx}
-                                                                type="button"
-                                                                disabled={quizIsSubmitted}
-                                                                onClick={() => setQuizSelectedOption(oIdx)}
-                                                                className={`w-full p-4 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${optStyle}`}
-                                                            >
-                                                                <span>{opt}</span>
-                                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
-                                                                    isSelected ? "border-pink-500 bg-pink-500/20 text-pink-400" : "border-white/20"
-                                                                }`}>
-                                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
-                                                                </div>
-                                                            </button>
-                                                        );
-                                                    })}
+                                                         const isSelected = quizSelectedOption === oIdx;
+                                                         
+                                                         let optStyle = "bg-black/35 border-white/5 text-white/70 hover:border-white/20 hover:text-white";
+                                                         if (isLight) {
+                                                             if (theme === "eyeprotect") {
+                                                                 optStyle = isSelected
+                                                                     ? "bg-[#ebdac2] border-amber-800 text-amber-900 font-bold shadow-[0_0_15px_rgba(217,119,6,0.1)]"
+                                                                     : "bg-[#f5e6d3] border-amber-900/40 text-amber-950 hover:border-amber-900 hover:bg-[#ebd9c2]/50";
+                                                             } else {
+                                                                 optStyle = isSelected
+                                                                     ? "bg-pink-50 border-pink-500 text-pink-650 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]"
+                                                                     : "bg-white border-slate-300 text-slate-800 hover:border-slate-400 hover:bg-slate-50";
+                                                             }
+                                                         } else {
+                                                             if (isSelected) {
+                                                                 optStyle = "bg-pink-500/5 border-pink-500/40 text-pink-400 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]";
+                                                             }
+                                                         }
+
+                                                         return (
+                                                             <button
+                                                                 key={oIdx}
+                                                                 type="button"
+                                                                 disabled={quizIsSubmitted}
+                                                                 onClick={() => setQuizSelectedOption(oIdx)}
+                                                                 className={`w-full p-4 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer select-none ${optStyle}`}
+                                                             >
+                                                                 <span>{opt}</span>
+                                                                 <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                                                     isSelected 
+                                                                         ? isLight 
+                                                                             ? theme === "eyeprotect"
+                                                                                 ? "border-amber-800 bg-amber-800/20 text-amber-900"
+                                                                                 : "border-pink-500 bg-pink-500/20 text-pink-500"
+                                                                             : "border-pink-500 bg-pink-500/20 text-pink-400" 
+                                                                         : isLight
+                                                                             ? theme === "eyeprotect"
+                                                                                 ? "border-amber-900/30"
+                                                                                 : "border-slate-400"
+                                                                             : "border-white/20"
+                                                                 }`}>
+                                                                     {isSelected && <div className={`w-1.5 h-1.5 rounded-full ${theme === "eyeprotect" ? "bg-amber-800" : "bg-pink-500"}`} />}
+                                                                 </div>
+                                                             </button>
+                                                         );
+                                                     })}
                                                 </div>
 
                                                 <div className="flex items-center justify-between pt-2">

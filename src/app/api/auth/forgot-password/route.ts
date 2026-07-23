@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
             success: true,
             message: "Recovery code sent.",
         };
-        if (account.type !== "email") {
+        if (accountType !== "admin" && accountType !== "employee" && account.type !== "email") {
             responseData.otpCode = generatedOtp;
         }
 
