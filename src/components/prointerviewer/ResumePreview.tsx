@@ -680,15 +680,51 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     >
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
+          :root,
+          html,
+          body,
+          .resume-builder-pro,
+          .app-container,
+          .preview-canvas-container,
+          .resume-preview-container-wrapper,
+          .resume-pages-scaler,
+          .resume-pages-wrapper {
+            background: #ffffff !important;
+            background-color: #ffffff !important;
+            color: #000000 !important;
+            color-scheme: light !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            position: static !important;
+            transform: none !important;
+            overflow: visible !important;
+          }
           @page {
             size: A4;
-            margin: 10mm !important;
+            margin: ${activeMarginValue} !important;
           }
-          .resume-page {
-            padding: var(--page-padding, 2.5rem) !important;
+          .resume-page,
+          #print-resume-page {
+            padding: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
             box-sizing: border-box !important;
+            overflow: visible !important;
+            position: static !important;
+          }
+          .resume-page .header-bold-banner {
+            margin-top: 0 !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+          }
+          .resume-page .layout-two-column-bg {
+            margin-top: 0 !important;
+            margin-bottom: 0 !important;
+            margin-left: 0 !important;
           }
           .resume-page .resume-section {
             margin-top: 0.6rem !important;
