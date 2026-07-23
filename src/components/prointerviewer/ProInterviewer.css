@@ -1183,12 +1183,27 @@ textarea.form-input {
     display: none !important;
   }
 
-  body, html {
+  :root,
+  html,
+  body,
+  .resume-builder-pro,
+  .app-container,
+  .preview-canvas-container,
+  .resume-preview-container-wrapper,
+  .resume-pages-scaler,
+  .resume-pages-wrapper {
     background: #ffffff !important;
+    background-color: #ffffff !important;
     color: #000000 !important;
+    color-scheme: light !important;
     height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
     width: 100% !important;
+    max-width: 100% !important;
     overflow: visible !important;
+    position: static !important;
+    transform: none !important;
   }
 
   /* Clear background colors on app-level wrappers only (NOT resume content) */
