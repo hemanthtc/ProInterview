@@ -534,3 +534,122 @@ html.theme-eyeprotect button:has(svg.lucide-moon) {
 html.theme-eyeprotect button svg.lucide-eye {
   color: #b45309 !important; /* Warm amber */
 }
+
+/* ==========================================================================
+   Placement Assessment Simulator Light & High Contrast Theme Overrides
+   ========================================================================== */
+
+/* General Light Mode Opacity Text Visibility Fixes */
+html.theme-light .text-white\/95,
+html.theme-light .text-white\/90,
+html.theme-light .text-white\/85 {
+  color: #0f172a !important; /* Highly readable dark slate for questions */
+}
+
+html.theme-light .text-white\/65 {
+  color: #334155 !important;
+}
+
+/* 1. Mock Test Banners / Cards */
+html.theme-light .mock-assessment-card {
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid #cbd5e1 !important;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03) !important;
+}
+
+html.theme-light .mock-assessment-card h4,
+html.theme-light .mock-assessment-card p,
+html.theme-light .mock-assessment-card span {
+  color: #0f172a !important;
+}
+
+/* 2. Active Simulator View */
+html.theme-light .mock-simulator-active {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .mock-simulator-active .bg-\[\#0d0d12\]\/30,
+html.theme-light .mock-simulator-active .bg-\[\#16161f\],
+html.theme-light .mock-simulator-active .bg-\[\#111\] {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.theme-light .mock-simulator-active .bg-black\/35 {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .mock-simulator-active .bg-black\/35:hover {
+  background-color: #e2e8f0 !important;
+  border-color: #94a3b8 !important;
+  color: #000000 !important;
+}
+
+html.theme-light .mock-simulator-active .bg-white\/5 {
+  background-color: #f1f5f9 !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+html.theme-light .mock-simulator-active textarea.bg-black\/50 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.theme-light .mock-simulator-active .text-indigo-200 {
+  color: #1e1b4b !important; /* High contrast dark indigo text inside editor */
+}
+
+html.theme-light .mock-simulator-active pre.bg-black\/50,
+html.theme-light .mock-simulator-active code {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* 3. Results Review View */
+html.theme-light .mock-simulator-results .bg-\[\#111\],
+html.theme-light .mock-simulator-results .bg-\[\#0d0d12\]\/30 {
+  background-color: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+html.theme-light .mock-simulator-results pre.bg-black\/50,
+html.theme-light .mock-simulator-results code {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+/* 4. Eye Comfort Mode (theme-eyeprotect) Specific Visual Overrides */
+
+/* Banners (2nd Image Interface) background & border styling */
+html.theme-eyeprotect .mock-assessment-card {
+  background-color: #faf6f0 !important;
+  background-image: none !important;
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+
+html.theme-eyeprotect .mock-assessment-card * {
+  color: #000000 !important;
+  border-color: #000000 !important;
+}
+
+/* Highlight MCQ Option Borders in active view & results reviews */
+html.theme-eyeprotect .mcq-option-item {
+  border: 1.5px solid #000000 !important;
+}
+
+/* Editor text color in Eye Comfort Mode */
+html.theme-eyeprotect .mock-simulator-active textarea {
+  color: #000000 !important;
+}
+html.theme-eyeprotect .mock-simulator-active .text-indigo-200 {
+  color: #000000 !important;
+}

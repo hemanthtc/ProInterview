@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu } from "lucide-react";
+import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
@@ -13,6 +13,8 @@ import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import ProInterviewerApp from "../../components/prointerviewer/ProInterviewerApp";
+import { offCampusMCQs, offCampusCodingQuestions, MCQQuestion, CodingQuestion } from "../../data/offCampusMockTestData";
+import { onCampusMCQs, onCampusCodingQuestions } from "../../data/onCampusMockTestData";
 
 interface SavedResume {
     id: string;
@@ -54,6 +56,185 @@ interface PortfolioAnalysisCache {
 
 
 
+const interviewPrepLogic = {
+    title: "Talk to Aptitude",
+    paths: {
+        onCampus: {
+            label: "On-Campus",
+            duration: "20-30 min aptitude test",
+            difficulty: "Easy to Moderate",
+            structure: ["Basic questions", "Focused aptitude, speed math, basic code"],
+            finalStage: "Project-based questions",
+            topics: {
+                logicalReasoning: ["Data interpretation", "Coding-decoding", "Blood relations", "Seating arrangements"],
+                technicalCoding: ["Output prediction", "Basic data structures"],
+                codingPlatforms: ["LeetCode (Basic/Medium)", "HackerRank"],
+                quantitativeAptitude: ["Time, Speed & Distance", "Permutations & Probability", "Profit, Loss & Interest"]
+            },
+            evaluation: {
+                whatTheyJudge: "They know you lack experience. They want to see if you're easy to train, enthusiastic, and flexible enough to fit into any project team.",
+                scoredOn: ["Communication", "Basic academic conceptual clarity", "Cultural adaptability"]
+            }
+        },
+        offCampus: {
+            label: "Off-Campus",
+            duration: "3-5 separate rounds",
+            roundTypes: ["Technical", "System Design", "Managerial", "HR"],
+            difficulty: "High to Very Hard (high competition per seat)",
+            structure: ["Targeted competency (prove experienced value)", "Domain depth, edge cases, system design"],
+            topics: {
+                domainAssessments: ["Algorithmic optimization (LeetCode Medium/High)", "System design & architecture", "Edge-case debugging", "DSA"],
+                situationalJudgment: ["Conflict & prioritization", "Ownership & client management"]
+            },
+            evaluation: {
+                whatTheyJudge: "Immediate competency. They're paying you to solve problems now — proof of execution, independent problem-solving, and deep domain expertise.",
+                scoredOn: ["Structural thinking", "Architectural knowledge", "Conflict resolution", "Execution speed"]
+            }
+        }
+    }
+};
+
+const aptitudeQuestions: Record<string, {
+    category: string;
+    questions: {
+        id: number;
+        question: string;
+        codeSnippet?: string;
+        options: string[];
+        correctAnswer: number;
+        explanation: string;
+    }[];
+}> = {
+    logicalReasoning: {
+        category: "Logical Reasoning",
+        questions: [
+            {
+                id: 1,
+                question: "Pointing to a photograph of a boy, Suresh said, 'He is the son of the only son of my mother.' How is Suresh related to that boy?",
+                options: ["Brother", "Uncle", "Father", "Cousin"],
+                correctAnswer: 2,
+                explanation: "Suresh's mother's only son is Suresh himself. Therefore, the boy in the photograph is Suresh's son, which makes Suresh the father."
+            },
+            {
+                id: 2,
+                question: "If in a certain language, 'COULD' is coded as 'BNTKC' and 'MARGIN' is coded as 'LZQFHM', how is 'MOULDING' coded in that code?",
+                options: ["LNTKC HMF", "LNKTCHMF", "NITKHCMF", "LNTKCHMF"],
+                correctAnswer: 3,
+                explanation: "Each letter in the word is coded as the letter preceding it in the alphabet. M->L, O->N, U->T, L->K, D->C, I->H, N->M, G->F. Thus, MOULDING is coded as LNTKCHMF."
+            },
+            {
+                id: 3,
+                question: "Six friends A, B, C, D, E, and F are sitting in a circle facing the center. F is to the immediate left of A. B is facing E. C is between A and D. Who is facing D?",
+                options: ["A", "F", "B", "E"],
+                correctAnswer: 1,
+                explanation: "Following the circular seating constraints, the positions relative to each other place F next to A, C between A and D, and B opposite E. Solving the circle places F directly opposite/facing D."
+            }
+        ]
+    },
+    quantitativeAptitude: {
+        category: "Quantitative Aptitude",
+        questions: [
+            {
+                id: 1,
+                question: "A train running at the speed of 60 km/hr crosses a pole in 9 seconds. What is the length of the train?",
+                options: ["120 meters", "150 meters", "180 meters", "324 meters"],
+                correctAnswer: 1,
+                explanation: "Speed = 60 * (5/18) m/sec = 50/3 m/sec. Distance = Speed * Time = (50/3) * 9 = 150 meters."
+            },
+            {
+                id: 2,
+                question: "A fruit seller had some apples. He sells 40% apples and still has 420 apples. Originally, he had:",
+                options: ["588 apples", "600 apples", "672 apples", "700 apples"],
+                correctAnswer: 3,
+                explanation: "If he sells 40%, he has 60% left. 60% of X = 420 => X = (420 * 100) / 60 = 700 apples."
+            },
+            {
+                id: 3,
+                question: "What is the probability of getting a sum of 9 from two throws of a dice?",
+                options: ["1/6", "1/8", "1/9", "1/12"],
+                correctAnswer: 2,
+                explanation: "Total outcomes = 36. Outcomes with sum 9: (3,6), (4,5), (5,4), (6,3) = 4 outcomes. Probability = 4/36 = 1/9."
+            }
+        ]
+    },
+    technicalCoding: {
+        category: "Technical Coding",
+        questions: [
+            {
+                id: 1,
+                question: "What is the output of the following JavaScript code snippet?",
+                codeSnippet: "console.log(typeof NaN);",
+                options: ["'number'", "'NaN'", "'undefined'", "'object'"],
+                correctAnswer: 0,
+                explanation: "In JavaScript, NaN (Not-a-Number) is technically a numeric data type, so typeof NaN returns 'number'."
+            },
+            {
+                id: 2,
+                question: "What will be the output of the following code snippet?",
+                codeSnippet: "let a = [1, 2, 3];\nlet b = a;\nb.push(4);\nconsole.log(a.length);",
+                options: ["3", "4", "undefined", "Error"],
+                correctAnswer: 1,
+                explanation: "Arrays in JavaScript are reference types. 'b' points to the same array reference as 'a'. Modifying 'b' will modify the underlying array, so a.length is 4."
+            },
+            {
+                id: 3,
+                question: "Which data structure follows the Last-In-First-Out (LIFO) principle?",
+                options: ["Queue", "Array", "Stack", "Binary Tree"],
+                correctAnswer: 2,
+                explanation: "A Stack adds items to the top and removes them from the top, operating on the Last-In-First-Out (LIFO) model."
+            }
+        ]
+    },
+    domainAssessments: {
+        category: "Domain Assessments",
+        questions: [
+            {
+                id: 1,
+                question: "What is the worst-case time complexity of searching in a Balanced Binary Search Tree (like an AVL tree)?",
+                options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+                correctAnswer: 1,
+                explanation: "A balanced BST keeps its height restricted to log n, meaning search takes O(log n) time in the worst case."
+            },
+            {
+                id: 2,
+                question: "Which architectural pattern is best suited for horizontally scaling a stateful database with minimal write latency and high availability?",
+                options: ["Single-Database Monolith", "Event sourcing with CQRS", "Microservices with distributed locks", "Shared-nothing cluster with sharding"],
+                correctAnswer: 3,
+                explanation: "A shared-nothing database cluster with sharding distributes the database state across distinct nodes, avoiding bottlenecks and supporting horizontal write scaling."
+            }
+        ]
+    },
+    situationalJudgment: {
+        category: "Situational Judgment",
+        questions: [
+            {
+                id: 1,
+                question: "A client demands a sudden, out-of-scope feature changes right before the final release deadline. What is the best initial action?",
+                options: [
+                    "Reject the request immediately as it violates the project scope guidelines.",
+                    "Implement the changes overnight without notifying the manager to impress the client.",
+                    "Acknowledge the request, analyze the scope & timeline impact, and present options to the project manager and client.",
+                    "Ask the client to contact the engineering team lead directly and ignore the message."
+                ],
+                correctAnswer: 2,
+                explanation: "The professional response is to assess impact, consult stakeholders (manager/lead), and offer trade-offs, rather than committing blindly or refusing rudely."
+            },
+            {
+                id: 2,
+                question: "You notice a critical bug in a teammate's code during a peer review. They are sensitive about feedback. What is the most constructive approach?",
+                options: [
+                    "Fix the bug yourself quietly without telling them.",
+                    "Point out the issue politely in private, explaining the edge case and offering to pair program to resolve it.",
+                    "Post a public critical comment on the group channel highlighting the mistake so everyone is aware.",
+                    "Ignore it since it is their task and they are responsible for production errors."
+                ],
+                correctAnswer: 1,
+                explanation: "Providing polite, private feedback with technical explanations and offering support preserves relationships while ensuring software quality."
+            }
+        ]
+    }
+};
+
 function FeaturesContent() {
     const router = useRouter();
     const [github, setGithub] = useState("");
@@ -68,13 +249,188 @@ function FeaturesContent() {
     const [pausedSession, setPausedSession] = useState<any>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
-    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials">("analysis");
-    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | null>(null);
+    const isLight = theme === "light" || theme === "eyeprotect";
+    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress">("analysis");
+    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress" | null>(null);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
     const [isAtsWarningActive, setIsAtsWarningActive] = useState<boolean>(false);
     const [builderMobileView, setBuilderMobileView] = useState<'editor' | 'preview'>('editor');
+
+    // Aptitude states
+    const [aptitudePath, setAptitudePath] = useState<"onCampus" | "offCampus" | null>(null);
+    const [expandedAptitudeTopics, setExpandedAptitudeTopics] = useState<Record<string, boolean>>({});
+    const [checkedAptitudeTopics, setCheckedAptitudeTopics] = useState<Record<string, boolean>>({});
+
+    // Aptitude Quiz states
+    const [activeQuizCategory, setActiveQuizCategory] = useState<string | null>(null);
+    const [currentQuizQuestionIndex, setCurrentQuizQuestionIndex] = useState<number>(0);
+    const [quizSelectedOption, setQuizSelectedOption] = useState<number | null>(null);
+    const [quizIsSubmitted, setQuizIsSubmitted] = useState<boolean>(false);
+    const [quizScore, setQuizScore] = useState<number>(0);
+    const [quizCompleted, setQuizCompleted] = useState<boolean>(false);
+    const [quizUserAnswers, setQuizUserAnswers] = useState<boolean[]>([]);
+    const [isQuizLoading, setIsQuizLoading] = useState<boolean>(false);
+    const [quizQuestionsList, setQuizQuestionsList] = useState<any[]>([]);
+    const [quizTimeRemaining, setQuizTimeRemaining] = useState<number>(120);
+    const [proctorWarnings, setProctorWarnings] = useState<number>(0);
+    const [proctorWarningActive, setProctorWarningActive] = useState<boolean>(false);
+    const [quizAutoSubmittedReason, setQuizAutoSubmittedReason] = useState<"time" | "proctor" | null>(null);
+    const [quizSelectedAnswersList, setQuizSelectedAnswersList] = useState<(number | null)[]>([]);
+
+    // Mock Test states
+    const [isMockTestMode, setIsMockTestMode] = useState<boolean>(false);
+    const [mockTestMCQAnswers, setMockTestMCQAnswers] = useState<Record<number, number | null>>({});
+    const [mockTestMCQReview, setMockTestMCQReview] = useState<Record<number, boolean>>({});
+    const [mockTestCodingCodes, setMockTestCodingCodes] = useState<Record<number, string>>({});
+    const [mockTestCodingLanguages, setMockTestCodingLanguages] = useState<Record<number, string>>({});
+    const [mockTestCodingOutputs, setMockTestCodingOutputs] = useState<Record<number, any>>({});
+    const [mockTestCodingLoading, setMockTestCodingLoading] = useState<Record<number, boolean>>({});
+    const [currentMockQuestionTab, setCurrentMockQuestionTab] = useState<"mcq" | "coding">("mcq");
+    const [currentMockQuestionIndex, setCurrentMockQuestionIndex] = useState<number>(0);
+    const [mockTimeRemaining, setMockTimeRemaining] = useState<number>(3600); // 60 minutes
+    const [mockTestCompleted, setMockTestCompleted] = useState<boolean>(false);
+    const [mockProctorWarnings, setMockProctorWarnings] = useState<number>(0);
+    const [mockProctorWarningActive, setMockProctorWarningActive] = useState<boolean>(false);
+    const [mockAutoSubmittedReason, setMockAutoSubmittedReason] = useState<"time" | "proctor" | null>(null);
+    const [mockTestMCQsList, setMockTestMCQsList] = useState<MCQQuestion[]>([]);
+    const [mockTestCodingList, setMockTestCodingList] = useState<CodingQuestion[]>([]);
+
+    // Progress / History states
+    const [progressTab, setProgressTab] = useState<"interview" | "aptitude">("interview");
+    const [expandedProgressMockId, setExpandedProgressMockId] = useState<string | null>(null);
+    const [expandedProgressInterviewId, setExpandedProgressInterviewId] = useState<string | null>(null);
+    const [isGeneratingMockTest, setIsGeneratingMockTest] = useState<boolean>(false);
+
+    const handleStartMockTest = async () => {
+        setIsGeneratingMockTest(true);
+        try {
+            const res = await fetch("/api/generate-mock-test", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ aptitudePath })
+            });
+            if (!res.ok) {
+                throw new Error("Failed to generate test");
+            }
+            const data = await res.json();
+            
+            const selectedMCQs = data.mcqs || [];
+            const selectedCoding = data.coding || [];
+
+            setMockTestMCQsList(selectedMCQs);
+            setMockTestCodingList(selectedCoding);
+
+            const initialCodes: Record<number, string> = {};
+            const initialLanguages: Record<number, string> = {};
+            selectedCoding.forEach((q: CodingQuestion) => {
+                initialCodes[q.id] = q.starterTemplates.javascript || "";
+                initialLanguages[q.id] = "javascript";
+            });
+            setMockTestCodingCodes(initialCodes);
+            setMockTestCodingLanguages(initialLanguages);
+            setMockTestCodingOutputs({});
+            setMockTestCodingLoading({});
+            
+            setIsMockTestMode(true);
+            setMockTestMCQAnswers({});
+            setMockTestMCQReview({});
+            setCurrentMockQuestionTab("mcq");
+            setCurrentMockQuestionIndex(0);
+            setMockTimeRemaining(3600);
+            setMockTestCompleted(false);
+            setMockProctorWarnings(0);
+            setMockProctorWarningActive(false);
+            setMockAutoSubmittedReason(null);
+        } catch (err) {
+            console.error("Failed to generate mock test via Gemini:", err);
+            setIsMockTestMode(true);
+            setMockTestMCQAnswers({});
+            setMockTestMCQReview({});
+            
+            const shuffleArray = <T,>(arr: T[]): T[] => {
+                const temp = [...arr];
+                for (let i = temp.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [temp[i], temp[j]] = [temp[j], temp[i]];
+                }
+                return temp;
+            };
+
+            const rawMCQs = aptitudePath === "onCampus" ? onCampusMCQs : offCampusMCQs;
+            const rawCoding = aptitudePath === "onCampus" ? onCampusCodingQuestions : offCampusCodingQuestions;
+
+            const selectedMCQs = shuffleArray(rawMCQs).slice(0, 25);
+            const selectedCoding = shuffleArray(rawCoding).slice(0, 3);
+
+            setMockTestMCQsList(selectedMCQs);
+            setMockTestCodingList(selectedCoding);
+
+            const initialCodes: Record<number, string> = {};
+            const initialLanguages: Record<number, string> = {};
+            selectedCoding.forEach((q: CodingQuestion) => {
+                initialCodes[q.id] = q.starterTemplates.javascript || "";
+                initialLanguages[q.id] = "javascript";
+            });
+            setMockTestCodingCodes(initialCodes);
+            setMockTestCodingLanguages(initialLanguages);
+            setMockTestCodingOutputs({});
+            setMockTestCodingLoading({});
+            
+            setCurrentMockQuestionTab("mcq");
+            setCurrentMockQuestionIndex(0);
+            setMockTimeRemaining(3600);
+            setMockTestCompleted(false);
+            setMockProctorWarnings(0);
+            setMockProctorWarningActive(false);
+            setMockAutoSubmittedReason(null);
+        } finally {
+            setIsGeneratingMockTest(false);
+        }
+    };
+
+    const handleStartQuiz = async (quizKey: string) => {
+        setIsQuizLoading(true);
+        setActiveQuizCategory(quizKey);
+        setCurrentQuizQuestionIndex(0);
+        setQuizSelectedOption(null);
+        setQuizIsSubmitted(false);
+        setQuizScore(0);
+        setQuizCompleted(false);
+        setQuizUserAnswers([]);
+        setQuizQuestionsList([]);
+        setQuizTimeRemaining(120);
+        setProctorWarnings(0);
+        setProctorWarningActive(false);
+        setQuizAutoSubmittedReason(null);
+        setQuizSelectedAnswersList([]);
+
+        try {
+            const res = await fetch("/api/aptitude-quiz", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ category: quizKey })
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to generate quiz from Gemini");
+            }
+
+            const data = await res.json();
+            if (data && data.questions && data.questions.length > 0) {
+                setQuizQuestionsList(data.questions);
+            } else {
+                throw new Error("Invalid response format from Gemini API");
+            }
+        } catch (err) {
+            console.warn("Quiz generation failed. Falling back to static questions.", err);
+            const fallback = aptitudeQuestions[quizKey];
+            setQuizQuestionsList(fallback ? fallback.questions : []);
+        } finally {
+            setIsQuizLoading(false);
+        }
+    };
 
 
 
@@ -241,7 +597,7 @@ function FeaturesContent() {
         isOpen: boolean;
         title: string;
         message: string;
-        type: "confirm" | "alert";
+        type: "confirm" | "alert" | "submit";
         onConfirm?: () => void;
     }>({ isOpen: false, title: "", message: "", type: "confirm" });
 
@@ -401,6 +757,116 @@ function FeaturesContent() {
             setShowResume(false);
         }
     }, []);
+
+    // Global countdown timer for Aptitude Quiz Simulator
+    useEffect(() => {
+        if (activeQuizCategory === null || quizCompleted || isQuizLoading) return;
+
+        const timer = setInterval(() => {
+            setQuizTimeRemaining((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    setQuizCompleted(true);
+                    setQuizAutoSubmittedReason("time");
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [activeQuizCategory, quizCompleted, isQuizLoading]);
+
+    // Proctoring / Anti-Cheat tab-switch warning system
+    useEffect(() => {
+        if (activeQuizCategory === null || quizCompleted || isQuizLoading || proctorWarningActive) return;
+
+        const handleViolation = () => {
+            setProctorWarnings((prev) => {
+                const nextWarnings = prev + 1;
+                if (nextWarnings >= 3) {
+                    setQuizCompleted(true);
+                    setQuizAutoSubmittedReason("proctor");
+                } else {
+                    setProctorWarningActive(true);
+                }
+                return nextWarnings;
+            });
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "hidden") {
+                handleViolation();
+            }
+        };
+
+        const handleWindowBlur = () => {
+            handleViolation();
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("blur", handleWindowBlur);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("blur", handleWindowBlur);
+        };
+    }, [activeQuizCategory, quizCompleted, isQuizLoading, proctorWarningActive]);
+
+    // Countdown timer for Mock Test
+    useEffect(() => {
+        if (!isMockTestMode || mockTestCompleted) return;
+
+        const timer = setInterval(() => {
+            setMockTimeRemaining((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    setMockTestCompleted(true);
+                    setMockAutoSubmittedReason("time");
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [isMockTestMode, mockTestCompleted]);
+
+    // Proctoring tab monitor for Mock Test
+    useEffect(() => {
+        if (!isMockTestMode || mockTestCompleted || mockProctorWarningActive) return;
+
+        const handleMockViolation = () => {
+            setMockProctorWarnings((prev) => {
+                const nextWarnings = prev + 1;
+                if (nextWarnings >= 3) {
+                    setMockTestCompleted(true);
+                    setMockAutoSubmittedReason("proctor");
+                } else {
+                    setMockProctorWarningActive(true);
+                }
+                return nextWarnings;
+            });
+        };
+
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "hidden") {
+                handleMockViolation();
+            }
+        };
+
+        const handleWindowBlur = () => {
+            handleMockViolation();
+        };
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("blur", handleWindowBlur);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("blur", handleWindowBlur);
+        };
+    }, [isMockTestMode, mockTestCompleted, mockProctorWarningActive]);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -1793,7 +2259,1139 @@ function FeaturesContent() {
         slate: "#64748b"
     };
     const selectedColorHex = ACCENT_COLORS[resAccentColor] || "#4f46e5";
-    const isLight = theme === "light" || theme === "eyeprotect";
+
+    const handleCodeEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>, questionId: number) => {
+        if (e.key === "Tab") {
+            e.preventDefault();
+            const textarea = e.currentTarget;
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const value = textarea.value;
+            const newValue = value.substring(0, start) + "    " + value.substring(end);
+            
+            setMockTestCodingCodes(prev => ({
+                ...prev,
+                [questionId]: newValue
+            }));
+            
+            setTimeout(() => {
+                textarea.selectionStart = textarea.selectionEnd = start + 4;
+            }, 0);
+        }
+    };
+
+    const handleGradeCodingQuestion = async (questionId: number) => {
+        const code = mockTestCodingCodes[questionId] || "";
+        const language = mockTestCodingLanguages[questionId] || "javascript";
+        const sessionCoding = mockTestCodingList.length > 0 ? mockTestCodingList : (aptitudePath === "onCampus" ? onCampusCodingQuestions : offCampusCodingQuestions);
+        const question = sessionCoding.find((q: CodingQuestion) => q.id === questionId);
+        if (!question) return;
+
+        setMockTestCodingLoading(prev => ({ ...prev, [questionId]: true }));
+        try {
+            const res = await fetch("/api/grade-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    questionTitle: question.title,
+                    questionDescription: question.description,
+                    code,
+                    language
+                })
+            });
+
+            if (!res.ok) throw new Error("Failed to grade code");
+            const data = await res.json();
+            setMockTestCodingOutputs(prev => ({ ...prev, [questionId]: data }));
+        } catch (err) {
+            console.error("AI code grading failed", err);
+            setMockTestCodingOutputs(prev => ({
+                ...prev,
+                [questionId]: {
+                    score: 0,
+                    status: "Evaluation Failed",
+                    correctness: "Could not establish connection to AI grader.",
+                    feedback: "Please check your network and try again. Or click submit to evaluate later."
+                }
+            }));
+        } finally {
+            setMockTestCodingLoading(prev => ({ ...prev, [questionId]: false }));
+        }
+    };
+
+    const handleSubmitMockTest = () => {
+        const sessionMCQs = mockTestMCQsList.length > 0 ? mockTestMCQsList : (aptitudePath === "onCampus" ? onCampusMCQs : offCampusMCQs);
+        const sessionCoding = mockTestCodingList.length > 0 ? mockTestCodingList : (aptitudePath === "onCampus" ? onCampusCodingQuestions : offCampusCodingQuestions);
+        
+        let mcqCorrectCount = 0;
+        let mcqWrongCount = 0;
+        let mcqSkippedCount = 0;
+        sessionMCQs.forEach((q: MCQQuestion) => {
+            const answer = mockTestMCQAnswers[q.id];
+            if (answer === undefined || answer === null) {
+                mcqSkippedCount++;
+            } else if (answer === q.correctAnswer) {
+                mcqCorrectCount++;
+            } else {
+                mcqWrongCount++;
+            }
+        });
+
+        const mcqScore = sessionMCQs.length > 0 
+            ? Math.max(0, Math.round((mcqCorrectCount / sessionMCQs.length) * 50)) 
+            : 0;
+
+        let rawCodingScore = 0;
+        sessionCoding.forEach((q: CodingQuestion) => {
+            const output = mockTestCodingOutputs[q.id];
+            if (output && typeof output.score === "number") {
+                rawCodingScore += output.score;
+            }
+        });
+        const maxPossibleCodingScore = sessionCoding.length * 10;
+        const codingScore = maxPossibleCodingScore > 0 
+            ? Math.max(0, Math.round((rawCodingScore / maxPossibleCodingScore) * 50)) 
+            : 0;
+
+        const totalScore = mcqScore + codingScore;
+
+        // Persist attempt results in mockAptitudeSessions
+        const oldMockSessions = JSON.parse(getStorageItem("mockAptitudeSessions") || "[]");
+        const newMockSession = {
+            id: "mock_" + Date.now(),
+            path: aptitudePath || "onCampus",
+            timestamp: Date.now(),
+            score: totalScore,
+            mcqScore: mcqScore,
+            codingScore: codingScore,
+            mcqDetails: {
+                total: sessionMCQs.length,
+                correct: mcqCorrectCount,
+                wrong: mcqWrongCount,
+                skipped: mcqSkippedCount
+            },
+            codingGradings: mockTestCodingOutputs
+        };
+        setStorageItem("mockAptitudeSessions", JSON.stringify([newMockSession, ...oldMockSessions]));
+
+        setMockTestCompleted(true);
+    };
+
+    const triggerSubmitMockTestConfirmation = () => {
+        setConfirmModal({
+            isOpen: true,
+            title: "Submit Assessment?",
+            message: "Are you sure you want to end and submit your mock placement test? You will not be able to change your answers.",
+            type: "submit",
+            onConfirm: () => handleSubmitMockTest()
+        });
+    };
+
+    const renderProgressDashboard = () => {
+        const interviewData = JSON.parse(getStorageItem("interviewSessions") || "[]");
+        const mockData = JSON.parse(getStorageItem("mockAptitudeSessions") || "[]");
+
+        return (
+            <div className="space-y-6 text-left animate-in fade-in duration-300 font-sans">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-2">
+                        <TrendingUp className="w-5 h-5 text-sky-400" />
+                        <h3 className="text-lg font-bold text-white">My Progress & Learning</h3>
+                    </div>
+                    
+                    {/* Navigation Toggle */}
+                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 shrink-0 self-start sm:self-auto">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setProgressTab("interview");
+                                setExpandedProgressInterviewId(null);
+                            }}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                progressTab === "interview" 
+                                    ? "bg-sky-500 text-white shadow-md shadow-sky-500/10" 
+                                    : "text-white/60 hover:text-white"
+                            }`}
+                        >
+                            Interview Attempts
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setProgressTab("aptitude");
+                                setExpandedProgressMockId(null);
+                            }}
+                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                progressTab === "aptitude" 
+                                    ? "bg-sky-500 text-white shadow-md shadow-sky-500/10" 
+                                    : "text-white/60 hover:text-white"
+                            }`}
+                        >
+                            Mock Assessments
+                        </button>
+                    </div>
+                </div>
+
+                {progressTab === "interview" ? (
+                    <div className="space-y-4">
+                        {interviewData.length === 0 ? (
+                            <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center space-y-3">
+                                <Video className="w-8 h-8 text-white/20 mx-auto animate-pulse" />
+                                <div className="space-y-1">
+                                    <h4 className="text-sm font-bold text-white">No Interview History</h4>
+                                    <p className="text-xs text-white/40 max-w-sm mx-auto leading-relaxed">
+                                        Your completed mock interview sessions, dynamic ratings, and correct answer breakdowns will be logged here.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3.5">
+                                {interviewData.map((sess: any, index: number) => {
+                                    const isExpanded = expandedProgressInterviewId === sess.id || expandedProgressInterviewId === `idx_${index}`;
+                                    const sessId = sess.id || `idx_${index}`;
+                                    const dateString = new Date(sess.timestamp || Date.now()).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                    });
+
+                                    return (
+                                        <div key={sessId} className={`border rounded-xl transition-all duration-200 overflow-hidden ${
+                                            isLight ? "bg-white border-slate-200" : "bg-[#16161f] border-white/5"
+                                        }`}>
+                                            <div 
+                                                onClick={() => setExpandedProgressInterviewId(isExpanded ? null : sessId)}
+                                                className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-white/[0.01]"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs">
+                                                        {interviewData.length - index}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className={`text-xs font-black capitalize tracking-tight ${isLight ? "text-slate-800" : "text-white"}`}>
+                                                            Interview Session Attempt
+                                                        </h4>
+                                                        <span className="text-[10px] text-white/40 flex items-center gap-1 mt-0.5">
+                                                            <Clock className="w-3 h-3" /> {dateString}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-6">
+                                                    <div className="flex items-center gap-4 text-left">
+                                                        <div>
+                                                            <span className="text-[9px] uppercase font-bold text-white/30 block">Technical</span>
+                                                            <span className={`text-xs font-black ${isLight ? "text-slate-700" : "text-white"}`}>{sess.technicalRating || 0}/100</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] uppercase font-bold text-white/30 block">Behavioral</span>
+                                                            <span className={`text-xs font-black ${isLight ? "text-slate-700" : "text-white"}`}>{sess.behavioralRating || 0}/100</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] uppercase font-bold text-white/30 block">Overall</span>
+                                                            <span className="text-xs font-black text-sky-400">{sess.finalScore || sess.interviewRating || 0}/100</span>
+                                                        </div>
+                                                    </div>
+                                                    {isExpanded ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+                                                </div>
+                                            </div>
+
+                                            {isExpanded && (
+                                                <div className={`p-5 border-t space-y-4 font-sans text-xs ${
+                                                    isLight ? "bg-slate-50/20 border-slate-100" : "bg-[#111] border-white/5"
+                                                }`}>
+                                                    {sess.summary && (
+                                                        <div className="space-y-1.5">
+                                                            <span className="text-[9px] uppercase font-bold text-sky-400 block tracking-wider">Evaluation Summary</span>
+                                                            <div className={`leading-relaxed whitespace-pre-line font-medium ${isLight ? "text-slate-700" : "text-white/80"}`}>
+                                                                {sess.summary}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="space-y-2">
+                                                        <span className="text-[9px] uppercase font-bold text-sky-400 block tracking-wider">Annotated Transcript & Corrections</span>
+                                                        <div className={`rounded-xl p-4 font-mono text-[10px] max-h-[350px] overflow-y-auto leading-relaxed border ${
+                                                            isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-black/30 border-white/5 text-indigo-200"
+                                                        }`}>
+                                                            {sess.transcript ? (
+                                                                <div className="whitespace-pre-wrap">{sess.transcript}</div>
+                                                            ) : (
+                                                                <span className="text-white/30 italic">No transcript recorded for this session.</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {mockData.length === 0 ? (
+                            <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center space-y-3">
+                                <Award className="w-8 h-8 text-white/20 mx-auto animate-pulse" />
+                                <div className="space-y-1">
+                                    <h4 className="text-sm font-bold text-white">No Mock Assessment History</h4>
+                                    <p className="text-xs text-white/40 max-w-sm mx-auto leading-relaxed">
+                                        Your dynamically generated Mock Aptitude test results, MCQ analytics, and coding evaluations will be logged here.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-3.5">
+                                {mockData.map((sess: any, index: number) => {
+                                    const isExpanded = expandedProgressMockId === sess.id;
+                                    const dateString = new Date(sess.timestamp || Date.now()).toLocaleDateString("en-US", {
+                                        month: "short",
+                                        day: "numeric",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit"
+                                    });
+
+                                    return (
+                                        <div key={sess.id} className={`border rounded-xl transition-all duration-200 overflow-hidden ${
+                                            isLight ? "bg-white border-slate-200" : "bg-[#16161f] border-white/5"
+                                        }`}>
+                                            <div 
+                                                onClick={() => setExpandedProgressMockId(isExpanded ? null : sess.id)}
+                                                className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer hover:bg-white/[0.01]"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400 flex items-center justify-center font-bold text-xs">
+                                                        {mockData.length - index}
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <h4 className={`text-xs font-black capitalize tracking-tight ${isLight ? "text-slate-800" : "text-white"}`}>
+                                                                Mock Aptitude Assessment
+                                                            </h4>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                                                                sess.path === "onCampus" 
+                                                                    ? "bg-pink-500/10 border border-pink-500/20 text-pink-400" 
+                                                                    : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
+                                                            }`}>
+                                                                {sess.path === "onCampus" ? "On-Campus" : "Off-Campus"}
+                                                            </span>
+                                                        </div>
+                                                        <span className="text-[10px] text-white/40 flex items-center gap-1 mt-0.5">
+                                                            <Clock className="w-3 h-3" /> {dateString}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="flex items-center gap-6">
+                                                    <div className="flex items-center gap-4 text-left">
+                                                        <div>
+                                                            <span className="text-[9px] uppercase font-bold text-white/30 block">MCQs Correct</span>
+                                                            <span className={`text-xs font-black ${isLight ? "text-slate-700" : "text-white"}`}>
+                                                                {sess.mcqDetails?.correct || 0} / {sess.mcqDetails?.total || 0}
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] uppercase font-bold text-white/30 block">MCQs Score</span>
+                                                            <span className={`text-xs font-black ${isLight ? "text-slate-700" : "text-white"}`}>{sess.mcqScore || 0}/50</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] uppercase font-bold text-white/30 block">Coding Score</span>
+                                                            <span className={`text-xs font-black ${isLight ? "text-slate-700" : "text-white"}`}>{sess.codingScore || 0}/50</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-[9px] uppercase font-bold text-white/30 block">Overall Score</span>
+                                                            <span className="text-xs font-black text-sky-400">{sess.score || 0}/100</span>
+                                                        </div>
+                                                    </div>
+                                                    {isExpanded ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
+                                                </div>
+                                            </div>
+
+                                            {isExpanded && (
+                                                <div className={`p-5 border-t space-y-4 font-sans text-xs ${
+                                                    isLight ? "bg-slate-50/20 border-slate-100" : "bg-[#111] border-white/5"
+                                                }`}>
+                                                    <div className="space-y-3">
+                                                        <span className="text-[9px] uppercase font-bold text-pink-400 block tracking-wider">AI Coding Grader Feedback</span>
+                                                        {sess.codingGradings && Object.keys(sess.codingGradings).length > 0 ? (
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                {Object.entries(sess.codingGradings).map(([qId, grading]: [string, any]) => (
+                                                                    <div key={qId} className={`p-4 rounded-xl border space-y-2.5 ${
+                                                                        isLight ? "bg-slate-50 border-slate-200" : "bg-black/20 border-white/5"
+                                                                    }`}>
+                                                                        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                                                            <span className={`text-xs font-bold ${isLight ? "text-slate-800" : "text-white"}`}>Coding Question ID: {qId}</span>
+                                                                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${
+                                                                                grading.score >= 7 
+                                                                                    ? "bg-green-500/10 border border-green-500/20 text-green-400" 
+                                                                                    : "bg-red-500/10 border border-red-500/20 text-red-400"
+                                                                            }`}>
+                                                                                Score: {grading.score}/10
+                                                                            </span>
+                                                                        </div>
+                                                                        <div className="space-y-1">
+                                                                            <div className="flex justify-between text-[10px]">
+                                                                                <span className="text-white/40 font-bold">Status:</span>
+                                                                                <span className="text-sky-400 font-extrabold uppercase">{grading.status}</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between text-[10px]">
+                                                                                <span className="text-white/40 font-bold">Time Complexity:</span>
+                                                                                <span className={`font-mono font-bold ${isLight ? "text-slate-700" : "text-white"}`}>{grading.timeComplexity || "N/A"}</span>
+                                                                            </div>
+                                                                            <div className="flex justify-between text-[10px]">
+                                                                                <span className="text-white/40 font-bold">Space Complexity:</span>
+                                                                                <span className={`font-mono font-bold ${isLight ? "text-slate-700" : "text-white"}`}>{grading.spaceComplexity || "N/A"}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        {grading.recommendations && (
+                                                                            <div className="space-y-1 border-t border-white/5 pt-2">
+                                                                                <span className="text-[9px] uppercase font-bold text-white/30 block">AI Suggestions</span>
+                                                                                <p className={`text-[10px] leading-relaxed font-semibold italic ${isLight ? "text-slate-650" : "text-white/60"}`}>
+                                                                                    "{grading.recommendations}"
+                                                                                </p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-white/30 italic">No coding evaluations recorded for this session.</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    const renderMockTestSimulator = () => {
+        const sessionMCQs = mockTestMCQsList.length > 0 ? mockTestMCQsList : (aptitudePath === "onCampus" ? onCampusMCQs : offCampusMCQs);
+        const sessionCoding = mockTestCodingList.length > 0 ? mockTestCodingList : (aptitudePath === "onCampus" ? onCampusCodingQuestions : offCampusCodingQuestions);
+
+        if (mockTestCompleted) {
+            let mcqCorrectCount = 0;
+            let mcqWrongCount = 0;
+            let mcqSkippedCount = 0;
+            sessionMCQs.forEach((q: MCQQuestion) => {
+                const answer = mockTestMCQAnswers[q.id];
+                if (answer === undefined || answer === null) {
+                    mcqSkippedCount++;
+                } else if (answer === q.correctAnswer) {
+                    mcqCorrectCount++;
+                } else {
+                    mcqWrongCount++;
+                }
+            });
+            const mcqScore = sessionMCQs.length > 0 
+                ? Math.max(0, Math.round((mcqCorrectCount / sessionMCQs.length) * 50)) 
+                : 0;
+
+            let rawCodingScore = 0;
+            sessionCoding.forEach((q: CodingQuestion) => {
+                const output = mockTestCodingOutputs[q.id];
+                if (output && typeof output.score === "number") {
+                    rawCodingScore += output.score;
+                }
+            });
+            const maxPossibleCodingScore = sessionCoding.length * 10;
+            const codingScore = maxPossibleCodingScore > 0 
+                ? Math.max(0, Math.round((rawCodingScore / maxPossibleCodingScore) * 50)) 
+                : 0;
+
+            const totalScore = mcqScore + codingScore;
+            const percentage = totalScore; // directly totalScore since it's out of 100
+            
+            let readiness = "Needs Review";
+            let readinessColor = "text-red-400 border-red-500/20 bg-red-500/10";
+            if (totalScore >= 75) {
+                readiness = "Placement Ready";
+                readinessColor = "text-green-400 border-green-500/20 bg-green-500/10";
+            } else if (totalScore >= 50) {
+                readiness = "Needs Practice";
+                readinessColor = "text-yellow-500 border-yellow-500/20 bg-yellow-500/10";
+            }
+
+            return (
+                <div className="mock-simulator-results space-y-8 animate-in fade-in duration-300 text-left">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setIsMockTestMode(false)}
+                                className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer font-sans"
+                            >
+                                ← Exit Mock Results
+                            </button>
+                            <h3 className="text-lg font-bold text-white font-sans">
+                                Off-Campus Mock Test Results
+                            </h3>
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border ${readinessColor}`}>
+                            {readiness}
+                        </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 font-sans">
+                        <div className="bg-[#111] border border-white/5 rounded-2xl p-6 flex flex-col justify-center items-center text-center space-y-2">
+                            <Award className="w-8 h-8 text-pink-400" />
+                            <span className="text-[10px] uppercase font-bold text-white/40">Overall Score</span>
+                            <h4 className="text-3xl font-black text-white">{totalScore} <span className="text-sm text-white/40">/ 100</span></h4>
+                            <p className="text-xs text-white/60">{percentage}% placement readiness match</p>
+                        </div>
+                        
+                        <div className="bg-[#111] border border-white/5 rounded-2xl p-6 flex flex-col justify-center items-center text-center space-y-2">
+                            <CheckCircle className="w-8 h-8 text-green-400" />
+                            <span className="text-[10px] uppercase font-bold text-white/40">MCQ Accuracy</span>
+                            <h4 className="text-3xl font-black text-white">{mcqCorrectCount} <span className="text-sm text-white/40">Correct</span></h4>
+                            <p className="text-xs text-white/60">{mcqWrongCount} Wrong | {mcqSkippedCount} Skipped (Score: {mcqScore}/50, -{(mcqWrongCount * 0.5).toFixed(1)} negative points)</p>
+                        </div>
+
+                        <div className="bg-[#111] border border-white/5 rounded-2xl p-6 flex flex-col justify-center items-center text-center space-y-2">
+                            <Code className="w-8 h-8 text-indigo-400" />
+                            <span className="text-[10px] uppercase font-bold text-white/40">Coding Score</span>
+                            <h4 className="text-3xl font-black text-white">{codingScore} <span className="text-sm text-white/40">/ 50</span></h4>
+                            <p className="text-xs text-white/60">Evaluated across 3 algorithm problems (Raw: {rawCodingScore}/30)</p>
+                        </div>
+                    </div>
+
+                    <div className="space-y-6">
+                        <div className="flex border-b border-white/10 font-sans">
+                            <button
+                                type="button"
+                                onClick={() => setCurrentMockQuestionTab("mcq")}
+                                className={`px-5 py-2.5 font-bold text-xs border-b-2 transition-all ${
+                                    currentMockQuestionTab === "mcq"
+                                        ? "border-pink-500 text-pink-400"
+                                        : "border-transparent text-white/40 hover:text-white/70"
+                                }`}
+                            >
+                                📝 MCQ Solutions Review
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setCurrentMockQuestionTab("coding")}
+                                className={`px-5 py-2.5 font-bold text-xs border-b-2 transition-all ${
+                                    currentMockQuestionTab === "coding"
+                                        ? "border-indigo-500 text-indigo-400"
+                                        : "border-transparent text-white/40 hover:text-white/70"
+                                }`}
+                            >
+                                💻 Coding Solutions Review
+                            </button>
+                        </div>
+
+                        {currentMockQuestionTab === "mcq" ? (
+                            <div className="space-y-4">
+                                {sessionMCQs.map((q: MCQQuestion, idx: number) => {
+                                    const selected = mockTestMCQAnswers[q.id];
+                                    const isCorrect = selected === q.correctAnswer;
+                                    
+                                    return (
+                                        <div key={q.id} className="border border-white/5 bg-[#0d0d12]/30 rounded-xl p-5 space-y-3 font-sans text-left">
+                                            <div className="flex items-start gap-3">
+                                                <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold ${
+                                                    selected === null || selected === undefined
+                                                        ? "bg-yellow-550/10 text-yellow-550 border border-yellow-550/20"
+                                                        : isCorrect
+                                                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                }`}>
+                                                    {idx + 1}
+                                                </span>
+                                                <div className="space-y-2">
+                                                    <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-white/5 border border-white/5 text-white/40">
+                                                        {q.category === "domain" 
+                                                            ? "Domain" 
+                                                            : q.category === "situational" 
+                                                                ? "Situational" 
+                                                                : q.category === "quantitative" 
+                                                                    ? "Quant" 
+                                                                    : q.category === "logical" 
+                                                                        ? "Logical" 
+                                                                        : "Technical"
+                                                        }
+                                                    </span>
+                                                    <p className={`text-xs font-bold ${isLight ? "text-slate-900" : "text-white/90"} leading-relaxed`}>{q.question}</p>
+                                                    
+                                                    {q.codeSnippet && (
+                                                        <pre className="bg-black/50 p-4 rounded-xl font-mono text-[11px] border border-white/5 overflow-x-auto text-pink-300">
+                                                            <code>{q.codeSnippet}</code>
+                                                        </pre>
+                                                    )}
+
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
+                                                        {q.options.map((opt: string, oIdx: number) => {
+                                                            let optStyle = "bg-white/[0.02] border-white/5 text-white/60";
+                                                            if (oIdx === q.correctAnswer) {
+                                                                optStyle = "bg-green-500/15 border-green-500/30 text-green-400 font-bold";
+                                                            } else if (oIdx === selected) {
+                                                                optStyle = "bg-red-500/15 border-red-500/30 text-red-400 font-bold";
+                                                            }
+                                                            return (
+                                                                <div key={oIdx} className={`mcq-option-item px-4 py-2.5 rounded-xl border text-xs flex items-center justify-between ${optStyle}`}>
+                                                                    <span>{opt}</span>
+                                                                    {oIdx === q.correctAnswer && <CheckCircle className="w-3.5 h-3.5 text-green-400" />}
+                                                                    {oIdx === selected && oIdx !== q.correctAnswer && <X className="w-3.5 h-3.5 text-red-400" />}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-3.5 text-[11px] text-white/80 space-y-1 mt-3">
+                                                        <span className="font-extrabold text-indigo-400 uppercase tracking-wider block">Explanation</span>
+                                                        <p className="font-medium leading-relaxed">{q.explanation}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <div className="space-y-6 text-left">
+                                {sessionCoding.map((q: CodingQuestion) => {
+                                    const code = mockTestCodingCodes[q.id];
+                                    const lang = mockTestCodingLanguages[q.id];
+                                    const grading = mockTestCodingOutputs[q.id];
+
+                                    return (
+                                        <div key={q.id} className="border border-white/5 bg-[#0d0d12]/30 rounded-xl p-6 space-y-4 font-sans">
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
+                                                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                                                    💻 {q.title} 
+                                                    <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                                                        {lang}
+                                                    </span>
+                                                </h4>
+                                                <span className={`px-3 py-1 rounded text-xs font-black border ${
+                                                    grading && grading.score >= 7 
+                                                        ? "bg-green-500/10 border-green-500/20 text-green-400"
+                                                        : grading
+                                                            ? "bg-yellow-500/10 border-yellow-500/20 text-yellow-500"
+                                                            : "bg-white/5 border-white/10 text-white/30"
+                                                }`}>
+                                                    Score: {grading ? `${grading.score} / 10` : "0 / 10 (Not Graded)"}
+                                                </span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                                <div className="space-y-2">
+                                                    <span className="text-[9px] uppercase font-bold text-white/40 block">Submitted Code</span>
+                                                    <pre className="bg-black/50 p-4 rounded-xl font-mono text-[11px] border border-white/10 overflow-x-auto text-pink-300 max-h-80 select-text">
+                                                        <code>{code}</code>
+                                                    </pre>
+                                                </div>
+
+                                                <div className="space-y-4 bg-white/[0.02] border border-white/5 p-4 rounded-xl">
+                                                    <span className="text-[9px] uppercase font-bold text-white/40 block">AI Code Grading & Complexity</span>
+                                                    {grading ? (
+                                                        <div className="space-y-3.5 text-xs">
+                                                            <div className="flex flex-wrap gap-2.5">
+                                                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
+                                                                    grading.status === "Accepted"
+                                                                        ? "bg-green-500/10 border-green-500/20 text-green-400"
+                                                                        : "bg-red-500/10 border-red-500/20 text-red-400"
+                                                                }`}>
+                                                                    Status: {grading.status}
+                                                                </span>
+                                                                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
+                                                                    ⏱ Time: {grading.timeComplexity}
+                                                                </span>
+                                                                <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
+                                                                    💾 Space: {grading.spaceComplexity}
+                                                                </span>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] uppercase font-extrabold text-pink-400">Correctness</span>
+                                                                <p className="text-white/80 font-medium">{grading.correctness}</p>
+                                                            </div>
+                                                            <div className="space-y-1">
+                                                                <span className="text-[10px] uppercase font-extrabold text-indigo-400">Feedback & Recommendations</span>
+                                                                <p className="text-white/80 font-medium leading-relaxed">{grading.feedback}</p>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-white/40 italic font-medium py-6 text-center">
+                                                            This question was not graded. Write code and click 'Run AI Code Grade' during the test to get feedback.
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const currentMCQ = sessionMCQs[currentMockQuestionIndex];
+        const currentCoding = sessionCoding[currentMockQuestionIndex];
+        const isTimerWarning = mockTimeRemaining <= 300;
+
+        return (
+            <div className="mock-simulator-active space-y-6 text-left relative animate-in fade-in duration-300 font-sans select-none">
+                {mockProctorWarningActive && (
+                    <div className="absolute inset-0 bg-[#0d0d12]/95 backdrop-blur-sm z-50 flex items-center justify-center p-6 rounded-2xl border border-yellow-500/20">
+                        <div className="max-w-md w-full bg-[#16161f] border border-yellow-500/30 rounded-2xl p-6 text-center space-y-4 shadow-[0_0_50px_rgba(234,179,8,0.08)]">
+                            <div className="w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto text-yellow-500 animate-bounce">
+                                <AlertTriangle className="w-8 h-8" />
+                            </div>
+                            <div className="space-y-1.5">
+                                <h4 className="text-lg font-black text-white uppercase tracking-wider">
+                                    Mock Test Proctor Alert
+                                </h4>
+                                <p className="text-xs text-white/60 leading-relaxed font-semibold">
+                                    Tab Switch Detected! Warning <span className="text-yellow-500 font-extrabold">{mockProctorWarnings} of 3</span>. Leaving the assessment or opening other tabs is forbidden. Your assessment will automatically submit on 3 warnings.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setMockProctorWarningActive(false)}
+                                className="w-full py-3 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer font-sans"
+                            >
+                                Acknowledge Warning & Return
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                    <div className="space-y-1">
+                        <h3 className="text-lg font-bold text-white">
+                            Off-Campus Placement Simulator
+                        </h3>
+                        <p className="text-[10px] text-white/40 uppercase font-bold tracking-wider">Proctored Mock Placement Test</p>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-3 font-sans">
+                        {mockProctorWarnings > 0 && (
+                            <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
+                                ⚠️ Proctor: {mockProctorWarnings}/3
+                            </span>
+                        )}
+                        <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold border ${
+                            isTimerWarning 
+                                ? "bg-red-500/10 border-red-500/20 text-red-400 animate-pulse" 
+                                : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
+                        }`}>
+                            ⏱ {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
+                        </span>
+                        <button
+                            type="button"
+                            onClick={triggerSubmitMockTestConfirmation}
+                            className="px-4.5 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 border border-green-500/20 text-white font-extrabold text-[10px] rounded-lg tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.15)]"
+                        >
+                            ✓ Submit Test
+                        </button>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    <div className="lg:col-span-3 space-y-5">
+                        <div className="flex bg-white/[0.03] border border-white/5 rounded-xl p-1">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setCurrentMockQuestionTab("mcq");
+                                    setCurrentMockQuestionIndex(0);
+                                }}
+                                className={`flex-1 py-2 text-center rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                                    currentMockQuestionTab === "mcq"
+                                        ? "bg-pink-500/10 border border-pink-500/20 text-pink-400"
+                                        : "text-white/40 hover:text-white/70"
+                                }`}
+                            >
+                                📝 MCQs
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setCurrentMockQuestionTab("coding");
+                                    setCurrentMockQuestionIndex(0);
+                                }}
+                                className={`flex-1 py-2 text-center rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
+                                    currentMockQuestionTab === "coding"
+                                        ? "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
+                                        : "text-white/40 hover:text-white/70"
+                                }`}
+                            >
+                                💻 Coding
+                            </button>
+                        </div>
+
+                        <div className="border border-white/5 bg-[#0d0d12]/30 rounded-xl p-4.5 space-y-4">
+                            <span className="text-[9px] uppercase font-bold text-white/40 tracking-wider block">Question Palette</span>
+                            
+                            {currentMockQuestionTab === "mcq" ? (
+                                <div className="grid grid-cols-5 gap-2">
+                                    {sessionMCQs.map((q: MCQQuestion, idx: number) => {
+                                        const isSelected = mockTestMCQAnswers[q.id] !== undefined && mockTestMCQAnswers[q.id] !== null;
+                                        const isMarked = !!mockTestMCQReview[q.id];
+                                        const isActive = currentMockQuestionIndex === idx;
+
+                                        let btnStyle = "bg-white/5 text-white/60 border-white/5 hover:border-white/20";
+                                        if (isActive) {
+                                            btnStyle = "bg-pink-500/15 text-pink-400 border-pink-500/40 ring-1 ring-pink-500/30";
+                                        } else if (isMarked) {
+                                            btnStyle = "bg-yellow-500/15 text-yellow-400 border-yellow-500/30 font-bold";
+                                        } else if (isSelected) {
+                                            btnStyle = "bg-green-500/15 text-green-400 border-green-500/35 font-bold";
+                                        }
+
+                                        return (
+                                            <button
+                                                key={q.id}
+                                                type="button"
+                                                onClick={() => setCurrentMockQuestionIndex(idx)}
+                                                className={`h-9 w-9 rounded-lg border text-xs font-black transition-all flex items-center justify-center cursor-pointer ${btnStyle}`}
+                                            >
+                                                {idx + 1}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-3 gap-2">
+                                    {sessionCoding.map((q: CodingQuestion, idx: number) => {
+                                        const isGraded = !!mockTestCodingOutputs[q.id];
+                                        const isActive = currentMockQuestionIndex === idx;
+
+                                        let btnStyle = "bg-white/5 text-white/60 border-white/5 hover:border-white/20";
+                                        if (isActive) {
+                                            btnStyle = "bg-indigo-500/15 text-indigo-400 border-indigo-500/40 ring-1 ring-indigo-500/30";
+                                        } else if (isGraded) {
+                                            btnStyle = "bg-green-500/15 text-green-400 border-green-500/30 font-bold";
+                                        }
+
+                                        return (
+                                            <button
+                                                key={q.id}
+                                                type="button"
+                                                onClick={() => setCurrentMockQuestionIndex(idx)}
+                                                className={`h-9 w-full rounded-lg border text-xs font-black transition-all flex items-center justify-center cursor-pointer ${btnStyle}`}
+                                            >
+                                                C{idx + 1}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            <div className="pt-3 border-t border-white/5 space-y-2 text-[10px] text-white/50 font-semibold">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded bg-white/5 border border-white/5" />
+                                    <span>Unvisited</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded bg-green-500/15 border border-green-500/35" />
+                                    <span>Answered / Saved</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2.5 h-2.5 rounded bg-yellow-500/15 border border-yellow-500/30" />
+                                    <span>Marked for Review</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="lg:col-span-9 space-y-6 font-sans">
+                        {currentMockQuestionTab === "mcq" ? (
+                            <div className="space-y-6">
+                                <div className="border border-white/5 bg-[#16161f] rounded-2xl p-5 space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-pink-500/10 border border-pink-500/20 text-pink-400">
+                                            {currentMCQ.category === "domain" 
+                                                ? "Domain Assessment" 
+                                                : currentMCQ.category === "situational" 
+                                                    ? "Situational Judgment" 
+                                                    : currentMCQ.category === "quantitative" 
+                                                        ? "Quantitative Aptitude" 
+                                                        : currentMCQ.category === "logical" 
+                                                            ? "Logical Reasoning" 
+                                                            : "Technical MCQ"
+                                            }
+                                        </span>
+                                        <span className={`text-[10px] font-extrabold ${isLight ? "text-slate-500" : "text-white/40"}`}>MCQ Question {currentMockQuestionIndex + 1} of 25</span>
+                                    </div>
+                                    <p className={`text-sm font-semibold leading-relaxed ${isLight ? "text-slate-900" : "text-white/95"} select-none`}>
+                                        {currentMCQ.question}
+                                    </p>
+
+                                    {currentMCQ.codeSnippet && (
+                                        <pre className="bg-black/50 p-4 rounded-xl font-mono text-xs border border-white/10 overflow-x-auto text-left text-pink-300 max-w-full select-none">
+                                            <code>{currentMCQ.codeSnippet}</code>
+                                        </pre>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-3">
+                                    {currentMCQ.options.map((opt: string, oIdx: number) => {
+                                        const isSelected = mockTestMCQAnswers[currentMCQ.id] === oIdx;
+                                        
+                                        let optStyle = "bg-black/35 border-white/5 text-white/70 hover:border-white/20 hover:text-white";
+                                        if (isSelected) {
+                                            optStyle = "bg-pink-500/5 border-pink-500/40 text-pink-400 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]";
+                                        }
+
+                                        return (
+                                            <button
+                                                key={oIdx}
+                                                type="button"
+                                                onClick={() => setMockTestMCQAnswers(prev => ({
+                                                    ...prev,
+                                                    [currentMCQ.id]: oIdx
+                                                }))}
+                                                className={`mcq-option-item w-full p-4 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer select-none ${optStyle}`}
+                                            >
+                                                <span>{opt}</span>
+                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                                    isSelected ? "border-pink-500 bg-pink-500/20 text-pink-400" : "border-white/20"
+                                                }`}>
+                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2">
+                                    <button
+                                        type="button"
+                                        disabled={currentMockQuestionIndex === 0}
+                                        onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
+                                        className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
+                                    >
+                                        ← Previous
+                                    </button>
+                                    
+                                    <button
+                                        type="button"
+                                        onClick={() => setMockTestMCQReview(prev => ({
+                                            ...prev,
+                                            [currentMCQ.id]: !prev[currentMCQ.id]
+                                        }))}
+                                        className={`px-4.5 py-2.5 border rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                            mockTestMCQReview[currentMCQ.id]
+                                                ? "bg-yellow-500/15 border-yellow-500/30 text-yellow-500"
+                                                : "bg-white/5 border-white/5 text-white/50 hover:text-white"
+                                        }`}
+                                    >
+                                        ⭐ {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (currentMockQuestionIndex < 24) {
+                                                setCurrentMockQuestionIndex(prev => prev + 1);
+                                            } else {
+                                                setCurrentMockQuestionTab("coding");
+                                                setCurrentMockQuestionIndex(0);
+                                            }
+                                        }}
+                                        className="px-4.5 py-2.5 bg-pink-650 hover:bg-pink-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)] flex items-center gap-1.5"
+                                    >
+                                        {currentMockQuestionIndex < 24 ? "Next MCQ →" : "Proceed to Coding C1 →"}
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-stretch">
+                                    <div className="border border-white/5 bg-[#16161f] rounded-2xl p-5 space-y-4 flex flex-col justify-between max-h-[500px] overflow-y-auto">
+                                        <div className="space-y-3.5 text-left">
+                                            <div className="flex items-center justify-between border-b border-white/5 pb-2.5">
+                                                <h4 className={`text-sm font-bold ${isLight ? "text-slate-900" : "text-white"} flex items-center gap-1.5 font-sans`}>
+                                                    C{currentMockQuestionIndex + 1}: {currentCoding.title}
+                                                </h4>
+                                                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                                                    {aptitudePath === "onCampus" 
+                                                        ? (currentMockQuestionIndex === 2 ? "Medium" : "Easy") 
+                                                        : (currentMockQuestionIndex === 1 ? "Hard" : "Medium")
+                                                    } (10 Pts)
+                                                </span>
+                                            </div>
+
+                                            <div className={`whitespace-pre-wrap font-sans text-xs ${isLight ? "text-slate-800" : "text-white/80"} leading-relaxed font-semibold`}>
+                                                {currentCoding.description}
+                                            </div>
+
+                                            {currentCoding.constraints && currentCoding.constraints.length > 0 && (
+                                                <div className="space-y-1.5 pt-2">
+                                                    <span className={`text-[9px] uppercase font-bold ${isLight ? "text-slate-500" : "text-white/40"} block`}>Constraints</span>
+                                                    <ul className={`list-disc pl-4 text-[10px] ${isLight ? "text-slate-700" : "text-white/60"} space-y-1 font-semibold`}>
+                                                        {currentCoding.constraints.map((c: string, i: number) => <li key={i}>{c}</li>)}
+                                                    </ul>
+                                                </div>
+                                            )}
+
+                                            {currentCoding.examples && currentCoding.examples.length > 0 && (
+                                                <div className="space-y-3 pt-2">
+                                                    <span className={`text-[9px] uppercase font-bold ${isLight ? "text-slate-500" : "text-white/40"} block`}>Examples</span>
+                                                    {currentCoding.examples.map((ex: any, i: number) => (
+                                                        <div key={i} className={`${isLight ? "bg-slate-50 border-slate-200" : "bg-black/30 border-white/5"} rounded-lg p-3 text-[10px] space-y-1 font-mono`}>
+                                                            <div className={isLight ? "text-slate-700" : "text-white/50"}><span className={`${isLight ? "text-slate-500" : "text-white/30"} font-sans`}>Input: </span>{ex.input}</div>
+                                                            <div className={isLight ? "text-indigo-750 font-bold" : "text-indigo-300"}><span className={`${isLight ? "text-slate-500" : "text-white/30"} font-sans`}>Output: </span>{ex.output}</div>
+                                                            {ex.explanation && (
+                                                                <div className={`${isLight ? "text-slate-600" : "text-white/40"} text-[9px] font-sans italic pt-1`}><span className="font-sans text-[9px] font-bold">Explanation: </span>{ex.explanation}</div>
+                                                            )}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 flex flex-col">
+                                        <div className="bg-[#111] border border-white/5 rounded-2xl p-4 flex-1 flex flex-col justify-between space-y-3">
+                                            <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                                <span className="text-[9px] uppercase font-bold text-white/40 block">Code Workspace</span>
+                                                <select
+                                                    value={mockTestCodingLanguages[currentCoding.id] || "javascript"}
+                                                    onChange={(e) => {
+                                                        const lang = e.target.value;
+                                                        setMockTestCodingLanguages(prev => ({ ...prev, [currentCoding.id]: lang }));
+                                                        const isUntouched = Object.values(currentCoding.starterTemplates).some(t => t === mockTestCodingCodes[currentCoding.id]);
+                                                        if (isUntouched || !mockTestCodingCodes[currentCoding.id]) {
+                                                            setMockTestCodingCodes(prev => ({
+                                                                ...prev,
+                                                                [currentCoding.id]: currentCoding.starterTemplates[lang] || ""
+                                                            }))
+                                                        }
+                                                    }}
+                                                    className="bg-black border border-white/10 rounded-lg px-2.5 py-1 text-[10px] text-white/80 font-bold focus:outline-none focus:border-indigo-500 cursor-pointer"
+                                                >
+                                                    <option value="javascript">JavaScript</option>
+                                                    <option value="python">Python</option>
+                                                    <option value="cpp">C++</option>
+                                                    <option value="java">Java</option>
+                                                </select>
+                                            </div>
+
+                                            <textarea
+                                                value={mockTestCodingCodes[currentCoding.id] || ""}
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    setMockTestCodingCodes(prev => ({
+                                                        ...prev,
+                                                        [currentCoding.id]: val
+                                                    }));
+                                                }}
+                                                onKeyDown={(e) => handleCodeEditorKeyDown(e, currentCoding.id)}
+                                                spellCheck={false}
+                                                className="w-full h-64 p-3 bg-black/60 font-mono text-[11px] text-pink-300 border border-white/10 rounded-xl focus:outline-none focus:border-indigo-500/50 select-text resize-none leading-relaxed"
+                                                placeholder="// Write your solution here..."
+                                            />
+
+                                            <div className="flex justify-between items-center pt-2">
+                                                <span className="text-[9px] text-white/30 font-semibold font-sans">Press 'Tab' for 4 spaces</span>
+                                                <button
+                                                    type="button"
+                                                    disabled={mockTestCodingLoading[currentCoding.id]}
+                                                    onClick={() => handleGradeCodingQuestion(currentCoding.id)}
+                                                    className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-white/5 disabled:text-white/20 disabled:border-transparent text-white font-bold rounded-xl text-xs transition-all cursor-pointer flex items-center gap-1.5 shadow-[0_0_15px_rgba(79,70,229,0.2)]"
+                                                >
+                                                    {mockTestCodingLoading[currentCoding.id] ? (
+                                                        <>
+                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                            Grading...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            ⚙ Run AI Code Grade
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="border border-white/5 bg-[#16161f] rounded-2xl p-4.5 text-left font-sans space-y-2">
+                                    <span className="text-[9px] uppercase font-bold text-white/40 block">AI Grading Console Output</span>
+                                    {mockTestCodingOutputs[currentCoding.id] ? (() => {
+                                        const out = mockTestCodingOutputs[currentCoding.id];
+                                        return (
+                                            <div className="space-y-3.5 text-xs">
+                                                <div className="flex flex-wrap gap-2.5">
+                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase border ${
+                                                        out.status === "Accepted"
+                                                            ? "bg-green-500/10 border-green-500/20 text-green-400"
+                                                            : "bg-red-500/10 border-red-500/20 text-red-400"
+                                                    }`}>
+                                                        {out.status}
+                                                    </span>
+                                                    <span className="px-2.5 py-0.5 rounded text-[9px] font-extrabold bg-white/5 border border-white/5 text-white/70 font-sans font-sans">
+                                                        Score: {out.score} / 10 Points
+                                                    </span>
+                                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                                                        ⏱ Time: {out.timeComplexity}
+                                                    </span>
+                                                    <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                                                        💾 Space: {out.spaceComplexity}
+                                                    </span>
+                                                </div>
+                                                <div className="space-y-1 leading-relaxed">
+                                                    <p className="text-white/80 font-semibold">{out.correctness}</p>
+                                                    <p className="text-white/60 font-medium">{out.feedback}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })() : (
+                                        <p className="text-xs text-white/40 italic font-semibold py-2">
+                                            {mockTestCodingLoading[currentCoding.id] 
+                                                ? "AI Compiler is currently matching logic nodes, tracking complex boundaries, and generating detailed complexity grading..."
+                                                : "No output generated yet. Please write code and click 'Run AI Code Grade' to verify your solution."
+                                            }
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex items-center justify-between pt-2">
+                                    <button
+                                        type="button"
+                                        disabled={currentMockQuestionIndex === 0}
+                                        onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
+                                        className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
+                                    >
+                                        ← Previous Coding
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (currentMockQuestionIndex < 2) {
+                                                setCurrentMockQuestionIndex(prev => prev + 1);
+                                            } else {
+                                                triggerSubmitMockTestConfirmation();
+                                            }
+                                        }}
+                                        className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(79,70,229,0.15)] flex items-center gap-1.5"
+                                    >
+                                        {currentMockQuestionIndex < 2 ? "Next Coding →" : "✓ Finish & Review Test"}
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     if (!isAuthChecked) return null;
 
@@ -2046,6 +3644,23 @@ function FeaturesContent() {
 
                             {!isRealisticMode && (
                                 <>
+                                    {/* Card C: Aptitude & On-Campus Prep */}
+                                    <div 
+                                        onClick={() => {
+                                            setActiveModal("aptitude");
+                                            setActiveTool("aptitude");
+                                            setAptitudePath(null);
+                                            setActiveQuizCategory(null);
+                                            setIsMockTestMode(false);
+                                        }}
+                                        className="group bg-[#0d0d12]/60 hover:bg-[#1a1215]/80 backdrop-blur-sm border border-pink-500/20 hover:border-pink-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(236,72,153,0.05)] hover:shadow-[0_0_40px_rgba(236,72,153,0.15)]"
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                            <ListTodo className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white group-hover:text-pink-400 transition-colors">Mock Aptitude</h3>
+                                    </div>
+
                                     {/* Card D: AI Email Analyser */}
                                     <div 
                                         onClick={() => {
@@ -2100,20 +3715,38 @@ function FeaturesContent() {
                                         </div>
                                         <h3 className="text-lg font-bold text-white group-hover:text-purple-400 transition-colors">Study Materials</h3>
                                     </div>
+
+                                    {/* Card H: My Progress */}
+                                    <div 
+                                        onClick={() => {
+                                            setActiveModal("progress");
+                                            setActiveTool("progress");
+                                        }}
+                                        className="group bg-[#0d0d12]/60 hover:bg-[#12171a]/80 backdrop-blur-sm border border-sky-500/20 hover:border-sky-500/50 rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(14,165,233,0.05)] hover:shadow-[0_0_40px_rgba(14,165,233,0.15)]"
+                                    >
+                                        <div className="w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400 group-hover:scale-110 transition-transform duration-300 shrink-0">
+                                            <TrendingUp className="w-6 h-6" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-white group-hover:text-sky-400 transition-colors">My Progress</h3>
+                                    </div>
                                 </>
                             )}
                         </div>
                     </>
                 ) : (
-                    <div className={`w-full ${activeModal === "resume" || activeModal === "roadmap_generator" || (activeModal === "analysis" && !showInterviewCustomizer) ? "max-w-7xl" : "max-w-4xl"} bg-[#111] p-8 md:p-10 rounded-2xl border ${
+                    <div className={`w-full ${activeModal === "resume" || activeModal === "roadmap_generator" || activeModal === "aptitude" || activeModal === "progress" || (activeModal === "analysis" && !showInterviewCustomizer) ? "max-w-7xl" : "max-w-4xl"} bg-[#111] p-8 md:p-10 rounded-2xl border ${
                         activeModal === "analysis" ? "border-indigo-500/20" : 
                         activeModal === "resume" ? "border-purple-500/20" : 
-                        activeModal === "email_analyser" ? "border-teal-500/20" : "border-emerald-500/20"
+                        activeModal === "email_analyser" ? "border-teal-500/20" : 
+                        activeModal === "aptitude" ? "border-pink-500/20" : 
+                        activeModal === "progress" ? "border-sky-500/20" : "border-emerald-500/20"
                     } shadow-2xl relative z-10 transition-all duration-300`}>
                         <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${
                             activeModal === "analysis" ? "from-indigo-500 to-indigo-600" : 
                             activeModal === "resume" ? "from-purple-500 to-purple-600" : 
-                            activeModal === "email_analyser" ? "from-teal-500 to-teal-600" : "from-emerald-500 to-emerald-600"
+                            activeModal === "email_analyser" ? "from-teal-500 to-teal-600" : 
+                            activeModal === "aptitude" ? "from-pink-500 to-pink-600" : 
+                            activeModal === "progress" ? "from-sky-500 to-sky-600" : "from-emerald-500 to-emerald-600"
                         } rounded-t-2xl`}></div>
                         
                         {/* Close button in top-right */}
@@ -4241,6 +5874,530 @@ function FeaturesContent() {
                                 </AnimatePresence>
                             </div>
                         )}
+
+                        {activeModal === "aptitude" && (() => {
+                            const selectedPathData = aptitudePath ? interviewPrepLogic.paths[aptitudePath] : null;
+                            const topics = selectedPathData ? selectedPathData.topics : {};
+
+                            if (isMockTestMode) {
+                                return renderMockTestSimulator();
+                            }
+
+                            if (activeQuizCategory !== null) {
+                                const currentQ = quizQuestionsList[currentQuizQuestionIndex];
+                                const currentCategoryName = aptitudeQuestions[activeQuizCategory]?.category || activeQuizCategory;
+
+                                if (quizCompleted) {
+                                    return (
+                                        <div className="space-y-6 text-left animate-in fade-in duration-300 font-sans">
+                                            <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                                <h3 className="text-lg font-bold text-white">Quiz Results</h3>
+                                                <span className="px-3 py-1 rounded-full text-xs font-bold bg-pink-500/10 border border-pink-500/20 text-pink-400">
+                                                    {currentCategoryName}
+                                                </span>
+                                            </div>
+                                            
+                                            <div className="bg-[#16161f] border border-white/5 rounded-2xl p-8 text-center space-y-4">
+                                                <Award className="w-12 h-12 text-pink-400 mx-auto" />
+                                                <div className="space-y-1.5">
+                                                    <h4 className="text-2xl font-black text-white">
+                                                        {quizAutoSubmittedReason === "time" 
+                                                            ? "Time's Up!" 
+                                                            : quizAutoSubmittedReason === "proctor" 
+                                                                ? "Test Terminated" 
+                                                                : "Quiz Finished!"
+                                                        }
+                                                    </h4>
+                                                    <p className="text-xs text-white/50 leading-relaxed max-w-sm mx-auto font-semibold">
+                                                        {quizAutoSubmittedReason === "proctor" 
+                                                            ? "Your quiz was auto-submitted because you switched windows or tabs multiple times, violating proctoring policies."
+                                                            : "You completed the evaluation matching key technical capabilities and logic structures."
+                                                        }
+                                                    </p>
+                                                </div>
+                                                <div className="pt-2">
+                                                    <span className="text-xs text-white/40 block uppercase font-black">Score Obtained</span>
+                                                    <span className="text-4xl font-black text-white">{quizScore} <span className="text-lg text-white/40">/ {quizQuestionsList.length}</span></span>
+                                                </div>
+                                            </div>
+
+                                            <div className="space-y-4">
+                                                <h4 className="text-xs font-bold uppercase tracking-wider text-white/40">Solutions Review</h4>
+                                                {quizQuestionsList.map((q, idx) => {
+                                                    const selected = quizSelectedAnswersList[idx];
+                                                    const isCorrect = selected === q.correctAnswer;
+                                                    return (
+                                                        <div key={q.id} className={`border rounded-xl p-5 space-y-3 ${
+                                                            isLight ? "bg-white border-slate-200" : "bg-[#111] border-white/5"
+                                                        }`}>
+                                                            <div className="flex items-start gap-3">
+                                                                <span className={`w-5 h-5 rounded-full shrink-0 flex items-center justify-center text-[10px] font-bold ${
+                                                                    selected === null || selected === undefined
+                                                                        ? "bg-yellow-550/10 text-yellow-550 border border-yellow-550/20"
+                                                                        : isCorrect
+                                                                            ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                                                            : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                                }`}>
+                                                                    {idx + 1}
+                                                                </span>
+                                                                <div className="space-y-2 text-left">
+                                                                    <p className={`text-xs font-bold ${isLight ? "text-slate-800" : "text-white/90"}`}>{q.question}</p>
+                                                                    {q.codeSnippet && (
+                                                                        <pre className="bg-black/50 p-4 rounded-xl font-mono text-[10px] border border-white/5 text-pink-300 overflow-x-auto">
+                                                                            <code>{q.codeSnippet}</code>
+                                                                        </pre>
+                                                                    )}
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
+                                                                        {q.options.map((opt: string, oIdx: number) => {
+                                                                            let optStyle = "bg-white/[0.02] border-white/5 text-white/50";
+                                                                            if (isLight) {
+                                                                                optStyle = "bg-slate-50 border-slate-200 text-slate-500";
+                                                                            }
+                                                                            if (oIdx === q.correctAnswer) {
+                                                                                optStyle = "bg-green-500/10 border-green-500/20 text-green-500 font-semibold";
+                                                                            } else if (oIdx === selected) {
+                                                                                optStyle = "bg-red-500/10 border-red-500/20 text-red-550 font-semibold";
+                                                                            }
+                                                                            return (
+                                                                                <div key={oIdx} className={`px-3 py-2 rounded-xl border text-[11px] flex items-center justify-between ${optStyle}`}>
+                                                                                    <span>{opt}</span>
+                                                                                    {oIdx === q.correctAnswer && <CheckCircle className="w-3.5 h-3.5 text-green-500" />}
+                                                                                    {oIdx === selected && oIdx !== q.correctAnswer && <X className="w-3.5 h-3.5 text-red-550" />}
+                                                                                </div>
+                                                                            );
+                                                                        })}
+                                                                    </div>
+                                                                    <div className="bg-indigo-500/5 border border-indigo-500/10 rounded-xl p-3.5 text-[10px] text-white/70 space-y-1 mt-2.5">
+                                                                        <span className="font-extrabold text-indigo-400 uppercase tracking-wider block">Explanation</span>
+                                                                        <p className="font-medium leading-relaxed">{q.explanation}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveQuizCategory(null)}
+                                                className="w-full py-3 bg-pink-650 hover:bg-pink-500 text-white rounded-xl font-bold text-xs transition shadow-md shadow-pink-600/10 cursor-pointer"
+                                            >
+                                                Back to Topics Checklist
+                                            </button>
+                                        </div>
+                                    );
+                                }
+
+                                return (
+                                    <div className="space-y-6 text-left relative animate-in fade-in duration-300 font-sans">
+                                        {proctorWarningActive && (
+                                            <div className="absolute inset-0 bg-[#0d0d12]/95 backdrop-blur-sm z-50 flex items-center justify-center p-6 rounded-2xl border border-yellow-500/20">
+                                                <div className="max-w-md w-full bg-[#16161f] border border-yellow-500/30 rounded-2xl p-6 text-center space-y-4 shadow-[0_0_50px_rgba(234,179,8,0.08)]">
+                                                    <div className="w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto text-yellow-500">
+                                                        <AlertTriangle className="w-8 h-8" />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <h4 className="text-lg font-black text-white uppercase tracking-wider">Proctor Warning</h4>
+                                                        <p className="text-xs text-white/60 leading-relaxed font-semibold">
+                                                            Tab switch detected! Warning <span className="text-yellow-500 font-extrabold">{proctorWarnings} of 3</span>. Leaving the assessment or focusing other windows is prohibited during the test. Your quiz will submit on 3 warnings.
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setProctorWarningActive(false)}
+                                                        className="w-full py-3 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-500 border border-yellow-500/30 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                                                    >
+                                                        Return to Quiz
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                                            <div>
+                                                <span className="text-[10px] text-white/45 uppercase font-black tracking-wider block">Practice Quiz</span>
+                                                <h3 className="text-lg font-bold text-white">{currentCategoryName}</h3>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                {proctorWarnings > 0 && (
+                                                    <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
+                                                        ⚠️ Warning: {proctorWarnings}/3
+                                                    </span>
+                                                )}
+                                                <span className="px-3 py-1.5 rounded-lg text-[10px] font-extrabold bg-pink-500/15 border border-pink-500/20 text-pink-400">
+                                                    ⏱ {quizTimeRemaining}s
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {isQuizLoading || quizQuestionsList.length === 0 ? (
+                                            <div className="py-20 text-center space-y-4">
+                                                <Loader2 className="w-8 h-8 text-pink-400 animate-spin mx-auto" />
+                                                <p className="text-xs text-white/40 font-semibold">Analyzing path nodes and generating custom practice evaluations using Gemini...</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-6 text-left font-sans">
+                                                <div className="border border-white/5 bg-[#16161f] rounded-2xl p-5 space-y-4">
+                                                    <span className="text-[9px] uppercase font-bold text-white/45 block">Question {currentQuizQuestionIndex + 1} of {quizQuestionsList.length}</span>
+                                                    <p className="text-sm font-semibold leading-relaxed text-white/95">{currentQ.question}</p>
+                                                    {currentQ.codeSnippet && (
+                                                        <pre className="bg-black/50 p-4 rounded-xl font-mono text-xs border border-white/10 text-pink-300 overflow-x-auto">
+                                                            <code>{currentQ.codeSnippet}</code>
+                                                        </pre>
+                                                    )}
+                                                </div>
+
+                                                <div className="grid grid-cols-1 gap-3">
+                                                    {currentQ.options.map((opt: string, oIdx: number) => {
+                                                        const isSelected = quizSelectedOption === oIdx;
+                                                        let optStyle = "bg-black/35 border-white/5 text-white/70 hover:border-white/20 hover:text-white";
+                                                        if (isSelected) {
+                                                            optStyle = "bg-pink-500/5 border-pink-500/40 text-pink-400 font-bold shadow-[0_0_15px_rgba(236,72,153,0.1)]";
+                                                        }
+                                                        return (
+                                                            <button
+                                                                key={oIdx}
+                                                                type="button"
+                                                                disabled={quizIsSubmitted}
+                                                                onClick={() => setQuizSelectedOption(oIdx)}
+                                                                className={`w-full p-4 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${optStyle}`}
+                                                            >
+                                                                <span>{opt}</span>
+                                                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                                                    isSelected ? "border-pink-500 bg-pink-500/20 text-pink-400" : "border-white/20"
+                                                                }`}>
+                                                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-pink-400" />}
+                                                                </div>
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+
+                                                <div className="flex items-center justify-between pt-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActiveQuizCategory(null);
+                                                        }}
+                                                        className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer"
+                                                    >
+                                                        Cancel Test
+                                                    </button>
+
+                                                    <button
+                                                        type="button"
+                                                        disabled={quizSelectedOption === null}
+                                                        onClick={() => {
+                                                            const isCorrect = quizSelectedOption === currentQ.correctAnswer;
+                                                            if (isCorrect) setQuizScore(prev => prev + 1);
+                                                            
+                                                            setQuizSelectedAnswersList(prev => [...prev, quizSelectedOption]);
+                                                            
+                                                            const nextIdx = currentQuizQuestionIndex + 1;
+                                                            if (nextIdx < quizQuestionsList.length) {
+                                                                setCurrentQuizQuestionIndex(nextIdx);
+                                                                setQuizSelectedOption(null);
+                                                                setQuizTimeRemaining(120);
+                                                            } else {
+                                                                setQuizCompleted(true);
+                                                            }
+                                                        }}
+                                                        className="px-6 py-2.5 bg-pink-650 hover:bg-pink-500 disabled:bg-white/5 disabled:text-white/20 disabled:border-transparent text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)]"
+                                                    >
+                                                        {currentQuizQuestionIndex + 1 < quizQuestionsList.length ? "Submit Answer →" : "✓ Finish Quiz"}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            }
+
+                            return (
+                                <div className="space-y-8 animate-in fade-in duration-300 text-left font-sans">
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
+                                        <div className="flex items-center gap-3">
+                                            {aptitudePath !== null && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setAptitudePath(null)}
+                                                    className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    ← Change Path
+                                                </button>
+                                            )}
+                                            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                <ListTodo className="w-5 h-5 text-pink-400 shrink-0" />
+                                                {aptitudePath === null 
+                                                    ? "Select Interview Preparation Path" 
+                                                    : `${selectedPathData?.label} Preparation Roadmap`
+                                                }
+                                            </h3>
+                                        </div>
+                                    </div>
+
+                                    {aptitudePath === null ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {/* Path Selection Cards */}
+                                            {Object.entries(interviewPrepLogic.paths).map(([key, data]) => {
+                                                const isCampus = key === "onCampus";
+                                                const iconBg = isCampus 
+                                                    ? "bg-pink-500/10 border-pink-500/20 text-pink-400" 
+                                                    : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400";
+                                                
+                                                return (
+                                                     <div
+                                                         key={key}
+                                                         onClick={() => setAptitudePath(key as any)}
+                                                         className={`border rounded-2xl p-6 space-y-4 cursor-pointer transition-all duration-300 group ${
+                                                             isLight 
+                                                                 ? "bg-white border-slate-200 hover:bg-slate-50/80" 
+                                                                 : "bg-[#0d0d12]/50 hover:bg-[#12121a]/70 border-white/5"
+                                                         } ${
+                                                             isCampus 
+                                                                 ? isLight 
+                                                                     ? "hover:border-pink-500 hover:shadow-[0_0_30px_rgba(236,72,153,0.06)]"
+                                                                     : "border-pink-500/10 hover:border-pink-500/35 hover:shadow-[0_0_30px_rgba(236,72,153,0.06)]"
+                                                                 : isLight 
+                                                                     ? "hover:border-indigo-500 hover:shadow-[0_0_30px_rgba(79,70,229,0.06)]"
+                                                                     : "border-indigo-500/10 hover:border-indigo-500/35 hover:shadow-[0_0_30px_rgba(79,70,229,0.06)]"
+                                                         }`}
+                                                     >
+                                                         <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ${iconBg}`}>
+                                                             {isCampus ? <Briefcase className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
+                                                         </div>
+                                                         <div className="space-y-1.5 text-left">
+                                                             <h4 className={`text-base font-extrabold transition-colors ${
+                                                                 isLight 
+                                                                     ? isCampus ? "text-slate-900 group-hover:text-pink-650" : "text-slate-900 group-hover:text-indigo-650"
+                                                                     : isCampus ? "text-white group-hover:text-pink-400" : "text-white group-hover:text-indigo-400"
+                                                             }`}>
+                                                                 {data.label} Path
+                                                             </h4>
+                                                             <p className={`text-[11px] font-bold ${isLight ? "text-slate-500" : "text-white/40"} uppercase tracking-wider`}>{data.difficulty} • {data.duration}</p>
+                                                             <p className={`text-xs ${isLight ? "text-slate-700" : "text-white/55"} leading-relaxed font-semibold`}>{data.evaluation.whatTheyJudge}</p>
+                                                         </div>
+                                                     </div>
+                                                );
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-8 animate-in fade-in duration-300">
+                                            {/* On-Campus Mock Assessment Banner */}
+                                            {aptitudePath === "onCampus" && (
+                                                <div className="mock-assessment-card relative overflow-hidden rounded-2xl bg-gradient-to-r from-pink-500/15 via-[#1a1215] to-indigo-500/5 border border-pink-500/20 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[0_0_40px_rgba(236,72,153,0.05)]">
+                                                    <div className="space-y-2 text-left z-10">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="px-2.5 py-1 rounded bg-pink-500/10 border border-pink-500/20 text-pink-400 text-[9px] font-black uppercase tracking-wider">PLACEMENT READY</span>
+                                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">⏱ 60 MINUTES TEST</span>
+                                                        </div>
+                                                        <h4 className="text-base font-extrabold text-white">On-Campus Placement Mock Assessment Simulator</h4>
+                                                        <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
+                                                            Simulate a real on-campus placement paper. Includes <span className="text-pink-400 font-extrabold">25 MCQs</span> (Quantitative, Logical Reasoning, and Technical questions) and <span className="text-indigo-400 font-extrabold">3 Coding Questions</span> generated dynamically and evaluated live by Gemini AI. Proctored exam with window change tracking.
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        disabled={isGeneratingMockTest}
+                                                        onClick={handleStartMockTest}
+                                                        className={`px-5 py-3 bg-pink-655 hover:bg-pink-500 border border-pink-500/20 text-white font-extrabold text-xs rounded-xl tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.2)] whitespace-nowrap shrink-0 z-10 ${
+                                                            isGeneratingMockTest ? "opacity-50 cursor-not-allowed" : ""
+                                                        }`}
+                                                    >
+                                                        {isGeneratingMockTest ? (
+                                                            <span className="flex items-center gap-1.5 justify-center">
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
+                                                            </span>
+                                                        ) : (
+                                                            "⚡ Launch Mock Test"
+                                                        )}
+                                                    </button>
+                                                    <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-pink-500/5 rounded-full blur-3xl pointer-events-none" />
+                                                </div>
+                                            )}
+
+                                            {/* Off-Campus Mock Assessment Banner */}
+                                            {aptitudePath === "offCampus" && (
+                                                <div className="mock-assessment-card relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-500/15 via-[#11121a] to-pink-500/5 border border-indigo-500/20 p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-[0_0_40px_rgba(99,102,241,0.05)]">
+                                                    <div className="space-y-2 text-left z-10">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="px-2.5 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-wider">OFF-CAMPUS CHALLENGE</span>
+                                                            <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">⏱ 60 MINUTES TEST</span>
+                                                        </div>
+                                                        <h4 className="text-base font-extrabold text-white">Off-Campus Placement Mock Assessment Simulator</h4>
+                                                        <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
+                                                            Simulate a competitive off-campus recruitment drive. Includes <span className="text-indigo-400 font-extrabold">25 MCQs</span> (Domain Assessment & Situational Judgment) and <span className="text-pink-400 font-extrabold">3 Coding Questions</span> generated dynamically and evaluated live by Gemini AI. Proctored exam with window change tracking.
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        disabled={isGeneratingMockTest}
+                                                        onClick={handleStartMockTest}
+                                                        className={`px-5 py-3 bg-indigo-600 hover:bg-indigo-500 border border-indigo-500/20 text-white font-extrabold text-xs rounded-xl tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-[0_0_15px_rgba(99,102,241,0.2)] whitespace-nowrap shrink-0 z-10 ${
+                                                            isGeneratingMockTest ? "opacity-50 cursor-not-allowed" : ""
+                                                        }`}
+                                                    >
+                                                        {isGeneratingMockTest ? (
+                                                            <span className="flex items-center gap-1.5 justify-center">
+                                                                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
+                                                            </span>
+                                                        ) : (
+                                                            "⚡ Launch Mock Test"
+                                                        )}
+                                                    </button>
+                                                    <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
+                                                </div>
+                                            )}
+
+                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                                                {/* Left: Topics Checklist (7 cols) */}
+                                                <div className="lg:col-span-7 space-y-4">
+                                                    <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                                                        <span className="text-[9px] uppercase font-bold text-white/40 tracking-wider">Preparation Milestones</span>
+                                                        <span className="text-[9px] font-extrabold text-pink-400">
+                                                            {Object.keys(checkedAptitudeTopics).length} of {Object.values(topics).flat().length} Completed
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="space-y-3.5">
+                                                        {Object.entries(topics).map(([catKey, subtopics]: [string, any], index: number) => {
+                                                            const categoryName = aptitudeQuestions[catKey]?.category || catKey.replace(/([A-Z])/g, " $1");
+                                                            const isExpanded = !!expandedAptitudeTopics[catKey];
+                                                            
+                                                            return (
+                                                                <div key={catKey} className={`border rounded-xl transition-all duration-200 overflow-hidden ${
+                                                                    isLight ? "bg-white border-slate-200" : "bg-[#111] border-white/5"
+                                                                }`}>
+                                                                    <div
+                                                                        onClick={() => setExpandedAptitudeTopics(prev => ({ ...prev, [catKey]: !prev[catKey] }))}
+                                                                        className={`p-4 flex items-center justify-between cursor-pointer select-none border-b ${
+                                                                            isLight ? "border-slate-100 hover:bg-slate-50/50" : "border-b border-white/5 hover:bg-white/[0.01]"
+                                                                        }`}
+                                                                    >
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-7 h-7 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400 font-extrabold text-[11px] flex items-center justify-center">
+                                                                                {index + 1}
+                                                                            </div>
+                                                                            <h4 className={`text-xs font-black capitalize tracking-tight ${isLight ? "text-slate-800" : "text-white"}`}>
+                                                                                {categoryName}
+                                                                            </h4>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-3">
+                                                                            {isExpanded 
+                                                                                ? <ChevronUp className={`w-4 h-4 ${isLight ? "text-slate-400" : "text-white/40"}`} /> 
+                                                                                : <ChevronDown className={`w-4 h-4 ${isLight ? "text-slate-400" : "text-white/40"}`} />
+                                                                            }
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {isExpanded && (
+                                                                        <div className={`p-4 ${isLight ? "bg-slate-50/30 border-slate-100" : "bg-white/[0.01] border-white/5"} border-t space-y-2.5 text-left font-sans animate-in slide-in-from-top-2 duration-250`}>
+                                                                            {subtopics.map((topic: string) => {
+                                                                                const isChecked = !!checkedAptitudeTopics[topic];
+                                                                                return (
+                                                                                    <label key={topic} className="flex items-start gap-3 cursor-pointer text-xs font-semibold select-none group py-0.5">
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            checked={isChecked}
+                                                                                            onChange={() => setCheckedAptitudeTopics(prev => ({ ...prev, [topic]: !prev[topic] }))}
+                                                                                            className={`mt-0.5 rounded ${isLight ? "border-slate-300 bg-white" : "border-white/10 bg-black/40"} text-pink-500 focus:ring-pink-500/30 cursor-pointer`}
+                                                                                        />
+                                                                                        <span className={`transition-all duration-150 leading-relaxed ${
+                                                                                            isChecked 
+                                                                                                ? "line-through text-white/30" 
+                                                                                                : isLight ? "text-slate-650 group-hover:text-slate-900" : "text-white/70 group-hover:text-white/95"
+                                                                                        }`}>{topic}</span>
+                                                                                    </label>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* Right: Structure & Evaluation (5 cols) */}
+                                                <div className="lg:col-span-5 space-y-6 font-sans">
+                                                    {/* Structure */}
+                                                    <div className={`border rounded-xl p-5 space-y-4 text-left ${
+                                                        isLight ? "bg-white border-slate-200" : "bg-[#16161f] border-white/5"
+                                                    }`}>
+                                                        <h4 className={`font-bold text-xs ${isLight ? "text-slate-800" : "text-white/95"} flex items-center gap-2 uppercase tracking-wider`}>
+                                                            <ListTodo className="w-4 h-4 text-pink-400" /> Prep Funnel Structure
+                                                        </h4>
+                                                        <div className="space-y-4 pl-1">
+                                                            {selectedPathData?.structure.map((step: string, index: number) => (
+                                                                <div key={index} className="flex gap-3 text-left">
+                                                                    <div className="w-5 h-5 rounded-lg bg-pink-500/10 border border-pink-500/20 text-pink-400 font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                                                                        {index + 1}
+                                                                    </div>
+                                                                    <p className={`text-xs font-semibold leading-relaxed ${isLight ? "text-slate-655" : "text-white/70"}`}>
+                                                                        {step}
+                                                                    </p>
+                                                                </div>
+                                                            ))}
+                                                            {(selectedPathData as any)?.finalStage && (
+                                                                <div className="flex gap-3 text-left">
+                                                                    <div className="w-5 h-5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
+                                                                        ★
+                                                                    </div>
+                                                                    <p className={`text-xs font-semibold leading-relaxed ${isLight ? "text-slate-750" : "text-white/80"}`}>
+                                                                        <span className="text-indigo-400 font-extrabold font-sans">Final Stage: </span>{(selectedPathData as any).finalStage}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                            {(selectedPathData as any)?.roundTypes && (
+                                                                <div className="mt-3 pt-3 border-t border-white/5 space-y-2 font-sans">
+                                                                    <span className="text-[9px] uppercase font-bold text-white/40 block">Round Formats</span>
+                                                                    <div className="flex flex-wrap gap-1.5 font-sans">
+                                                                        {(selectedPathData as any).roundTypes.map((round: string, i: number) => (
+                                                                            <span key={i} className={`px-2 py-0.5 rounded text-[9px] font-bold bg-white/5 border border-white/5 text-white/70`}>
+                                                                                {round}
+                                                                            </span>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* What they're judging */}
+                                                    <div className="bg-[#1a1215]/30 border border-pink-500/15 rounded-xl p-5 space-y-2.5 text-left font-sans">
+                                                        <h4 className="font-bold text-[10px] text-pink-400 flex items-center gap-1.5 uppercase tracking-wider font-sans">
+                                                            <ShieldCheck className="w-4 h-4" /> What They Judge
+                                                        </h4>
+                                                        <p className={`text-xs leading-relaxed font-semibold ${isLight ? "text-slate-700" : "text-white/85"}`}>
+                                                            {selectedPathData?.evaluation.whatTheyJudge}
+                                                        </p>
+                                                    </div>
+
+                                                    {/* Scored on */}
+                                                    <div className={`border rounded-xl p-5 space-y-3.5 text-left font-sans ${
+                                                        isLight ? "bg-white border-slate-200" : "bg-[#16161f] border-white/5"
+                                                    }`}>
+                                                        <span className="text-[9px] uppercase font-bold text-white/40 block">Critical Scoring Parameters</span>
+                                                        <div className="flex flex-wrap gap-1.5 font-sans">
+                                                            {selectedPathData?.evaluation.scoredOn.map((param: string, i: number) => (
+                                                                <span
+                                                                    key={i}
+                                                                    className="px-2.5 py-1 rounded-lg text-[9px] font-extrabold bg-pink-500/10 border border-pink-500/20 text-pink-400"
+                                                                >
+                                                                    {param}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })()}
+                        {activeModal === "progress" && renderProgressDashboard()}
                     </div>
                 </div>
                 )}
@@ -4438,17 +6595,19 @@ function FeaturesContent() {
                             </button>
 
                             <div className="flex items-start gap-4 mb-6">
-                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-                                    confirmModal.type === "confirm" 
-                                        ? "bg-red-500/10 border border-red-500/20" 
-                                        : "bg-amber-500/10 border border-amber-500/20"
-                                }`}>
-                                    {confirmModal.type === "confirm" ? (
-                                        <Trash2 className="w-6 h-6 text-red-500" />
-                                    ) : (
-                                        <AlertTriangle className="w-6 h-6 text-amber-500" />
-                                    )}
-                                </div>
+                                {confirmModal.type !== "submit" && (
+                                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
+                                        confirmModal.type === "confirm" 
+                                            ? "bg-red-500/10 border border-red-500/20" 
+                                            : "bg-amber-500/10 border border-amber-500/20"
+                                    }`}>
+                                        {confirmModal.type === "confirm" ? (
+                                            <Trash2 className="w-6 h-6 text-red-500" />
+                                        ) : (
+                                            <AlertTriangle className="w-6 h-6 text-amber-500" />
+                                        )}
+                                    </div>
+                                )}
                                 <div>
                                     <h3 className="text-lg font-extrabold text-white mb-1">{confirmModal.title}</h3>
                                     <p className="text-sm text-white/50 leading-relaxed">
@@ -4458,7 +6617,7 @@ function FeaturesContent() {
                             </div>
 
                             <div className="flex gap-3">
-                                {confirmModal.type === "confirm" ? (
+                                {confirmModal.type === "confirm" || confirmModal.type === "submit" ? (
                                     <>
                                         <button
                                             type="button"
@@ -4466,9 +6625,13 @@ function FeaturesContent() {
                                                 if (confirmModal.onConfirm) confirmModal.onConfirm();
                                                 setConfirmModal(prev => ({ ...prev, isOpen: false }));
                                             }}
-                                            className="flex-1 bg-red-600 hover:bg-red-500 text-white font-bold py-3 rounded-xl transition-colors text-sm cursor-pointer"
+                                            className={`flex-1 text-white font-bold py-3 rounded-xl transition-colors text-sm cursor-pointer ${
+                                                confirmModal.type === "submit"
+                                                    ? "bg-green-650 hover:bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.1)]"
+                                                    : "bg-red-600 hover:bg-red-500"
+                                            }`}
                                         >
-                                            Delete
+                                            {confirmModal.type === "submit" ? "Submit" : "Delete"}
                                         </button>
                                         <button
                                             type="button"
