@@ -220,13 +220,35 @@ export default function Home() {
                         </Link>
                     )}
                     {isLoggedIn && (
-                        <button 
-                            onClick={toggleMode}
-                            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full border transition-all ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-[0_0_10px_rgba(16,185,129,0.2)]' : 'bg-orange-500/20 border-orange-500/50 text-orange-300 shadow-[0_0_10px_rgba(249,115,22,0.2)]'}`}
-                        >
-                            <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
-                            {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
-                        </button>
+                        <div className="flex items-center bg-white/5 border border-white/15 p-0.5 sm:p-1 rounded-full text-xs font-semibold backdrop-blur-md" title="Switch between Practice Mode and Realistic AI Mode">
+                            <button
+                                onClick={() => {
+                                    if (isRealisticMode) toggleMode();
+                                }}
+                                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full transition-all duration-200 ${
+                                    !isRealisticMode 
+                                        ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-[0_0_10px_rgba(249,115,22,0.25)] font-bold' 
+                                        : 'text-white/60 hover:text-white/90'
+                                }`}
+                            >
+                                <span className={`w-1.5 h-1.5 rounded-full ${!isRealisticMode ? 'bg-orange-400 animate-pulse' : 'bg-white/40'}`} />
+                                Practice
+                            </button>
+
+                            <button
+                                onClick={() => {
+                                    if (!isRealisticMode) toggleMode();
+                                }}
+                                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full transition-all duration-200 ${
+                                    isRealisticMode 
+                                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)] font-bold' 
+                                        : 'text-white/60 hover:text-white/90'
+                                }`}
+                            >
+                                <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400 animate-pulse' : 'bg-white/40'}`} />
+                                Realistic AI Mode
+                            </button>
+                        </div>
                     )}
                     {!isRealisticMode && <Link href="/features" className="hover:text-white text-white/70 transition-colors pb-1">Features</Link>}
                     {!isRealisticMode && (
@@ -321,16 +343,37 @@ export default function Home() {
                             </Link>
                         )}
                         {isLoggedIn && (
-                            <button 
-                                onClick={() => {
-                                    toggleMode();
-                                    setMobileMenuOpen(false);
-                                }}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all text-sm font-semibold ${isRealisticMode ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' : 'bg-orange-500/20 border-orange-500/50 text-orange-300'}`}
-                            >
-                                <span className={`w-2 h-2 rounded-full ${isRealisticMode ? 'bg-emerald-400' : 'bg-orange-400'} animate-pulse`}></span>
-                                {isRealisticMode ? 'Realistic Mode' : 'Practice Mode'}
-                            </button>
+                            <div className="flex items-center bg-white/5 border border-white/15 p-1 rounded-full text-xs font-semibold backdrop-blur-md">
+                                <button
+                                    onClick={() => {
+                                        if (isRealisticMode) toggleMode();
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${
+                                        !isRealisticMode 
+                                            ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-[0_0_10px_rgba(249,115,22,0.25)] font-bold' 
+                                            : 'text-white/60 hover:text-white/90'
+                                    }`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${!isRealisticMode ? 'bg-orange-400 animate-pulse' : 'bg-white/40'}`} />
+                                    Practice
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        if (!isRealisticMode) toggleMode();
+                                        setMobileMenuOpen(false);
+                                    }}
+                                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${
+                                        isRealisticMode 
+                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)] font-bold' 
+                                            : 'text-white/60 hover:text-white/90'
+                                    }`}
+                                >
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400 animate-pulse' : 'bg-white/40'}`} />
+                                    Realistic AI Mode
+                                </button>
+                            </div>
                         )}
                         {!isRealisticMode && (
                             <Link 
