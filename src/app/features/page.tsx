@@ -444,6 +444,10 @@ function FeaturesContent() {
     const [editRole, setEditRole] = useState("");
     const [editCompany, setEditCompany] = useState("");
     const [editLocation, setEditLocation] = useState("");
+    const [hrResearchStatus, setHrResearchStatus] = useState<"idle" | "running" | "completed" | "error">("idle");
+    const [hrResearchMessage, setHrResearchMessage] = useState("");
+    const [hrResearchResult, setHrResearchResult] = useState<any>(null);
+    const [hrHappenstanceUrl, setHrHappenstanceUrl] = useState<string | null>(null);
 
     // Roadmap Generator states
     const [roadmapCourse, setRoadmapCourse] = useState("");
@@ -1692,6 +1696,114 @@ function FeaturesContent() {
         }
     };
 
+    const isUsableHrName = (name?: string | null) => {
+        if (!name) return false;
+        const n = name.trim().toLowerCase();
+        return Boolean(n) && n !== "not specified" && n !== "unknown" && n !== "n/a";
+    };
+
+    const pollHrResearch = async (
+        researchId: string,
+        details: { hrName: string; company?: string; role?: string; skills?: string[]; emailSnippet?: string }
+    ) => {
+        const maxAttempts = 36; // ~3 minutes at 5s
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            await new Promise((r) => setTimeout(r, 5000));
+            const params = new URLSearchParams({
+                id: researchId,
+                hrName: details.hrName || "",
+                company: details.company || "",
+                role: details.role || "",
+                skills: (details.skills || []).join("|"),
+                emailSnippet: (details.emailSnippet || "").slice(0, 800),
+            });
+            const pollRes = await fetch(`/api/research-hr?${params.toString()}`);
+            const pollData = await pollRes.json();
+            if (!pollRes.ok) {
+                throw new Error(pollData.error || "Failed while polling Happenstance research");
+            }
+            if (pollData.status === "RUNNING") {
+                setHrResearchMessage(pollData.message || "Still researching this person on Happenstance…");
+                continue;
+            }
+            setHrResearchResult(pollData);
+            setHrHappenstanceUrl(pollData.happenstanceUrl || null);
+            setHrResearchStatus("completed");
+            setHrResearchMessage(pollData.message || "HR research complete.");
+            return;
+        }
+        throw new Error("Happenstance research timed out. Try again in a moment.");
+    };
+
+    const handleResearchHr = async (overrideDetails?: {
+        hrName?: string;
+        company?: string;
+        role?: string;
+        location?: string;
+        skills?: string[];
+    }) => {
+        const details = overrideDetails || emailAnalysisResult?.extractedDetails;
+        const hrName = details?.hrName;
+        if (!isUsableHrName(hrName)) {
+            setHrResearchStatus("error");
+            setHrResearchMessage("No HR / sender name found in this email to research.");
+            return;
+        }
+
+        setHrResearchStatus("running");
+        setHrResearchResult(null);
+        setHrHappenstanceUrl(null);
+        setHrResearchMessage(`Looking up ${hrName} on Happenstance…`);
+
+        try {
+            const startRes = await fetch("/api/research-hr", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    hrName,
+                    company: details?.company,
+                    role: details?.role,
+                    location: details?.location,
+                    skills: details?.skills || [],
+                    emailSnippet: emailText.slice(0, 1200),
+                }),
+            });
+            const startData = await startRes.json();
+            if (!startRes.ok) {
+                throw new Error(startData.error || "Failed to start HR research");
+            }
+
+            if (startData.happenstanceUrl) {
+                setHrHappenstanceUrl(startData.happenstanceUrl);
+            }
+
+            // Immediate completion (Gemini fallback when Happenstance key is missing)
+            if (startData.status === "COMPLETED") {
+                setHrResearchResult(startData);
+                setHrResearchStatus("completed");
+                setHrResearchMessage(startData.message || "HR interview guidance ready.");
+                return;
+            }
+
+            if (!startData.researchId) {
+                throw new Error("Happenstance did not return a research id");
+            }
+
+            setHrResearchMessage(startData.message || "Happenstance research running…");
+            await pollHrResearch(startData.researchId, {
+                hrName,
+                company: details?.company,
+                role: details?.role,
+                skills: details?.skills || [],
+                emailSnippet: emailText,
+            });
+        } catch (err: any) {
+            console.error(err);
+            setHrResearchStatus("error");
+            setHrResearchMessage(err?.message || "Failed to research HR contact.");
+        }
+    };
+
     const handleAnalyzeEmail = async () => {
         if (!emailText || !emailText.trim()) {
             alert("Please paste the email content first.");
@@ -1701,6 +1813,10 @@ function FeaturesContent() {
         setEmailAnalysisResult(null);
         setVerificationResult(null);
         setIsEditingParams(false);
+        setHrResearchStatus("idle");
+        setHrResearchResult(null);
+        setHrResearchMessage("");
+        setHrHappenstanceUrl(null);
         
         try {
             const res = await fetch("/api/analyze-email", {
@@ -1723,6 +1839,11 @@ function FeaturesContent() {
                     locationScore: data.locationScore,
                     verificationFeedback: data.verificationFeedback
                 });
+
+                // Auto-research HR via Happenstance when a sender name is present
+                if (isUsableHrName(data.extractedDetails?.hrName)) {
+                    void handleResearchHr(data.extractedDetails);
+                }
             } else {
                 alert(data.error || "Failed to analyze email. Please try again.");
             }
@@ -4914,7 +5035,7 @@ function FeaturesContent() {
                                     </div>
                                     <div>
                                         <h3 className="text-xl font-bold text-white">AI Email Analyser</h3>
-                                        <p className="text-xs text-white/50">Paste any interview or recruitment email to pull out key information and generate a checklist</p>
+                                        <p className="text-xs text-white/50">Paste or import an interview email — extract details, research the HR contact on Happenstance, and prep for their likely questions &amp; tone</p>
                                     </div>
                                 </div>
 
@@ -5269,6 +5390,25 @@ function FeaturesContent() {
                                                             <div>
                                                                 <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>HR / Sender</span>
                                                                 <span className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.hrName || "Not specified"}</span>
+                                                                {isUsableHrName(emailAnalysisResult.extractedDetails.hrName) && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleResearchHr()}
+                                                                        disabled={hrResearchStatus === "running"}
+                                                                        className={`mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold transition ${
+                                                                            hrResearchStatus === "running"
+                                                                                ? "text-teal-400/60 cursor-wait"
+                                                                                : "text-teal-500 hover:text-teal-400 cursor-pointer"
+                                                                        }`}
+                                                                    >
+                                                                        {hrResearchStatus === "running" ? (
+                                                                            <Loader2 className="w-3 h-3 animate-spin" />
+                                                                        ) : (
+                                                                            <Search className="w-3 h-3" />
+                                                                        )}
+                                                                        {hrResearchStatus === "completed" ? "Refresh Happenstance" : "Research on Happenstance"}
+                                                                    </button>
+                                                                )}
                                                             </div>
                                                             <div className={`col-span-2 pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
                                                                 <span className={`block flex items-center gap-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>
@@ -5401,7 +5541,191 @@ function FeaturesContent() {
                                                         </div>
                                                     )}
 
+                                                    {(hrResearchStatus !== "idle" || hrResearchResult) && (
+                                                        <div className={`rounded-xl border p-3.5 space-y-3 ${
+                                                            isLight ? "bg-white border-slate-200 shadow-sm" : "bg-black/30 border-white/5"
+                                                        }`}>
+                                                            <div className="flex items-start justify-between gap-2">
+                                                                <div>
+                                                                    <h5 className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                                                                        isLight ? "text-teal-700" : "text-teal-400"
+                                                                    }`}>
+                                                                        <User className="w-3.5 h-3.5" /> Interviewer Intel
+                                                                        <span className={`normal-case font-medium tracking-normal ${isLight ? "text-slate-400" : "text-white/40"}`}>
+                                                                            via Happenstance
+                                                                        </span>
+                                                                    </h5>
+                                                                    {hrResearchMessage && (
+                                                                        <p className={`text-[10px] mt-1 font-sans ${isLight ? "text-slate-500" : "text-white/45"}`}>
+                                                                            {hrResearchMessage}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                                {hrHappenstanceUrl && (
+                                                                    <a
+                                                                        href={hrHappenstanceUrl}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center gap-0.5 text-[10px] text-teal-500 hover:text-teal-400 font-bold shrink-0"
+                                                                    >
+                                                                        Open <ExternalLink className="w-2.5 h-2.5" />
+                                                                    </a>
+                                                                )}
+                                                            </div>
 
+                                                            {hrResearchStatus === "running" && (
+                                                                <div className={`flex items-center gap-2 text-xs ${isLight ? "text-slate-600" : "text-white/70"}`}>
+                                                                    <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
+                                                                    Pulling public profile, writings, and career signals…
+                                                                </div>
+                                                            )}
+
+                                                            {hrResearchStatus === "error" && (
+                                                                <div className={`text-xs rounded-lg px-2.5 py-2 border ${
+                                                                    isLight ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-amber-500/10 border-amber-500/20 text-amber-200"
+                                                                }`}>
+                                                                    <AlertTriangle className="w-3.5 h-3.5 inline mr-1" />
+                                                                    {hrResearchMessage || "Could not finish HR research."}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleResearchHr()}
+                                                                        className="ml-2 underline font-bold cursor-pointer"
+                                                                    >
+                                                                        Retry
+                                                                    </button>
+                                                                </div>
+                                                            )}
+
+                                                            {hrResearchStatus === "completed" && hrResearchResult?.intel && (
+                                                                <div className="space-y-3">
+                                                                    {hrResearchResult.profile?.tagline && (
+                                                                        <p className={`text-[11px] font-sans italic ${isLight ? "text-slate-600" : "text-white/60"}`}>
+                                                                            {hrResearchResult.profile.fullName || hrResearchResult.intel.interviewerName}
+                                                                            {hrResearchResult.profile.currentRoles?.[0]
+                                                                                ? ` · ${hrResearchResult.profile.currentRoles[0].title || ""} @ ${hrResearchResult.profile.currentRoles[0].company || ""}`
+                                                                                : hrResearchResult.intel.titleGuess
+                                                                                    ? ` · ${hrResearchResult.intel.titleGuess}`
+                                                                                    : ""}
+                                                                            {" — "}
+                                                                            {hrResearchResult.profile.tagline}
+                                                                        </p>
+                                                                    )}
+
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                        <div className={`rounded-lg p-2.5 border ${
+                                                                            isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"
+                                                                        }`}>
+                                                                            <span className={`block text-[10px] font-bold uppercase tracking-wide mb-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>
+                                                                                Mood / Energy
+                                                                            </span>
+                                                                            <span className={`inline-block mb-1.5 px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wide ${
+                                                                                hrResearchResult.intel.moodLabel === "warm" || hrResearchResult.intel.moodLabel === "encouraging"
+                                                                                    ? isLight ? "bg-emerald-100 text-emerald-700" : "bg-emerald-500/15 text-emerald-300"
+                                                                                    : hrResearchResult.intel.moodLabel === "intense" || hrResearchResult.intel.moodLabel === "skeptical"
+                                                                                    ? isLight ? "bg-amber-100 text-amber-800" : "bg-amber-500/15 text-amber-300"
+                                                                                    : isLight ? "bg-slate-200 text-slate-700" : "bg-white/10 text-white/80"
+                                                                            }`}>
+                                                                                {hrResearchResult.intel.moodLabel}
+                                                                            </span>
+                                                                            <p className={`text-[11px] leading-relaxed font-sans ${isLight ? "text-slate-700" : "text-white/75"}`}>
+                                                                                {hrResearchResult.intel.mood}
+                                                                            </p>
+                                                                        </div>
+                                                                        <div className={`rounded-lg p-2.5 border ${
+                                                                            isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"
+                                                                        }`}>
+                                                                            <span className={`block text-[10px] font-bold uppercase tracking-wide mb-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>
+                                                                                Tone to Match
+                                                                            </span>
+                                                                            <p className={`text-[11px] leading-relaxed font-sans ${isLight ? "text-slate-700" : "text-white/75"}`}>
+                                                                                {hrResearchResult.intel.communicationTone}
+                                                                            </p>
+                                                                            <p className={`text-[11px] leading-relaxed font-sans mt-1.5 ${isLight ? "text-teal-700" : "text-teal-300"}`}>
+                                                                                {hrResearchResult.intel.howToSpeak}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {hrResearchResult.intel.likelyQuestions?.length > 0 && (
+                                                                        <div>
+                                                                            <span className={`block text-[10px] font-bold uppercase tracking-wide mb-1.5 ${isLight ? "text-slate-400" : "text-white/40"}`}>
+                                                                                Likely Questions
+                                                                            </span>
+                                                                            <ul className="space-y-1.5">
+                                                                                {hrResearchResult.intel.likelyQuestions.map((q: any, idx: number) => (
+                                                                                    <li
+                                                                                        key={idx}
+                                                                                        className={`rounded-lg px-2.5 py-2 border text-[11px] ${
+                                                                                            isLight ? "bg-slate-50 border-slate-200" : "bg-white/5 border-white/10"
+                                                                                        }`}
+                                                                                    >
+                                                                                        <div className="flex items-start gap-2">
+                                                                                            <MessageSquare className={`w-3 h-3 mt-0.5 shrink-0 ${isLight ? "text-teal-600" : "text-teal-400"}`} />
+                                                                                            <div>
+                                                                                                <p className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{q.question}</p>
+                                                                                                <p className={`mt-0.5 font-sans ${isLight ? "text-slate-500" : "text-white/45"}`}>
+                                                                                                    <span className="font-bold uppercase tracking-wide text-[9px]">{q.category}</span>
+                                                                                                    {q.why ? ` · ${q.why}` : ""}
+                                                                                                </p>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    </li>
+                                                                                ))}
+                                                                            </ul>
+                                                                        </div>
+                                                                    )}
+
+                                                                    {(hrResearchResult.intel.focusAreas?.length > 0 || hrResearchResult.intel.rapportTips?.length > 0) && (
+                                                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                            {hrResearchResult.intel.focusAreas?.length > 0 && (
+                                                                                <div>
+                                                                                    <span className={`block text-[10px] font-bold uppercase tracking-wide mb-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>
+                                                                                        Focus Areas
+                                                                                    </span>
+                                                                                    <div className="flex flex-wrap gap-1">
+                                                                                        {hrResearchResult.intel.focusAreas.map((area: string, idx: number) => (
+                                                                                            <span key={idx} className={`px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                                                                                                isLight ? "bg-teal-50 border-teal-200 text-teal-800" : "bg-teal-500/10 border-teal-500/20 text-teal-300"
+                                                                                            }`}>
+                                                                                                {area}
+                                                                                            </span>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                            {hrResearchResult.intel.rapportTips?.length > 0 && (
+                                                                                <div>
+                                                                                    <span className={`block text-[10px] font-bold uppercase tracking-wide mb-1 ${isLight ? "text-slate-400" : "text-white/40"}`}>
+                                                                                        Rapport Tips
+                                                                                    </span>
+                                                                                    <ul className={`text-[11px] space-y-0.5 font-sans list-disc pl-4 ${isLight ? "text-slate-600" : "text-white/65"}`}>
+                                                                                        {hrResearchResult.intel.rapportTips.map((tip: string, idx: number) => (
+                                                                                            <li key={idx}>{tip}</li>
+                                                                                        ))}
+                                                                                    </ul>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+
+                                                                    {hrResearchResult.intel.watchOuts?.length > 0 && (
+                                                                        <div className={`rounded-lg px-2.5 py-2 border text-[11px] ${
+                                                                            isLight ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-amber-500/10 border-amber-500/20 text-amber-100"
+                                                                        }`}>
+                                                                            <span className="font-bold">Watch outs: </span>
+                                                                            {hrResearchResult.intel.watchOuts.join(" · ")}
+                                                                        </div>
+                                                                    )}
+
+                                                                    <p className={`text-[10px] font-sans ${isLight ? "text-slate-400" : "text-white/35"}`}>
+                                                                        Confidence {Math.round(hrResearchResult.intel.confidence || 0)}%
+                                                                        {hrResearchResult.intel.source === "gemini_fallback" ? " · Happenstance profile unavailable (fallback guidance)" : " · grounded in Happenstance research"}
+                                                                        {hrResearchResult.intel.disclaimer ? ` · ${hrResearchResult.intel.disclaimer}` : ""}
+                                                                    </p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )}
 
                                                     <button
                                                         type="button"
