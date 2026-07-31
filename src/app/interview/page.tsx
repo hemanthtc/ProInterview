@@ -9,7 +9,7 @@ import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageIt
 
 export default function InterviewRoom() {
     const router = useRouter();
-    const videoElementRef = useRef<HTMLVideoElement | null>(null);
+    const videoElementsRef = useRef<Set<HTMLVideoElement>>(new Set());
     const streamRef = useRef<MediaStream | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -18,15 +18,18 @@ export default function InterviewRoom() {
             streamRef.current.getTracks().forEach((track) => track.stop());
             streamRef.current = null;
         }
-        if (videoElementRef.current) {
-            videoElementRef.current.srcObject = null;
-        }
+        videoElementsRef.current.forEach((el) => {
+            el.srcObject = null;
+        });
     }, []);
 
     const videoRef = useCallback((node: HTMLVideoElement | null) => {
-        videoElementRef.current = node;
-        if (node && streamRef.current) {
-            node.srcObject = streamRef.current;
+        if (node) {
+            videoElementsRef.current.add(node);
+            if (streamRef.current) {
+                node.srcObject = streamRef.current;
+                node.play().catch(() => {});
+            }
         }
     }, []);
 
@@ -151,12 +154,20 @@ export default function InterviewRoom() {
         }
 
         faceDetectionIntervalRef.current = setInterval(() => {
-            if (!videoElementRef.current || !canvasRef.current || isCallEnded) return;
+            if (!canvasRef.current || isCallEnded) return;
 
-            const video = videoElementRef.current;
+            let video: HTMLVideoElement | null = null;
+            for (const el of videoElementsRef.current) {
+                if (el && el.isConnected && el.videoWidth > 0 && el.videoHeight > 0) {
+                    video = el;
+                    break;
+                }
+            }
+
+            if (!video) return;
             const canvas = canvasRef.current;
             const ctx = canvas.getContext("2d");
-            if (!ctx || video.videoWidth === 0) return;
+            if (!ctx) return;
 
             canvas.width = 160;
             canvas.height = 120;
@@ -278,8 +289,13 @@ export default function InterviewRoom() {
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 streamRef.current = stream;
-                if (isMounted && videoElementRef.current) {
-                    videoElementRef.current.srcObject = stream;
+                if (isMounted) {
+                    videoElementsRef.current.forEach((node) => {
+                        if (node && node.isConnected) {
+                            node.srcObject = stream;
+                            node.play().catch(() => {});
+                        }
+                    });
                     setVideoActive(true);
                 } else if (!isMounted) {
                     stream.getTracks().forEach(track => track.stop());
@@ -524,12 +540,19 @@ export default function InterviewRoom() {
         setIsSpeaking(false);
 
         // Take a camera snapshot if video is active
-        if (videoElementRef.current && canvasRef.current && videoActive) {
+        let activeVideoEl: HTMLVideoElement | null = null;
+        for (const el of videoElementsRef.current) {
+            if (el && el.isConnected && el.videoWidth > 0 && el.videoHeight > 0) {
+                activeVideoEl = el;
+                break;
+            }
+        }
+        if (activeVideoEl && canvasRef.current && videoActive) {
             const context = canvasRef.current.getContext('2d');
             if (context) {
-                canvasRef.current.width = videoElementRef.current.videoWidth || 640;
-                canvasRef.current.height = videoElementRef.current.videoHeight || 480;
-                context.drawImage(videoElementRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+                canvasRef.current.width = activeVideoEl.videoWidth || 640;
+                canvasRef.current.height = activeVideoEl.videoHeight || 480;
+                context.drawImage(activeVideoEl, 0, 0, canvasRef.current.width, canvasRef.current.height);
                 const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.5);
                 if (snapshotsRef.current.length < 15) { 
                     snapshotsRef.current.push(dataUrl.split(',')[1]);
@@ -583,9 +606,12 @@ export default function InterviewRoom() {
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 streamRef.current = stream;
-                if (videoElementRef.current) {
-                    videoElementRef.current.srcObject = stream;
-                }
+                videoElementsRef.current.forEach((node) => {
+                    if (node && node.isConnected) {
+                        node.srcObject = stream;
+                        node.play().catch(() => {});
+                    }
+                });
             } catch (err) {
                 console.error("Camera access error:", err);
                 setVideoActive(false);

@@ -9,7 +9,7 @@ import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageIt
 
 export default function RealisticInterviewRoom() {
     const router = useRouter();
-    const videoElementRef = useRef<HTMLVideoElement | null>(null);
+    const videoElementsRef = useRef<Set<HTMLVideoElement>>(new Set());
     const streamRef = useRef<MediaStream | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -18,15 +18,18 @@ export default function RealisticInterviewRoom() {
             streamRef.current.getTracks().forEach((track) => track.stop());
             streamRef.current = null;
         }
-        if (videoElementRef.current) {
-            videoElementRef.current.srcObject = null;
-        }
+        videoElementsRef.current.forEach((el) => {
+            el.srcObject = null;
+        });
     }, []);
 
     const videoRef = useCallback((node: HTMLVideoElement | null) => {
-        videoElementRef.current = node;
-        if (node && streamRef.current) {
-            node.srcObject = streamRef.current;
+        if (node) {
+            videoElementsRef.current.add(node);
+            if (streamRef.current) {
+                node.srcObject = streamRef.current;
+                node.play().catch(() => {});
+            }
         }
     }, []);
 
@@ -192,12 +195,20 @@ export default function RealisticInterviewRoom() {
         }
 
         faceDetectionIntervalRef.current = setInterval(() => {
-            if (!videoElementRef.current || !canvasRef.current || isCallEnded) return;
+            if (!canvasRef.current || isCallEnded) return;
 
-            const video = videoElementRef.current;
+            let video: HTMLVideoElement | null = null;
+            for (const el of videoElementsRef.current) {
+                if (el && el.isConnected && el.videoWidth > 0 && el.videoHeight > 0) {
+                    video = el;
+                    break;
+                }
+            }
+
+            if (!video) return;
             const canvas = canvasRef.current;
             const ctx = canvas.getContext("2d");
-            if (!ctx || video.videoWidth === 0) return;
+            if (!ctx) return;
 
             canvas.width = 160;
             canvas.height = 120;
@@ -346,8 +357,13 @@ export default function RealisticInterviewRoom() {
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 streamRef.current = stream;
-                if (isMounted && videoElementRef.current) {
-                    videoElementRef.current.srcObject = stream;
+                if (isMounted) {
+                    videoElementsRef.current.forEach((node) => {
+                        if (node && node.isConnected) {
+                            node.srcObject = stream;
+                            node.play().catch(() => {});
+                        }
+                    });
                     setVideoActive(true);
                 } else if (!isMounted) {
                     stream.getTracks().forEach(track => track.stop());
@@ -458,7 +474,14 @@ export default function RealisticInterviewRoom() {
             }
             
             const data = await res.json();
-            const { id: streamId, offer, ice_servers: iceServers, session_id: sessionId } = data;
+            const streamId = data.id || data.streamId;
+            const sessionId = data.session_id || data.sessionId;
+            const offer = data.offer;
+            const iceServers = data.ice_servers;
+
+            if (!streamId || !sessionId) {
+                throw new Error("Missing streamId or session_id from D-ID stream initialization.");
+            }
             
             streamIdRef.current = streamId;
             sessionIdRef.current = sessionId;
@@ -504,22 +527,34 @@ export default function RealisticInterviewRoom() {
                 }
             };
 
+            // Buffer ICE candidates until SDP answer is sent to D-ID
+            let isSdpAnswerSent = false;
+            const iceCandidateQueue: RTCIceCandidate[] = [];
+
+            const sendIceCandidate = (candidateObj: RTCIceCandidate) => {
+                const { candidate, sdpMid, sdpMLineIndex } = candidateObj;
+                fetch("/api/d-id-stream", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "ice",
+                        streamId,
+                        sessionId,
+                        candidate,
+                        sdpMid,
+                        sdpMLineIndex
+                    })
+                }).catch(err => console.warn("Failed to send ICE candidate:", err));
+            };
+
             // 3. Handle onicecandidate
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
-                    const { candidate, sdpMid, sdpMLineIndex } = event.candidate;
-                    fetch("/api/d-id-stream", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            action: "ice",
-                            streamId,
-                            sessionId,
-                            candidate,
-                            sdpMid,
-                            sdpMLineIndex
-                        })
-                    }).catch(err => console.warn("Failed to send ICE candidate:", err));
+                    if (!isSdpAnswerSent) {
+                        iceCandidateQueue.push(event.candidate);
+                    } else {
+                        sendIceCandidate(event.candidate);
+                    }
                 }
             };
             
@@ -559,6 +594,15 @@ export default function RealisticInterviewRoom() {
             if (!sdpRes.ok) {
                 const errData = await sdpRes.json().catch(() => ({}));
                 throw new Error(errData.error || `Failed to send SDP answer: Status ${sdpRes.status}`);
+            }
+
+            // Mark SDP answer as sent and flush queued ICE candidates
+            isSdpAnswerSent = true;
+            while (iceCandidateQueue.length > 0) {
+                const queuedCandidate = iceCandidateQueue.shift();
+                if (queuedCandidate) {
+                    sendIceCandidate(queuedCandidate);
+                }
             }
             
             console.log("D-ID WebRTC Stream initialized successfully.");
@@ -831,12 +875,19 @@ export default function RealisticInterviewRoom() {
         setIsSpeaking(false);
 
         // Take a camera snapshot if video is active
-        if (videoElementRef.current && canvasRef.current && videoActive) {
+        let activeVideoEl: HTMLVideoElement | null = null;
+        for (const el of videoElementsRef.current) {
+            if (el && el.isConnected && el.videoWidth > 0 && el.videoHeight > 0) {
+                activeVideoEl = el;
+                break;
+            }
+        }
+        if (activeVideoEl && canvasRef.current && videoActive) {
             const context = canvasRef.current.getContext('2d');
             if (context) {
-                canvasRef.current.width = videoElementRef.current.videoWidth || 640;
-                canvasRef.current.height = videoElementRef.current.videoHeight || 480;
-                context.drawImage(videoElementRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+                canvasRef.current.width = activeVideoEl.videoWidth || 640;
+                canvasRef.current.height = activeVideoEl.videoHeight || 480;
+                context.drawImage(activeVideoEl, 0, 0, canvasRef.current.width, canvasRef.current.height);
                 const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.5);
                 if (snapshotsRef.current.length < 15) { 
                     snapshotsRef.current.push(dataUrl.split(',')[1]);
@@ -890,9 +941,12 @@ export default function RealisticInterviewRoom() {
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 streamRef.current = stream;
-                if (videoElementRef.current) {
-                    videoElementRef.current.srcObject = stream;
-                }
+                videoElementsRef.current.forEach((node) => {
+                    if (node && node.isConnected) {
+                        node.srcObject = stream;
+                        node.play().catch(() => {});
+                    }
+                });
             } catch (err) {
                 console.error("Camera access error:", err);
                 setVideoActive(false);
