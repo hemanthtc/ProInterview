@@ -109,6 +109,7 @@ Copy from [`.env.example`](.env.example):
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | No | Payments |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | No | Razorpay client key |
 | `NEXT_PUBLIC_MERCHANT_UPI_ID` | No | UPI / donation QR |
+| `HAPPENSTANCE_API_KEY` | No | HR people research (falls back to Gemini-only guidance) |
 
 \*Required for full auth and persistence; core interview demos can run with Gemini alone, but login and profile sync need MongoDB and auth keys.
 
