@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
             company = "",
             role = "",
             currentOffer = "",
+            currency = "USD",
+            payPeriod = "annually",
             benefits = "",
             targetComp = "",
             batna = "",
@@ -77,9 +79,11 @@ Mode: ${safeMode}
 Context:
 Company: ${company || "Unknown"}
 Role: ${role || "Unknown"}
-Current offer: ${currentOffer || "not specified"}
+Currency: ${currency}
+Pay Period: ${payPeriod}
+Current offer: ${currentOffer ? `${currentOffer} ${currency} (${payPeriod})` : "not specified"}
 Benefits: ${benefits || "not specified"}
-Candidate target: ${targetComp || "not specified"}
+Candidate target: ${targetComp ? `${targetComp} ${currency} (${payPeriod})` : "not specified"}
 BATNA / alternatives: ${batna || "not specified"}
 
 Conversation so far:

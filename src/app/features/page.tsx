@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock } from "lucide-react";
+import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
@@ -301,6 +301,11 @@ function FeaturesContent() {
     const [mockAutoSubmittedReason, setMockAutoSubmittedReason] = useState<"time" | "proctor" | null>(null);
     const [mockTestMCQsList, setMockTestMCQsList] = useState<MCQQuestion[]>([]);
     const [mockTestCodingList, setMockTestCodingList] = useState<CodingQuestion[]>([]);
+
+    // Offer Negotiation dynamic strategy states
+    const [dynamicLevers, setDynamicLevers] = useState<string[]>([]);
+    const [dynamicRedLines, setDynamicRedLines] = useState<string[]>([]);
+    const [negotiationMood, setNegotiationMood] = useState<string>("");
 
     // Progress / History states
     const [progressTab, setProgressTab] = useState<"interview" | "aptitude">("interview");
@@ -3844,7 +3849,7 @@ function FeaturesContent() {
                     />
                 </div>
             ) : (
-                <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
+                <main className={`flex-1 flex flex-col items-center justify-center px-6 py-12 relative ${activeModal === "negotiate" ? "overflow-visible" : "overflow-hidden"}`}>
                 <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 
@@ -4064,6 +4069,120 @@ function FeaturesContent() {
                             )}
                         </div>
                     </>
+                ) : activeModal === "negotiate" ? (
+                    <div className="w-full max-w-[98vw] px-[10px] mx-auto flex flex-col lg:flex-row items-start justify-between gap-4 lg:gap-6 z-10 relative">
+                        {/* Left Side Card: Negotiation Levers to Use (Fixed in Place on Left Window Edge - Dynamically Updated) */}
+                        <div className={`w-full lg:w-64 xl:w-72 shrink-0 lg:fixed lg:top-28 lg:left-3 xl:left-6 z-30 rounded-2xl p-5 md:p-6 border shadow-2xl transition-all space-y-4 ${
+                            theme === "light" 
+                                ? "bg-emerald-50/95 backdrop-blur-md border-emerald-200 text-emerald-950" 
+                                : theme === "eyeprotect" 
+                                ? "bg-[#e6f7ec]/95 backdrop-blur-md border-emerald-300 text-emerald-950" 
+                                : "bg-[#111]/95 backdrop-blur-md border-emerald-500/20 text-white"
+                        }`}>
+                            <div className="flex items-center justify-between border-b pb-3 border-emerald-500/20">
+                                <h4 className="font-bold text-base text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                                    <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                    <span className="font-extrabold text-emerald-600 dark:text-emerald-400">Negotiation Levers</span>
+                                </h4>
+                                {negotiationMood && (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                        {negotiationMood}
+                                    </span>
+                                )}
+                            </div>
+                            <p className={`text-xs ${theme === "light" ? "text-emerald-700 font-medium" : theme === "eyeprotect" ? "text-emerald-800 font-medium" : "text-white/60"}`}>
+                                {dynamicLevers.length > 0 ? "Tailored compensation levers for your offer:" : "Key compensation levers to adjust during talks:"}
+                            </p>
+                            <ul className={`space-y-2.5 text-xs list-disc list-inside leading-relaxed ${theme === "light" ? "text-emerald-950 font-semibold" : theme === "eyeprotect" ? "text-emerald-950 font-semibold" : "text-white/80"}`}>
+                                {(dynamicLevers.length > 0 ? dynamicLevers : [
+                                    "Base Salary adjustment",
+                                    "Signing / Joining Bonus",
+                                    "Equity / RSUs grant",
+                                    "Start Date flexibility",
+                                    "Title & Level seniority"
+                                ]).map((lever, idx) => (
+                                    <li key={idx} className="marker:text-emerald-600 font-semibold transition-all">
+                                        {lever}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+
+                        {/* Center: Main OFFER NEGOTIATION BOX (Enlarged with spacious left/right desktop margins) */}
+                        <div className={`flex-1 w-full min-w-0 lg:ml-72 xl:ml-80 lg:mr-72 xl:mr-80 bg-[#111] p-6 md:p-8 rounded-2xl border border-emerald-500/20 shadow-2xl relative ${
+                            isLight ? "bg-white border-slate-200 text-slate-800" : "bg-[#111] border-emerald-500/20 text-white"
+                        }`}>
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-t-2xl"></div>
+                            
+                            {/* Close button in top-right of Offer Negotiation box */}
+                            <button
+                                type="button"
+                                onClick={() => setActiveModal(null)}
+                                className="absolute top-6 right-6 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-colors border border-white/10 cursor-pointer z-50"
+                                title="Back to option list"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            <div className="space-y-4 text-left">
+                                <div className="flex items-center gap-3 pr-16">
+                                    <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                                        <Handshake className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold">Offer Negotiation</h3>
+                                        <p className="text-xs opacity-60">Practice scripts and coach notes for compensation talks.</p>
+                                    </div>
+                                </div>
+
+                                <NegotiatePanel
+                                    defaultCompany={emailAnalysisResult?.extractedDetails?.company || ""}
+                                    defaultRole={emailAnalysisResult?.extractedDetails?.role || ""}
+                                    onUpdateStrategy={({ levers, redLines, mood }) => {
+                                        if (Array.isArray(levers) && levers.length > 0) setDynamicLevers(levers);
+                                        if (Array.isArray(redLines) && redLines.length > 0) setDynamicRedLines(redLines);
+                                        if (mood) setNegotiationMood(mood);
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Right Side Card: Tactical Red Lines (Fixed in Place on Right Window Edge - Dynamically Updated) */}
+                        <div className={`w-full lg:w-64 xl:w-72 shrink-0 lg:fixed lg:top-28 lg:right-3 xl:right-6 z-30 rounded-2xl p-5 md:p-6 border shadow-2xl transition-all space-y-4 ${
+                            theme === "light" 
+                                ? "bg-red-50/95 backdrop-blur-md border-red-200 text-red-900" 
+                                : theme === "eyeprotect" 
+                                ? "bg-[#fdf2f2]/95 backdrop-blur-md border-red-300 text-red-950" 
+                                : "bg-[#111]/95 backdrop-blur-md border-red-500/20 text-white"
+                        }`}>
+                            <div className="flex items-center justify-between border-b pb-3 border-red-500/20">
+                                <h4 className="font-bold text-base flex items-center gap-2 tactical-red-title" style={{ color: isLight ? "#dc2626" : "#ef4444" }}>
+                                    <ShieldAlert className="w-4 h-4 shrink-0" style={{ color: isLight ? "#dc2626" : "#ef4444" }} />
+                                    <span className="font-extrabold text-red-600 dark:text-red-400">Tactical Red Lines</span>
+                                </h4>
+                                {dynamicRedLines.length > 0 && (
+                                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20">
+                                        Live AI
+                                    </span>
+                                )}
+                            </div>
+                            <p className={`text-xs ${theme === "light" ? "text-red-700 font-medium" : theme === "eyeprotect" ? "text-red-800 font-medium" : "text-white/60"}`}>
+                                {dynamicRedLines.length > 0 ? "Tailored mistakes to avoid for this package:" : "Mistakes to strictly avoid during negotiation:"}
+                            </p>
+                            <ul className={`space-y-2.5 text-xs list-disc list-inside leading-relaxed ${theme === "light" ? "text-red-900 font-semibold" : theme === "eyeprotect" ? "text-red-950 font-semibold" : "text-white/80"}`}>
+                                {(dynamicRedLines.length > 0 ? dynamicRedLines : [
+                                    "Never accept on the spot under pressure",
+                                    "Don't apologize for asking to negotiate",
+                                    "Don't invent fake competing offers",
+                                    "Don't reveal minimum bottom-line early"
+                                ]).map((redLine, idx) => (
+                                    <li key={idx} className="marker:text-red-600 font-semibold transition-all">
+                                        {redLine}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    </div>
                 ) : (
                     <div className={`w-full ${activeModal === "resume" || activeModal === "roadmap_generator" || activeModal === "aptitude" || activeModal === "progress" || (activeModal === "analysis" && !showInterviewCustomizer) ? "max-w-7xl" : "max-w-4xl"} bg-[#111] p-8 md:p-10 rounded-2xl border ${
                         activeModal === "analysis" ? "border-indigo-500/20" : 
@@ -5905,23 +6024,6 @@ function FeaturesContent() {
                             </div>
                         )}
 
-                        {activeModal === "negotiate" && (
-                            <div className="space-y-4 text-left">
-                                <div className="flex items-center gap-3 pr-16">
-                                    <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
-                                        <Handshake className="w-5 h-5" />
-                                    </div>
-                                    <div>
-                                        <h3 className="text-xl font-bold text-white">Offer Negotiation</h3>
-                                        <p className="text-xs text-white/50">Practice scripts and coach notes for compensation talks.</p>
-                                    </div>
-                                </div>
-                                <NegotiatePanel
-                                    defaultCompany={emailAnalysisResult?.extractedDetails?.company || ""}
-                                    defaultRole={emailAnalysisResult?.extractedDetails?.role || ""}
-                                />
-                            </div>
-                        )}
 
                         {activeModal === "roadmap_generator" && (
                             <div className="space-y-6 text-left">

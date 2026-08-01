@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Handshake, Loader2, Send, Sparkles } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Handshake, Loader2, Send, Sparkles, ChevronDown, ChevronUp, RotateCcw, Copy, Check, ShieldAlert } from "lucide-react";
 
 type Mode = "simulate" | "coach";
 
@@ -16,18 +16,33 @@ interface NegotiatePanelProps {
     className?: string;
     defaultCompany?: string;
     defaultRole?: string;
+    onUpdateStrategy?: (strategy: { levers: string[]; redLines: string[]; mood: string }) => void;
 }
+
+const CURRENCY_OPTIONS = [
+    { code: "USD", symbol: "$" },
+    { code: "INR", symbol: "₹" },
+    { code: "EUR", symbol: "€" },
+    { code: "GBP", symbol: "£" },
+    { code: "CAD", symbol: "C$" },
+    { code: "AUD", symbol: "A$" },
+    { code: "SGD", symbol: "S$" },
+    { code: "AED", symbol: "AED" },
+];
 
 export default function NegotiatePanel({
     className = "",
     defaultCompany = "",
     defaultRole = "",
+    onUpdateStrategy,
 }: NegotiatePanelProps) {
     const [company, setCompany] = useState(defaultCompany);
     const [role, setRole] = useState(defaultRole);
     const [currentOffer, setCurrentOffer] = useState("");
-    const [benefits, setBenefits] = useState("");
     const [targetComp, setTargetComp] = useState("");
+    const [currency, setCurrency] = useState("USD");
+    const [payPeriod, setPayPeriod] = useState<"annually" | "monthly">("annually");
+    const [benefits, setBenefits] = useState("");
     const [batna, setBatna] = useState("");
     const [mode, setMode] = useState<Mode>("coach");
     const [userMessage, setUserMessage] = useState("");
@@ -37,15 +52,32 @@ export default function NegotiatePanel({
     const [mood, setMood] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [showInputs, setShowInputs] = useState(true);
+    const [copiedScriptIndex, setCopiedScriptIndex] = useState<number | null>(null);
 
-    async function send() {
-        if (!userMessage.trim() && history.length === 0) {
-            setError("Add a message or opening ask to start.");
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    // Auto-collapse inputs when conversation begins
+    useEffect(() => {
+        if (history.length > 0) {
+            setShowInputs(false);
+        }
+    }, [history.length]);
+
+    // Auto-scroll chat to bottom
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [history, loading]);
+
+    async function send(messageToSend?: string) {
+        const textToUse = messageToSend || userMessage;
+        if (!textToUse.trim() && history.length === 0) {
+            setError("Add a message or opening ask to start negotiation.");
             return;
         }
         setLoading(true);
         setError("");
-        const msg = userMessage.trim() || "Help me open the negotiation.";
+        const msg = textToUse.trim() || "Help me open the negotiation effectively.";
         try {
             const res = await fetch("/api/negotiate", {
                 method: "POST",
@@ -54,6 +86,8 @@ export default function NegotiatePanel({
                     company,
                     role,
                     currentOffer,
+                    currency,
+                    payPeriod,
                     benefits,
                     targetComp,
                     batna,
@@ -76,10 +110,23 @@ export default function NegotiatePanel({
                 },
             ];
             setHistory(next);
-            setLevers(Array.isArray(data.levers) ? data.levers : []);
-            setRedLines(Array.isArray(data.redLines) ? data.redLines : []);
-            setMood(data.mood || "");
+            setShowInputs(false);
+            const newLevers = Array.isArray(data.levers) ? data.levers : [];
+            const newRedLines = Array.isArray(data.redLines) ? data.redLines : [];
+            const newMood = data.mood || "";
+
+            setLevers(newLevers);
+            setRedLines(newRedLines);
+            setMood(newMood);
             setUserMessage("");
+
+            if (onUpdateStrategy) {
+                onUpdateStrategy({
+                    levers: newLevers,
+                    redLines: newRedLines,
+                    mood: newMood,
+                });
+            }
         } catch (e: any) {
             setError(e.message || "Negotiation assist failed");
         } finally {
@@ -87,121 +134,287 @@ export default function NegotiatePanel({
         }
     }
 
+    const resetSession = () => {
+        setHistory([]);
+        setLevers([]);
+        setRedLines([]);
+        setMood("");
+        setShowInputs(true);
+        setUserMessage("");
+        setError("");
+    };
+
+    const copyScript = (script: string, idx: number) => {
+        navigator.clipboard.writeText(script);
+        setCopiedScriptIndex(idx);
+        setTimeout(() => setCopiedScriptIndex(null), 2000);
+    };
+
+    const currencySymbol = CURRENCY_OPTIONS.find((c) => c.code === currency)?.symbol || "$";
+
     return (
-        <div className={`rounded-2xl border border-white/10 bg-[#111] p-5 space-y-4 ${className}`}>
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-                <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                    <Handshake className="w-4 h-4 text-emerald-400" />
-                    Offer Negotiation Lab
-                </h3>
-                <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs">
-                    {(["coach", "simulate"] as Mode[]).map((m) => (
+        <div className={`rounded-2xl border border-white/10 bg-[#111] p-5 md:p-6 space-y-4 shadow-2xl flex flex-col ${className}`}>
+                {/* Header Controls */}
+                <div className="flex items-center justify-between gap-3 flex-wrap border-b border-white/10 pb-4">
+                    <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                            <Handshake className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-base font-bold text-white flex items-center gap-2">
+                                Offer Negotiation Lab
+                            </h3>
+                            <p className="text-xs text-white/50">Strategy, scripts & recruiter simulations</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                        {history.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={() => setShowInputs(!showInputs)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/10 bg-white/5 text-xs text-white/70 hover:text-white hover:bg-white/10 transition-all"
+                            >
+                                {showInputs ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                                {showInputs ? "Hide Context" : "Edit Offer Context"}
+                            </button>
+                        )}
+
+                        {history.length > 0 && (
+                            <button
+                                type="button"
+                                onClick={resetSession}
+                                title="Reset Negotiation Session"
+                                className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all"
+                            >
+                                <RotateCcw className="w-4 h-4" />
+                            </button>
+                        )}
+
+                        {/* Mode Switcher */}
+                        <div className="flex rounded-lg overflow-hidden border border-white/10 text-xs bg-black/40 p-0.5">
+                            {(["coach", "simulate"] as Mode[]).map((m) => (
+                                <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() => setMode(m)}
+                                    className={`px-3 py-1.5 rounded-md capitalize font-medium transition-all ${
+                                        mode === m
+                                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
+                                            : "text-white/60 hover:text-white"
+                                    }`}
+                                >
+                                    {m === "coach" ? "🧙‍♂️ Coach" : "🎭 Recruiter Simulator"}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Offer Context Input Section (Collapsible once conversation begins) */}
+                {showInputs ? (
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4 transition-all animate-fadeIn">
+                        <div className="flex items-center justify-between">
+                            <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">
+                                Offer & Compensation Details
+                            </span>
+                            {history.length > 0 && (
+                                <span className="text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                                    Active Chat Connected
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-3">
+                            <Field label="Company" value={company} onChange={setCompany} placeholder="e.g. Google, Microsoft, Startup" />
+                            <Field label="Role Title" value={role} onChange={setRole} placeholder="e.g. Senior Software Engineer" />
+                            
+                            {/* Integrated Compensation Field 1: Current Offer */}
+                            <CompField
+                                label="Current Offer"
+                                value={currentOffer}
+                                onChange={setCurrentOffer}
+                                placeholder="e.g. 140,000"
+                                currency={currency}
+                                onCurrencyChange={setCurrency}
+                                payPeriod={payPeriod}
+                                onPayPeriodChange={setPayPeriod}
+                            />
+
+                            {/* Integrated Compensation Field 2: Target Comp */}
+                            <CompField
+                                label="Target Compensation"
+                                value={targetComp}
+                                onChange={setTargetComp}
+                                placeholder="e.g. 165,000"
+                                currency={currency}
+                                onCurrencyChange={setCurrency}
+                                payPeriod={payPeriod}
+                                onPayPeriodChange={setPayPeriod}
+                            />
+
+                            <Field label="Benefits & Perks" value={benefits} onChange={setBenefits} placeholder="e.g. 15% bonus, RSUs, Sign-on, Remote" />
+                            <Field label="BATNA / Competing Offers" value={batna} onChange={setBatna} placeholder="e.g. $150k rival offer or staying put" />
+                        </div>
+                    </div>
+                ) : (
+                    /* Compact Context Pill when hidden during conversation */
+                    <div className="flex items-center justify-between px-3.5 py-2 rounded-xl border border-white/10 bg-white/5 text-xs text-white/80">
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-semibold text-emerald-400">{company || "Offer Negotiation"}</span>
+                            {role && <span className="text-white/40">• {role}</span>}
+                            {currentOffer && (
+                                <span className="bg-white/10 px-2 py-0.5 rounded text-[11px] text-white/90">
+                                    Current: {currencySymbol}{currentOffer} {payPeriod === "monthly" ? "/mo" : "/yr"}
+                                </span>
+                            )}
+                            {targetComp && (
+                                <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded text-[11px]">
+                                    Target: {currencySymbol}{targetComp} {payPeriod === "monthly" ? "/mo" : "/yr"}
+                                </span>
+                            )}
+                        </div>
                         <button
-                            key={m}
                             type="button"
-                            onClick={() => setMode(m)}
-                            className={`px-3 py-1.5 capitalize ${
-                                mode === m ? "bg-emerald-600 text-white" : "bg-white/5 text-white/60 hover:text-white"
+                            onClick={() => setShowInputs(true)}
+                            className="text-[11px] text-emerald-400 hover:underline shrink-0 ml-2 font-medium"
+                        >
+                            Edit Context
+                        </button>
+                    </div>
+                )}
+
+                {/* Conversation Interface - Expanded & Larger */}
+                <div className={`space-y-4 overflow-y-auto pr-1.5 border border-white/10 bg-black/30 rounded-xl p-4 transition-all ${
+                    history.length > 0 ? "min-h-[500px] max-h-[680px] flex-1" : "min-h-[280px] max-h-[380px]"
+                }`}>
+                    {history.length === 0 && (
+                        <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                            <div className="p-3 rounded-full bg-white/5 border border-white/10 text-emerald-400">
+                                <Handshake className="w-8 h-8" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-semibold text-white">Ready to Negotiate Your Package</h4>
+                                <p className="text-xs text-white/50 max-w-md mt-1">
+                                    Enter your offer metrics above, then send a message below to start coaching or recruiter simulation.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap gap-2 justify-center mt-2">
+                                <button
+                                    type="button"
+                                    onClick={() => void send("How should I open the salary negotiation for this offer?")}
+                                    className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-emerald-300 transition-all"
+                                >
+                                    💡 "How should I open negotiation?"
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => void send("What counter-offer number should I target based on my details?")}
+                                    className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-indigo-300 transition-all"
+                                >
+                                    🎯 "What counter-offer should I send?"
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {history.map((turn, i) => (
+                        <div
+                            key={i}
+                            className={`rounded-2xl p-4 text-sm transition-all shadow-lg ${
+                                turn.role === "user"
+                                    ? "bg-indigo-600/20 border border-indigo-500/30 text-white ml-8 md:ml-16"
+                                    : "bg-white/[0.04] border border-white/10 text-white/90 mr-8 md:mr-16"
                             }`}
                         >
-                            {m}
-                        </button>
+                            <div className="flex items-center justify-between mb-2">
+                                <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${
+                                    turn.role === "user"
+                                        ? "bg-indigo-500/20 text-indigo-300"
+                                        : mode === "simulate"
+                                        ? "bg-purple-500/20 text-purple-300"
+                                        : "bg-emerald-500/20 text-emerald-300"
+                                }`}>
+                                    {turn.role === "user" ? "You (Candidate)" : mode === "simulate" ? "Hiring Manager / Recruiter" : "AI Compensation Coach"}
+                                </span>
+                            </div>
+
+                            <p className="leading-relaxed whitespace-pre-wrap text-sm text-white/90">{turn.content}</p>
+
+                            {/* Coach Insights */}
+                            {turn.coachNote && (
+                                <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 space-y-1">
+                                    <span className="font-semibold flex items-center gap-1.5 text-amber-300">
+                                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                                        Coach Insight
+                                    </span>
+                                    <p className="leading-relaxed">{turn.coachNote}</p>
+                                </div>
+                            )}
+
+                            {/* Suggested Script with Copy Action */}
+                            {turn.suggestedScript && (
+                                <div className="mt-3 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-200/90 space-y-1.5">
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-emerald-300">Recommended Script:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => copyScript(turn.suggestedScript!, i)}
+                                            className="flex items-center gap-1 text-[11px] bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 px-2 py-0.5 rounded transition-all"
+                                        >
+                                            {copiedScriptIndex === i ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                                            {copiedScriptIndex === i ? "Copied!" : "Copy Script"}
+                                        </button>
+                                    </div>
+                                    <p className="italic leading-relaxed text-emerald-100/90 font-mono bg-black/30 p-2.5 rounded-lg border border-emerald-500/20">
+                                        "{turn.suggestedScript}"
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     ))}
-                </div>
-            </div>
 
-            <div className="grid sm:grid-cols-2 gap-3">
-                <Field label="Company" value={company} onChange={setCompany} placeholder="Acme Corp" />
-                <Field label="Role" value={role} onChange={setRole} placeholder="Software Engineer" />
-                <Field label="Current offer" value={currentOffer} onChange={setCurrentOffer} placeholder="$140k base + equity" />
-                <Field label="Target comp" value={targetComp} onChange={setTargetComp} placeholder="$155k or equivalent" />
-                <Field label="Benefits" value={benefits} onChange={setBenefits} placeholder="Signing, RSUs, remote…" />
-                <Field label="BATNA" value={batna} onChange={setBatna} placeholder="Other offer / stay put" />
-            </div>
-
-            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
-                {history.length === 0 && (
-                    <p className="text-sm text-white/40">
-                        Fill in the offer context, then chat in {mode === "coach" ? "coach" : "recruiter simulation"} mode.
-                    </p>
-                )}
-                {history.map((turn, i) => (
-                    <div
-                        key={i}
-                        className={`rounded-xl px-3 py-2 text-sm ${
-                            turn.role === "user"
-                                ? "bg-indigo-500/15 border border-indigo-500/20 text-white/90 ml-6"
-                                : "bg-white/5 border border-white/10 text-white/80 mr-6"
-                        }`}
-                    >
-                        <p className="text-[10px] uppercase tracking-wide text-white/40 mb-1">
-                            {turn.role === "user" ? "You" : mode === "simulate" ? "Recruiter" : "Coach"}
-                        </p>
-                        <p className="leading-relaxed whitespace-pre-wrap">{turn.content}</p>
-                        {turn.coachNote && (
-                            <p className="mt-2 text-xs text-amber-200/80 flex gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                {turn.coachNote}
-                            </p>
-                        )}
-                        {turn.suggestedScript && (
-                            <p className="mt-1.5 text-xs text-emerald-300/80 italic">Script: {turn.suggestedScript}</p>
-                        )}
-                    </div>
-                ))}
-            </div>
-
-            {(levers.length > 0 || redLines.length > 0) && (
-                <div className="grid sm:grid-cols-2 gap-3 text-xs">
-                    {levers.length > 0 && (
-                        <div className="rounded-xl border border-white/10 bg-white/5 p-3">
-                            <p className="font-semibold text-white/70 mb-1.5">Levers {mood ? `· ${mood}` : ""}</p>
-                            <ul className="space-y-1 text-white/55 list-disc list-inside">
-                                {levers.map((l) => (
-                                    <li key={l}>{l}</li>
-                                ))}
-                            </ul>
+                    {loading && (
+                        <div className="flex items-center gap-3 p-4 rounded-2xl bg-white/5 border border-white/10 text-white/70 text-sm animate-pulse mr-12">
+                            <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />
+                            <span>Analyzing offer data and composing tactical advice...</span>
                         </div>
                     )}
-                    {redLines.length > 0 && (
-                        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-3">
-                            <p className="font-semibold text-red-300/80 mb-1.5">Red lines</p>
-                            <ul className="space-y-1 text-white/55 list-disc list-inside">
-                                {redLines.map((r) => (
-                                    <li key={r}>{r}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    )}
+
+                    <div ref={chatEndRef} />
                 </div>
-            )}
 
-            {error && <p className="text-xs text-red-400">{error}</p>}
+                {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl">{error}</p>}
 
-            <div className="flex gap-2">
-                <input
-                    value={userMessage}
-                    onChange={(e) => setUserMessage(e.target.value)}
-                    onKeyDown={(e) => {
-                        if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            void send();
+                {/* Chat Input Bar */}
+                <div className="flex gap-2 pt-1">
+                    <input
+                        value={userMessage}
+                        onChange={(e) => setUserMessage(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                                e.preventDefault();
+                                void send();
+                            }
+                        }}
+                        placeholder={
+                            mode === "coach"
+                                ? "Ask your coach (e.g. 'How do I ask for $15k more base salary?')..."
+                                : "Type what you would say to the recruiter in simulation..."
                         }
-                    }}
-                    placeholder={mode === "coach" ? "Ask for coaching…" : "What you would say to the recruiter…"}
-                    className="flex-1 rounded-xl bg-black/40 border border-white/10 px-3 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/40"
-                />
-                <button
-                    type="button"
-                    onClick={() => void send()}
-                    disabled={loading}
-                    className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-4 text-white flex items-center gap-2 text-sm font-medium"
-                >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-                    Send
-                </button>
+                        className="flex-1 rounded-xl bg-black/50 border border-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-emerald-500 transition-all shadow-inner"
+                    />
+                    <button
+                        type="button"
+                        onClick={() => void send()}
+                        disabled={loading}
+                        className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-5 text-white flex items-center gap-2 text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        Send
+                    </button>
+                </div>
             </div>
-        </div>
     );
 }
 
@@ -218,13 +431,71 @@ function Field({
 }) {
     return (
         <label className="block space-y-1">
-            <span className="text-[10px] uppercase tracking-wide text-white/40">{label}</span>
+            <span className="text-[11px] uppercase tracking-wide text-white/60 font-medium">{label}</span>
             <input
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 placeholder={placeholder}
-                className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/40"
+                className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-indigo-500/40 transition-all"
             />
+        </label>
+    );
+}
+
+function CompField({
+    label,
+    value,
+    onChange,
+    placeholder,
+    currency,
+    onCurrencyChange,
+    payPeriod,
+    onPayPeriodChange,
+}: {
+    label: string;
+    value: string;
+    onChange: (v: string) => void;
+    placeholder?: string;
+    currency: string;
+    onCurrencyChange: (c: string) => void;
+    payPeriod: "annually" | "monthly";
+    onPayPeriodChange: (p: "annually" | "monthly") => void;
+}) {
+    return (
+        <label className="block space-y-1">
+            <span className="text-[11px] uppercase tracking-wide text-white/60 font-medium">{label}</span>
+            <div className="flex items-center rounded-xl bg-black/40 border border-white/10 overflow-hidden focus-within:border-emerald-500/50 transition-all">
+                {/* Left Side Scrollable Currency Selector */}
+                <select
+                    value={currency}
+                    onChange={(e) => onCurrencyChange(e.target.value)}
+                    className="bg-[#1c1c1c] text-white text-xs font-semibold px-2.5 py-2.5 border-r border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors"
+                >
+                    {CURRENCY_OPTIONS.map((c) => (
+                        <option key={c.code} value={c.code}>
+                            {c.symbol} {c.code}
+                        </option>
+                    ))}
+                </select>
+
+                {/* Amount Input */}
+                <input
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    placeholder={placeholder}
+                    className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none min-w-0"
+                />
+
+                {/* Right Side Frequency Selector (Monthly / Yearly) */}
+                <select
+                    value={payPeriod}
+                    onChange={(e) => onPayPeriodChange(e.target.value as "annually" | "monthly")}
+                    className="bg-[#1c1c1c] text-white text-xs px-2.5 py-2.5 border-l border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors"
+                >
+                    <option value="annually">/yr (Yearly)</option>
+                    <option value="monthly">/mo (Monthly)</option>
+                </select>
+            </div>
         </label>
     );
 }
