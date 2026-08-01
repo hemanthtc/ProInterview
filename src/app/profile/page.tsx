@@ -1246,7 +1246,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80">{userName}</span>
                                         <button
                                             onClick={() => { setEditingName(true); setEditNameValue(userName); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit name"
                                         >
                                             <Pencil className="w-3 h-3" />
@@ -1340,7 +1340,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{github || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingGithub(true); setEditGithubValue(github); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit GitHub URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1375,7 +1375,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{linkedin || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingLinkedin(true); setEditLinkedinValue(linkedin); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit LinkedIn URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1410,7 +1410,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{portfolioUrl || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingPortfolio(true); setEditPortfolioValue(portfolioUrl); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit Portfolio URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1445,7 +1445,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{phone || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingPhone(true); setEditPhoneValue(phone); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit Phone"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1481,7 +1481,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{additionalEmail || "Not specified"}</span>
                                             <button
                                                 onClick={() => { setEditingAdditionalEmail(true); setEditAdditionalEmailValue(additionalEmail); }}
-                                                className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                                 title="Edit Email"
                                             >
                                                 <Pencil className="w-3.5 h-3.5" />
