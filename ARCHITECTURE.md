@@ -136,10 +136,32 @@ The platform provides a suite of extra modules inside [FeaturesPage](file:///d:/
 Allows candidates to enter professional details (Summary, Skills, Experience, Education, Projects, and Certifications). It binds these states into printable Resume Templates with configurable theme highlights, font sizes, and downloads them.
 
 ### B. Job Invitation & Offer Letter Analyser
-* **Endpoint:** [/api/analyze-email](file:///d:/Project%20repo/Ai-interviewer-main/src/app/api/analyze-email/route.ts)
+* **Endpoint:** [/api/analyze-email](src/app/api/analyze-email/route.ts)
 * **Logic:** The user pastes a recruiter's email. An AI agent parses the text to determine the email classification (`job_invite` vs `offer_letter`). It extracts key fields: company name, location, role, required skills, meeting platform (Zoom, Google Meet, HackerRank), salary packages, base pay, and benefits.
 
+### B2. Happenstance HR / Interviewer Intel
+* **Endpoint:** [/api/research-hr](src/app/api/research-hr/route.ts)
+* **Trigger:** After email analysis, if `hrName` is present (or via "Research on Happenstance"), the Features Email Analyser starts a Happenstance people-research job.
+* **Flow:**
+  1. `POST /api/research-hr` creates a Happenstance research request for `{hrName} at {company}` (recruiter/HR/hiring manager).
+  2. The client polls `GET /api/research-hr?id=…` until status is `COMPLETED` (or fails / times out).
+  3. Gemini turns the Happenstance profile (career, writings, public signals) into interview prep: **mood/energy**, **communication tone**, **how the candidate should speak**, **likely questions**, focus areas, rapport tips, and watch-outs.
+* **Fallback:** If `HAPPENSTANCE_API_KEY` is missing or research fails/ambiguous, Gemini still returns role-aware guidance from name + company with lower confidence.
+
 ### C. Custom Interactive Roadmaps
-* **Endpoint:** [/api/generate-roadmap](file:///d:/Project%20repo/Ai-interviewer-main/src/app/api/generate-roadmap/route.ts)
+* **Endpoint:** [/api/generate-roadmap](src/app/api/generate-roadmap/route.ts)
 * **Logic:** Users supply a role title, target company, location, and additional study focus. The backend prompts Gemini to generate a multi-week technical prep timeline consisting of actionable tasks, resource links, and study recommendations. The frontend allows candidates to save these roadmaps and check off completed tasks.
+
+### D. Goated Interview Prep Loop
+1. **Mock as this HR** — Email Analyser → Happenstance intel → `activeHrIntel` → `/setup` → `/api/interviewer` persona mode.
+2. **Live Voice Coach** — filler/WPM/confidence during `/interview`; end screen habits + waveform.
+3. **Company Clone** — `src/data/companyBanks.ts` injects FAANG-style banks into the interviewer prompt.
+4. **Film Room** — `/film-room` + `/api/film-room` with rewrites/retakes.
+5. **Prep Packs** — invite emails auto-create checklist + 48h/24h/1h reminders.
+6. **Offer Negotiation** — `/api/negotiate` + Features simulator.
+7. **Code Runner** — `/api/run-code` (Piston) + grade/submit in `[MODE:CODE]`.
+8. **Shareable Scorecard** — `/api/scorecard` + public `/scorecard/[id]`.
+9. **Spaced Drills** — weak-score topics resurfaced on a schedule.
+10. **Cloud Sync** — `/api/sync-sessions` merges interview history across devices.
+
 

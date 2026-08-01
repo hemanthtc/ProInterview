@@ -1,16 +1,43 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { companyBankPromptBlock, resolveCompanyBank } from "@/data/companyBanks";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
 
 export async function POST(req: NextRequest) {
     try {
-        const { history, resume, github, linkedin, portfolioUrl, message, attachment, type, provider, company, roles, level } = await req.json();
+        const {
+            history, resume, github, linkedin, portfolioUrl, message, attachment, type, provider,
+            company, roles, level, hrIntel, companyClone,
+        } = await req.json();
 
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
         const safeLevel = level || "intermediate";
+
+        const bank = companyClone !== false ? resolveCompanyBank(safeCompany) : null;
+        const companyCloneBlock = bank ? `\n\n${companyBankPromptBlock(bank)}\n` : "";
+
+        let hrPersonaBlock = "";
+        if (hrIntel && typeof hrIntel === "object") {
+            const iq = Array.isArray(hrIntel.likelyQuestions)
+                ? hrIntel.likelyQuestions
+                      .slice(0, 6)
+                      .map((q: any) => `- ${q.question || q}${q.category ? ` (${q.category})` : ""}`)
+                      .join("\n")
+                : "";
+            hrPersonaBlock = `
+HR / INTERVIEWER PERSONA MODE (from Happenstance + email intel):
+You are role-playing as ${hrIntel.interviewerName || "the recruiter/HR contact"} (${hrIntel.titleGuess || "Recruiter"}).
+Mood/energy: ${hrIntel.mood || "professional"} (label: ${hrIntel.moodLabel || "neutral"})
+Communication tone: ${hrIntel.communicationTone || "professional"}
+Focus areas: ${(hrIntel.focusAreas || []).join(", ") || "role fit, motivation, logistics"}
+Ask in their style. Prefer questions like:
+${iq || "- Why this company?\n- Walk me through your background.\n- What are your compensation / timeline expectations?"}
+Stay in character but still drive a useful mock interview. Do not claim private knowledge you do not have.
+`;
+        }
 
         const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
 - You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.
@@ -57,6 +84,8 @@ Here are the Candidate's Portfolio details:
 Your tone, technical expectations, and questions must strictly align with the documented technical hiring standards and engineering culture of the target companies: ${safeCompany}.
 ${difficultyInstruction}
 Be conversational. ${typeInstruction}
+${companyCloneBlock}
+${hrPersonaBlock}
 
 CRITICAL RULES FOR ASKING QUESTIONS:
 0. ASK ONLY ONE QUESTION AT A TIME. After you ask a single question, STOP and wait for the candidate's answer. NEVER ask multiple questions in the same response.

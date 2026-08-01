@@ -2,10 +2,15 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { marked } from "marked";
 import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageItem } from "../../utils/storage";
+import VoiceCoachPanel from "../../components/VoiceCoachPanel";
+import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapshot } from "../../utils/voiceCoach";
+import { syncSessionsToCloud } from "../../utils/cloudSync";
+import { buildSpacedDrills } from "../../utils/spacedDrills";
+import { resolveCompanyBank } from "../../data/companyBanks";
 
 export default function InterviewRoom() {
     const router = useRouter();
@@ -47,6 +52,18 @@ export default function InterviewRoom() {
     const [interactionMode, setInteractionMode] = useState<"chat" | "code" | "draw">("chat");
     const [mobileWorkspaceView, setMobileWorkspaceView] = useState<"transcript" | "workspace">("workspace");
     const [codeContent, setCodeContent] = useState("");
+    const [codeLanguage, setCodeLanguage] = useState("python");
+    const [codeOutput, setCodeOutput] = useState("");
+    const [codeBusy, setCodeBusy] = useState(false);
+    const [voiceCoach, setVoiceCoach] = useState<VoiceCoachSnapshot | null>(null);
+    const [shareUrl, setShareUrl] = useState("");
+    const [shareBusy, setShareBusy] = useState(false);
+    const [hrPersonaName, setHrPersonaName] = useState("");
+    const [companyCloneName, setCompanyCloneName] = useState("");
+    const lastSpeechAtRef = useRef<number>(Date.now());
+    const speechStartedAtRef = useRef<number | null>(null);
+    const lastSavedSessionTsRef = useRef<number | null>(null);
+    const voiceCoachRef = useRef<VoiceCoachSnapshot | null>(null);
 
     // Resizable split-pane logic for practical modes
     const [practicalPanelRatio, setPracticalPanelRatio] = useState(30);
@@ -308,6 +325,18 @@ export default function InterviewRoom() {
                    latestTranscript += event.results[i][0].transcript;
                 }
                 if (latestTranscript.trim()) {
+                    const now = Date.now();
+                    const silenceMs = Math.max(0, now - (lastSpeechAtRef.current || now));
+                    const started = speechStartedAtRef.current ?? now - Math.max(latestTranscript.trim().split(/\s+/).length * 350, 800);
+                    const durationMs = Math.max(now - started, 500);
+                    const snap = analyzeUtterance({ text: latestTranscript.trim(), durationMs, silenceMs });
+                    setVoiceCoach((prev) => {
+                        const merged = mergeCoachStats(prev, snap);
+                        voiceCoachRef.current = merged;
+                        return merged;
+                    });
+                    lastSpeechAtRef.current = now;
+                    speechStartedAtRef.current = now;
                     userInputRef.current = latestTranscript.trim();
                     setUserInput(latestTranscript.trim());
                 }
@@ -359,7 +388,11 @@ export default function InterviewRoom() {
         const typeText = getStorageItem("interviewType") || "realistic";
         const targetCompanyTxt = getStorageItem("targetCompany") || "a technology company";
         const roleText = getStorageItem("preferredRoles") || "Software Engineer";
-        const firstMessage = typeText === "technical" 
+        const focusedRetake = getStorageItem("focusedRetakePrompt");
+        if (focusedRetake) removeStorageItem("focusedRetakePrompt");
+        const firstMessage = focusedRetake
+            ? `Please start a focused rematch interview for ${roleText} at ${targetCompanyTxt} (difficulty: ${levelText}). Open by briefly welcoming me, then ask EXACTLY this practice question first (do not skip it): "${focusedRetake}". After I answer, give concise coach feedback, then continue with 2-3 related follow-ups. Use MODE tags as needed.`
+            : typeText === "technical"
             ? `Please start the technical interview by welcoming me. You will conduct a highly technical interview focusing strictly on coding, architecture, and logic matching the engineering standards of ${targetCompanyTxt}. I am specifically applying for the role(s) of: ${roleText}. Adjust the technical difficulty and depth of your questions to a strictly ${levelText} level.`
             : `Please start the realistic company interview by welcoming me. You will conduct a full-spectrum interview consisting of behavioral questions, experience deep-dives based on my resume, and real-world scenarios, just like a real company interviewer. I am specifically applying for the role(s) of: ${roleText}. Adjust the difficulty of your questions to a strictly ${levelText} level.`;
         triggerAiResponse(text || "", [], firstMessage, typeText);
@@ -407,6 +440,17 @@ export default function InterviewRoom() {
             const github = getStorageItem("userGithub") || "";
             const linkedin = getStorageItem("userLinkedin") || "";
             const portfolioUrl = getStorageItem("userPortfolio") || "";
+            let activeHrIntel: any = null;
+            try {
+                const rawHr = getStorageItem("activeHrIntel");
+                if (rawHr) activeHrIntel = JSON.parse(rawHr);
+            } catch { /* ignore */ }
+            const companyCloneMode = getStorageItem("companyCloneMode") !== "false";
+            const bank = companyCloneMode ? resolveCompanyBank(targetCompany) : null;
+            if (activeHrIntel?.interviewerName) {
+                setHrPersonaName(String(activeHrIntel.interviewerName));
+            }
+            setCompanyCloneName(bank?.name || "");
             const res = await fetch("/api/interviewer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -422,7 +466,9 @@ export default function InterviewRoom() {
                     provider,
                     company: targetCompany,
                     roles: preferredRoles,
-                    level
+                    level,
+                    hrIntel: activeHrIntel || undefined,
+                    companyClone: companyCloneMode,
                 }),
             });
             const data = await res.json();
@@ -557,6 +603,20 @@ export default function InterviewRoom() {
                 for (let i = event.resultIndex; i < event.results.length; ++i) {
                    latestTranscript += event.results[i][0].transcript;
                 }
+                if (latestTranscript.trim()) {
+                    const now = Date.now();
+                    const silenceMs = Math.max(0, now - (lastSpeechAtRef.current || now));
+                    const started = speechStartedAtRef.current ?? now - Math.max(latestTranscript.trim().split(/\s+/).length * 350, 800);
+                    const durationMs = Math.max(now - started, 500);
+                    const snap = analyzeUtterance({ text: latestTranscript.trim(), durationMs, silenceMs });
+                    setVoiceCoach((prev) => {
+                        const merged = mergeCoachStats(prev, snap);
+                        voiceCoachRef.current = merged;
+                        return merged;
+                    });
+                    lastSpeechAtRef.current = now;
+                    speechStartedAtRef.current = now;
+                }
                 setUserInput(prev => prev + latestTranscript + " ");
             };
             recognitionRef.current.onend = () => {
@@ -568,6 +628,104 @@ export default function InterviewRoom() {
 
     // Toggle Mic function removed because we replaced it with manual toggle button inside text input!
 
+
+    const runCode = async () => {
+        if (!codeContent.trim() || codeBusy) return;
+        setCodeBusy(true);
+        setCodeOutput("Running...");
+        try {
+            const res = await fetch("/api/run-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: codeContent, language: codeLanguage }),
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                setCodeOutput(data.error || "Run failed");
+            } else {
+                const parts = [
+                    data.stdout ? `stdout:\n${data.stdout}` : "",
+                    data.stderr ? `stderr:\n${data.stderr}` : "",
+                    data.compile?.stderr ? `compile:\n${data.compile.stderr}` : "",
+                    !data.stdout && !data.stderr && data.output ? String(data.output) : "",
+                ].filter(Boolean);
+                setCodeOutput(parts.join("\n\n") || "(no output)");
+            }
+        } catch (e) {
+            setCodeOutput(`Error: ${(e as Error).message}`);
+        } finally {
+            setCodeBusy(false);
+        }
+    };
+
+    const gradeAndSubmitCode = async () => {
+        if (!codeContent.trim() || codeBusy) return;
+        setCodeBusy(true);
+        try {
+            const lastAi = [...messagesRef.current].reverse().find((m) => m.role === "assistant");
+            const questionDescription = lastAi?.content || "Coding challenge";
+            const questionTitle = questionDescription.split("\n")[0].slice(0, 120) || "Coding Challenge";
+            const res = await fetch("/api/grade-code", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    questionTitle,
+                    questionDescription,
+                    code: codeContent,
+                    language: codeLanguage,
+                }),
+            });
+            const data = await res.json();
+            const feedback = data.error
+                ? `Grading failed: ${data.error}\n\nMy code (${codeLanguage}):\n\`\`\`${codeLanguage}\n${codeContent}\n\`\`\``
+                : `Code graded (${data.status || "Reviewed"}): score ${data.score ?? "?"}/10.\nCorrectness: ${data.correctness || "n/a"}\nTime: ${data.timeComplexity || "n/a"} | Space: ${data.spaceComplexity || "n/a"}\nFeedback: ${data.feedback || ""}\n\nMy code (${codeLanguage}):\n\`\`\`${codeLanguage}\n${codeContent}\n\`\`\``;
+            await handleSendMessage(feedback);
+            setCodeContent("");
+            setCodeOutput("");
+            setInteractionMode("chat");
+        } catch (e) {
+            setCodeOutput(`Grade error: ${(e as Error).message}`);
+        } finally {
+            setCodeBusy(false);
+        }
+    };
+
+    const shareScorecard = async () => {
+        if (!finalScores || shareBusy) return;
+        setShareBusy(true);
+        try {
+            const res = await fetch("/api/scorecard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    candidateName: getStorageItem("userName") || "Candidate",
+                    company: getStorageItem("targetCompany") || "",
+                    role: getStorageItem("preferredRoles") || "",
+                    finalScore: finalScores.final,
+                    technicalRating: finalScores.technical,
+                    behavioralRating: finalScores.behavioral,
+                    communicationRating: finalScores.communication,
+                    portfolioRating: finalScores.portfolio,
+                    summary: finalScores.summary || "",
+                    highlights: endCallHabits(voiceCoachRef.current || voiceCoach),
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Share failed");
+            const url = data.url?.startsWith("http")
+                ? data.url
+                : `${window.location.origin}${data.url || `/scorecard/${data.shareId}`}`;
+            setShareUrl(url);
+            try {
+                await navigator.clipboard.writeText(url);
+            } catch { /* ignore */ }
+        } catch (e) {
+            console.error(e);
+            setShareUrl("");
+        } finally {
+            setShareBusy(false);
+        }
+    };
 
     const toggleVideo = async () => {
         if (videoActive) {
@@ -678,6 +836,7 @@ export default function InterviewRoom() {
 
             const oldSessions = JSON.parse(getStorageItem("interviewSessions") || "[]");
             const finalTranscriptText = annotatedTranscript || messagesRef.current.map(m => `${m.role === 'user' ? 'YOU' : 'AI'}: ${m.content}`).join("\n\n");
+            const coachSnap = voiceCoachRef.current || voiceCoach;
             const newSession = {
                 userName: getStorageItem("userName") || "Guest",
                 userIdentifier: getStorageItem("userIdentifier") || getStorageItem("userName") || "Guest",
@@ -689,9 +848,20 @@ export default function InterviewRoom() {
                 portfolioRating: hasPortfolio ? pRatingValue : pRatingRaw,
                 finalScore: finalOutput,
                 summary: sessionSummary,
-                transcript: finalTranscriptText
+                transcript: finalTranscriptText,
+                company: getStorageItem("targetCompany") || "",
+                role: getStorageItem("preferredRoles") || "",
+                voiceCoach: coachSnap || undefined,
             };
-            setStorageItem("interviewSessions", JSON.stringify([newSession, ...oldSessions]));
+            const updatedSessions = [newSession, ...oldSessions];
+            setStorageItem("interviewSessions", JSON.stringify(updatedSessions));
+            lastSavedSessionTsRef.current = newSession.timestamp;
+            try {
+                const drills = buildSpacedDrills(updatedSessions);
+                setStorageItem("spacedDrills", JSON.stringify(drills));
+            } catch { /* ignore */ }
+            removeStorageItem("activeHrIntel");
+            void syncSessionsToCloud();
         } catch (e) {
             console.error(e);
         }
@@ -793,6 +963,57 @@ export default function InterviewRoom() {
                                             {finalScores.summary}
                                         </div>
                                     </div>
+                                )}
+
+                                <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 text-left">
+                                    <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-3">3 habits to fix next</h3>
+                                    <ol className="space-y-2 list-decimal list-inside text-sm text-white/80">
+                                        {endCallHabits(voiceCoachRef.current || voiceCoach).map((habit, i) => (
+                                            <li key={i}>{habit}</li>
+                                        ))}
+                                    </ol>
+                                    {(voiceCoachRef.current || voiceCoach) && (
+                                        <div className="mt-4 flex items-end gap-1 h-10" aria-hidden>
+                                            {Array.from({ length: 12 }).map((_, i) => {
+                                                const conf = (voiceCoachRef.current || voiceCoach)?.confidence ?? 50;
+                                                const h = 20 + ((conf + i * 7) % 60);
+                                                return (
+                                                    <div
+                                                        key={i}
+                                                        className="flex-1 rounded-sm bg-indigo-500/60"
+                                                        style={{ height: `${h}%`, opacity: 0.45 + (conf / 200) }}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="flex flex-wrap gap-2 mb-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const t = lastSavedSessionTsRef.current;
+                                            router.push(t ? `/film-room?t=${t}` : "/film-room");
+                                        }}
+                                        className="px-4 py-2 bg-white/10 hover:bg-white/20 transition-colors rounded-xl font-medium text-sm flex items-center gap-2"
+                                    >
+                                        <Film className="w-4 h-4" /> Film Room
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => void shareScorecard()}
+                                        disabled={shareBusy}
+                                        className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-50 transition-colors rounded-xl font-medium text-sm flex items-center gap-2"
+                                    >
+                                        {shareBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
+                                        Share Scorecard
+                                    </button>
+                                </div>
+                                {shareUrl && (
+                                    <p className="text-xs text-emerald-400/90 mb-4 break-all text-left">
+                                        Copied: {shareUrl}
+                                    </p>
                                 )}
 
                                 <p className="text-white/50 text-sm mb-4">Review your annotated transcript below.</p>
@@ -1105,6 +1326,23 @@ export default function InterviewRoom() {
                                     <Mic className="w-3 h-3 text-white/40" /> Voice/Text Chat
                                 </span>
                             </div>
+                            {(hrPersonaName || companyCloneName) && (
+                                <div className="px-3 pt-3 space-y-1.5 shrink-0">
+                                    {hrPersonaName && (
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-teal-300/90 bg-teal-500/10 border border-teal-500/20 rounded-lg px-2.5 py-1.5">
+                                            Persona: {hrPersonaName}
+                                        </div>
+                                    )}
+                                    {companyCloneName && (
+                                        <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+                                            Company clone: {companyCloneName}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <div className="px-3 pt-3 shrink-0">
+                                <VoiceCoachPanel snapshot={voiceCoach} compact className="!p-3" />
+                            </div>
                             <div className="flex-grow overflow-y-auto p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 scroll-smooth min-h-0">
                                 {(() => {
                                     const lastAssistantIndex = messages.map(m => m.role).lastIndexOf("assistant");
@@ -1153,6 +1391,7 @@ export default function InterviewRoom() {
                                             } else {
                                                 window.speechSynthesis.cancel();
                                                 setIsSpeaking(false);
+                                                speechStartedAtRef.current = Date.now();
                                                 recognitionRef.current?.start();
                                                 setIsListening(true);
                                             }
@@ -1205,6 +1444,23 @@ export default function InterviewRoom() {
                                 <div className="p-3 border-b border-white/10 bg-black/20 font-semibold flex items-center justify-between shrink-0">
                                     <span className="text-sm">Transcript</span>
                                 </div>
+                                {(hrPersonaName || companyCloneName) && (
+                                    <div className="px-3 pt-2 space-y-1 shrink-0">
+                                        {hrPersonaName && (
+                                            <div className="text-[10px] font-semibold text-teal-300/90 bg-teal-500/10 border border-teal-500/20 rounded-lg px-2 py-1">
+                                                Persona: {hrPersonaName}
+                                            </div>
+                                        )}
+                                        {companyCloneName && (
+                                            <div className="text-[10px] font-semibold text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2 py-1">
+                                                Company clone: {companyCloneName}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                <div className="px-3 pt-2 shrink-0">
+                                    <VoiceCoachPanel snapshot={voiceCoach} compact className="!p-2.5" />
+                                </div>
                                 <div className="flex-grow overflow-y-auto p-3 flex flex-col gap-3 scroll-smooth min-h-0">
                                     {(() => {
                                         const lastAssistantIndex = messages.map(m => m.role).lastIndexOf("assistant");
@@ -1253,6 +1509,7 @@ export default function InterviewRoom() {
                                                 } else {
                                                     window.speechSynthesis.cancel();
                                                     setIsSpeaking(false);
+                                                    speechStartedAtRef.current = Date.now();
                                                     recognitionRef.current?.start();
                                                     setIsListening(true);
                                                 }
@@ -1342,6 +1599,21 @@ export default function InterviewRoom() {
                             {/* Code Editor Panel */}
                             {interactionMode === "code" && (
                                 <div className="flex-grow flex flex-col p-4 gap-3 min-h-0">
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <label className="text-xs text-white/50 font-medium">Language</label>
+                                        <select
+                                            value={codeLanguage}
+                                            onChange={(e) => setCodeLanguage(e.target.value)}
+                                            className="bg-[#0a0a0a] border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-indigo-500"
+                                        >
+                                            <option value="python">Python</option>
+                                            <option value="js">JavaScript</option>
+                                            <option value="ts">TypeScript</option>
+                                            <option value="java">Java</option>
+                                            <option value="cpp">C++</option>
+                                            <option value="go">Go</option>
+                                        </select>
+                                    </div>
                                     <textarea
                                         value={codeContent}
                                         onChange={(e) => setCodeContent(e.target.value)}
@@ -1349,22 +1621,43 @@ export default function InterviewRoom() {
                                         className="flex-grow min-h-0 bg-[#0a0a0a] border border-white/10 rounded-xl p-4 text-sm font-mono focus:outline-none focus:border-indigo-500 resize-none leading-relaxed text-white"
                                         spellCheck={false}
                                     />
-                                    <div className="flex items-center gap-3 shrink-0">
+                                    {codeOutput && (
+                                        <pre className="shrink-0 max-h-36 overflow-y-auto bg-black/60 border border-white/10 rounded-xl p-3 text-[11px] font-mono text-emerald-300/90 whitespace-pre-wrap">
+                                            {codeOutput}
+                                        </pre>
+                                    )}
+                                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                                        <button
+                                            onClick={() => void runCode()}
+                                            disabled={!codeContent.trim() || codeBusy}
+                                            className="px-4 py-3 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer text-sm"
+                                        >
+                                            {codeBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                                            Run
+                                        </button>
+                                        <button
+                                            onClick={() => void gradeAndSubmitCode()}
+                                            disabled={!codeContent.trim() || codeBusy || isLoading}
+                                            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer text-sm"
+                                        >
+                                            <Save className="w-4 h-4"/> Grade & Submit
+                                        </button>
                                         <button
                                             onClick={() => {
-                                                const codeMsg = `Here is my code:\n\`\`\`\n${codeContent}\n\`\`\``;
+                                                const codeMsg = `Here is my code:\n\`\`\`${codeLanguage}\n${codeContent}\n\`\`\``;
                                                 handleSendMessage(codeMsg);
                                                 setCodeContent("");
+                                                setCodeOutput("");
                                                 setInteractionMode("chat");
                                             }}
                                             disabled={!codeContent.trim() || isLoading}
-                                            className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                                            className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium transition-colors cursor-pointer text-sm disabled:opacity-50"
                                         >
-                                            <Save className="w-4 h-4"/> Submit Code
+                                            Submit
                                         </button>
                                         <button
-                                            onClick={() => setCodeContent("")}
-                                            className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium transition-colors cursor-pointer"
+                                            onClick={() => { setCodeContent(""); setCodeOutput(""); }}
+                                            className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium transition-colors cursor-pointer text-sm"
                                         >
                                             Clear
                                         </button>

@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Video, LogOut, Clock, Download, TrendingUp, User, Award, Activity, Trash2, CheckSquare, Square, Sparkles, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText } from "lucide-react";
+import { ArrowLeft, Video, LogOut, Clock, Download, TrendingUp, User, Award, Activity, Trash2, CheckSquare, Square, Sparkles, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, Film, Share2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData } from "../../utils/storage";
+import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -282,7 +283,13 @@ export default function ProfilePage() {
 
         if (!memberSince) setMemberSince(new Date().toLocaleDateString());
 
-        loadSessions(exactUser);
+        const hydrateSessions = async () => {
+            if (identifier) {
+                await pullSessionsFromCloud();
+            }
+            loadSessions(exactUser);
+        };
+        void hydrateSessions();
     }, [router]);
 
     // Dynamically load Razorpay script on mount
@@ -910,8 +917,42 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             setStorageItem("interviewSessions", JSON.stringify(remaining));
             setSelectedIds(new Set());
             loadSessions(userName);
+            void syncSessionsToCloud();
         } catch (e) {
             console.error("Delete failed", e);
+        }
+    };
+
+    const shareSessionScorecard = async (session: any) => {
+        try {
+            const res = await fetch("/api/scorecard", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    candidateName: session.userName || userName || "Candidate",
+                    company: session.company || "",
+                    role: session.role || "",
+                    finalScore: session.finalScore,
+                    technicalRating: session.technicalRating,
+                    behavioralRating: session.behavioralRating,
+                    communicationRating: session.communicationRating,
+                    portfolioRating: session.portfolioRating,
+                    summary: session.summary || "",
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Share failed");
+            const url = data.url?.startsWith("http")
+                ? data.url
+                : `${window.location.origin}${data.url || `/scorecard/${data.shareId}`}`;
+            try {
+                await navigator.clipboard.writeText(url);
+            } catch { /* ignore */ }
+            setToast({ show: true, message: `Scorecard link copied: ${url}`, type: "success" });
+            setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
+        } catch (e) {
+            setToast({ show: true, message: (e as Error).message || "Failed to share scorecard", type: "error" });
+            setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
         }
     };
 
@@ -1807,6 +1848,20 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
                                         {/* Actions */}
                                         <div className="flex items-center gap-2 shrink-0">
+                                            <Link
+                                                href={`/film-room?t=${session.timestamp}`}
+                                                className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-violet-500 hover:border-violet-400 transition-all text-white/50 hover:text-white"
+                                                title="Film Room"
+                                            >
+                                                <Film className="w-4 h-4" />
+                                            </Link>
+                                            <button
+                                                onClick={() => void shareSessionScorecard(session)}
+                                                className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-emerald-500 hover:border-emerald-400 transition-all text-white/50 hover:text-white"
+                                                title="Share Scorecard"
+                                            >
+                                                <Share2 className="w-4 h-4" />
+                                            </button>
                                             <button onClick={() => downloadTranscript(session.transcript, session.timestamp)} className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-indigo-500 hover:border-indigo-400 transition-all text-white/50 hover:text-white" title="Download Transcript">
                                                 <Download className="w-4 h-4" />
                                             </button>
