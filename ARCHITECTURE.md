@@ -149,6 +149,19 @@ Allows candidates to enter professional details (Summary, Skills, Experience, Ed
 * **Fallback:** If `HAPPENSTANCE_API_KEY` is missing or research fails/ambiguous, Gemini still returns role-aware guidance from name + company with lower confidence.
 
 ### C. Custom Interactive Roadmaps
-* **Endpoint:** [/api/generate-roadmap](file:///d:/Project%20repo/Ai-interviewer-main/src/app/api/generate-roadmap/route.ts)
+* **Endpoint:** [/api/generate-roadmap](src/app/api/generate-roadmap/route.ts)
 * **Logic:** Users supply a role title, target company, location, and additional study focus. The backend prompts Gemini to generate a multi-week technical prep timeline consisting of actionable tasks, resource links, and study recommendations. The frontend allows candidates to save these roadmaps and check off completed tasks.
+
+### D. Goated Interview Prep Loop
+1. **Mock as this HR** — Email Analyser → Happenstance intel → `activeHrIntel` → `/setup` → `/api/interviewer` persona mode.
+2. **Live Voice Coach** — filler/WPM/confidence during `/interview`; end screen habits + waveform.
+3. **Company Clone** — `src/data/companyBanks.ts` injects FAANG-style banks into the interviewer prompt.
+4. **Film Room** — `/film-room` + `/api/film-room` with rewrites/retakes.
+5. **Prep Packs** — invite emails auto-create checklist + 48h/24h/1h reminders.
+6. **Offer Negotiation** — `/api/negotiate` + Features simulator.
+7. **Code Runner** — `/api/run-code` (Piston) + grade/submit in `[MODE:CODE]`.
+8. **Shareable Scorecard** — `/api/scorecard` + public `/scorecard/[id]`.
+9. **Spaced Drills** — weak-score topics resurfaced on a schedule.
+10. **Cloud Sync** — `/api/sync-sessions` merges interview history across devices.
+
 
