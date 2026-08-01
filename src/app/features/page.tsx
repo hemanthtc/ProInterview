@@ -4425,7 +4425,7 @@ function FeaturesContent() {
                                             {/* Select Interview Difficulty */}
                                             <div>
                                                 <label className="text-xs font-semibold text-white/70 block mb-2">Select Interview Difficulty</label>
-                                                <div className="grid grid-cols-3 gap-3">
+                                                <div className="grid grid-cols-3 gap-2 sm:gap-3">
                                                     {[
                                                         { key: "basic", label: "basic" },
                                                         { key: "intermediate", label: "intermediate" },
@@ -4435,7 +4435,7 @@ function FeaturesContent() {
                                                             key={item.key}
                                                             type="button"
                                                             onClick={() => setAnalysisLevel(item.key)}
-                                                            className={`py-2.5 rounded-lg border text-xs font-semibold capitalize transition-all cursor-pointer ${analysisLevel === item.key ? "bg-sky-600 border-sky-500 text-white shadow-lg shadow-sky-600/10" : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"}`}
+                                                            className={`py-2.5 px-1 rounded-lg border text-xs font-semibold capitalize transition-all truncate cursor-pointer ${analysisLevel === item.key ? "bg-sky-600 border-sky-500 text-white shadow-lg shadow-sky-600/10" : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"}`}
                                                         >
                                                             {item.label}
                                                         </button>
