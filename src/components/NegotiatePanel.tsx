@@ -285,8 +285,8 @@ export default function NegotiatePanel({
                 )}
 
                 {/* Conversation Interface - Expanded & Larger */}
-                <div className={`space-y-4 overflow-y-auto pr-1.5 border border-white/10 bg-black/30 rounded-xl p-4 transition-all ${
-                    history.length > 0 ? "min-h-[500px] max-h-[680px] flex-1" : "min-h-[280px] max-h-[380px]"
+                <div className={`space-y-4 overflow-y-auto pr-1 sm:pr-1.5 border border-white/10 bg-black/30 rounded-xl p-2.5 sm:p-4 transition-all ${
+                    history.length > 0 ? "min-h-[350px] sm:min-h-[500px] max-h-[75vh] flex-1" : "min-h-[260px] sm:min-h-[280px] max-h-[380px]"
                 }`}>
                     {history.length === 0 && (
                         <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
@@ -321,10 +321,10 @@ export default function NegotiatePanel({
                     {history.map((turn, i) => (
                         <div
                             key={i}
-                            className={`rounded-2xl p-4 text-sm transition-all shadow-lg ${
+                            className={`rounded-2xl p-3 sm:p-4 text-sm transition-all shadow-lg ${
                                 turn.role === "user"
-                                    ? "bg-indigo-600/20 border border-indigo-500/30 text-white ml-8 md:ml-16"
-                                    : "bg-white/[0.04] border border-white/10 text-white/90 mr-8 md:mr-16"
+                                    ? "bg-indigo-600/20 border border-indigo-500/30 text-white ml-2 sm:ml-8 md:ml-16"
+                                    : "bg-white/[0.04] border border-white/10 text-white/90 mr-2 sm:mr-8 md:mr-16"
                             }`}
                         >
                             <div className="flex items-center justify-between mb-2">
@@ -462,14 +462,14 @@ function CompField({
     onPayPeriodChange: (p: "annually" | "monthly") => void;
 }) {
     return (
-        <label className="block space-y-1">
+        <label className="block space-y-1 w-full min-w-0">
             <span className="text-[11px] uppercase tracking-wide text-white/60 font-medium">{label}</span>
-            <div className="flex items-center rounded-xl bg-black/40 border border-white/10 overflow-hidden focus-within:border-emerald-500/50 transition-all">
+            <div className="flex items-center rounded-xl bg-black/40 border border-white/10 overflow-hidden focus-within:border-emerald-500/50 transition-all w-full min-w-0">
                 {/* Left Side Scrollable Currency Selector */}
                 <select
                     value={currency}
                     onChange={(e) => onCurrencyChange(e.target.value)}
-                    className="bg-[#1c1c1c] text-white text-xs font-semibold px-2.5 py-2.5 border-r border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors"
+                    className="bg-[#1c1c1c] text-white text-[11px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-2 sm:py-2.5 border-r border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors shrink-0"
                 >
                     {CURRENCY_OPTIONS.map((c) => (
                         <option key={c.code} value={c.code}>
@@ -483,17 +483,17 @@ function CompField({
                     value={value}
                     onChange={(e) => onChange(e.target.value)}
                     placeholder={placeholder}
-                    className="flex-1 bg-transparent px-3 py-2 text-sm text-white placeholder:text-white/30 focus:outline-none min-w-0"
+                    className="flex-1 bg-transparent px-2 sm:px-3 py-2 text-xs sm:text-sm text-white placeholder:text-white/30 focus:outline-none min-w-0"
                 />
 
                 {/* Right Side Frequency Selector (Monthly / Yearly) */}
                 <select
                     value={payPeriod}
                     onChange={(e) => onPayPeriodChange(e.target.value as "annually" | "monthly")}
-                    className="bg-[#1c1c1c] text-white text-xs px-2.5 py-2.5 border-l border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors"
+                    className="bg-[#1c1c1c] text-white text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-2 sm:py-2.5 border-l border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors shrink-0"
                 >
-                    <option value="annually">/yr (Yearly)</option>
-                    <option value="monthly">/mo (Monthly)</option>
+                    <option value="annually">/yr</option>
+                    <option value="monthly">/mo</option>
                 </select>
             </div>
         </label>
