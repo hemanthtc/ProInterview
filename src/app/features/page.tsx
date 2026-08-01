@@ -4071,7 +4071,7 @@ function FeaturesContent() {
                         </div>
                     </>
                 ) : activeModal === "negotiate" ? (
-                    <div className="w-full max-w-[99vw] sm:max-w-[98vw] px-1 sm:px-3 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
+                    <div className="w-full max-w-full overflow-x-hidden px-1 sm:px-3 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
                         {/* Mobile Top Segmented Switcher Bar (Placed sticky at the top on mobile) */}
                         <div className="lg:hidden flex items-center bg-[#14141a] p-1.5 rounded-xl border border-white/10 w-full mb-2 gap-1 shadow-2xl sticky top-16 z-40">
                             <button
