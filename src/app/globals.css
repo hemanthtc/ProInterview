@@ -870,3 +870,10 @@ html.theme-eyeprotect .bg-red-50\/80 {
   background-color: #fdf2f2 !important;
   border-color: #dc2626 !important;
 }
+
+/* Strict Mobile Lock - Zero Horizontal Scrolling for Offer Negotiation */
+.negotiate-modal-lock {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  touch-action: pan-y !important;
+}

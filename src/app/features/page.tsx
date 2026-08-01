@@ -3850,7 +3850,7 @@ function FeaturesContent() {
                     />
                 </div>
             ) : (
-                <main className={`flex-1 flex flex-col items-center justify-center px-6 py-12 relative ${activeModal === "negotiate" ? "overflow-visible" : "overflow-hidden"}`}>
+                <main className={`flex-1 flex flex-col items-center justify-center relative ${activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : "px-6 py-12 overflow-hidden"}`}>
                 <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 
@@ -4071,14 +4071,14 @@ function FeaturesContent() {
                         </div>
                     </>
                 ) : activeModal === "negotiate" ? (
-                    <div className="w-full max-w-full overflow-x-hidden px-1 sm:px-3 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
-                        {/* Mobile Top Controls Bar (Pins intact at top while content scrolls under) */}
-                        <div className="lg:hidden sticky top-14 z-40 bg-[#0a0a10]/95 backdrop-blur-xl p-1.5 rounded-2xl border border-white/15 shadow-2xl w-full mb-3 flex items-center justify-between gap-2">
+                    <div className="w-full max-w-4xl lg:max-w-full overflow-x-hidden negotiate-modal-lock px-1 sm:px-3 pt-14 lg:pt-0 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
+                        {/* Mobile Top Controls Bar (Fixed Immobile at Viewport Top) */}
+                        <div className="lg:hidden fixed top-0 left-0 right-0 z-50 flex items-center justify-between gap-2 px-3 py-2 bg-[#05050a]/95 backdrop-blur-lg border-b border-white/10 shadow-2xl">
                             <div className="flex items-center gap-1 flex-1 min-w-0">
                                 <button
                                     type="button"
                                     onClick={() => setMobileNegotiateTab("levers")}
-                                    className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
+                                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
                                         mobileNegotiateTab === "levers" 
                                             ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30" 
                                             : "text-white/60 hover:text-white hover:bg-white/5"
@@ -4089,7 +4089,7 @@ function FeaturesContent() {
                                 <button
                                     type="button"
                                     onClick={() => setMobileNegotiateTab("calculator")}
-                                    className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
+                                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
                                         mobileNegotiateTab === "calculator" 
                                             ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30" 
                                             : "text-white/60 hover:text-white hover:bg-white/5"
@@ -4100,7 +4100,7 @@ function FeaturesContent() {
                                 <button
                                     type="button"
                                     onClick={() => setMobileNegotiateTab("redlines")}
-                                    className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
+                                    className={`flex-1 py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
                                         mobileNegotiateTab === "redlines" 
                                             ? "bg-red-600 text-white shadow-md shadow-red-600/30" 
                                             : "text-white/60 hover:text-white hover:bg-white/5"
@@ -4112,7 +4112,7 @@ function FeaturesContent() {
                             <button
                                 type="button"
                                 onClick={() => setActiveModal(null)}
-                                className="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-xl border border-white/15 transition-colors shrink-0 cursor-pointer"
+                                className="text-white/50 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-xl border border-white/10 transition-colors shrink-0 cursor-pointer"
                                 title="Close modal"
                             >
                                 <X className="w-4 h-4" />
