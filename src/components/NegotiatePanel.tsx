@@ -387,7 +387,7 @@ export default function NegotiatePanel({
                 {error && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 p-2.5 rounded-xl">{error}</p>}
 
                 {/* Chat Input Bar */}
-                <div className="flex gap-2 pt-1">
+                <div className="flex items-center gap-1.5 sm:gap-2 pt-1 w-full min-w-0">
                     <input
                         value={userMessage}
                         onChange={(e) => setUserMessage(e.target.value)}
@@ -402,15 +402,15 @@ export default function NegotiatePanel({
                                 ? "Ask your coach (e.g. 'How do I ask for $15k more base salary?')..."
                                 : "Type what you would say to the recruiter in simulation..."
                         }
-                        className="flex-1 rounded-xl bg-black/50 border border-white/15 px-4 py-3 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-emerald-500 transition-all shadow-inner"
+                        className="flex-1 min-w-0 rounded-xl bg-black/50 border border-white/15 px-3 sm:px-4 py-2.5 sm:py-3 text-xs sm:text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-emerald-500 transition-all shadow-inner"
                     />
                     <button
                         type="button"
                         onClick={() => void send()}
                         disabled={loading}
-                        className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-5 text-white flex items-center gap-2 text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all"
+                        className="shrink-0 min-w-max rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-3 sm:px-5 py-2.5 sm:py-3 text-white flex items-center justify-center gap-1.5 text-xs sm:text-sm font-bold shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
                     >
-                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                        {loading ? <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" /> : <Send className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                         Send
                     </button>
                 </div>
