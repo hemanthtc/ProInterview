@@ -21,6 +21,17 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | **Learning Roadmaps** | AI-generated multi-week prep plans for a target company and role |
 | **Auth & Payments** | Google OAuth, email OTP auth, MongoDB profiles, Razorpay / UPI support |
 | **Admin Dashboard** | Org admin tools for users, employees, and platform stats |
+| **Happenstance HR Intel** | Research the recruiter named in an invite — mood, tone, likely questions |
+| **Mock as this HR** | One-click mock interview in that person's style, preloaded with company + questions |
+| **Live Voice Coach** | Filler words, WPM, silence, confidence during the call + end-screen habits |
+| **Company Clone Mode** | Interview prompts tuned to Google/Meta/Amazon/Stripe/etc. hiring styles |
+| **Film Room** | Annotated replay with rewrites and “try again” retakes |
+| **Prep Packs** | Auto checklist + 48h/24h/1h reminders (+ `.ics` calendar download) from invites |
+| **Offer Negotiation** | Counter-script simulator with BATNA / levers |
+| **Code Runner** | Piston execute + auto-grade in `[MODE:CODE]` |
+| **Shareable Scorecard** | Public link + Print/PDF interview report |
+| **Spaced Drills** | Weak-spot drills with Practice now |
+| **Cloud Session Sync** | Interview history/prep packs synced to Mongo across devices |
 
 ---
 
@@ -98,6 +109,7 @@ Copy from [`.env.example`](.env.example):
 | `RAZORPAY_KEY_ID` / `RAZORPAY_KEY_SECRET` | No | Payments |
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | No | Razorpay client key |
 | `NEXT_PUBLIC_MERCHANT_UPI_ID` | No | UPI / donation QR |
+| `HAPPENSTANCE_API_KEY` | No | HR people research (falls back to Gemini-only guidance) |
 
 \*Required for full auth and persistence; core interview demos can run with Gemini alone, but login and profile sync need MongoDB and auth keys.
 
