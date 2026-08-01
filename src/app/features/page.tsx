@@ -4072,40 +4072,50 @@ function FeaturesContent() {
                     </>
                 ) : activeModal === "negotiate" ? (
                     <div className="w-full max-w-full overflow-x-hidden px-1 sm:px-3 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
-                        {/* Mobile Top Segmented Switcher Bar (Placed sticky at the top on mobile) */}
-                        <div className="lg:hidden flex items-center bg-[#14141a] p-1.5 rounded-xl border border-white/10 w-full mb-2 gap-1 shadow-2xl sticky top-16 z-40">
+                        {/* Mobile Top Controls Bar (Pins intact at top while content scrolls under) */}
+                        <div className="lg:hidden sticky top-14 z-40 bg-[#0a0a10]/95 backdrop-blur-xl p-1.5 rounded-2xl border border-white/15 shadow-2xl w-full mb-3 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1 flex-1 min-w-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileNegotiateTab("levers")}
+                                    className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
+                                        mobileNegotiateTab === "levers" 
+                                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30" 
+                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                    }`}
+                                >
+                                    <Sparkles className="w-3.5 h-3.5 shrink-0" /> Levers
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileNegotiateTab("calculator")}
+                                    className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
+                                        mobileNegotiateTab === "calculator" 
+                                            ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30" 
+                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                    }`}
+                                >
+                                    <Handshake className="w-3.5 h-3.5 shrink-0" /> Offer &amp; Chat
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setMobileNegotiateTab("redlines")}
+                                    className={`flex-1 py-1.5 px-1 rounded-xl text-[11px] sm:text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${
+                                        mobileNegotiateTab === "redlines" 
+                                            ? "bg-red-600 text-white shadow-md shadow-red-600/30" 
+                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                    }`}
+                                >
+                                    <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> Red Lines
+                                </button>
+                            </div>
                             <button
                                 type="button"
-                                onClick={() => setMobileNegotiateTab("levers")}
-                                className={`flex-1 py-2 px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                    mobileNegotiateTab === "levers" 
-                                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30" 
-                                        : "text-white/60 hover:text-white hover:bg-white/5"
-                                }`}
+                                onClick={() => setActiveModal(null)}
+                                className="text-white/60 hover:text-white bg-white/10 hover:bg-white/20 p-1.5 rounded-xl border border-white/15 transition-colors shrink-0 cursor-pointer"
+                                title="Close modal"
                             >
-                                <Sparkles className="w-3.5 h-3.5" /> Levers
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMobileNegotiateTab("calculator")}
-                                className={`flex-1 py-2 px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                    mobileNegotiateTab === "calculator" 
-                                        ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30" 
-                                        : "text-white/60 hover:text-white hover:bg-white/5"
-                                }`}
-                            >
-                                <Handshake className="w-3.5 h-3.5" /> Offer &amp; Chat
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setMobileNegotiateTab("redlines")}
-                                className={`flex-1 py-2 px-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                                    mobileNegotiateTab === "redlines" 
-                                        ? "bg-red-600 text-white shadow-lg shadow-red-600/30" 
-                                        : "text-white/60 hover:text-white hover:bg-white/5"
-                                }`}
-                            >
-                                <ShieldAlert className="w-3.5 h-3.5" /> Red Lines
+                                <X className="w-4 h-4" />
                             </button>
                         </div>
 
@@ -4156,18 +4166,18 @@ function FeaturesContent() {
                         }`}>
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-t-2xl"></div>
                             
-                            {/* Close button in top-right of Offer Negotiation box */}
+                            {/* Desktop Close button in top-right of Offer Negotiation box */}
                             <button
                                 type="button"
                                 onClick={() => setActiveModal(null)}
-                                className="absolute top-4 right-4 sm:top-6 sm:right-6 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-colors border border-white/10 cursor-pointer z-50"
+                                className="hidden lg:flex absolute top-6 right-6 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-colors border border-white/10 cursor-pointer z-50"
                                 title="Back to option list"
                             >
                                 <X className="w-5 h-5" />
                             </button>
 
                             <div className="space-y-4 text-left">
-                                <div className="flex items-center gap-3 pr-12 sm:pr-16">
+                                <div className="flex items-center gap-3 pr-4 sm:pr-16">
                                     <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400 shrink-0">
                                         <Handshake className="w-5 h-5" />
                                     </div>
