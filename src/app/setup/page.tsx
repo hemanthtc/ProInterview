@@ -369,12 +369,13 @@ export default function SetupPage() {
                 {!isRealisticMode && (
                     <div className="mt-6">
                         <label className="text-white/80 font-semibold mb-3 block">Select Interview Difficulty</label>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
                             {["basic", "intermediate", "advanced"].map((lvl) => (
                                 <button
                                     key={lvl}
+                                    type="button"
                                     onClick={() => setLevel(lvl)}
-                                    className={`py-3 rounded-xl border capitalize font-semibold transition-all text-sm sm:text-base ${level === lvl ? "bg-indigo-600 border-indigo-500 text-white shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
+                                    className={`py-3 px-1 rounded-xl border capitalize font-semibold transition-all text-xs sm:text-base truncate cursor-pointer ${level === lvl ? "bg-indigo-600 border-indigo-500 text-white shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
                                 >
                                     {lvl}
                                 </button>
