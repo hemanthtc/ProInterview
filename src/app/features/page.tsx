@@ -2,15 +2,20 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock } from "lucide-react";
+import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
 import CompanySelect from "../../components/CompanySelect";
 import RoleSelect from "../../components/RoleSelect";
+import NegotiatePanel from "../../components/NegotiatePanel";
+import SpacedDrillsPanel from "../../components/SpacedDrillsPanel";
+import PrepPackPanel from "../../components/PrepPackPanel";
 import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
+import { buildPrepPackFromEmail } from "../../utils/prepPack";
+import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import ProInterviewerApp from "../../components/prointerviewer/ProInterviewerApp";
 import { offCampusMCQs, offCampusCodingQuestions, MCQQuestion, CodingQuestion } from "../../data/offCampusMockTestData";
@@ -250,8 +255,8 @@ function FeaturesContent() {
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const isLight = theme === "light" || theme === "eyeprotect";
-    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress">("analysis");
-    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress" | null>(null);
+    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack">("analysis");
+    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack" | null>(null);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
@@ -714,6 +719,8 @@ function FeaturesContent() {
             return;
         }
         setIsAuthChecked(true);
+
+        void pullSessionsFromCloud();
 
         const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
         setIsRealisticMode(isRealistic);
@@ -1840,6 +1847,27 @@ function FeaturesContent() {
                     verificationFeedback: data.verificationFeedback
                 });
 
+                if (data.emailType === "job_invite") {
+                    try {
+                        const pack = buildPrepPackFromEmail({
+                            company: data.extractedDetails?.company,
+                            role: data.extractedDetails?.role,
+                            hrName: data.extractedDetails?.hrName,
+                            interviewDate: data.extractedDetails?.interviewDate,
+                            platform: data.extractedDetails?.platformOrFormat,
+                            skills: data.extractedDetails?.skills,
+                            mandatoryThings: data.mandatoryThings,
+                            importantPoints: data.importantPoints,
+                        });
+                        const existing = JSON.parse(getStorageItem("prepPacks") || "[]");
+                        const nextPacks = [pack, ...(Array.isArray(existing) ? existing : [])].slice(0, 20);
+                        setStorageItem("prepPacks", JSON.stringify(nextPacks));
+                        void syncSessionsToCloud({ prepPacks: nextPacks });
+                    } catch (packErr) {
+                        console.error("Failed to build prep pack", packErr);
+                    }
+                }
+
                 // Auto-research HR via Happenstance when a sender name is present
                 if (isUsableHrName(data.extractedDetails?.hrName)) {
                     void handleResearchHr(data.extractedDetails);
@@ -2032,6 +2060,25 @@ function FeaturesContent() {
         setRoadmapResult(null);
         setRoadmapTasksChecked({});
         setExpandedPhases({ 0: true });
+    };
+
+    const handleStartInterviewAsHr = () => {
+        const details = emailAnalysisResult?.extractedDetails;
+        const intel = hrResearchResult?.intel || {
+            interviewerName: details?.hrName || "HR Contact",
+            titleGuess: "Recruiter",
+            mood: "professional",
+            moodLabel: "neutral",
+            communicationTone: "professional",
+            focusAreas: details?.skills || [],
+            likelyQuestions: [],
+        };
+        setStorageItem("activeHrIntel", JSON.stringify(intel));
+        if (details?.company) setStorageItem("targetCompany", details.company);
+        if (details?.role) setStorageItem("preferredRoles", details.role);
+        setStorageItem("companyCloneMode", "true");
+        setStorageItem("globalInterviewMode", "technical");
+        router.push("/setup");
     };
 
     const handleLoadRoadmap = (id: string) => {
@@ -3889,6 +3936,60 @@ function FeaturesContent() {
                                         <h3 className={`text-lg font-bold group-hover:text-teal-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-teal-700" : "text-white"}`}>AI Email Analyser</h3>
                                     </div>
 
+                                    {/* Card: Prep Packs */}
+                                    <div
+                                        onClick={() => {
+                                            setActiveModal("prep_pack");
+                                            setActiveTool("prep_pack");
+                                        }}
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#12151a]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(56,189,248,0.05)] hover:shadow-[0_0_40px_rgba(56,189,248,0.15)] ${
+                                            isLight ? "border-sky-500/45 hover:border-sky-600" : "border-sky-500/20 hover:border-sky-500/50"
+                                        }`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-sky-500/20 border border-sky-500/30 text-sky-700" : "bg-sky-500/10 border border-sky-500/20 text-sky-400"
+                                        }`}>
+                                            <CalendarClock className="w-6 h-6" />
+                                        </div>
+                                        <h3 className={`text-lg font-bold group-hover:text-sky-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-sky-700" : "text-white"}`}>Prep Packs</h3>
+                                    </div>
+
+                                    {/* Card: Spaced Drills */}
+                                    <div
+                                        onClick={() => {
+                                            setActiveModal("drills");
+                                            setActiveTool("drills");
+                                        }}
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#1a1512]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(249,115,22,0.05)] hover:shadow-[0_0_40px_rgba(249,115,22,0.15)] ${
+                                            isLight ? "border-orange-500/45 hover:border-orange-600" : "border-orange-500/20 hover:border-orange-500/50"
+                                        }`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-orange-500/20 border border-orange-500/30 text-orange-700" : "bg-orange-500/10 border border-orange-500/20 text-orange-400"
+                                        }`}>
+                                            <Dumbbell className="w-6 h-6" />
+                                        </div>
+                                        <h3 className={`text-lg font-bold group-hover:text-orange-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-orange-700" : "text-white"}`}>Spaced Drills</h3>
+                                    </div>
+
+                                    {/* Card: Offer Negotiation */}
+                                    <div
+                                        onClick={() => {
+                                            setActiveModal("negotiate");
+                                            setActiveTool("negotiate");
+                                        }}
+                                        className={`group bg-[#0d0d12]/60 hover:bg-[#15121a]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(34,197,94,0.05)] hover:shadow-[0_0_40px_rgba(34,197,94,0.15)] ${
+                                            isLight ? "border-green-500/45 hover:border-green-600" : "border-green-500/20 hover:border-green-500/50"
+                                        }`}
+                                    >
+                                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${
+                                            isLight ? "bg-green-500/20 border border-green-500/30 text-green-700" : "bg-green-500/10 border border-green-500/20 text-green-400"
+                                        }`}>
+                                            <Handshake className="w-6 h-6" />
+                                        </div>
+                                        <h3 className={`text-lg font-bold group-hover:text-green-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-green-700" : "text-white"}`}>Offer Negotiation</h3>
+                                    </div>
+
                                     {/* Card E: Preparation Roadmap Generator */}
                                     <div 
                                         onClick={() => {
@@ -5391,6 +5492,7 @@ function FeaturesContent() {
                                                                 <span className={`block ${isLight ? "text-slate-400" : "text-white/40"}`}>HR / Sender</span>
                                                                 <span className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{emailAnalysisResult.extractedDetails.hrName || "Not specified"}</span>
                                                                 {isUsableHrName(emailAnalysisResult.extractedDetails.hrName) && (
+                                                                    <>
                                                                     <button
                                                                         type="button"
                                                                         onClick={() => handleResearchHr()}
@@ -5408,6 +5510,15 @@ function FeaturesContent() {
                                                                         )}
                                                                         {hrResearchStatus === "completed" ? "Refresh Happenstance" : "Research on Happenstance"}
                                                                     </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleStartInterviewAsHr}
+                                                                        className="mt-1.5 ml-2 inline-flex items-center gap-1 text-[10px] font-bold text-indigo-400 hover:text-indigo-300 cursor-pointer transition"
+                                                                    >
+                                                                        <Play className="w-3 h-3" />
+                                                                        Mock interview as {emailAnalysisResult.extractedDetails.hrName}
+                                                                    </button>
+                                                                    </>
                                                                 )}
                                                             </div>
                                                             <div className={`col-span-2 pt-2 border-t ${isLight ? "border-slate-100" : "border-white/5"}`}>
@@ -5722,9 +5833,31 @@ function FeaturesContent() {
                                                                         {hrResearchResult.intel.source === "gemini_fallback" ? " · Happenstance profile unavailable (fallback guidance)" : " · grounded in Happenstance research"}
                                                                         {hrResearchResult.intel.disclaimer ? ` · ${hrResearchResult.intel.disclaimer}` : ""}
                                                                     </p>
+
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={handleStartInterviewAsHr}
+                                                                        className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                                                                    >
+                                                                        <Play className="w-3.5 h-3.5" />
+                                                                        Mock interview as {hrResearchResult.intel.interviewerName || emailAnalysisResult.extractedDetails?.hrName || "HR"}
+                                                                    </button>
                                                                 </div>
                                                             )}
                                                         </div>
+                                                    )}
+
+                                                    {emailAnalysisResult.emailType === "offer_letter" && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setActiveModal("negotiate");
+                                                                setActiveTool("negotiate");
+                                                            }}
+                                                            className="w-full py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-green-600/10 cursor-pointer"
+                                                        >
+                                                            <Handshake className="w-4 h-4" /> Open Negotiation
+                                                        </button>
                                                     )}
 
                                                     <button
@@ -5739,6 +5872,54 @@ function FeaturesContent() {
                                         </motion.div>
                                     )}
                                 </AnimatePresence>
+                            </div>
+                        )}
+
+                        {activeModal === "prep_pack" && (
+                            <div className="space-y-4 text-left">
+                                <div className="flex items-center gap-3 pr-16">
+                                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+                                        <CalendarClock className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Prep Packs</h3>
+                                        <p className="text-xs text-white/50">Checklists and reminders from your interview invites.</p>
+                                    </div>
+                                </div>
+                                <PrepPackPanel />
+                            </div>
+                        )}
+
+                        {activeModal === "drills" && (
+                            <div className="space-y-4 text-left">
+                                <div className="flex items-center gap-3 pr-16">
+                                    <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
+                                        <Dumbbell className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Spaced Drills</h3>
+                                        <p className="text-xs text-white/50">Weak-spot practice scheduled from past interview scores.</p>
+                                    </div>
+                                </div>
+                                <SpacedDrillsPanel />
+                            </div>
+                        )}
+
+                        {activeModal === "negotiate" && (
+                            <div className="space-y-4 text-left">
+                                <div className="flex items-center gap-3 pr-16">
+                                    <div className="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-400">
+                                        <Handshake className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-bold text-white">Offer Negotiation</h3>
+                                        <p className="text-xs text-white/50">Practice scripts and coach notes for compensation talks.</p>
+                                    </div>
+                                </div>
+                                <NegotiatePanel
+                                    defaultCompany={emailAnalysisResult?.extractedDetails?.company || ""}
+                                    defaultRole={emailAnalysisResult?.extractedDetails?.role || ""}
+                                />
                             </div>
                         )}
 

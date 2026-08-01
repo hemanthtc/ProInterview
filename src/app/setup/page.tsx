@@ -21,6 +21,8 @@ export default function SetupPage() {
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const [isAuthChecked, setIsAuthChecked] = useState(false);
+    const [companyCloneMode, setCompanyCloneMode] = useState(true);
+    const [hrPersonaPreview, setHrPersonaPreview] = useState<{ name?: string; title?: string } | null>(null);
     const router = useRouter();
 
     const [hasAccountPortfolio, setHasAccountPortfolio] = useState(false);
@@ -42,6 +44,39 @@ export default function SetupPage() {
         setTheme(savedTheme);
         document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
         document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
+
+        try {
+            const rawHr = getStorageItem("activeHrIntel");
+            if (rawHr) {
+                const intel = JSON.parse(rawHr);
+                setHrPersonaPreview({
+                    name: intel.interviewerName || intel.name,
+                    title: intel.titleGuess || intel.title,
+                });
+            }
+        } catch { /* ignore */ }
+
+        const storedCompany = getStorageItem("targetCompany");
+        if (storedCompany) {
+            setTargetCompanies(
+                storedCompany
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .slice(0, 3)
+            );
+        }
+        const storedRoles = getStorageItem("preferredRoles");
+        if (storedRoles) {
+            setPreferredRoles(
+                storedRoles
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                    .slice(0, 3)
+            );
+        }
+        setCompanyCloneMode(getStorageItem("companyCloneMode") !== "false");
 
         const syncFromAccountDetails = () => {
             const portfolio = getStorageItem("userPortfolio") || "";
@@ -166,6 +201,7 @@ export default function SetupPage() {
             setStorageItem("targetCompany", finalCompany);
             setStorageItem("preferredRoles", finalRoles);
             setStorageItem("portfolioScoringEnabled", "false");
+            setStorageItem("companyCloneMode", companyCloneMode ? "true" : "false");
 
             removeStorageItem("resumeFromPaused"); // ensure fresh start
             
@@ -200,6 +236,38 @@ export default function SetupPage() {
                 <p className="text-white/50 mb-8">
                     Upload your resume so the AI can tailor the interview questions to your experience.
                 </p>
+
+                {hrPersonaPreview?.name && (
+                    <div className="mb-6 rounded-xl border border-teal-500/25 bg-teal-500/10 px-4 py-3 text-sm text-teal-100">
+                        <p className="font-semibold text-teal-200">
+                            Mocking as {hrPersonaPreview.name}
+                            {hrPersonaPreview.title ? ` · ${hrPersonaPreview.title}` : ""}
+                        </p>
+                        <p className="text-xs text-teal-200/70 mt-1">
+                            Happenstance interviewer intel is loaded for this session.
+                        </p>
+                    </div>
+                )}
+
+                <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                    <div>
+                        <p className="text-sm font-semibold text-white/90">Company clone mode</p>
+                        <p className="text-xs text-white/45 mt-0.5">Match interview style to the target company bank.</p>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => setCompanyCloneMode((v) => !v)}
+                        className={`relative h-8 w-14 rounded-full transition-colors ${companyCloneMode ? "bg-indigo-600" : "bg-white/15"}`}
+                        aria-pressed={companyCloneMode}
+                    >
+                        <span
+                            className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white transition-transform ${companyCloneMode ? "translate-x-6" : "translate-x-0"}`}
+                        />
+                    </button>
+                    <span className="text-xs font-bold uppercase tracking-wide text-white/60 w-10 text-right">
+                        {companyCloneMode ? "On" : "Off"}
+                    </span>
+                </div>
 
                 {resumeCvName && (
                     <div 
@@ -289,6 +357,7 @@ export default function SetupPage() {
                         ]}
                         maxLimit={3}
                         placeholder="Search or specify up to 3 target roles..."
+                        defaultValue={preferredRoles.map((r) => ({ value: r, label: r }))}
                         onChange={(selected: string[]) => setPreferredRoles(selected)}
                     />
                 </div>
@@ -308,6 +377,7 @@ export default function SetupPage() {
                         ]}
                         maxLimit={3}
                         placeholder="Search or select up to 3 target companies..."
+                        defaultValue={targetCompanies.map((c) => ({ value: c, label: c }))}
                         onChange={(selected: string[]) => setTargetCompanies(selected)}
                     />
                 </div>
