@@ -56,26 +56,8 @@ export default function SetupPage() {
             }
         } catch { /* ignore */ }
 
-        const storedCompany = getStorageItem("targetCompany");
-        if (storedCompany) {
-            setTargetCompanies(
-                storedCompany
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                    .slice(0, 3)
-            );
-        }
-        const storedRoles = getStorageItem("preferredRoles");
-        if (storedRoles) {
-            setPreferredRoles(
-                storedRoles
-                    .split(",")
-                    .map((s) => s.trim())
-                    .filter(Boolean)
-                    .slice(0, 3)
-            );
-        }
+        setTargetCompanies([]);
+        setPreferredRoles([]);
         setCompanyCloneMode(getStorageItem("companyCloneMode") !== "false");
 
         const syncFromAccountDetails = () => {
@@ -385,43 +367,21 @@ export default function SetupPage() {
 
 
                 {!isRealisticMode && (
-                    <>
-                        <div className="mt-6">
-                            <label className="text-white/80 font-semibold mb-3 block">Select Interview Difficulty</label>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
-                                {["basic", "intermediate", "advanced"].map((lvl) => (
-                                    <button
-                                        key={lvl}
-                                        onClick={() => setLevel(lvl)}
-                                        className={`py-3 rounded-xl border capitalize font-semibold transition-all text-sm sm:text-base ${level === lvl ? "bg-indigo-600 border-indigo-500 text-white shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
-                                    >
-                                        {lvl}
-                                    </button>
-                                ))}
-                            </div>
+                    <div className="mt-6">
+                        <label className="text-white/80 font-semibold mb-3 block">Select Interview Difficulty</label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
+                            {["basic", "intermediate", "advanced"].map((lvl) => (
+                                <button
+                                    key={lvl}
+                                    onClick={() => setLevel(lvl)}
+                                    className={`py-3 rounded-xl border capitalize font-semibold transition-all text-sm sm:text-base ${level === lvl ? "bg-indigo-600 border-indigo-500 text-white shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
+                                >
+                                    {lvl}
+                                </button>
+                            ))}
                         </div>
-
-                        <div className="mt-8">
-                            <label className="text-white/80 font-semibold mb-3 flex items-center gap-2"><Cpu className="w-4 h-4"/> Select AI Provider</label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                {[
-                                    { id: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
-                                    { id: "sarvam", label: "Sarvam AI", desc: "Focused on explicit constraints." }
-                                ].map((prov) => (
-                                    <button
-                                        key={prov.id}
-                                        onClick={() => setProvider(prov.id)}
-                                        className={`p-4 rounded-xl border text-left transition-all ${provider === prov.id ? "bg-indigo-600/20 border-indigo-500 shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
-                                    >
-                                        <span className={`block font-bold mb-1 ${provider === prov.id ? "text-indigo-300" : ""}`}>{prov.label}</span>
-                                        <span className="text-xs opacity-70 leading-relaxed block">{prov.desc}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    </>
+                    </div>
                 )}
-
 
                 {error && <p className="text-red-400 mt-4 text-sm font-semibold">{error}</p>}
 

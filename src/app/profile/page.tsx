@@ -2269,7 +2269,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     </li>
                                                     <li className="flex items-center gap-2 text-indigo-300 font-semibold">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Multilingual (Gemini & Sarvam AI)
+                                                        Multilingual (Google Gemini)
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />

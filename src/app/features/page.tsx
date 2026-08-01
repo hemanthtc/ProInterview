@@ -4460,29 +4460,8 @@ function FeaturesContent() {
                                                                 {item.label}
                                                             </button>
                                                         ))}
-                                                    </div>
-                                                </div>
-
-                                                {/* Select AI Provider */}
-                                                <div>
-                                                    <label className="text-xs font-semibold text-white/70 block mb-2 flex items-center gap-1.5"><Cpu className="w-3.5 h-3.5 text-sky-400"/> Select AI Provider</label>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                        {[
-                                                            { key: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
-                                                            { key: "sarvam", label: "Sarvam AI", desc: "Focused on explicit constraints." },
-                                                        ].map((item) => (
-                                                            <button
-                                                                key={item.key}
-                                                                type="button"
-                                                                onClick={() => setAnalysisProvider(item.key)}
-                                                                className={`p-3 rounded-lg border text-left transition-all cursor-pointer ${analysisProvider === item.key ? "bg-sky-600/20 border-sky-500 shadow-lg" : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white"}`}
-                                                            >
-                                                                <span className={`block text-xs font-bold mb-0.5 ${analysisProvider === item.key ? "text-sky-300" : ""}`}>{item.label}</span>
-                                                                <span className="text-[10px] opacity-70 leading-relaxed block">{item.desc}</span>
-                                                            </button>
-                                                        ))}
-                                                    </div>
-                                                </div>
+                                                                                                </div>
+                                                   </div>
                                             </div>
                                             
                                             <div className="flex gap-3 pt-6 border-t border-white/5 mt-6">
