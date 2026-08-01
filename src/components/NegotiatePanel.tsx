@@ -213,7 +213,7 @@ export default function NegotiatePanel({
 
                 {/* Offer Context Input Section (Collapsible once conversation begins) */}
                 {showInputs ? (
-                    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-4 space-y-4 transition-all animate-fadeIn">
+                    <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 sm:p-4 space-y-3 sm:space-y-4 transition-all animate-fadeIn">
                         <div className="flex items-center justify-between">
                             <span className="text-xs font-semibold text-white/70 uppercase tracking-wider">
                                 Offer & Compensation Details
