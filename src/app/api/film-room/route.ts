@@ -8,6 +8,8 @@ export interface FilmAnnotation {
     kind: "strength" | "gap" | "moment" | "tip";
     quote?: string;
     note: string;
+    rewrite?: string;
+    retakePrompt?: string;
 }
 
 export interface FilmRoomResult {
@@ -16,6 +18,7 @@ export interface FilmRoomResult {
     annotations: FilmAnnotation[];
     keyMoments: string[];
     practiceFocus: string[];
+    retakePrompts?: string[];
     fallback?: boolean;
 }
 
@@ -40,6 +43,14 @@ function fallbackFilm(transcript: string, summary?: string, scores?: any): FilmR
                     : i % 3 === 1
                       ? "Solid substance here — keep this as a reusable STAR bullet."
                       : "Pause briefly before diving in; it reads as more confident.",
+            rewrite:
+                i % 3 === 0
+                    ? "Lead with the result in one sentence, then two actions and one metric."
+                    : undefined,
+            retakePrompt:
+                i % 3 === 0
+                    ? `Re-answer in 90 seconds (STAR): ${quote.slice(0, 80) || "your weakest behavioral moment"}`
+                    : undefined,
         });
     });
 
@@ -85,6 +96,10 @@ function fallbackFilm(transcript: string, summary?: string, scores?: any): FilmR
         annotations,
         keyMoments: annotations.slice(0, 3).map((a) => a.label),
         practiceFocus: practiceFocus.slice(0, 4),
+        retakePrompts: annotations
+            .map((a) => a.retakePrompt)
+            .filter((p): p is string => Boolean(p))
+            .slice(0, 3),
         fallback: true,
     };
 }
@@ -140,17 +155,21 @@ Return ONLY valid JSON (no markdown fences):
       "label": "short label",
       "kind": "strength" | "gap" | "moment" | "tip",
       "quote": "optional short quote from candidate",
-      "note": "specific coaching note"
+      "note": "specific coaching note",
+      "rewrite": "optional improved answer the candidate could have said (required for gap)",
+      "retakePrompt": "optional single question to re-answer in a focused rematch"
     }
   ],
   "keyMoments": ["3-5 short strings"],
-  "practiceFocus": ["2-4 drill topics"]
+  "practiceFocus": ["2-4 drill topics"],
+  "retakePrompts": ["1-3 standalone retake questions"]
 }
 
 Rules:
 - Produce 5-10 annotations spaced across the conversation (t = approx seconds from start).
 - Be specific to this transcript — quote real moments when possible.
-- Prefer actionable notes over generic praise.`;
+- Prefer actionable notes over generic praise.
+- For every "gap" annotation, include rewrite + retakePrompt.`;
 
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {
@@ -193,12 +212,18 @@ Rules:
                       kind: ["strength", "gap", "moment", "tip"].includes(a.kind) ? a.kind : "moment",
                       quote: a.quote ? String(a.quote).slice(0, 200) : undefined,
                       note: String(a.note || ""),
+                      rewrite: a.rewrite ? String(a.rewrite).slice(0, 500) : undefined,
+                      retakePrompt: a.retakePrompt ? String(a.retakePrompt).slice(0, 300) : undefined,
                   }))
                 : [];
 
             if (annotations.length === 0) {
                 return NextResponse.json(fallbackFilm(transcript, summary, scores));
             }
+
+            const retakePrompts = Array.isArray(parsed.retakePrompts)
+                ? parsed.retakePrompts.map(String).slice(0, 4)
+                : annotations.map((a) => a.retakePrompt).filter(Boolean).slice(0, 4);
 
             return NextResponse.json({
                 title: String(parsed.title || "Film Room Replay"),
@@ -210,6 +235,7 @@ Rules:
                 practiceFocus: Array.isArray(parsed.practiceFocus)
                     ? parsed.practiceFocus.map(String).slice(0, 4)
                     : [],
+                retakePrompts,
             } satisfies FilmRoomResult);
         } catch (parseErr) {
             console.error("Film-room JSON parse failed:", parseErr);

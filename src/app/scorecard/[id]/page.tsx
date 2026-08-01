@@ -59,9 +59,20 @@ export default function PublicScorecardPage() {
 
     return (
         <div className="min-h-screen bg-[#050505] text-white font-sans">
-            <header className="px-4 sm:px-8 py-5 border-b border-white/10 flex items-center gap-2">
-                <Share2 className="w-5 h-5 text-indigo-400" />
-                <span className="font-bold tracking-tight">ProInterview Scorecard</span>
+            <header className="px-4 sm:px-8 py-5 border-b border-white/10 flex items-center justify-between gap-2 print:border-black/10">
+                <div className="flex items-center gap-2">
+                    <Share2 className="w-5 h-5 text-indigo-400 print:text-black" />
+                    <span className="font-bold tracking-tight">ProInterview Scorecard</span>
+                </div>
+                {data && (
+                    <button
+                        type="button"
+                        onClick={() => window.print()}
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 print:hidden cursor-pointer"
+                    >
+                        Print / PDF
+                    </button>
+                )}
             </header>
 
             <main className="max-w-2xl mx-auto px-4 sm:px-6 py-10">

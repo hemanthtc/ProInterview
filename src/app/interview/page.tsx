@@ -388,7 +388,11 @@ export default function InterviewRoom() {
         const typeText = getStorageItem("interviewType") || "realistic";
         const targetCompanyTxt = getStorageItem("targetCompany") || "a technology company";
         const roleText = getStorageItem("preferredRoles") || "Software Engineer";
-        const firstMessage = typeText === "technical" 
+        const focusedRetake = getStorageItem("focusedRetakePrompt");
+        if (focusedRetake) removeStorageItem("focusedRetakePrompt");
+        const firstMessage = focusedRetake
+            ? `Please start a focused rematch interview for ${roleText} at ${targetCompanyTxt} (difficulty: ${levelText}). Open by briefly welcoming me, then ask EXACTLY this practice question first (do not skip it): "${focusedRetake}". After I answer, give concise coach feedback, then continue with 2-3 related follow-ups. Use MODE tags as needed.`
+            : typeText === "technical"
             ? `Please start the technical interview by welcoming me. You will conduct a highly technical interview focusing strictly on coding, architecture, and logic matching the engineering standards of ${targetCompanyTxt}. I am specifically applying for the role(s) of: ${roleText}. Adjust the technical difficulty and depth of your questions to a strictly ${levelText} level.`
             : `Please start the realistic company interview by welcoming me. You will conduct a full-spectrum interview consisting of behavioral questions, experience deep-dives based on my resume, and real-world scenarios, just like a real company interviewer. I am specifically applying for the role(s) of: ${roleText}. Adjust the difficulty of your questions to a strictly ${levelText} level.`;
         triggerAiResponse(text || "", [], firstMessage, typeText);

@@ -198,6 +198,67 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
                         ))}
                     </div>
 
+                    <div className="flex flex-wrap gap-2 pt-1">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setStorageItem("targetCompany", active.company);
+                                setStorageItem("preferredRoles", active.role);
+                                setStorageItem("interviewLevel", getStorageItem("interviewLevel") || "intermediate");
+                                setStorageItem(
+                                    "focusedRetakePrompt",
+                                    `Run a focused 15-minute mini mock for ${active.role} at ${active.company}. Ask 4 tight questions covering motivation, one STAR story, one technical depth check, and logistics.`
+                                );
+                                if (active.hrName) {
+                                    /* keep any existing activeHrIntel */
+                                }
+                                window.location.href = "/setup";
+                            }}
+                            className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white cursor-pointer"
+                        >
+                            Start 15-min mini mock
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const lines = [
+                                    "BEGIN:VCALENDAR",
+                                    "VERSION:2.0",
+                                    "PRODID:-//ProInterview//PrepPack//EN",
+                                    ...active.reminders
+                                        .filter((r) => !r.fired)
+                                        .map((r) => {
+                                            const dt = new Date(r.at);
+                                            const stamp = dt
+                                                .toISOString()
+                                                .replace(/[-:]/g, "")
+                                                .replace(/\.\d{3}Z$/, "Z");
+                                            return [
+                                                "BEGIN:VEVENT",
+                                                `UID:${active.id}-${r.id}@prointerview`,
+                                                `DTSTAMP:${stamp}`,
+                                                `DTSTART:${stamp}`,
+                                                `SUMMARY:ProInterview prep — ${r.label} (${active.company})`,
+                                                `DESCRIPTION:Prep for ${active.role} at ${active.company}`,
+                                                "END:VEVENT",
+                                            ].join("\r\n");
+                                        }),
+                                    "END:VCALENDAR",
+                                ].join("\r\n");
+                                const blob = new Blob([lines], { type: "text/calendar;charset=utf-8" });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement("a");
+                                a.href = url;
+                                a.download = `prointerview-prep-${active.company.replace(/\s+/g, "-").toLowerCase()}.ics`;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                            }}
+                            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white/80 cursor-pointer"
+                        >
+                            Download calendar (.ics)
+                        </button>
+                    </div>
+
                     {active.hrIntelSummary && (
                         <p className="text-xs text-white/50 leading-relaxed border-t border-white/5 pt-3">
                             {active.hrIntelSummary.slice(0, 400)}

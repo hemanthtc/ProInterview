@@ -149,18 +149,31 @@ function DrillCard({
                 <span className="text-[10px] uppercase tracking-wide text-white/40 shrink-0">{drill.difficulty}</span>
             </div>
             <p className="text-xs text-white/70 leading-relaxed">{drill.prompt}</p>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
                 <span className="text-[11px] text-white/40 flex items-center gap-1">
                     <CalendarClock className="w-3 h-3" />
                     {due ? "Due now" : `Due ${dueLabel}`} · {drill.practiceType}
                 </span>
-                <button
-                    type="button"
-                    onClick={onDone}
-                    className="text-[11px] font-medium text-indigo-300 hover:text-indigo-200"
-                >
-                    Mark done
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setStorageItem("focusedRetakePrompt", drill.prompt);
+                            setStorageItem("interviewLevel", drill.difficulty);
+                            window.location.href = "/setup";
+                        }}
+                        className="text-[11px] font-bold text-teal-300 hover:text-teal-200"
+                    >
+                        Practice now →
+                    </button>
+                    <button
+                        type="button"
+                        onClick={onDone}
+                        className="text-[11px] font-medium text-indigo-300 hover:text-indigo-200"
+                    >
+                        Mark done
+                    </button>
+                </div>
             </div>
         </div>
     );
