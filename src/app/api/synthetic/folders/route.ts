@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
         const userId = auth.session.identifier;
         const ownerName = await getOwnerName(userId);
-        let folderType = body?.type === "document" ? "document" : "tabular";
+        let folderType: "tabular" | "document" = body?.type === "document" ? "document" : "tabular";
         const parentId = body?.parentId || null;
 
         if (parentId) {

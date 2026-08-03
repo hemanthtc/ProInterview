@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
         const scope = req.nextUrl.searchParams.get("scope") || "mine";
         const userId = auth.session.identifier;
 
-        const query =
+        const query: any =
             scope === "all"
                 ? { $or: [{ userId }, { visibility: "public" }] }
                 : { userId };

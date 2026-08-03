@@ -52,9 +52,8 @@ const SyntheticFileSchema = new Schema<ISyntheticFile>(
             default: "tabular",
         },
         format: { type: String, default: "json" },
-        // Use Array + factory defaults to avoid Mixed caster / indexedPaths validation bugs
-        data: { type: Array, default: () => [] },
-        schemaFields: { type: Array, default: () => [] },
+        data: { type: Array, default: () => [] } as any,
+        schemaFields: { type: Array, default: () => [] } as any,
         textContent: { type: String, default: "" },
         favorite: { type: Boolean, default: false },
         pinned: { type: Boolean, default: false },
