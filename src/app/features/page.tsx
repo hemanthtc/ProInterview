@@ -4018,19 +4018,6 @@ function FeaturesContent() {
                                             </div>
                                             <h3 className={`text-lg font-bold group-hover:text-sky-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-sky-700" : "text-white"}`}>My Progress</h3>
                                         </div>
-
-                                        {/* Card I: Synthetic Studio */}
-                                        <div
-                                            onClick={() => router.push("/synthetic-generator")}
-                                            className={`group bg-[#0d0d12]/60 hover:bg-[#15121a]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(99,102,241,0.05)] hover:shadow-[0_0_40px_rgba(99,102,241,0.15)] ${isLight ? "border-indigo-500/45 hover:border-indigo-600" : "border-indigo-500/20 hover:border-indigo-500/50"
-                                                }`}
-                                        >
-                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${isLight ? "bg-indigo-500/20 border border-indigo-500/30 text-indigo-700" : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
-                                                }`}>
-                                                <Database className="w-6 h-6" />
-                                            </div>
-                                            <h3 className={`text-lg font-bold group-hover:text-indigo-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-indigo-700" : "text-white"}`}>Synthetic Studio</h3>
-                                        </div>
                                     </>
                                 )}
                             </div>
