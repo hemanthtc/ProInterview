@@ -44,3 +44,17 @@ There is no automated E2E test runner in the repo (manual checklists in `REPORT.
 ### Dev server
 
 Run in a persistent tmux session (HMR stays attached). Default port **3000**. After changing `.env`, restart the dev server.
+
+### Developing without a valid `GEMINI_API_KEY`
+
+You can still verify a large slice of the product:
+
+- **Static UI:** home, `/features`, `/profile`, interview room shell (after phone OTP login).
+- **Study materials:** static SPA at `/study-materials/index.html` (embedded from Features).
+- **Auth + Mongo:** phone register/login (OTP in API JSON), session cookies, `/api/init-db`, profile APIs.
+- **Not available without a valid key:** interviewer chat, portfolio analysis, most `/api/*` generators (they call Gemini with the env value; a `.env.example` placeholder is treated as a real key and fails at Google, not as “missing”).
+- **Mock grading:** `/api/grade-code` only falls back to mock grading when `GEMINI_API_KEY` is **unset** (remove or comment it in `.env` for local mock responses).
+
+### Code execution (`/api/run-code`)
+
+Uses the public Piston API at `emkc.org`. As of 2026 the public endpoint may return 502 (“whitelist only”) without a self-hosted Piston instance. Auth/session on the route still works; expect execution failures in Cloud Agent VMs.
