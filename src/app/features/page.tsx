@@ -255,8 +255,8 @@ function FeaturesContent() {
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const isLight = theme === "light" || theme === "eyeprotect";
-    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack">("analysis");
-    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack" | null>(null);
+    const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack">("analysis");
+    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack" | null>(null);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
@@ -3583,8 +3583,8 @@ function FeaturesContent() {
     if (!isAuthChecked) return null;
 
     return (
-        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
-            {activeModal !== "study_materials" && (activeModal !== "prointerviewer" || builderMobileView !== "preview") && (
+        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials" || activeModal === "synthetic_data") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
+            {activeModal !== "study_materials" && activeModal !== "synthetic_data" && (activeModal !== "prointerviewer" || builderMobileView !== "preview") && (
                 <>
                     <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                         <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
@@ -3823,6 +3823,14 @@ function FeaturesContent() {
                         title="Study Materials"
                     />
                 </div>
+            ) : activeModal === "synthetic_data" ? (
+                <div className="flex-1 w-full h-full relative overflow-hidden bg-[#F7F8FA]">
+                    <iframe
+                        src="/synthetic-data-generator/index.html"
+                        className="w-full h-full border-none"
+                        title="Synthetic Data Generator"
+                    />
+                </div>
             ) : (
                 <main className={`flex-1 flex flex-col items-center justify-center relative ${activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : "px-6 py-12 overflow-hidden"}`}>
                     <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
@@ -4001,6 +4009,22 @@ function FeaturesContent() {
                                                 <BookOpen className="w-6 h-6" />
                                             </div>
                                             <h3 className={`text-lg font-bold group-hover:text-purple-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-purple-700" : "text-white"}`}>Study Materials</h3>
+                                        </div>
+
+                                        {/* Card: Synthetic Data Generator */}
+                                        <div
+                                            onClick={() => {
+                                                setActiveModal("synthetic_data");
+                                                setActiveTool("synthetic_data");
+                                            }}
+                                            className={`group bg-[#0d0d12]/60 hover:bg-[#121a18]/80 backdrop-blur-sm border rounded-2xl p-5 transition-all duration-300 flex items-center gap-4 cursor-pointer shadow-[0_0_30px_rgba(15,118,110,0.05)] hover:shadow-[0_0_40px_rgba(15,118,110,0.15)] ${isLight ? "border-teal-500/45 hover:border-teal-600" : "border-teal-500/20 hover:border-teal-500/50"
+                                                }`}
+                                        >
+                                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shrink-0 ${isLight ? "bg-teal-500/20 border border-teal-500/30 text-teal-700" : "bg-teal-500/10 border border-teal-500/20 text-teal-400"
+                                                }`}>
+                                                <Database className="w-6 h-6" />
+                                            </div>
+                                            <h3 className={`text-lg font-bold group-hover:text-teal-400 transition-colors ${isLight ? "text-slate-800 group-hover:text-teal-700" : "text-white"}`}>Synthetic Data Generator</h3>
                                         </div>
 
                                         {/* Card H: My Progress */}
@@ -5932,16 +5956,7 @@ function FeaturesContent() {
                     )}
 
                     {activeModal === "drills" && (
-                        <div className="space-y-4 text-left">
-                            <div className="flex items-center gap-3 pr-16">
-                                <div className="w-10 h-10 rounded-xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400">
-                                    <Dumbbell className="w-5 h-5" />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">Spaced Drills</h3>
-                                    <p className="text-xs text-white/50">Weak-spot practice scheduled from past interview scores.</p>
-                                </div>
-                            </div>
+                        <div className="text-left">
                             <SpacedDrillsPanel />
                         </div>
                     )}
