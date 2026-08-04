@@ -199,6 +199,16 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
                     </div>
 
                     <div className="flex flex-wrap gap-2 pt-1">
+                        {active.meetingUrl && (
+                            <a
+                                href={active.meetingUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white"
+                            >
+                                Open Google Meet / call link
+                            </a>
+                        )}
                         <button
                             type="button"
                             onClick={() => {
@@ -221,6 +231,7 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
                         <button
                             type="button"
                             onClick={() => {
+                                const meet = active.meetingUrl || "";
                                 const lines = [
                                     "BEGIN:VCALENDAR",
                                     "VERSION:2.0",
@@ -239,7 +250,8 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
                                                 `DTSTAMP:${stamp}`,
                                                 `DTSTART:${stamp}`,
                                                 `SUMMARY:ProInterview prep — ${r.label} (${active.company})`,
-                                                `DESCRIPTION:Prep for ${active.role} at ${active.company}`,
+                                                `DESCRIPTION:Prep for ${active.role} at ${active.company}${meet ? `\\nJoin: ${meet}` : ""}`,
+                                                ...(meet ? [`URL:${meet}`, `LOCATION:${meet}`] : []),
                                                 "END:VEVENT",
                                             ].join("\r\n");
                                         }),
@@ -256,6 +268,32 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
                             className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white/80 cursor-pointer"
                         >
                             Download calendar (.ics)
+                        </button>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                const email = localStorage.getItem("userIdentifier") || "";
+                                if (!email || !email.includes("@")) {
+                                    alert("Sign in with email to send reminder notifications.");
+                                    return;
+                                }
+                                const reminder = active.reminders.find((r) => !r.fired) || active.reminders[0];
+                                if (!reminder) return;
+                                await fetch("/api/notify-prep", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({
+                                        email,
+                                        channel: "email",
+                                        pack: active,
+                                        reminder,
+                                    }),
+                                });
+                                alert("Reminder notification requested.");
+                            }}
+                            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white/80 cursor-pointer"
+                        >
+                            Email / WhatsApp reminder
                         </button>
                     </div>
 

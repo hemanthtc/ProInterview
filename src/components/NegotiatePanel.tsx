@@ -37,6 +37,30 @@ export default function NegotiatePanel({
     const [mood, setMood] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [salaryIntel, setSalaryIntel] = useState<any>(null);
+    const [salaryLoading, setSalaryLoading] = useState(false);
+
+    async function loadSalaryIntel() {
+        setSalaryLoading(true);
+        setError("");
+        try {
+            const res = await fetch("/api/salary-intel", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ company, role, currentOffer, level: "mid" }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Salary intel failed");
+            setSalaryIntel(data);
+            if (data.totalCompRange?.p50 && !targetComp) {
+                setTargetComp(String(data.totalCompRange.p50));
+            }
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Salary intel failed");
+        } finally {
+            setSalaryLoading(false);
+        }
+    }
 
     async function send() {
         if (!userMessage.trim() && history.length === 0) {
@@ -118,6 +142,25 @@ export default function NegotiatePanel({
                 <Field label="Benefits" value={benefits} onChange={setBenefits} placeholder="Signing, RSUs, remote…" />
                 <Field label="BATNA" value={batna} onChange={setBatna} placeholder="Other offer / stay put" />
             </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    onClick={() => void loadSalaryIntel()}
+                    disabled={salaryLoading || !company}
+                    className="rounded-xl bg-teal-600/90 hover:bg-teal-500 px-3 py-2 text-xs font-bold disabled:opacity-40"
+                >
+                    {salaryLoading ? "Loading market comps…" : "Salary / offer intelligence"}
+                </button>
+                {salaryIntel?.totalCompRange && (
+                    <span className="text-xs text-teal-200/80">
+                        TC p50 ≈ {salaryIntel.currency} {salaryIntel.totalCompRange.p50} (p25–p75: {salaryIntel.totalCompRange.p25}–{salaryIntel.totalCompRange.p75}) · {salaryIntel.confidence} confidence
+                    </span>
+                )}
+            </div>
+            {salaryIntel?.negotiationScript && (
+                <p className="text-xs text-white/60 rounded-xl border border-teal-500/20 bg-teal-500/5 px-3 py-2">{salaryIntel.negotiationScript}</p>
+            )}
 
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
                 {history.length === 0 && (

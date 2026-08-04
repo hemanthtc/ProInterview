@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "indrajithkr/**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - name: Build
+        env:
+          JWT_SECRET: ci-build-secret-key-with-at-least-32-chars
+          GEMINI_API_KEY: dummy
+        run: npm run build

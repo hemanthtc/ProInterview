@@ -251,6 +251,8 @@ export default function Home() {
                         </div>
                     )}
                     {!isRealisticMode && <Link href="/features" className="hover:text-white text-white/70 transition-colors pb-1">Features</Link>}
+                    <Link href="/labs" className="hover:text-white text-white/70 transition-colors pb-1">Labs</Link>
+                    <Link href="/jobs" className="hover:text-white text-white/70 transition-colors pb-1">Jobs</Link>
                     {!isRealisticMode && (
                         <Link 
                             href="#how-it-works" 
@@ -384,6 +386,20 @@ export default function Home() {
                                 Features
                             </Link>
                         )}
+                        <Link
+                            href="/labs"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                        >
+                            Labs
+                        </Link>
+                        <Link
+                            href="/jobs"
+                            onClick={() => setMobileMenuOpen(false)}
+                            className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                        >
+                            Jobs
+                        </Link>
                         {!isRealisticMode && (
                             <Link 
                                 href="#how-it-works" 
