@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { companyBankPromptBlock, resolveCompanyBank } from "@/data/companyBanks";
+import { domainPackPromptBlock, resolveDomainPack } from "@/data/domainPacks";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const SARVAM_API_KEY = process.env.SARVAM_API_KEY;
@@ -9,7 +10,7 @@ export async function POST(req: NextRequest) {
     try {
         const {
             history, resume, github, linkedin, portfolioUrl, message, attachment, type, provider,
-            company, roles, level, hrIntel, companyClone,
+            company, roles, level, hrIntel, companyClone, domainPackId, voiceLanguage,
         } = await req.json();
 
         const safeCompany = company || "a modern tech company";
@@ -18,6 +19,11 @@ export async function POST(req: NextRequest) {
 
         const bank = companyClone !== false ? resolveCompanyBank(safeCompany) : null;
         const companyCloneBlock = bank ? `\n\n${companyBankPromptBlock(bank)}\n` : "";
+        const domain = resolveDomainPack(domainPackId);
+        const domainBlock = domain ? `\n\n${domainPackPromptBlock(domain)}\n` : "";
+        const languageBlock = voiceLanguage && voiceLanguage !== "en-US"
+            ? `\nCandidate preferred language/locale: ${voiceLanguage}. Prefer clear phrasing; if locale is hi-IN or other Indian languages, you may greet bilingually but keep technical terms precise.\n`
+            : "";
 
         let hrPersonaBlock = "";
         if (hrIntel && typeof hrIntel === "object") {
@@ -85,6 +91,8 @@ Your tone, technical expectations, and questions must strictly align with the do
 ${difficultyInstruction}
 Be conversational. ${typeInstruction}
 ${companyCloneBlock}
+${domainBlock}
+${languageBlock}
 ${hrPersonaBlock}
 
 CRITICAL RULES FOR ASKING QUESTIONS:

@@ -77,7 +77,9 @@ function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; l
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account">("dashboard");
+    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account" | "leaderboard">("dashboard");
+    const [leaderboard, setLeaderboard] = useState<any[]>([]);
+    const [leaderboardMeta, setLeaderboardMeta] = useState<{ organizationName?: string; seatsUsed?: number; planHint?: string }>({});
     const [stats, setStats] = useState<StatsData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -348,17 +350,32 @@ export default function AdminDashboard() {
                 </div>
 
                 <nav className="hidden md:flex items-center gap-1">
-                    {(["dashboard", "employees", "account"] as const).map(tab => (
+                    {(["dashboard", "employees", "leaderboard", "account"] as const).map(tab => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => {
+                                setActiveTab(tab);
+                                if (tab === "leaderboard") {
+                                    fetch("/api/admin/leaderboard")
+                                        .then((r) => r.json())
+                                        .then((d) => {
+                                            setLeaderboard(d.leaderboard || []);
+                                            setLeaderboardMeta({
+                                                organizationName: d.organizationName,
+                                                seatsUsed: d.seatsUsed,
+                                                planHint: d.planHint,
+                                            });
+                                        })
+                                        .catch(() => setLeaderboard([]));
+                                }
+                            }}
                             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
                                 activeTab === tab
                                     ? "bg-indigo-600/20 text-indigo-400 ring-1 ring-indigo-500/30"
                                     : `${isDark ? "text-white/50 hover:text-white hover:bg-white/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"}`
                             }`}
                         >
-                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : "Dashboard"}
+                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : tab === "leaderboard" ? "Team / College" : "Dashboard"}
                         </button>
                     ))}
                 </nav>
@@ -379,17 +396,32 @@ export default function AdminDashboard() {
 
             {/* ── Mobile tab bar ── */}
             <div className={`md:hidden flex items-center gap-1 px-4 py-2 border-b ${isDark ? "border-white/8 bg-[#05050f]/90" : "border-slate-200 bg-white/90"} backdrop-blur-xl sticky top-[57px] z-10`}>
-                {(["dashboard", "employees", "account"] as const).map(tab => (
+                {(["dashboard", "employees", "leaderboard", "account"] as const).map(tab => (
                     <button
                         key={tab}
-                        onClick={() => setActiveTab(tab)}
+                        onClick={() => {
+                            setActiveTab(tab);
+                            if (tab === "leaderboard") {
+                                fetch("/api/admin/leaderboard")
+                                    .then((r) => r.json())
+                                    .then((d) => {
+                                        setLeaderboard(d.leaderboard || []);
+                                        setLeaderboardMeta({
+                                            organizationName: d.organizationName,
+                                            seatsUsed: d.seatsUsed,
+                                            planHint: d.planHint,
+                                        });
+                                    })
+                                    .catch(() => setLeaderboard([]));
+                            }
+                        }}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
                             activeTab === tab
                                 ? "bg-indigo-600/20 text-indigo-400"
                                 : `${isDark ? "text-white/40" : "text-slate-400"}`
                         }`}
                     >
-                        {tab === "employees" ? "Employees" : tab === "account" ? "Account" : "Dashboard"}
+                        {tab === "employees" ? "Employees" : tab === "account" ? "Account" : tab === "leaderboard" ? "Team" : "Dashboard"}
                     </button>
                 ))}
             </div>
@@ -655,6 +687,54 @@ export default function AdminDashboard() {
                 {/* ════════════════════════════════════════════════════════
                     EMPLOYEES TAB
                 ════════════════════════════════════════════════════════ */}
+                {activeTab === "leaderboard" && (
+                    <div className="space-y-4 mb-8">
+                        <div>
+                            <h2 className="text-xl font-bold">Team / College leaderboard</h2>
+                            <p className={`text-sm mt-0.5 ${isDark ? "text-white/40" : "text-slate-500"}`}>
+                                {leaderboardMeta.organizationName || orgName} · {leaderboardMeta.seatsUsed ?? leaderboard.length} seats
+                            </p>
+                            {leaderboardMeta.planHint && (
+                                <p className="text-xs text-indigo-300/80 mt-1">{leaderboardMeta.planHint}</p>
+                            )}
+                        </div>
+                        <div className={`rounded-2xl border overflow-hidden ${isDark ? "border-white/10" : "border-slate-200"}`}>
+                            <table className="w-full text-sm">
+                                <thead className={isDark ? "bg-white/5 text-white/50" : "bg-slate-50 text-slate-500"}>
+                                    <tr>
+                                        <th className="text-left px-4 py-2">#</th>
+                                        <th className="text-left px-4 py-2">Member</th>
+                                        <th className="text-left px-4 py-2">Dept</th>
+                                        <th className="text-right px-4 py-2">Sessions</th>
+                                        <th className="text-right px-4 py-2">Avg</th>
+                                        <th className="text-right px-4 py-2">Best</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {leaderboard.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={6} className="px-4 py-8 text-center text-white/40">
+                                                No cohort scores yet — employees need synced interview sessions.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        leaderboard.map((row, i) => (
+                                            <tr key={row.identifier} className={isDark ? "border-t border-white/5" : "border-t border-slate-100"}>
+                                                <td className="px-4 py-2">{i + 1}</td>
+                                                <td className="px-4 py-2">{row.displayName}</td>
+                                                <td className="px-4 py-2 opacity-60">{row.department || "—"}</td>
+                                                <td className="px-4 py-2 text-right">{row.sessions}</td>
+                                                <td className="px-4 py-2 text-right">{row.avgScore}</td>
+                                                <td className="px-4 py-2 text-right font-semibold text-indigo-300">{row.bestScore}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
                 {activeTab === "employees" && (
                     <div className="space-y-6">
                         <div className="flex items-center justify-between">

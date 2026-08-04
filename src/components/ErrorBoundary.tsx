@@ -1,0 +1,40 @@
+"use client";
+
+import React from "react";
+
+interface Props {
+    children: React.ReactNode;
+    fallbackTitle?: string;
+}
+
+interface State {
+    hasError: boolean;
+    message: string;
+}
+
+export default class ErrorBoundary extends React.Component<Props, State> {
+    state: State = { hasError: false, message: "" };
+
+    static getDerivedStateFromError(error: Error): State {
+        return { hasError: true, message: error?.message || "Something went wrong." };
+    }
+
+    componentDidCatch(error: Error, info: React.ErrorInfo) {
+        console.error("ErrorBoundary:", error, info.componentStack);
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return (
+                <div className="min-h-[30vh] flex flex-col items-center justify-center gap-3 p-6 text-center">
+                    <h2 className="text-lg font-semibold text-white/90">{this.props.fallbackTitle || "Section failed to load"}</h2>
+                    <p className="text-sm text-white/50">{this.state.message}</p>
+                    <button type="button" className="rounded-lg bg-indigo-500 px-3 py-1.5 text-sm" onClick={() => this.setState({ hasError: false, message: "" })}>
+                        Try again
+                    </button>
+                </div>
+            );
+        }
+        return this.props.children;
+    }
+}

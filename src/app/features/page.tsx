@@ -11,10 +11,11 @@ import RoleSelect from "../../components/RoleSelect";
 import NegotiatePanel from "../../components/NegotiatePanel";
 import SpacedDrillsPanel from "../../components/SpacedDrillsPanel";
 import PrepPackPanel from "../../components/PrepPackPanel";
+import LabsBanner from "../../components/LabsBanner";
 import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
-import { buildPrepPackFromEmail } from "../../utils/prepPack";
+import { buildPrepPackFromEmail, extractMeetingUrl } from "../../utils/prepPack";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import ProInterviewerApp from "../../components/prointerviewer/ProInterviewerApp";
@@ -1855,6 +1856,9 @@ function FeaturesContent() {
                             hrName: data.extractedDetails?.hrName,
                             interviewDate: data.extractedDetails?.interviewDate,
                             platform: data.extractedDetails?.platformOrFormat,
+                            meetingUrl: extractMeetingUrl(
+                                `${data.extractedDetails?.platformOrFormat || ""} ${Array.isArray(data.importantPoints) ? data.importantPoints.join(" ") : data.importantPoints || ""} ${emailText}`
+                            ),
                             skills: data.extractedDetails?.skills,
                             mandatoryThings: data.mandatoryThings,
                             importantPoints: data.importantPoints,
@@ -3845,6 +3849,9 @@ function FeaturesContent() {
                 </div>
             ) : (
                 <main className="flex-1 flex flex-col items-center justify-center px-6 py-12 relative overflow-hidden">
+                    <div className="w-full max-w-4xl mb-6">
+                        <LabsBanner isLight={isLight} />
+                    </div>
                 <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
                 <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 

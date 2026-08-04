@@ -148,6 +148,13 @@ export default function PublicScorecardPage() {
                                 <div className="text-sm text-white/65 leading-relaxed whitespace-pre-wrap">{data.summary}</div>
                             </div>
                         )}
+
+                        <a
+                            href={`/jobs?scorecard=${encodeURIComponent(data.shareId)}`}
+                            className="inline-flex items-center justify-center rounded-xl bg-emerald-500/90 hover:bg-emerald-500 px-4 py-2.5 text-sm font-medium"
+                        >
+                            Apply to jobs with this scorecard
+                        </a>
                     </div>
                 )}
             </main>
