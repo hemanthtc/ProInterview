@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cachedGenerate, parseJsonFromModel } from "@/utils/gemini";
+import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const { story, question, weakSpot, mode = "coach", company, role } = await req.json();
-        const rl = rateLimit(`star:${(question || "").slice(0, 30)}`, { limit: 30, windowMs: 15 * 60 * 1000 });
+        const rl = rateLimit(`star:${session.identifier}`, { limit: 30, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
                 { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
@@ -32,7 +38,10 @@ Return JSON:
   "tips": ["..."]
 }`;
 
-        const raw = await cachedGenerate(`star:${mode}:${question}:${story}`.slice(0, 220), prompt);
+        const raw = await cachedGenerate(
+            promptCacheKey("star", mode, company, role, question, weakSpot, story),
+            prompt
+        );
         return NextResponse.json(parseJsonFromModel(raw));
     } catch (error: unknown) {
         console.error("star-coach", error);

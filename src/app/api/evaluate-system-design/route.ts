@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cachedGenerate, parseJsonFromModel } from "@/utils/gemini";
+import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const { prompt, sketchDescription, notes, company, role, level } = await req.json();
-        const rl = rateLimit(`sysdesign:${(prompt || "").slice(0, 40)}`, { limit: 20, windowMs: 15 * 60 * 1000 });
+        const rl = rateLimit(`sysdesign:${session.identifier}`, { limit: 20, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
                 { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
@@ -46,7 +52,10 @@ Return JSON only:
   "followUpQuestions": ["..."]
 }`;
 
-        const raw = await cachedGenerate(`sysdesign:${prompt}:${notes}`.slice(0, 200), designPrompt);
+        const raw = await cachedGenerate(
+            promptCacheKey("sysdesign", company, role, level, prompt, notes, sketchDescription),
+            designPrompt
+        );
         const parsed = parseJsonFromModel(raw);
         return NextResponse.json(parsed);
     } catch (error: unknown) {

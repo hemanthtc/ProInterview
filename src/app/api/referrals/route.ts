@@ -31,9 +31,10 @@ function makeCode() {
 
 export async function GET() {
     try {
-        await connectDB();
         const session = await getVerifiedSession();
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+        await connectDB();
 
         let ref = await Referral.findOne({ ownerIdentifier: session.identifier });
         if (!ref) {
@@ -51,42 +52,39 @@ export async function GET() {
             sharePath: `/login?ref=${ref.code}`,
         });
     } catch (error: unknown) {
-        // Fallback when DB/auth unavailable — still provide a local code
-        const fallback = makeCode();
-        return NextResponse.json({
-            code: fallback,
-            uses: 0,
-            invitedCount: 0,
-            sharePath: `/login?ref=${fallback}`,
-            offline: true,
-            error: error instanceof Error ? error.message : undefined,
-        });
+        // Fail closed — never invent offline codes that look real but are not persisted.
+        const message = error instanceof Error ? error.message : "Internal error";
+        return NextResponse.json({ error: message }, { status: 503 });
     }
 }
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
         await connectDB();
-        const { code, inviteeIdentifier } = await req.json();
+        const { code } = await req.json();
         if (!code) return NextResponse.json({ error: "code required" }, { status: 400 });
-        const ref = await Referral.findOne({ code: String(code).toLowerCase() });
+
+        const inviteeIdentifier = session.identifier;
+        let ref = await Referral.findOne({ code: String(code).toLowerCase() });
         if (!ref) {
-            // accept case-sensitive too
-            const ref2 = await Referral.findOne({ code: String(code) });
-            if (!ref2) return NextResponse.json({ error: "Invalid referral code" }, { status: 404 });
-            if (inviteeIdentifier && !ref2.invited.includes(inviteeIdentifier)) {
-                ref2.invited.push(inviteeIdentifier);
-                ref2.uses += 1;
-                await ref2.save();
-            }
-            return NextResponse.json({ success: true, owner: ref2.ownerIdentifier, uses: ref2.uses });
+            ref = await Referral.findOne({ code: String(code) });
         }
-        if (inviteeIdentifier && !ref.invited.includes(inviteeIdentifier)) {
+        if (!ref) return NextResponse.json({ error: "Invalid referral code" }, { status: 404 });
+
+        if (ref.ownerIdentifier === inviteeIdentifier) {
+            return NextResponse.json({ error: "Cannot redeem your own referral code" }, { status: 400 });
+        }
+
+        if (!ref.invited.includes(inviteeIdentifier)) {
             ref.invited.push(inviteeIdentifier);
             ref.uses += 1;
             await ref.save();
         }
-        return NextResponse.json({ success: true, owner: ref.ownerIdentifier, uses: ref.uses });
+        // Do not leak ownerIdentifier (PII) to redeemers.
+        return NextResponse.json({ success: true, uses: ref.uses });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Internal error";
         return NextResponse.json({ error: message }, { status: 500 });
