@@ -19,6 +19,9 @@ frontend:
         - echo "RAZORPAY_KEY_SECRET=${RAZORPAY_KEY_SECRET}" >> .env.production
         - echo "NEXT_PUBLIC_RAZORPAY_KEY_ID=${NEXT_PUBLIC_RAZORPAY_KEY_ID}" >> .env.production
         - echo "HAPPENSTANCE_API_KEY=${HAPPENSTANCE_API_KEY}" >> .env.production
+        - echo "JWT_SECRET=${JWT_SECRET}" >> .env.production
+        - echo "EMAIL_USER=${EMAIL_USER}" >> .env.production
+        - echo "EMAIL_PASS=${EMAIL_PASS}" >> .env.production
     build:
       commands:
         - npm run build

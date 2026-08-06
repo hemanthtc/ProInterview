@@ -6,6 +6,7 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTr
 import { motion } from "framer-motion";
 import { marked } from "marked";
 import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageItem } from "../../utils/storage";
+import { computeFinalInterviewScore } from "../../utils/scoring";
 import SessionRecorder from "../../components/SessionRecorder";
 import VoiceCoachPanel from "../../components/VoiceCoachPanel";
 import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapshot } from "../../utils/voiceCoach";
@@ -821,7 +822,7 @@ export default function InterviewRoom() {
             
             let finalOutput = iScore;
             if (hasPortfolio) {
-                finalOutput = Math.round(pRatingValue * 0.35 + iScore * 0.65);
+                finalOutput = computeFinalInterviewScore(pRatingValue, iScore);
             }
             // Clamp to valid range
             finalOutput = Math.max(0, Math.min(100, finalOutput));

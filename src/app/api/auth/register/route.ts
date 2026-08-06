@@ -3,17 +3,32 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import bcryptjs from "bcryptjs";
 import { sendVerificationEmail } from "@/utils/mailer";
+import { generateOtp, hashOtp, otpExpiry } from "@/utils/otp";
+import { rateLimit } from "@/utils/rateLimit";
+import type { OtpSendResponse } from "@/types/auth";
 
 export async function POST(req: NextRequest) {
     try {
         await connectDB();
-        const { identifier, password, displayName, type } = await req.json();
+        const { identifier, password, displayName, type } = await req.json() as {
+            identifier?: string;
+            password?: string;
+            displayName?: string;
+            type?: "email" | "phone";
+        };
 
         if (!identifier || !password || !displayName || !type) {
             return NextResponse.json({ error: "Please fill in all registration fields." }, { status: 400 });
         }
 
-        // Check if user already exists and is verified
+        const rl = rateLimit(`register:${identifier.toLowerCase()}`, { limit: 5, windowMs: 15 * 60 * 1000 });
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: `Too many registration attempts. Try again in ${rl.retryAfterSec}s.` },
+                { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+            );
+        }
+
         const existingUser = await User.findOne({ identifier });
         if (existingUser && existingUser.isVerified) {
             return NextResponse.json(
@@ -22,28 +37,24 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Generate 6-digit OTP
-        const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpExpires = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes expiration
-
-        // Hash password
+        const generatedOtp = generateOtp();
+        const hashedOtp = await hashOtp(generatedOtp);
+        const otpExpires = otpExpiry();
         const hashedPassword = await bcryptjs.hash(password, 10);
 
-        // Upsert user (updates existing pending account or creates a new one)
         await User.findOneAndUpdate(
             { identifier },
             {
                 password: hashedPassword,
                 displayName,
                 type,
-                otpCode: generatedOtp,
+                otpCode: hashedOtp,
                 otpExpires,
                 isVerified: false,
             },
             { upsert: true, new: true }
         );
 
-        // Send email if type is email
         if (type === "email") {
             const sent = await sendVerificationEmail(identifier, generatedOtp, displayName);
             if (!sent) {
@@ -54,17 +65,19 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const responseData: any = {
+        const responseData: OtpSendResponse = {
             success: true,
             message: "Verification code sent.",
         };
+        // Phone demo only — never return email OTP in the API body
         if (type !== "email") {
             responseData.otpCode = generatedOtp;
         }
 
         return NextResponse.json(responseData);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Registration API error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }

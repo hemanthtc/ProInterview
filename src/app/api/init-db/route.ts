@@ -3,7 +3,6 @@ import connectDB from "@/utils/db";
 import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
 import bcryptjs from "bcryptjs";
-import crypto from "crypto";
 
 /**
  * GET /api/init-db
@@ -15,7 +14,6 @@ export async function GET(req: NextRequest) {
     try {
         await connectDB();
 
-        // Security Check: Deny access in production unless a valid initialization key is provided
         const initKey = new URL(req.url).searchParams.get("key") || req.headers.get("x-init-key");
         const configuredKey = process.env.INIT_DB_KEY;
         if (process.env.NODE_ENV === "production") {
@@ -24,13 +22,19 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD || "H#m@nth!8286";
-        const seedEmployeePassword = process.env.SEED_EMPLOYEE_PASSWORD || "Password123";
+        const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;
+        const seedEmployeePassword = process.env.SEED_EMPLOYEE_PASSWORD;
+        if (!seedAdminPassword || !seedEmployeePassword) {
+            return NextResponse.json(
+                { error: "Set SEED_ADMIN_PASSWORD and SEED_EMPLOYEE_PASSWORD to initialize seed accounts." },
+                { status: 400 }
+            );
+        }
 
+        const adminId = process.env.SEED_ADMIN_IDENTIFIER || "hemanthtchemu2003@gmail.com";
+        const employeeId = process.env.SEED_EMPLOYEE_IDENTIFIER || "emp123";
         const results: Record<string, string> = {};
 
-        // ── Seed OrgAdmin ─────────────────────────────────────────────────────
-        const adminId = "hemanthtchemu2003@gmail.com";
         const existingAdmin = await OrgAdmin.findOne({ identifier: adminId });
         if (existingAdmin) {
             results.org_admin = `Already exists — collection ready (identifier: ${adminId})`;
@@ -48,8 +52,6 @@ export async function GET(req: NextRequest) {
             results.org_admin = `Created admin account — collection initialized (identifier: ${adminId})`;
         }
 
-        // ── Seed OrgEmployee ──────────────────────────────────────────────────
-        const employeeId = "emp123";
         const existingEmployee = await OrgEmployee.findOne({ identifier: employeeId });
         if (existingEmployee) {
             results.org_employee = `Already exists — collection ready (identifier: ${employeeId})`;
@@ -59,7 +61,7 @@ export async function GET(req: NextRequest) {
                 identifier: employeeId,
                 password: hashed,
                 displayName: "Jane Doe",
-                adminId: "hemanthtchemu2003@gmail.com",
+                adminId,
                 organizationName: "ProInterview Corp",
                 department: "Engineering",
                 type: "email",
@@ -74,8 +76,9 @@ export async function GET(req: NextRequest) {
             message: "Database collections initialized successfully.",
             collections: results,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("DB init error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        const message = error instanceof Error ? error.message : "Internal server error";
+        return NextResponse.json({ error: message }, { status: 500 });
     }
 }
