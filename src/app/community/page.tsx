@@ -19,22 +19,24 @@ type Room = {
     name: string;
     description?: string;
     type: "channel" | "dm";
-    members?: string[];
+    memberPublicIds?: string[];
 };
 
 type ChatMessage = {
     id: string;
     roomSlug: string;
-    senderId: string;
+    senderPublicId: string;
     senderName: string;
     body: string;
     createdAt: string;
+    mine?: boolean;
 };
 
 type OnlineUser = {
-    identifier: string;
+    publicId: string;
     displayName: string;
     roomSlug?: string | null;
+    isSelf?: boolean;
 };
 
 function formatTime(iso: string) {
@@ -56,8 +58,7 @@ function initials(name: string) {
 export default function CommunityPage() {
     const router = useRouter();
     const [ready, setReady] = useState(false);
-    const [meId, setMeId] = useState("");
-    const [meName, setMeName] = useState("Student");
+    const [mePublicId, setMePublicId] = useState("");
     const [rooms, setRooms] = useState<Room[]>([]);
     const [activeSlug, setActiveSlug] = useState("general");
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -82,8 +83,6 @@ export default function CommunityPage() {
             router.push("/login");
             return;
         }
-        setMeId((localStorage.getItem("userIdentifier") || getStorageItem("userIdentifier") || "").toLowerCase());
-        setMeName(localStorage.getItem("userName") || getStorageItem("userName") || "Student");
         setReady(true);
     }, [router]);
 
@@ -151,15 +150,18 @@ export default function CommunityPage() {
             await fetch("/api/community/presence", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ roomSlug: activeSlug, displayName: meName }),
+                body: JSON.stringify({ roomSlug: activeSlug }),
             });
             const res = await fetch("/api/community/presence");
             const data = await res.json();
-            if (res.ok) setOnline(data.online || []);
+            if (res.ok) {
+                if (data.me?.publicId) setMePublicId(data.me.publicId);
+                setOnline(data.online || []);
+            }
         } catch {
             /* ignore */
         }
-    }, [activeSlug, meName]);
+    }, [activeSlug]);
 
     useEffect(() => {
         if (!ready) return;
@@ -175,7 +177,7 @@ export default function CommunityPage() {
         const poll = window.setInterval(() => {
             void loadMessages({ incremental: true });
             void loadPresence();
-        }, 2500);
+        }, 4000);
         return () => window.clearInterval(poll);
     }, [ready, activeSlug, loadMessages, loadPresence]);
 
@@ -214,15 +216,12 @@ export default function CommunityPage() {
     }
 
     async function openDm(user: OnlineUser) {
-        if (!user.identifier || user.identifier.toLowerCase() === meId) return;
+        if (!user.publicId || user.isSelf || user.publicId === mePublicId) return;
         try {
             const res = await fetch("/api/community/rooms", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    peerIdentifier: user.identifier,
-                    peerName: user.displayName,
-                }),
+                body: JSON.stringify({ peerPublicId: user.publicId }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Could not open DM");
@@ -363,7 +362,7 @@ export default function CommunityPage() {
                             </div>
                         )}
                         {messages.map((m) => {
-                            const mine = m.senderId.toLowerCase() === meId;
+                            const mine = Boolean(m.mine) || m.senderPublicId === mePublicId;
                             return (
                                 <div key={m.id} className={`flex gap-3 ${mine ? "justify-end" : "justify-start"}`}>
                                     {!mine && (
@@ -425,10 +424,10 @@ export default function CommunityPage() {
                                 <p className="text-xs text-white/35 px-1 py-2">No one else here yet.</p>
                             )}
                             {online.map((u) => {
-                                const isMe = u.identifier.toLowerCase() === meId;
+                                const isMe = Boolean(u.isSelf) || u.publicId === mePublicId;
                                 return (
                                     <button
-                                        key={u.identifier}
+                                        key={u.publicId}
                                         type="button"
                                         disabled={isMe}
                                         onClick={() => void openDm(u)}

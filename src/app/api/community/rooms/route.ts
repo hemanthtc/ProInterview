@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import CommunityRoom from "@/models/CommunityRoom";
 import { getVerifiedSession } from "@/utils/auth";
-import { DEFAULT_COMMUNITY_CHANNELS, dmSlug } from "@/utils/community";
+import {
+    DEFAULT_COMMUNITY_CHANNELS,
+    dmSlug,
+    presencePublicId,
+    sanitizeDisplayName,
+} from "@/utils/community";
 import {
     memListRooms,
+    memResolvePublicId,
     memSeedChannels,
     memUpsertDm,
 } from "@/utils/communityStore";
@@ -29,39 +35,55 @@ async function ensureDefaultRooms() {
     }
 }
 
+function publicRoom(r: {
+    slug: string;
+    name: string;
+    description?: string;
+    type: "channel" | "dm";
+    members?: string[];
+}) {
+    return {
+        slug: r.slug,
+        name: r.name,
+        description: r.description || "",
+        type: r.type,
+        memberPublicIds:
+            r.type === "dm" ? (r.members || []).map((m) => presencePublicId(m)) : [],
+    };
+}
+
 export async function GET() {
     try {
         const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Sign in to view community rooms." }, { status: 401 });
+        }
+
         try {
             await connectDB();
             await ensureDefaultRooms();
-            const query: Record<string, unknown> = session
-                ? {
-                      $or: [
-                          { type: "channel" as const },
-                          { type: "dm" as const, members: session.identifier.toLowerCase() },
-                      ],
-                  }
-                : { type: "channel" as const };
+            const query = {
+                $or: [
+                    { type: "channel" as const },
+                    { type: "dm" as const, members: session.identifier.toLowerCase() },
+                ],
+            };
 
             const rooms = await CommunityRoom.find(query as never)
                 .sort({ type: 1, name: 1 })
                 .lean();
 
             return NextResponse.json({
-                rooms: rooms.map((r) => ({
-                    slug: r.slug,
-                    name: r.name,
-                    description: r.description,
-                    type: r.type,
-                    members: r.members || [],
-                })),
+                rooms: rooms.map((r) => publicRoom(r)),
                 source: "mongo",
             });
         } catch {
             memSeedChannels([...DEFAULT_COMMUNITY_CHANNELS]);
-            const rooms = memListRooms(session?.identifier);
-            return NextResponse.json({ rooms, source: "memory" });
+            const rooms = memListRooms(session.identifier);
+            return NextResponse.json({
+                rooms: rooms.map((r) => publicRoom(r)),
+                source: "memory",
+            });
         }
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Failed to load rooms";
@@ -69,7 +91,7 @@ export async function GET() {
     }
 }
 
-/** Create / open a DM with another student */
+/** Create / open a DM with another online student (opaque publicId). */
 export async function POST(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
@@ -85,25 +107,33 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { peerIdentifier, peerName } = await req.json();
-        if (!peerIdentifier || typeof peerIdentifier !== "string") {
-            return NextResponse.json({ error: "peerIdentifier is required" }, { status: 400 });
+        const body = await req.json();
+        const peerPublicId = typeof body.peerPublicId === "string" ? body.peerPublicId.trim() : "";
+        if (!peerPublicId) {
+            return NextResponse.json({ error: "peerPublicId is required" }, { status: 400 });
+        }
+
+        const peer = memResolvePublicId(peerPublicId);
+        if (!peer) {
+            return NextResponse.json(
+                { error: "That student is offline or unknown. Ask them to open Community first." },
+                { status: 404 }
+            );
         }
 
         const me = session.identifier.trim().toLowerCase();
-        const peer = peerIdentifier.trim().toLowerCase();
         if (me === peer) {
             return NextResponse.json({ error: "You cannot DM yourself." }, { status: 400 });
         }
 
         const slug = dmSlug(me, peer);
-        const name = peerName ? `DM · ${peerName}` : `DM · ${peer}`;
 
         try {
             await connectDB();
-            // Optional: verify peer exists
             const peerUser = await User.findOne({ identifier: peer }).lean();
-            const displayPeer = peerUser?.displayName || peerName || peer;
+            const displayPeer = sanitizeDisplayName(
+                peerUser?.displayName || peer.split("@")[0] || "Student"
+            );
 
             const room = await CommunityRoom.findOneAndUpdate(
                 { slug },
@@ -121,18 +151,14 @@ export async function POST(req: NextRequest) {
             );
 
             return NextResponse.json({
-                room: {
-                    slug: room.slug,
-                    name: room.name,
-                    description: room.description,
-                    type: room.type,
-                    members: room.members,
-                },
+                room: publicRoom(room),
                 source: "mongo",
             });
         } catch {
-            const room = memUpsertDm(slug, name, [me, peer], me);
-            return NextResponse.json({ room, source: "memory" });
+            // Peer was presence-resolved above — safe memory DM for local demos.
+            const displayPeer = sanitizeDisplayName(peer.split("@")[0] || "Student");
+            const room = memUpsertDm(slug, `DM · ${displayPeer}`, [me, peer], me);
+            return NextResponse.json({ room: publicRoom(room), source: "memory" });
         }
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Failed to open DM";
