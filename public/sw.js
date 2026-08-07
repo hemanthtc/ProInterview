@@ -1,5 +1,5 @@
 /* ProInterview PWA service worker — cache shell for offline practice entry */
-const CACHE = "prointerview-shell-v1";
+const CACHE = "prointerview-shell-v2";
 const SHELL = ["/", "/labs", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -15,12 +15,20 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
+
+  const url = new URL(req.url);
+  // Never cache API/auth responses — stale or cross-user data would be a security risk.
+  if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(req));
+    return;
+  }
+
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetched = fetch(req)
         .then((res) => {
           const copy = res.clone();
-          if (res.ok && new URL(req.url).origin === self.location.origin) {
+          if (res.ok && url.origin === self.location.origin) {
             caches.open(CACHE).then((cache) => cache.put(req, copy));
           }
           return res;

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cachedGenerate, parseJsonFromModel } from "@/utils/gemini";
+import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
+import { getVerifiedSession } from "@/utils/auth";
 
 const PANELISTS = [
     { id: "tech_lead", name: "Alex Chen", role: "Tech Lead", style: "Deep technical probes, edge cases, code quality" },
@@ -14,6 +15,11 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const body = await req.json();
         const {
             history = [],
@@ -25,7 +31,7 @@ export async function POST(req: NextRequest) {
             level = "intermediate",
         } = body;
 
-        const rl = rateLimit(`panel:${(body.sessionId || "anon").toString()}`, { limit: 40, windowMs: 15 * 60 * 1000 });
+        const rl = rateLimit(`panel:${session.identifier}`, { limit: 40, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
                 { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
@@ -74,10 +80,14 @@ Return JSON:
   "terminate": false
 }`;
 
-        const raw = await cachedGenerate(`panel:${panelist.id}:${message}:${history.length}`, prompt, 2 * 60 * 1000);
-        let parsed: any;
+        const raw = await cachedGenerate(
+            promptCacheKey("panel", panelist.id, company, role, level, resume, transcript, message),
+            prompt,
+            2 * 60 * 1000
+        );
+        let parsed: Record<string, unknown>;
         try {
-            parsed = parseJsonFromModel(raw);
+            parsed = parseJsonFromModel(raw) as Record<string, unknown>;
         } catch {
             parsed = {
                 speakerId: panelist.id,

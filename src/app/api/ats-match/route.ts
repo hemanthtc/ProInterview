@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cachedGenerate, parseJsonFromModel } from "@/utils/gemini";
+import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const { resumeText, jobDescription, company, role } = await req.json();
         if (!resumeText || !jobDescription) {
             return NextResponse.json({ error: "resumeText and jobDescription are required" }, { status: 400 });
         }
-        const rl = rateLimit(`ats:${(company || role || "x").toString()}`, { limit: 15, windowMs: 15 * 60 * 1000 });
+        const rl = rateLimit(`ats:${session.identifier}`, { limit: 15, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
                 { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
@@ -35,7 +41,7 @@ Return JSON:
   "readyForMock": true
 }`;
 
-        const raw = await cachedGenerate(`ats:${company}:${role}:${jobDescription.slice(0, 80)}`, prompt);
+        const raw = await cachedGenerate(promptCacheKey("ats", company, role, resumeText, jobDescription), prompt);
         return NextResponse.json(parseJsonFromModel(raw));
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Internal error";
