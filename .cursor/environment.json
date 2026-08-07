@@ -1,0 +1,10 @@
+{
+  "name": "ProInterview",
+  "install": "npm ci --cache .npm --prefer-offline",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "npm run dev"
+    }
+  ]
+}
