@@ -54,6 +54,12 @@ backend.mongoApi.resources.lambda.role?.addManagedPolicy(
   iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole')
 );
 
+// Add Function URL so mongoApi can be invoked over HTTPS from Next.js API routes
+export const mongoApiUrl = backend.mongoApi.resources.lambda.addFunctionUrl({
+  authType: lambda.FunctionUrlAuthType.NONE,
+});
+
+
 
 
 
