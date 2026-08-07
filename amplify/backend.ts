@@ -34,9 +34,19 @@ export const vpc = new ec2.Vpc(customVpcStack, 'AmplifyVpc', {
   ],
 });
 
-// Attach Lambda function to VPC private subnets so all outbound traffic exits via NAT Gateway Elastic IP
-const lambdaFunc = backend.mongoApi.resources.lambda as lambda.Function;
-lambdaFunc.vpc = vpc;
-lambdaFunc.vpcSubnets = { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS };
+// Create Security Group inside the VPC allowing outbound traffic
+const lambdaSecurityGroup = new ec2.SecurityGroup(customVpcStack, 'LambdaSecurityGroup', {
+  vpc,
+  description: 'Allow outbound connections to MongoDB Atlas via NAT Gateway',
+  allowAllOutbound: true,
+});
+
+// Configure Lambda function VPC Config (Subnets & Security Group)
+const cfnFunction = backend.mongoApi.resources.cfnResources.cfnFunction;
+cfnFunction.vpcConfig = {
+  subnetIds: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }).subnetIds,
+  securityGroupIds: [lambdaSecurityGroup.securityGroupId],
+};
+
 
 
