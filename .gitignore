@@ -53,3 +53,9 @@ err2.json
 response.json
 lint_output.txt
 output.txt
+
+# amplify
+node_modules
+.amplify
+amplify_outputs*
+amplifyconfiguration*
