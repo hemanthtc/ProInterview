@@ -1,7 +1,9 @@
 import { defineBackend } from '@aws-amplify/backend';
 import { auth } from './auth/resource';
 import { data } from './data/resource';
+import { mongoApi } from './functions/mongoApi/resource';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -9,6 +11,7 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 const backend = defineBackend({
   auth,
   data,
+  mongoApi,
 });
 
 // Create custom VPC with 1 NAT Gateway & Elastic IP for dedicated static IP egress
@@ -30,4 +33,10 @@ export const vpc = new ec2.Vpc(customVpcStack, 'AmplifyVpc', {
     },
   ],
 });
+
+// Attach Lambda function to VPC private subnets so all outbound traffic exits via NAT Gateway Elastic IP
+const lambdaFunc = backend.mongoApi.resources.lambda as lambda.Function;
+lambdaFunc.vpc = vpc;
+lambdaFunc.vpcSubnets = { subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS };
+
 
