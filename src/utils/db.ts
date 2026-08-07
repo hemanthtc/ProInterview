@@ -118,6 +118,17 @@ async function connectDB() {
         );
     }
 
+    // If MONGO_VPC_URL is provided, ping the VPC Lambda to ensure the static IP egress is active
+    const mongoVpcUrl = process.env.MONGO_VPC_URL;
+    if (mongoVpcUrl) {
+        try {
+            await fetch(mongoVpcUrl, { cache: "no-store" });
+            console.log("VPC MongoDB Lambda bridge pinged successfully.");
+        } catch (vpcErr) {
+            console.warn("Failed to ping VPC MongoDB Lambda bridge:", vpcErr);
+        }
+    }
+
     if (cached.conn) {
         return cached.conn;
     }
@@ -130,7 +141,6 @@ async function connectDB() {
         };
 
         // Try connecting directly with the original MONGODB_URI first.
-        // If it fails (due to local port 53 DNS blocks), attempt fallback via Cloudflare DNS over HTTPS.
         cached.promise = mongoose.connect(MONGODB_URI, opts)
             .then((mongooseInstance) => {
                 console.log("Connected to MongoDB directly using original MONGODB_URI.");
@@ -147,7 +157,7 @@ async function connectDB() {
                     return await mongoose.connect(resolvedUri, opts);
                 } catch (fallbackError) {
                     console.error("MongoDB failover fallback connection also failed:", fallbackError);
-                    throw directError; // Return original error for better diagnostics
+                    throw directError;
                 }
             });
     }
