@@ -4,6 +4,7 @@ import { data } from './data/resource';
 import { mongoApi } from './functions/mongoApi/resource';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as iam from 'aws-cdk-lib/aws-iam';
 
 /**
  * @see https://docs.amplify.aws/react/build-a-backend/ to add storage, functions, and more
@@ -47,6 +48,12 @@ cfnFunction.vpcConfig = {
   subnetIds: vpc.selectSubnets({ subnetType: ec2.SubnetType.PRIVATE_WITH_EGRESS }).subnetIds,
   securityGroupIds: [lambdaSecurityGroup.securityGroupId],
 };
+
+// Attach VPC Access Execution policy so Lambda can create ENIs inside VPC subnets
+backend.mongoApi.resources.lambda.role?.addManagedPolicy(
+  iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaVPCAccessExecutionRole')
+);
+
 
 
 
