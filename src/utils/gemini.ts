@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const memory = new Map<string, { at: number; value: string }>();
@@ -8,12 +9,29 @@ export function getGeminiModel(model = "gemini-2.5-flash") {
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
 }
 
-/** Simple TTL cache for identical Gemini prompts (reduces cost/latency). */
+/** Stable hash for cache keys so truncated prefixes cannot collide. */
+export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
+    const hash = crypto.createHash("sha256");
+    hash.update(namespace);
+    for (const part of parts) {
+        hash.update("\0");
+        hash.update(typeof part === "string" ? part : JSON.stringify(part ?? null));
+    }
+    return `${namespace}:${hash.digest("hex").slice(0, 32)}`;
+}
+
+/**
+ * TTL cache for identical Gemini prompts.
+ * Prefer omitting cacheKey and letting the full prompt be hashed.
+ */
 export async function cachedGenerate(
-    cacheKey: string,
-    prompt: string,
+    cacheKeyOrPrompt: string,
+    promptMaybe?: string,
     ttlMs = 10 * 60 * 1000
 ): Promise<string> {
+    const prompt = promptMaybe ?? cacheKeyOrPrompt;
+    const cacheKey = promptMaybe !== undefined ? cacheKeyOrPrompt : promptCacheKey("gemini", prompt);
+
     const hit = memory.get(cacheKey);
     if (hit && Date.now() - hit.at < ttlMs) return hit.value;
 
@@ -21,6 +39,12 @@ export async function cachedGenerate(
     const result = await model.generateContent(prompt);
     const text = result.response.text();
     memory.set(cacheKey, { at: Date.now(), value: text });
+
+    // Bound memory growth
+    if (memory.size > 500) {
+        const oldest = memory.keys().next().value;
+        if (oldest) memory.delete(oldest);
+    }
     return text;
 }
 

@@ -50,13 +50,20 @@ export default function SessionRecorder({
     }, []);
 
     function exportTranscript() {
+        const escapeHtml = (value: string) =>
+            value
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#39;");
+        const safeTitle = escapeHtml(title);
+        const safeBody = escapeHtml(transcript);
         const w = window.open("", "_blank");
         if (!w) return;
-        w.document.write(`<!doctype html><html><head><title>${title}</title>
+        w.document.write(`<!doctype html><html><head><title>${safeTitle}</title>
           <style>body{font-family:Georgia,serif;max-width:720px;margin:40px auto;line-height:1.5;white-space:pre-wrap}</style>
-          </head><body><h1>${title}</h1><p>Exported ${new Date().toLocaleString()}</p><hr/>${transcript
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")}</body></html>`);
+          </head><body><h1>${safeTitle}</h1><p>Exported ${new Date().toLocaleString()}</p><hr/>${safeBody}</body></html>`);
         w.document.close();
         w.focus();
         w.print();

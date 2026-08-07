@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cachedGenerate, parseJsonFromModel } from "@/utils/gemini";
+import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const { company, role, location, level, currentOffer } = await req.json();
-        const rl = rateLimit(`salary:${company || "x"}:${role || "y"}`, { limit: 20, windowMs: 15 * 60 * 1000 });
+        const rl = rateLimit(`salary:${session.identifier}`, { limit: 20, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
                 { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
@@ -33,7 +39,11 @@ Return JSON:
   "sourcesNote": "Model estimate based on public market patterns; verify with live data."
 }`;
 
-        const raw = await cachedGenerate(`salary:${company}:${role}:${location}:${level}`, prompt, 30 * 60 * 1000);
+        const raw = await cachedGenerate(
+            promptCacheKey("salary", company, role, location, level, currentOffer),
+            prompt,
+            30 * 60 * 1000
+        );
         return NextResponse.json(parseJsonFromModel(raw));
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Internal error";

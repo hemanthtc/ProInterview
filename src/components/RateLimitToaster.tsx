@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-/** Global toast for HTTP 429 / Retry-After from API calls. */
+/** Global toast for HTTP 429 / Retry-After from same-origin API calls. */
 export default function RateLimitToaster() {
     const [message, setMessage] = useState<string | null>(null);
 
@@ -11,9 +11,28 @@ export default function RateLimitToaster() {
         window.fetch = async (...args) => {
             const res = await original(...args);
             if (res.status === 429) {
-                const retry = res.headers.get("Retry-After");
-                setMessage(retry ? `Rate limited — retry in ${retry}s` : "Rate limited — please wait and retry");
-                window.setTimeout(() => setMessage(null), 5000);
+                try {
+                    const input = args[0];
+                    const url =
+                        typeof input === "string"
+                            ? new URL(input, window.location.origin)
+                            : input instanceof URL
+                              ? input
+                              : input instanceof Request
+                                ? new URL(input.url, window.location.origin)
+                                : null;
+                    const isSameOriginApi =
+                        url &&
+                        url.origin === window.location.origin &&
+                        url.pathname.startsWith("/api/");
+                    if (isSameOriginApi) {
+                        const retry = res.headers.get("Retry-After");
+                        setMessage(retry ? `Rate limited — retry in ${retry}s` : "Rate limited — please wait and retry");
+                        window.setTimeout(() => setMessage(null), 5000);
+                    }
+                } catch {
+                    // ignore URL parse failures
+                }
             }
             return res;
         };

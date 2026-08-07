@@ -57,12 +57,14 @@ export async function POST(req: Request) {
     const coach = COACHES.find((c) => c.id === body.coachId);
     if (!coach) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
     const slot = body.slot || coach.slots[0];
+    // Demo-only hold — no real calendar booking or confirmation email yet.
     return NextResponse.json({
+        demo: true,
         success: true,
-        bookingId: `bk_${Date.now()}`,
+        bookingId: `demo_${Date.now()}`,
         coach: coach.name,
         slot,
-        message: `Booked mock session with ${coach.name} at ${slot}. Confirmation email coming soon.`,
-        meetLink: `https://meet.google.com/lookup/prointerview-${coach.id}`,
+        message: `Demo hold with ${coach.name} at ${slot}. Real bookings and confirmation emails are not enabled yet.`,
+        meetLink: null,
     });
 }
