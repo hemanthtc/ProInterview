@@ -3,6 +3,8 @@
  * (local demos / cold starts). Data resets on server restart.
  */
 
+import { isDefaultChannelSlug, isDmSlug } from "@/utils/community";
+
 export type MemRoom = {
     slug: string;
     name: string;
@@ -33,6 +35,8 @@ type Store = {
     rooms: MemRoom[];
     messages: MemMessage[];
     presence: Map<string, Presence>;
+    /** publicId -> identifier for resolving DM peers without leaking emails */
+    publicIdIndex: Map<string, string>;
     seeded: boolean;
 };
 
@@ -44,8 +48,13 @@ function store(): Store {
             rooms: [],
             messages: [],
             presence: new Map(),
+            publicIdIndex: new Map(),
             seeded: false,
         };
+    }
+    // Backfill for hot-reload if an older store shape is still in memory
+    if (!g.__proCommunityStore.publicIdIndex) {
+        g.__proCommunityStore.publicIdIndex = new Map();
     }
     return g.__proCommunityStore;
 }
@@ -66,6 +75,23 @@ export function memSeedChannels(
         }
     }
     s.seeded = true;
+}
+
+export function memFindRoom(slug: string): MemRoom | undefined {
+    return store().rooms.find((r) => r.slug === slug);
+}
+
+/** Whether identifier may read/write this room in the memory store. */
+export function memCanAccessRoom(slug: string, identifier: string): boolean {
+    const id = identifier.toLowerCase();
+    const room = memFindRoom(slug);
+    if (room) {
+        if (room.type === "channel") return true;
+        return room.members.includes(id);
+    }
+    // Unknown slug: allow only known public default channels; never invent DM access.
+    if (isDmSlug(slug)) return false;
+    return isDefaultChannelSlug(slug);
 }
 
 export function memListRooms(identifier?: string) {
@@ -123,9 +149,15 @@ export function memPostMessage(input: {
     return msg;
 }
 
-export function memTouchPresence(p: Presence) {
+export function memTouchPresence(p: Presence, publicId: string) {
     const s = store();
-    s.presence.set(p.identifier.toLowerCase(), { ...p, lastSeen: Date.now() });
+    const id = p.identifier.toLowerCase();
+    s.presence.set(id, { ...p, identifier: id, lastSeen: Date.now() });
+    s.publicIdIndex.set(publicId, id);
+}
+
+export function memResolvePublicId(publicId: string): string | undefined {
+    return store().publicIdIndex.get(publicId);
 }
 
 export function memOnline(withinMs = 45_000) {
@@ -134,4 +166,15 @@ export function memOnline(withinMs = 45_000) {
     return Array.from(s.presence.values())
         .filter((p) => now - p.lastSeen <= withinMs)
         .sort((a, b) => a.displayName.localeCompare(b.displayName));
+}
+
+/** Test helper — clear ephemeral store between unit tests. */
+export function memResetForTests() {
+    g.__proCommunityStore = {
+        rooms: [],
+        messages: [],
+        presence: new Map(),
+        publicIdIndex: new Map(),
+        seeded: false,
+    };
 }
