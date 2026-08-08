@@ -3,8 +3,8 @@ import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } fro
 let s3Client: S3Client | null = null;
 
 function getS3BucketDetails() {
-  let bucketName = process.env.AMPLIFY_STORAGE_BUCKET_NAME || process.env.AWS_STORAGE_BUCKET;
-  let region = process.env.AWS_REGION || "ap-south-1";
+  let bucketName = process.env.AMPLIFY_STORAGE_BUCKET_NAME || process.env.MY_STORAGE_BUCKET;
+  let region = process.env.AMPLIFY_STORAGE_REGION || process.env.MY_REGION || process.env.AWS_REGION || "ap-south-1";
 
   try {
     const outputs = require("../../amplify_outputs.json");
