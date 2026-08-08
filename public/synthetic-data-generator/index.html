@@ -11,5 +11,26 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      document.addEventListener('click', function (e) {
+        var backBtn = e.target.closest('.brand-features-btn');
+        if (backBtn) {
+          var tabs = document.querySelectorAll('.workspace-tab');
+          var activeTab = Array.from(tabs).find(function(t) { return t.classList.contains('active'); });
+          if (activeTab && activeTab.textContent.toLowerCase().includes('files')) {
+            e.preventDefault();
+            e.stopPropagation();
+            var studioTab = Array.from(tabs).find(function(t) { return t.textContent.toLowerCase().includes('studio'); });
+            if (studioTab) {
+              studioTab.click();
+              return;
+            }
+          }
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage('CLOSE_SYNTHETIC_STUDIO', '*');
+          }
+        }
+      }, true);
+    </script>
   </body>
 </html>

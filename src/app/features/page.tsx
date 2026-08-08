@@ -599,6 +599,16 @@ function FeaturesContent() {
         setActiveTool("prointerviewer");
     };
 
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data === "CLOSE_SYNTHETIC_STUDIO" || event.data?.type === "CLOSE_SYNTHETIC_STUDIO") {
+                setActiveModal(null);
+            }
+        };
+        window.addEventListener("message", handleMessage);
+        return () => window.removeEventListener("message", handleMessage);
+    }, []);
+
     // Roadmap timeline accordions
     const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({ 0: true });
 
@@ -3824,20 +3834,10 @@ function FeaturesContent() {
                     />
                 </div>
             ) : activeModal === "synthetic_data" ? (
-                <div className="flex-1 w-full h-[100dvh] flex flex-col relative overflow-hidden bg-[#F7F8FA]">
-                    <div className="md:hidden flex items-center justify-between px-3 py-2 bg-[#0d131a] border-b border-teal-500/20 text-white z-50">
-                        <button
-                            onClick={() => setActiveModal(null)}
-                            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/30 text-teal-300 hover:bg-teal-500/20 active:scale-95 transition-all"
-                        >
-                            <ArrowLeft className="w-4 h-4" />
-                            <span>Features</span>
-                        </button>
-                        <span className="text-xs font-bold text-teal-400 tracking-tight">Synthetic Data Generator</span>
-                    </div>
+                <div className="flex-1 w-full h-[100dvh] relative overflow-hidden bg-[#F7F8FA]">
                     <iframe
                         src="/synthetic-data-generator/index.html"
-                        className="w-full flex-1 border-none"
+                        className="w-full h-full border-none"
                         title="Synthetic Data Generator"
                     />
                 </div>

@@ -99,3 +99,98 @@
     justify-content: space-between;
   }
 }
+
+/* ==========================================================================
+   MOBILE & TABLET UI FIXES FOR STUDIO AND FILE EXPLORER
+   ========================================================================== */
+
+.explorer-sidebar,
+.file-explorer,
+.explorer-file-name,
+.explorer-tree-item,
+.explorer-tree-label {
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  white-space: nowrap !important;
+  min-width: 0;
+}
+
+.file-explorer h2,
+.file-explorer header,
+.file-explorer .panel-title-row {
+  white-space: normal !important;
+  word-break: normal !important;
+}
+
+@media (max-width: 768px) {
+  .files-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    width: 100%;
+  }
+
+  .files-toolbar .btn,
+  .files-toolbar .seg-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.75rem;
+    min-height: 36px;
+  }
+
+  .explorer-file-head {
+    display: none;
+  }
+
+  .explorer-file-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding: 0.65rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .explorer-file-name .linkish {
+    max-width: 100% !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  .windows-folder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 0.5rem;
+    width: 100%;
+  }
+
+  .windows-folder-card {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .studio-topbar {
+    padding: 0.4rem 0.65rem;
+    height: auto;
+    min-height: 52px;
+  }
+
+  .studio-brand {
+    gap: 0.35rem;
+  }
+
+  .brand-features-btn {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  .studio-topbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    width: 100%;
+  }
+}
