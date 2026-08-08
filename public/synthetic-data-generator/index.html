@@ -44,6 +44,13 @@
 
       // DOM Mutation & Mobile Refinements (< 1024px)
       function applyMobileRefinements() {
+        // Enclose Explorer Content in bordered panel card (applicable on all viewports)
+        var explorerMain = document.querySelector('.explorer-main');
+        if (explorerMain && !explorerMain.classList.contains('panel')) {
+          explorerMain.classList.add('panel');
+          explorerMain.classList.add('panel-pad');
+        }
+
         if (window.innerWidth > 1024) return;
 
         // 1. Move status chip beside back button
@@ -102,7 +109,25 @@
             b.innerHTML = '<span>↻</span>';
             b.title = 'Refresh';
           }
+          if (txt === 'upload' && !b.classList.contains('mobile-icon-only-btn')) {
+            b.classList.add('mobile-icon-only-btn');
+            b.innerHTML = '<span>📤</span>';
+            b.title = 'Upload';
+            
+            var newFolderBtn = Array.from(document.querySelectorAll('button')).find(function(btn) {
+              return btn.textContent.toLowerCase().includes('new folder');
+            });
+            if (newFolderBtn && newFolderBtn.parentNode) {
+              newFolderBtn.parentNode.appendChild(b);
+            }
+          }
         });
+
+        var themeToggle = document.querySelector('.theme-cycle-btn');
+        if (themeToggle) {
+          var label = themeToggle.querySelector('.theme-cycle-label');
+          if (label) label.style.display = 'none';
+        }
 
         // 4. Explorer Accordion Toggling on EXPLORER section label
         var explorerHeader = Array.from(document.querySelectorAll('.section-label')).find(function(h) {
@@ -187,11 +212,56 @@
               
               row1.parentNode.insertBefore(row2, row1.nextSibling);
               row2.appendChild(typesTabs);
-              if (deleteBtn) {
-                row2.appendChild(deleteBtn);
-              }
+              if (deleteBtn && !typesTabs.contains(deleteBtn)) {
+                typesTabs.appendChild(deleteBtn);
             }
           }
+        }
+
+        // 6. Chapters Accordion on mobile (< 1024px)
+        var chSearchInput = document.querySelector('.doc-toc input[placeholder*="Search chapters"]');
+        var chSearchContainer = chSearchInput ? chSearchInput.parentNode : null;
+        var tocList = document.querySelector('.toc-list');
+
+        if (chSearchContainer && tocList && !chSearchContainer.classList.contains('accordion-active')) {
+          chSearchContainer.classList.add('accordion-active');
+          chSearchContainer.style.display = 'flex';
+          chSearchContainer.style.alignItems = 'center';
+          chSearchContainer.style.gap = '0.4rem';
+          chSearchContainer.style.width = '100%';
+
+          var toggleBtn = document.createElement('button');
+          toggleBtn.className = 'chapters-toggle-btn';
+          toggleBtn.type = 'button';
+          toggleBtn.innerHTML = '▸';
+          toggleBtn.style.padding = '0.35rem 0.5rem';
+          toggleBtn.style.minWidth = '32px';
+          toggleBtn.style.height = '32px';
+          toggleBtn.style.borderRadius = '6px';
+          toggleBtn.style.background = 'var(--bg-muted)';
+          toggleBtn.style.border = '1px solid var(--border)';
+          toggleBtn.style.cursor = 'pointer';
+          toggleBtn.style.flexShrink = '0';
+          toggleBtn.style.fontSize = '0.8rem';
+          toggleBtn.title = 'Toggle Outline';
+          
+          chSearchContainer.appendChild(toggleBtn);
+          tocList.style.display = 'none';
+          
+          toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var isHidden = tocList.style.display === 'none';
+            tocList.style.display = isHidden ? 'flex' : 'none';
+            toggleBtn.innerHTML = isHidden ? '▾' : '▸';
+          });
+
+          tocList.addEventListener('click', function(e) {
+            if (e.target.closest('.toc-item')) {
+              tocList.style.display = 'none';
+              toggleBtn.innerHTML = '▸';
+            }
+          });
         }
       }
 
