@@ -118,18 +118,7 @@ async function connectDB() {
         );
     }
 
-    // If MONGO_VPC_URL is provided, ping the VPC Lambda to ensure the static IP egress is active
-    const mongoVpcUrl = process.env.MONGO_VPC_URL;
-    if (mongoVpcUrl) {
-        try {
-            await fetch(mongoVpcUrl, { cache: "no-store" });
-            console.log("VPC MongoDB Lambda bridge pinged successfully.");
-        } catch (vpcErr) {
-            console.warn("Failed to ping VPC MongoDB Lambda bridge:", vpcErr);
-        }
-    }
-
-    if (cached.conn) {
+    if (cached.conn && mongoose.connection.readyState === 1) {
         return cached.conn;
     }
 

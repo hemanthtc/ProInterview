@@ -20,7 +20,6 @@ frontend:
         - echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env.production
         - echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" >> .env.production
         - echo "MONGODB_URI=${MONGODB_URI}" >> .env.production
-        - echo "MONGO_VPC_URL=${MONGO_VPC_URL}" >> .env.production
         - echo "GMAIL_USER=${GMAIL_USER}" >> .env.production
         - echo "GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD}" >> .env.production
         - echo "RAZORPAY_KEY_ID=${RAZORPAY_KEY_ID}" >> .env.production
