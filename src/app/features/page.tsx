@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database } from "lucide-react";
+import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
@@ -3824,10 +3824,20 @@ function FeaturesContent() {
                     />
                 </div>
             ) : activeModal === "synthetic_data" ? (
-                <div className="flex-1 w-full h-full relative overflow-hidden bg-[#F7F8FA]">
+                <div className="flex-1 w-full h-[100dvh] flex flex-col relative overflow-hidden bg-[#F7F8FA]">
+                    <div className="md:hidden flex items-center justify-between px-3 py-2 bg-[#0d131a] border-b border-teal-500/20 text-white z-50">
+                        <button
+                            onClick={() => setActiveModal(null)}
+                            className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-500/10 border border-teal-500/30 text-teal-300 hover:bg-teal-500/20 active:scale-95 transition-all"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            <span>Features</span>
+                        </button>
+                        <span className="text-xs font-bold text-teal-400 tracking-tight">Synthetic Data Generator</span>
+                    </div>
                     <iframe
                         src="/synthetic-data-generator/index.html"
-                        className="w-full h-full border-none"
+                        className="w-full flex-1 border-none"
                         title="Synthetic Data Generator"
                     />
                 </div>
