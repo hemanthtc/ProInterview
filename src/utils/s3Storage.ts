@@ -80,3 +80,56 @@ export async function getS3FileUrl(s3Key: string): Promise<string> {
 export async function deleteS3File(s3Key: string): Promise<void> {
   await remove({ path: s3Key });
 }
+
+/**
+ * Saves synthetic file dataset payload directly to AWS S3.
+ * Enforces user isolation under media/{userId}/synthetic/{fileId}.json
+ */
+export async function saveSyntheticContentToS3(
+  userId: string,
+  fileId: string,
+  contentPayload: any,
+  visibility: 'private' | 'public' = 'private'
+): Promise<string> {
+  const isPublic = visibility === 'public';
+  const s3Path = isPublic
+    ? `public/synthetic/${fileId}.json`
+    : `media/${userId}/synthetic/${fileId}.json`;
+
+  const payloadString = typeof contentPayload === 'string'
+    ? contentPayload
+    : JSON.stringify(contentPayload, null, 2);
+
+  const uploadTask = uploadData({
+    path: s3Path,
+    data: payloadString,
+    options: {
+      contentType: 'application/json',
+    },
+  });
+
+  const result = await uploadTask.result;
+  return result.path;
+}
+
+/**
+ * Downloads synthetic dataset payload directly from AWS S3.
+ */
+export async function fetchSyntheticContentFromS3(s3Key: string): Promise<any> {
+  try {
+    const downloadUrlResult = await getUrl({ path: s3Key });
+    const res = await fetch(downloadUrlResult.url.toString(), { cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`Failed to fetch S3 content: HTTP ${res.status}`);
+    }
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      return text;
+    }
+  } catch (error) {
+    console.error('Error fetching synthetic content from S3:', error);
+    return null;
+  }
+}
