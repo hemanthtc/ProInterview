@@ -20,12 +20,17 @@ export async function POST(req: NextRequest) {
       typeof body?.temperature === "number" && Number.isFinite(body.temperature)
         ? body.temperature
         : 0.7;
+    const targetModel =
+      typeof body?.model === "string" && body.model.trim()
+        ? body.model.trim()
+        : "gemini-2.5-flash";
 
     if (!prompt.trim()) {
       return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
     }
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${API_KEY}`, {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY}`;
+    const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
