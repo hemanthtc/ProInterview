@@ -44,6 +44,13 @@
 
       // DOM Mutation & Mobile Refinements (< 1024px)
       function applyMobileRefinements() {
+        // Enclose Explorer Content in bordered panel card (applicable on all viewports)
+        var explorerMain = document.querySelector('.explorer-main');
+        if (explorerMain && !explorerMain.classList.contains('panel')) {
+          explorerMain.classList.add('panel');
+          explorerMain.classList.add('panel-pad');
+        }
+
         if (window.innerWidth > 1024) return;
 
         // 1. Move status chip beside back button
@@ -52,13 +59,8 @@
         var statusChip = document.querySelector('.status-chip');
         var backBtn = document.querySelector('.brand-features-btn');
 
-        if (backBtn) {
-          Array.from(backBtn.childNodes).forEach(function(node) {
-            if (node.nodeType === Node.TEXT_NODE) {
-              node.textContent = '';
-            }
-          });
-          backBtn.title = 'Back';
+        if (backBtn && !backBtn.hasAttribute('title')) {
+          backBtn.setAttribute('title', 'Back');
         }
 
         if (brand && backBtn && statusChip && !brand.contains(statusChip)) {
@@ -66,7 +68,7 @@
         }
 
         // 2. Add 3-dots button to topbar if missing and move action buttons
-        if (topbar && !document.querySelector('.mobile-dots-btn')) {
+        if (topbar && !topbar.querySelector('.mobile-dots-btn')) {
           var dots = document.createElement('button');
           dots.className = 'mobile-dots-btn';
           dots.setAttribute('aria-label', 'Toggle Menu');
@@ -82,7 +84,8 @@
           topbar.parentNode.insertBefore(mobileActions, topbar.nextSibling);
         }
 
-        if (desktopActions && mobileActions && mobileActions.childNodes.length === 0) {
+        if (desktopActions && mobileActions && desktopActions.childNodes.length > 0) {
+          mobileActions.innerHTML = '';
           while (desktopActions.firstChild) {
             mobileActions.appendChild(desktopActions.firstChild);
           }
@@ -193,6 +196,56 @@
             }
           }
         }
+
+        // 6. Chapters Accordion on mobile (< 1024px)
+        var chSearchInput = document.querySelector('.doc-toc input[placeholder*="Search chapters"]');
+        var chSearchContainer = chSearchInput ? chSearchInput.parentNode : null;
+        var tocList = document.querySelector('.toc-list');
+
+        if (chSearchContainer && tocList && !chSearchContainer.classList.contains('accordion-active')) {
+          chSearchContainer.classList.add('accordion-active');
+          chSearchContainer.style.display = 'flex';
+          chSearchContainer.style.alignItems = 'center';
+          chSearchContainer.style.gap = '0.4rem';
+          chSearchContainer.style.width = '100%';
+
+          var toggleBtn = document.createElement('button');
+          toggleBtn.className = 'chapters-toggle-btn';
+          toggleBtn.type = 'button';
+          toggleBtn.style.padding = '0.35rem 0.5rem';
+          toggleBtn.style.minWidth = '32px';
+          toggleBtn.style.height = '32px';
+          toggleBtn.style.borderRadius = '6px';
+          toggleBtn.style.background = 'var(--bg-muted)';
+          toggleBtn.style.border = '1px solid var(--border)';
+          toggleBtn.style.cursor = 'pointer';
+          toggleBtn.style.flexShrink = '0';
+          toggleBtn.style.fontSize = '0.8rem';
+          toggleBtn.title = 'Toggle Outline';
+
+          // Check if there is an active search query
+          var hasSearch = chSearchInput.value.trim() !== '';
+          tocList.style.display = hasSearch ? 'flex' : 'none';
+          toggleBtn.innerHTML = hasSearch ? '▾' : '▸';
+
+          chSearchContainer.appendChild(toggleBtn);
+
+          toggleBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            var isHidden = tocList.style.display === 'none';
+            tocList.style.display = isHidden ? 'flex' : 'none';
+            toggleBtn.innerHTML = isHidden ? '▾' : '▸';
+          });
+
+          tocList.addEventListener('click', function(e) {
+            var item = e.target.closest('.toc-item');
+            if (item) {
+              tocList.style.display = 'none';
+              toggleBtn.innerHTML = '▸';
+            }
+          });
+        }
       }
 
       function handleResize() {
@@ -207,6 +260,23 @@
           }
           if (mobileActions) {
             mobileActions.classList.add('hidden');
+          }
+
+          // Revert chapters accordion if any
+          var chSearchInput = document.querySelector('.doc-toc input[placeholder*="Search chapters"]');
+          var chSearchContainer = chSearchInput ? chSearchInput.parentNode : null;
+          var tocList = document.querySelector('.toc-list');
+          if (chSearchContainer && chSearchContainer.classList.contains('accordion-active')) {
+            chSearchContainer.classList.remove('accordion-active');
+            chSearchContainer.style.display = '';
+            chSearchContainer.style.alignItems = '';
+            chSearchContainer.style.gap = '';
+            chSearchContainer.style.width = '';
+            var toggleBtn = chSearchContainer.querySelector('.chapters-toggle-btn');
+            if (toggleBtn) toggleBtn.remove();
+          }
+          if (tocList) {
+            tocList.style.display = '';
           }
         } else {
           applyMobileRefinements();

@@ -206,13 +206,13 @@
   gap: 0 !important;
 }
 
-.brand-features-btn span,
 .brand-features-btn-text,
 .brand-features-btn p {
   display: none !important;
 }
 
   .brand-features-btn {
+    display: inline-flex !important;
     padding: 0.35rem 0.5rem !important;
     min-width: 36px;
     height: 36px;
@@ -346,9 +346,50 @@
   }
 }
 
+  /* Icon-only Theme Toggle */
+  .theme-cycle-label {
+    display: none !important;
+  }
+  .theme-cycle-btn {
+    padding: 0.4rem !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    display: inline-flex !important;
+  }
+
+  /* Document Viewer Mobile Layout Overflow Prevention */
+  .doc-layout,
+  .doc-toc,
+  .toc-list,
+  .toc-item,
+  .reading-canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .toc-item span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 @media (min-width: 1025px) {
   .mobile-dots-btn,
   .mobile-actions-bar {
     display: none !important;
   }
+}
+
+.explorer-main.panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 1.25rem;
 }
