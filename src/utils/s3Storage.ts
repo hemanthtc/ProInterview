@@ -9,8 +9,41 @@ export interface FileMetadata {
   category?: string;
 }
 
+async function uploadToS3ViaPresignedUrl(key: string, data: Blob | string, contentType: string): Promise<string> {
+  try {
+    const presignedRes = await fetch('/api/s3/presigned-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ key, contentType }),
+    });
+    const presignedData = await presignedRes.json();
+    if (presignedRes.ok && presignedData.uploadUrl) {
+      const s3UploadRes = await fetch(presignedData.uploadUrl, {
+        method: 'PUT',
+        headers: { 'Content-Type': contentType },
+        body: data,
+      });
+      if (s3UploadRes.ok) {
+        console.log('Pre-signed S3 upload successful:', key);
+        return key;
+      }
+    }
+  } catch (err) {
+    console.warn('Pre-signed S3 upload fallback:', err);
+  }
+
+  // Fallback to uploadData if pre-signed endpoint unavailable
+  const uploadTask = uploadData({
+    path: key,
+    data: data as any,
+    options: { contentType },
+  });
+  const result = await uploadTask.result;
+  return result.path;
+}
+
 /**
- * Uploads a file directly to AWS S3 via Amplify Storage
+ * Uploads a file directly to AWS S3 via S3 Pre-signed URLs
  * and records its metadata in MongoDB Atlas via Next.js API.
  */
 export async function uploadFileAndSaveMetadata(
@@ -21,17 +54,8 @@ export async function uploadFileAndSaveMetadata(
   try {
     const s3Path = `public/uploads/${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
 
-    // 1. Upload binary payload directly to S3
-    const uploadTask = uploadData({
-      path: s3Path,
-      data: file,
-      options: {
-        contentType: file.type,
-      },
-    });
-
-    const result = await uploadTask.result;
-    console.log('S3 Upload successful:', result.path);
+    // 1. Upload binary payload directly to S3 via Pre-signed URL
+    const s3Key = await uploadToS3ViaPresignedUrl(s3Path, file, file.type || 'application/octet-stream');
 
     // 2. Save metadata reference in MongoDB Atlas via Next.js API endpoint
     const response = await fetch('/api/uploads', {
@@ -42,7 +66,7 @@ export async function uploadFileAndSaveMetadata(
       body: JSON.stringify({
         userId: userId || 'anonymous',
         originalFileName: file.name,
-        s3Key: result.path,
+        s3Key,
         mimeType: file.type,
         fileSize: file.size,
         category,
@@ -51,14 +75,10 @@ export async function uploadFileAndSaveMetadata(
 
     const metadataResult = await response.json();
 
-    // 3. Obtain signed S3 download URL
-    const downloadUrlResult = await getUrl({ path: result.path });
-
     return {
       success: true,
-      s3Key: result.path,
+      s3Key,
       metadataId: metadataResult.id || metadataResult._id,
-      fileUrl: downloadUrlResult.url.toString(),
     };
   } catch (error: any) {
     console.error('Failed to upload file to S3 or save metadata to MongoDB:', error);
@@ -100,16 +120,7 @@ export async function saveSyntheticContentToS3(
     ? contentPayload
     : JSON.stringify(contentPayload, null, 2);
 
-  const uploadTask = uploadData({
-    path: s3Path,
-    data: payloadString,
-    options: {
-      contentType: 'application/json',
-    },
-  });
-
-  const result = await uploadTask.result;
-  return result.path;
+  return await uploadToS3ViaPresignedUrl(s3Path, payloadString, 'application/json');
 }
 
 /**
