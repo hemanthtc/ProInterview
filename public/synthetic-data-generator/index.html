@@ -6,8 +6,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
     <meta name="description" content="Synthetic Data Agent — research domains and generate realistic tabular datasets or documents with Gemini." />
     <title>Synthetic Data Agent — Studio</title>
-    <script type="module" crossorigin src="/synthetic-data-generator/assets/index-DQ0Ah7-G.js"></script>
-    <link rel="stylesheet" crossorigin href="/synthetic-data-generator/assets/index-8io0ntXO.css">
+    <script type="module" crossorigin src="/synthetic-data-generator/assets/index-RAWCXhkB.js"></script>
+    <link rel="stylesheet" crossorigin href="/synthetic-data-generator/assets/index-6iVEvvWC.css">
   </head>
   <body>
     <div id="root"></div>
@@ -32,252 +32,175 @@
           }
         }
 
-        // Toggle 3-Dots Mobile Action Bar
+        // Toggle 3-Dots Mobile Action Bar Dropdown
         var dotsBtn = e.target.closest('.mobile-dots-btn');
         if (dotsBtn) {
-          var actionsBar = document.querySelector('.mobile-actions-bar');
-          if (actionsBar) {
-            actionsBar.classList.toggle('hidden');
+          var actions = document.querySelector('.studio-topbar-actions');
+          if (actions) {
+            actions.classList.toggle('show-mobile');
+          }
+        }
+
+        // Close menu when clicking outside
+        if (!e.target.closest('.mobile-dots-btn') && !e.target.closest('.studio-topbar-actions')) {
+          var actions = document.querySelector('.studio-topbar-actions');
+          if (actions) {
+            actions.classList.remove('show-mobile');
           }
         }
       }, true);
 
       // DOM Mutation & Mobile Refinements (< 1024px)
       function applyMobileRefinements() {
-        // Enclose Explorer Content in bordered panel card (applicable on all viewports)
-        var explorerMain = document.querySelector('.explorer-main');
-        if (explorerMain && !explorerMain.classList.contains('panel')) {
-          explorerMain.classList.add('panel');
-          explorerMain.classList.add('panel-pad');
+        try {
+          if (observer) observer.disconnect();
+          // Enclose Explorer Content in bordered panel card (applicable on all viewports)
+          var explorerMain = document.querySelector('.explorer-main');
+          if (explorerMain && !explorerMain.classList.contains('panel')) {
+            explorerMain.classList.add('panel');
+            explorerMain.classList.add('panel-pad');
+          }
+        } catch (err) {
+          console.error("Error in explorer panel refinement:", err);
+        } finally {
+          if (observer) {
+            observer.observe(document.body, { childList: true, subtree: true });
+          }
         }
 
         if (window.innerWidth > 1024) return;
 
-        // 1. Move status chip beside back button
-        var topbar = document.querySelector('.studio-topbar');
-        var brand = document.querySelector('.studio-brand');
-        var statusChip = document.querySelector('.status-chip');
-        var backBtn = document.querySelector('.brand-features-btn');
+        try {
+          if (observer) observer.disconnect();
 
-        if (backBtn && !backBtn.hasAttribute('title')) {
-          backBtn.setAttribute('title', 'Back');
-        }
+          var topbar = document.querySelector('.studio-topbar');
+          var brand = document.querySelector('.studio-brand');
+          var statusChip = document.querySelector('.status-chip');
+          var backBtn = document.querySelector('.brand-features-btn');
 
-        if (brand && backBtn && statusChip && !brand.contains(statusChip)) {
-          backBtn.parentNode.insertBefore(statusChip, backBtn.nextSibling);
-        }
-
-        // 2. Add 3-dots button to topbar if missing and move action buttons
-        if (topbar && !topbar.querySelector('.mobile-dots-btn')) {
-          var dots = document.createElement('button');
-          dots.className = 'mobile-dots-btn';
-          dots.setAttribute('aria-label', 'Toggle Menu');
-          dots.innerHTML = '&#8942;';
-          topbar.appendChild(dots);
-        }
-
-        var desktopActions = document.querySelector('.studio-topbar-actions');
-        var mobileActions = document.querySelector('.mobile-actions-bar');
-        if (topbar && !mobileActions) {
-          mobileActions = document.createElement('div');
-          mobileActions.className = 'mobile-actions-bar hidden';
-          topbar.parentNode.insertBefore(mobileActions, topbar.nextSibling);
-        }
-
-        if (desktopActions && mobileActions && desktopActions.childNodes.length > 0) {
-          mobileActions.innerHTML = '';
-          while (desktopActions.firstChild) {
-            mobileActions.appendChild(desktopActions.firstChild);
+          if (backBtn && !backBtn.hasAttribute('title')) {
+            backBtn.setAttribute('title', 'Back');
           }
-        }
 
-        // 3. Make Delete & Refresh buttons concise on mobile
-        var allButtons = document.querySelectorAll('button');
-        allButtons.forEach(function(b) {
-          var txt = b.textContent.trim().toLowerCase();
-          if (txt === 'delete files' && !b.classList.contains('mobile-delete-icon-btn')) {
-            b.classList.add('mobile-delete-icon-btn');
-            b.innerHTML = '🗑️';
-            b.title = 'Delete Files';
-          }
-          if (txt === 'refresh' && !b.classList.contains('mobile-icon-only-btn')) {
-            b.classList.add('mobile-icon-only-btn');
-            b.innerHTML = '<span>↻</span>';
-            b.title = 'Refresh';
-          }
-          if (txt === 'upload' && !b.classList.contains('mobile-icon-only-btn')) {
-            b.classList.add('mobile-icon-only-btn');
-            b.innerHTML = '<span>📤</span>';
-            b.title = 'Upload';
-            
-            var newFolderBtn = Array.from(document.querySelectorAll('button')).find(function(btn) {
-              return btn.textContent.toLowerCase().includes('new folder');
-            });
-            if (newFolderBtn && newFolderBtn.parentNode) {
-              newFolderBtn.parentNode.appendChild(b);
+          // 1. Clone status chip beside back button (to avoid React Virtual DOM crashes)
+          if (brand && backBtn && statusChip) {
+            var existingMobileChip = brand.querySelector('.status-chip-mobile');
+            if (existingMobileChip) {
+              existingMobileChip.innerHTML = statusChip.innerHTML;
+              existingMobileChip.className = statusChip.className + ' status-chip-mobile';
+            } else {
+              var mobileStatusChip = statusChip.cloneNode(true);
+              mobileStatusChip.className = statusChip.className + ' status-chip-mobile';
+              backBtn.parentNode.insertBefore(mobileStatusChip, backBtn.nextSibling);
             }
           }
-        });
 
-        var themeToggle = document.querySelector('.theme-cycle-btn');
-        if (themeToggle) {
-          var label = themeToggle.querySelector('.theme-cycle-label');
-          if (label) label.style.display = 'none';
-        }
+          // 2. Add 3-dots button to topbar if missing
+          if (topbar && !topbar.querySelector('.mobile-dots-btn')) {
+            var dots = document.createElement('button');
+            dots.className = 'mobile-dots-btn';
+            dots.setAttribute('aria-label', 'Toggle Menu');
+            dots.innerHTML = '&#8942;';
+            topbar.appendChild(dots);
+          }
 
-        // 4. Explorer Accordion Toggling on EXPLORER section label
-        var explorerHeader = Array.from(document.querySelectorAll('.section-label')).find(function(h) {
-          return h.textContent.trim().toUpperCase() === 'EXPLORER';
-        });
-        if (explorerHeader && !explorerHeader.classList.contains('accordion-header')) {
-          explorerHeader.classList.add('accordion-header');
-          explorerHeader.style.cursor = 'pointer';
-          explorerHeader.style.display = 'flex';
-          explorerHeader.style.justifyContent = 'space-between';
-          explorerHeader.style.alignItems = 'center';
-          explorerHeader.style.width = '100%';
-          explorerHeader.style.userSelect = 'none';
-
-          var parentNode = explorerHeader.parentNode;
-          if (parentNode) {
-            var wrapper = document.createElement('div');
-            wrapper.className = 'explorer-sidebar-items';
-            
-            var siblings = [];
-            var nextNode = explorerHeader.nextSibling;
-            while (nextNode) {
-              var temp = nextNode.nextSibling;
-              siblings.push(nextNode);
-              nextNode = temp;
+          // 3. Make Delete & Refresh buttons concise on mobile
+          var allButtons = document.querySelectorAll('button');
+          allButtons.forEach(function(b) {
+            var txt = b.textContent.trim().toLowerCase();
+            if (txt === 'delete files' && !b.classList.contains('mobile-delete-icon-btn')) {
+              b.classList.add('mobile-delete-icon-btn');
+              b.innerHTML = '🗑️';
+              b.title = 'Delete Files';
             }
-            siblings.forEach(function(node) {
-              wrapper.appendChild(node);
+            if (txt === 'refresh' && !b.classList.contains('mobile-icon-only-btn')) {
+              b.classList.add('mobile-icon-only-btn');
+              b.innerHTML = '<span>↻</span>';
+              b.title = 'Refresh';
+            }
+            if (txt === 'upload' && !b.classList.contains('mobile-icon-only-btn')) {
+              b.classList.add('mobile-icon-only-btn');
+              b.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-upload icon-xs" style="vertical-align: middle;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>';
+              b.title = 'Upload';
+              
+              var newFolderBtn = Array.from(document.querySelectorAll('button')).find(function(btn) {
+                return btn.textContent.toLowerCase().includes('new folder');
+              });
+              if (newFolderBtn && newFolderBtn.parentNode) {
+                newFolderBtn.parentNode.appendChild(b);
+              }
+            }
+          });
+
+          var themeToggle = document.querySelector('.theme-cycle-btn');
+          if (themeToggle) {
+            var label = themeToggle.querySelector('.theme-cycle-label');
+            if (label) label.style.display = 'none';
+          }
+
+          // 6. Chapters Accordion on mobile (< 1024px)
+          var chSearchInput = document.querySelector('.doc-toc input[placeholder*="Search chapters"]');
+          var chSearchContainer = chSearchInput ? chSearchInput.parentNode : null;
+          var tocList = document.querySelector('.toc-list');
+
+          if (chSearchContainer && tocList && !chSearchContainer.classList.contains('accordion-active')) {
+            chSearchContainer.classList.add('accordion-active');
+            chSearchContainer.style.display = 'flex';
+            chSearchContainer.style.alignItems = 'center';
+            chSearchContainer.style.gap = '0.4rem';
+            chSearchContainer.style.width = '100%';
+
+            var toggleBtn = document.createElement('button');
+            toggleBtn.className = 'chapters-toggle-btn';
+            toggleBtn.type = 'button';
+            toggleBtn.style.padding = '0.35rem 0.5rem';
+            toggleBtn.style.minWidth = '32px';
+            toggleBtn.style.height = '32px';
+            toggleBtn.style.borderRadius = '6px';
+            toggleBtn.style.background = 'var(--bg-muted)';
+            toggleBtn.style.border = '1px solid var(--border)';
+            toggleBtn.style.cursor = 'pointer';
+            toggleBtn.style.flexShrink = '0';
+            toggleBtn.style.fontSize = '0.8rem';
+            toggleBtn.title = 'Toggle Outline';
+
+            // Check if there is an active search query
+            var hasSearch = chSearchInput.value.trim() !== '';
+            tocList.style.display = hasSearch ? 'flex' : 'none';
+            toggleBtn.innerHTML = hasSearch ? '▾' : '▸';
+
+            chSearchContainer.appendChild(toggleBtn);
+
+            toggleBtn.addEventListener('click', function(e) {
+              e.preventDefault();
+              e.stopPropagation();
+              var isHidden = tocList.style.display === 'none';
+              tocList.style.display = isHidden ? 'flex' : 'none';
+              toggleBtn.innerHTML = isHidden ? '▾' : '▸';
             });
-            parentNode.appendChild(wrapper);
 
-            var indicator = document.createElement('span');
-            indicator.className = 'accordion-indicator';
-            indicator.innerHTML = ' ▸';
-            indicator.style.fontSize = '0.8rem';
-            explorerHeader.appendChild(indicator);
-
-            wrapper.classList.add('collapsed');
-
-            explorerHeader.addEventListener('click', function() {
-              wrapper.classList.toggle('collapsed');
-              indicator.innerHTML = wrapper.classList.contains('collapsed') ? ' ▸' : ' ▾';
-            });
-
-            wrapper.addEventListener('click', function(e) {
-              if (e.target.closest('.explorer-tree-item')) {
-                wrapper.classList.add('collapsed');
-                indicator.innerHTML = ' ▸';
+            tocList.addEventListener('click', function(e) {
+              var item = e.target.closest('.toc-item');
+              if (item) {
+                tocList.style.display = 'none';
+                toggleBtn.innerHTML = '▸';
               }
             });
           }
-        }
-
-        // 5. Filter & Search Reordering on Mobile
-        var searchInput = document.querySelector('input[placeholder*="Search"]');
-        var sourceSelect = Array.from(document.querySelectorAll('select')).find(function(sel) {
-          return sel.textContent.includes('All Sources') || sel.innerHTML.includes('Generated') || sel.id === 'source-filter' || sel.className.includes('source') || (sel.parentNode && sel.parentNode.className.includes('toolbar'));
-        }) || document.querySelector('.files-toolbar select');
-
-        var deleteBtn = document.querySelector('.mobile-delete-icon-btn');
-        var typesTabs = document.querySelector('.explorer-main .workspace-nav') || document.querySelector('.files-toolbar .workspace-nav');
-
-        if (searchInput && sourceSelect) {
-          var parent = searchInput.parentNode;
-          if (parent && !parent.classList.contains('mobile-search-row')) {
-            var row1 = document.createElement('div');
-            row1.className = 'mobile-search-row';
-            
-            parent.insertBefore(row1, searchInput);
-            row1.appendChild(searchInput);
-            row1.appendChild(sourceSelect);
-            
-            if (typesTabs) {
-              var row2 = document.createElement('div');
-              row2.className = 'mobile-types-row';
-              row2.style.display = 'flex';
-              row2.style.justifyContent = 'space-between';
-              row2.style.alignItems = 'center';
-              row2.style.gap = '0.5rem';
-              row2.style.marginTop = '0.4rem';
-              row2.style.width = '100%';
-              
-              row1.parentNode.insertBefore(row2, row1.nextSibling);
-              row2.appendChild(typesTabs);
-              if (deleteBtn && !typesTabs.contains(deleteBtn)) {
-                typesTabs.appendChild(deleteBtn);
-            }
+        } catch (err) {
+          console.error("Error in mobile refinements:", err);
+        } finally {
+          if (observer && window.innerWidth <= 1024) {
+            observer.observe(document.body, { childList: true, subtree: true });
           }
-        }
-
-        // 6. Chapters Accordion on mobile (< 1024px)
-        var chSearchInput = document.querySelector('.doc-toc input[placeholder*="Search chapters"]');
-        var chSearchContainer = chSearchInput ? chSearchInput.parentNode : null;
-        var tocList = document.querySelector('.toc-list');
-
-        if (chSearchContainer && tocList && !chSearchContainer.classList.contains('accordion-active')) {
-          chSearchContainer.classList.add('accordion-active');
-          chSearchContainer.style.display = 'flex';
-          chSearchContainer.style.alignItems = 'center';
-          chSearchContainer.style.gap = '0.4rem';
-          chSearchContainer.style.width = '100%';
-
-          var toggleBtn = document.createElement('button');
-          toggleBtn.className = 'chapters-toggle-btn';
-          toggleBtn.type = 'button';
-          toggleBtn.innerHTML = '▸';
-          toggleBtn.style.padding = '0.35rem 0.5rem';
-          toggleBtn.style.minWidth = '32px';
-          toggleBtn.style.height = '32px';
-          toggleBtn.style.borderRadius = '6px';
-          toggleBtn.style.background = 'var(--bg-muted)';
-          toggleBtn.style.border = '1px solid var(--border)';
-          toggleBtn.style.cursor = 'pointer';
-          toggleBtn.style.flexShrink = '0';
-          toggleBtn.style.fontSize = '0.8rem';
-          toggleBtn.title = 'Toggle Outline';
-
-          // Check if there is an active search query
-          var hasSearch = chSearchInput.value.trim() !== '';
-          tocList.style.display = hasSearch ? 'flex' : 'none';
-          toggleBtn.innerHTML = hasSearch ? '▾' : '▸';
-
-          chSearchContainer.appendChild(toggleBtn);
-
-          toggleBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            var isHidden = tocList.style.display === 'none';
-            tocList.style.display = isHidden ? 'flex' : 'none';
-            toggleBtn.innerHTML = isHidden ? '▾' : '▸';
-          });
-
-          tocList.addEventListener('click', function(e) {
-            var item = e.target.closest('.toc-item');
-            if (item) {
-              tocList.style.display = 'none';
-              toggleBtn.innerHTML = '▸';
-            }
-          });
         }
       }
 
       function handleResize() {
-        var desktopActions = document.querySelector('.studio-topbar-actions');
-        var mobileActions = document.querySelector('.mobile-actions-bar');
-        
         if (window.innerWidth > 1024) {
-          if (desktopActions && mobileActions && desktopActions.childNodes.length === 0) {
-            while (mobileActions.firstChild) {
-              desktopActions.appendChild(mobileActions.firstChild);
-            }
-          }
-          if (mobileActions) {
-            mobileActions.classList.add('hidden');
+          var actions = document.querySelector('.studio-topbar-actions');
+          if (actions) {
+            actions.classList.remove('show-mobile');
           }
 
           // Revert chapters accordion if any
@@ -302,13 +225,19 @@
       }
 
       var observer = new MutationObserver(applyMobileRefinements);
-      document.addEventListener('DOMContentLoaded', function() {
+      function init() {
         applyMobileRefinements();
         window.addEventListener('resize', handleResize);
         if (document.body) {
           observer.observe(document.body, { childList: true, subtree: true });
         }
-      });
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+      } else {
+        init();
+      }
     </script>
   </body>
 </html>
