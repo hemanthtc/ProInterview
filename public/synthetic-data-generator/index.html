@@ -105,7 +105,25 @@
             b.innerHTML = '<span>↻</span>';
             b.title = 'Refresh';
           }
+          if (txt === 'upload' && !b.classList.contains('mobile-icon-only-btn')) {
+            b.classList.add('mobile-icon-only-btn');
+            b.innerHTML = '<span>📤</span>';
+            b.title = 'Upload';
+            
+            var newFolderBtn = Array.from(document.querySelectorAll('button')).find(function(btn) {
+              return btn.textContent.toLowerCase().includes('new folder');
+            });
+            if (newFolderBtn && newFolderBtn.parentNode) {
+              newFolderBtn.parentNode.appendChild(b);
+            }
+          }
         });
+
+        var themeToggle = document.querySelector('.theme-cycle-btn');
+        if (themeToggle) {
+          var label = themeToggle.querySelector('.theme-cycle-label');
+          if (label) label.style.display = 'none';
+        }
 
         // 4. Explorer Accordion Toggling on EXPLORER section label
         var explorerHeader = Array.from(document.querySelectorAll('.section-label')).find(function(h) {
@@ -190,9 +208,8 @@
               
               row1.parentNode.insertBefore(row2, row1.nextSibling);
               row2.appendChild(typesTabs);
-              if (deleteBtn) {
-                row2.appendChild(deleteBtn);
-              }
+              if (deleteBtn && !typesTabs.contains(deleteBtn)) {
+                typesTabs.appendChild(deleteBtn);
             }
           }
         }
@@ -212,6 +229,7 @@
           var toggleBtn = document.createElement('button');
           toggleBtn.className = 'chapters-toggle-btn';
           toggleBtn.type = 'button';
+          toggleBtn.innerHTML = '▸';
           toggleBtn.style.padding = '0.35rem 0.5rem';
           toggleBtn.style.minWidth = '32px';
           toggleBtn.style.height = '32px';

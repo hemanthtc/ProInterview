@@ -344,6 +344,53 @@
     font-size: 18px !important;
     display: inline-block !important;
   }
+
+  /* Icon-only Theme Toggle */
+  .theme-cycle-label {
+    display: none !important;
+  }
+  .theme-cycle-btn {
+    padding: 0.4rem !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    justify-content: center !important;
+    align-items: center !important;
+  }
+  .theme-cycle-btn span:not(.icon-xs):not(.icon-sm):not(.icon-md) {
+    display: none !important;
+  }
+
+  /* Inline Trash Icon style inside workspace nav */
+  .workspace-nav .mobile-delete-icon-btn {
+    margin-left: auto !important;
+    border: none !important;
+    background: transparent !important;
+    padding: 0.35rem !important;
+    color: var(--text-muted) !important;
+  }
+  .workspace-nav .mobile-delete-icon-btn:hover {
+    color: var(--error) !important;
+    background: var(--error-soft) !important;
+  }
+
+  /* Document Viewer Mobile Layout Overflow Prevention */
+  .doc-layout,
+  .doc-toc,
+  .toc-list,
+  .toc-item,
+  .reading-canvas {
+    max-width: 100% !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .toc-item span {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
   /* Icon-only Theme Toggle */
