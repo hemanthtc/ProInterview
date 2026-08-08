@@ -194,3 +194,107 @@
     width: 100%;
   }
 }
+
+/* ==========================================================================
+   MOBILE & TABLET EXCLUSIVE UI REFINEMENTS (< 1024px)
+   ========================================================================== */
+
+@media (max-width: 1024px) {
+  /* 1. Icon-only back button */
+  .brand-features-btn span,
+  .brand-features-btn-text {
+    display: none !important;
+  }
+  
+  .brand-features-btn {
+    padding: 0.35rem 0.5rem !important;
+    min-width: 36px;
+    height: 36px;
+    justify-content: center;
+    align-items: center;
+    border-radius: 8px;
+  }
+
+  /* 2. Position status chip beside back icon in mobile topbar */
+  .mobile-brand-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .studio-topbar .status-chip {
+    margin-left: 0.25rem;
+    padding: 0.2rem 0.5rem;
+    font-size: 0.68rem;
+  }
+
+  /* 3-dots toggle button and mobile action row */
+  .mobile-dots-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .mobile-actions-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .mobile-actions-bar.hidden {
+    display: none !important;
+  }
+
+  /* File Explorer mobile refinements */
+  .mobile-search-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .mobile-search-row input[type="text"] {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .mobile-search-row select {
+    width: auto;
+    max-width: 130px;
+    flex-shrink: 0;
+  }
+
+  .mobile-delete-icon-btn {
+    padding: 0.4rem 0.6rem !important;
+    min-width: 36px;
+  }
+
+  .explorer-sidebar.mobile-accordion {
+    max-height: none;
+    transition: max-height 0.25s ease-in-out;
+  }
+}
+
+@media (min-width: 1025px) {
+  .mobile-dots-btn,
+  .mobile-actions-bar {
+    display: none !important;
+  }
+}

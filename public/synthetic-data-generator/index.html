@@ -12,6 +12,7 @@
   <body>
     <div id="root"></div>
     <script>
+      // 2-Step Back Navigation & Mobile UI Dynamic Enhancements
       document.addEventListener('click', function (e) {
         var backBtn = e.target.closest('.brand-features-btn');
         if (backBtn) {
@@ -30,7 +31,58 @@
             window.parent.postMessage('CLOSE_SYNTHETIC_STUDIO', '*');
           }
         }
+
+        // Toggle 3-Dots Mobile Action Bar
+        var dotsBtn = e.target.closest('.mobile-dots-btn');
+        if (dotsBtn) {
+          var actionsBar = document.querySelector('.mobile-actions-bar');
+          if (actionsBar) {
+            actionsBar.classList.toggle('hidden');
+          }
+        }
       }, true);
+
+      // DOM Mutation & Mobile Refinements (< 1024px)
+      function applyMobileRefinements() {
+        if (window.innerWidth > 1024) return;
+
+        // 1. Move status chip beside back button
+        var topbar = document.querySelector('.studio-topbar');
+        var brand = document.querySelector('.studio-brand');
+        var statusChip = document.querySelector('.status-chip');
+        var backBtn = document.querySelector('.brand-features-btn');
+
+        if (brand && backBtn && statusChip && !brand.contains(statusChip)) {
+          backBtn.parentNode.insertBefore(statusChip, backBtn.nextSibling);
+        }
+
+        // 2. Add 3-dots button to topbar if missing
+        if (topbar && !document.querySelector('.mobile-dots-btn')) {
+          var dots = document.createElement('button');
+          dots.className = 'mobile-dots-btn';
+          dots.setAttribute('aria-label', 'Toggle Menu');
+          dots.innerHTML = '&#8942;';
+          topbar.appendChild(dots);
+        }
+
+        // 3. Make Delete Files button concise with Trash icon on mobile
+        var deleteBtns = document.querySelectorAll('button');
+        deleteBtns.forEach(function(b) {
+          if (b.textContent.trim().toLowerCase() === 'delete files' && !b.classList.contains('mobile-delete-icon-btn')) {
+            b.classList.add('mobile-delete-icon-btn');
+            b.innerHTML = '🗑️';
+            b.title = 'Delete Files';
+          }
+        });
+      }
+
+      var observer = new MutationObserver(applyMobileRefinements);
+      document.addEventListener('DOMContentLoaded', function() {
+        applyMobileRefinements();
+        if (document.body) {
+          observer.observe(document.body, { childList: true, subtree: true });
+        }
+      });
     </script>
   </body>
 </html>
