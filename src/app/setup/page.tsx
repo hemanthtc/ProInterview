@@ -6,6 +6,7 @@ import { UploadCloud, FileText, Loader2, Globe, Cpu, ArrowLeft } from "lucide-re
 import CompanySelect from "../../components/CompanySelect";
 import RoleSelect from "../../components/RoleSelect";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
+import { uploadFileAndSaveMetadata } from "../../utils/s3Storage";
 
 export default function SetupPage() {
     const [files, setFiles] = useState<File[]>([]);
@@ -103,6 +104,9 @@ export default function SetupPage() {
         if (droppedFiles.length > 0) {
             setFiles(droppedFiles);
             setError("");
+            droppedFiles.forEach(file => {
+                uploadFileAndSaveMetadata(file, getStorageItem("userIdentifier") || "user", "setup").catch(err => console.warn("S3 setup upload warning:", err));
+            });
         } else {
             setError("Please upload valid files.");
         }
@@ -113,6 +117,9 @@ export default function SetupPage() {
         if (selectedFiles.length > 0) {
             setFiles(selectedFiles);
             setError("");
+            selectedFiles.forEach(file => {
+                uploadFileAndSaveMetadata(file, getStorageItem("userIdentifier") || "user", "setup").catch(err => console.warn("S3 setup upload warning:", err));
+            });
         }
     };
 
