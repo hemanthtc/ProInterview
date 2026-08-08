@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData } from "../../utils/storage";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
-import { uploadFileAndSaveMetadata } from "../../utils/s3Storage";
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -761,11 +760,6 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
         setResumeCvUploading(true);
         try {
-            // Stream binary file payload directly to AWS S3 & save metadata in MongoDB Atlas
-            uploadFileAndSaveMetadata(file, userIdentifier || "user", "resume").catch(s3Err => {
-                console.warn("AWS S3 direct stream warning:", s3Err);
-            });
-
             const formData = new FormData();
             formData.append("file", file);
 

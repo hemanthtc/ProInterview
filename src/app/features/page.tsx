@@ -16,7 +16,6 @@ import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
 import { buildPrepPackFromEmail } from "../../utils/prepPack";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
-import { uploadFileAndSaveMetadata } from "../../utils/s3Storage";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import ProInterviewerApp from "../../components/prointerviewer/ProInterviewerApp";
 import { offCampusMCQs, offCampusCodingQuestions, MCQQuestion, CodingQuestion } from "../../data/offCampusMockTestData";
@@ -4248,11 +4247,7 @@ function FeaturesContent() {
                                                     multiple
                                                     onChange={(e) => {
                                                         if (e.target.files) {
-                                                            const newFiles = Array.from(e.target.files);
-                                                            setProjectFiles(newFiles);
-                                                            newFiles.forEach(file => {
-                                                                uploadFileAndSaveMetadata(file, getStorageItem("userIdentifier") || "user", "project").catch(err => console.warn("S3 project upload warning:", err));
-                                                            });
+                                                            setProjectFiles(Array.from(e.target.files));
                                                         }
                                                     }}
                                                     className="absolute inset-0 opacity-0 cursor-pointer"
@@ -6143,9 +6138,6 @@ function FeaturesContent() {
 
                                             setRoadmapImageError("");
                                             setRoadmapImages((prev) => [...prev, ...files]);
-                                            files.forEach(file => {
-                                                uploadFileAndSaveMetadata(file, getStorageItem("userIdentifier") || "user", "roadmap_image").catch(err => console.warn("S3 image upload warning:", err));
-                                            });
                                             e.target.value = "";
                                         }}
                                         className="absolute inset-0 opacity-0 cursor-pointer"

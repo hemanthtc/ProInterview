@@ -27,7 +27,6 @@ export interface ISyntheticFile extends Document {
     originalPrompt: string;
     aiModel: string;
     source: SyntheticFileSource;
-    s3Key: string;
     parentId: string | null;
     rowCount: number;
     sizeBytes: number;
@@ -67,7 +66,6 @@ const SyntheticFileSchema = new Schema<ISyntheticFile>(
             enum: ["generated", "uploaded", "continued"],
             default: "generated",
         },
-        s3Key: { type: String, default: "" },
         parentId: { type: String, default: null },
         rowCount: { type: Number, default: 0 },
         sizeBytes: { type: Number, default: 0 },

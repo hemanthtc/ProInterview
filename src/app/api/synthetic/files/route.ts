@@ -8,8 +8,6 @@ import {
     SyntheticFile,
 } from "@/lib/syntheticAccess";
 
-import { uploadSyntheticPayloadToS3 } from "@/utils/s3Server";
-
 export async function GET(req: NextRequest) {
     const auth = await requireSession();
     if (auth.error) return auth.error;
@@ -48,25 +46,6 @@ export async function POST(req: NextRequest) {
         const ownerName = await getOwnerName(userId);
         const payload = buildFilePayload(body || {}, userId, ownerName);
         const created = await SyntheticFile.create(payload);
-
-        // Offload dataset / document payload directly to AWS S3
-        const contentPayload = payload.contentType === "document" || payload.contentType === "code"
-            ? payload.textContent
-            : payload.data;
-
-        const s3Key = await uploadSyntheticPayloadToS3({
-            userId,
-            fileId: created._id.toString(),
-            payload: contentPayload,
-            filename: created.filename,
-            visibility: created.visibility,
-        });
-
-        if (s3Key) {
-            created.s3Key = s3Key;
-            await created.save();
-        }
-
         return NextResponse.json(serializeFile(created, userId), { status: 201 });
     } catch (error: any) {
         return NextResponse.json(
