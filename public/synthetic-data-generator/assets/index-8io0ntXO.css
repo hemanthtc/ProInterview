@@ -200,12 +200,18 @@
    ========================================================================== */
 
 @media (max-width: 1024px) {
-  /* 1. Icon-only back button */
-  .brand-features-btn span,
-  .brand-features-btn-text {
-    display: none !important;
-  }
-  
+/* 1. Icon-only back button (only leave back arrow icon) */
+.brand-features-btn {
+  font-size: 0 !important;
+  gap: 0 !important;
+}
+
+.brand-features-btn span,
+.brand-features-btn-text,
+.brand-features-btn p {
+  display: none !important;
+}
+
   .brand-features-btn {
     padding: 0.35rem 0.5rem !important;
     min-width: 36px;
@@ -289,6 +295,54 @@
   .explorer-sidebar.mobile-accordion {
     max-height: none;
     transition: max-height 0.25s ease-in-out;
+  }
+
+  /* Collapsed Sidebar Height constraints on mobile */
+  .explorer-layout,
+  .explorer-sidebar,
+  .file-explorer {
+    min-height: 0 !important;
+    max-height: none !important;
+    height: auto !important;
+  }
+
+  /* Hide original desktop topbar actions on mobile */
+  .studio-topbar-actions {
+    display: none !important;
+  }
+
+  /* Hide status chip from topbar actions on mobile (only show beside back button) */
+  .studio-topbar-actions .status-chip {
+    display: none !important;
+  }
+
+  /* Explorer collapsible tree */
+  .panel-header.accordion-header {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .explorer-sidebar-items.collapsed {
+    display: none !important;
+  }
+
+  /* Icon-only refresh and delete button */
+  .mobile-icon-only-btn {
+    font-size: 0 !important;
+    gap: 0 !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    display: inline-flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 0.4rem !important;
+  }
+
+  .mobile-icon-only-btn svg,
+  .mobile-icon-only-btn img,
+  .mobile-icon-only-btn span {
+    font-size: 18px !important;
+    display: inline-block !important;
   }
 }
 

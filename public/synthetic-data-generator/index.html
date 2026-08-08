@@ -52,11 +52,20 @@
         var statusChip = document.querySelector('.status-chip');
         var backBtn = document.querySelector('.brand-features-btn');
 
+        if (backBtn) {
+          Array.from(backBtn.childNodes).forEach(function(node) {
+            if (node.nodeType === Node.TEXT_NODE) {
+              node.textContent = '';
+            }
+          });
+          backBtn.title = 'Back';
+        }
+
         if (brand && backBtn && statusChip && !brand.contains(statusChip)) {
           backBtn.parentNode.insertBefore(statusChip, backBtn.nextSibling);
         }
 
-        // 2. Add 3-dots button to topbar if missing
+        // 2. Add 3-dots button to topbar if missing and move action buttons
         if (topbar && !document.querySelector('.mobile-dots-btn')) {
           var dots = document.createElement('button');
           dots.className = 'mobile-dots-btn';
@@ -65,20 +74,149 @@
           topbar.appendChild(dots);
         }
 
-        // 3. Make Delete Files button concise with Trash icon on mobile
-        var deleteBtns = document.querySelectorAll('button');
-        deleteBtns.forEach(function(b) {
-          if (b.textContent.trim().toLowerCase() === 'delete files' && !b.classList.contains('mobile-delete-icon-btn')) {
+        var desktopActions = document.querySelector('.studio-topbar-actions');
+        var mobileActions = document.querySelector('.mobile-actions-bar');
+        if (topbar && !mobileActions) {
+          mobileActions = document.createElement('div');
+          mobileActions.className = 'mobile-actions-bar hidden';
+          topbar.parentNode.insertBefore(mobileActions, topbar.nextSibling);
+        }
+
+        if (desktopActions && mobileActions && mobileActions.childNodes.length === 0) {
+          while (desktopActions.firstChild) {
+            mobileActions.appendChild(desktopActions.firstChild);
+          }
+        }
+
+        // 3. Make Delete & Refresh buttons concise on mobile
+        var allButtons = document.querySelectorAll('button');
+        allButtons.forEach(function(b) {
+          var txt = b.textContent.trim().toLowerCase();
+          if (txt === 'delete files' && !b.classList.contains('mobile-delete-icon-btn')) {
             b.classList.add('mobile-delete-icon-btn');
             b.innerHTML = '🗑️';
             b.title = 'Delete Files';
           }
+          if (txt === 'refresh' && !b.classList.contains('mobile-icon-only-btn')) {
+            b.classList.add('mobile-icon-only-btn');
+            b.innerHTML = '<span>↻</span>';
+            b.title = 'Refresh';
+          }
         });
+
+        // 4. Explorer Accordion Toggling on EXPLORER section label
+        var explorerHeader = Array.from(document.querySelectorAll('.section-label')).find(function(h) {
+          return h.textContent.trim().toUpperCase() === 'EXPLORER';
+        });
+        if (explorerHeader && !explorerHeader.classList.contains('accordion-header')) {
+          explorerHeader.classList.add('accordion-header');
+          explorerHeader.style.cursor = 'pointer';
+          explorerHeader.style.display = 'flex';
+          explorerHeader.style.justifyContent = 'space-between';
+          explorerHeader.style.alignItems = 'center';
+          explorerHeader.style.width = '100%';
+          explorerHeader.style.userSelect = 'none';
+
+          var parentNode = explorerHeader.parentNode;
+          if (parentNode) {
+            var wrapper = document.createElement('div');
+            wrapper.className = 'explorer-sidebar-items';
+            
+            var siblings = [];
+            var nextNode = explorerHeader.nextSibling;
+            while (nextNode) {
+              var temp = nextNode.nextSibling;
+              siblings.push(nextNode);
+              nextNode = temp;
+            }
+            siblings.forEach(function(node) {
+              wrapper.appendChild(node);
+            });
+            parentNode.appendChild(wrapper);
+
+            var indicator = document.createElement('span');
+            indicator.className = 'accordion-indicator';
+            indicator.innerHTML = ' ▸';
+            indicator.style.fontSize = '0.8rem';
+            explorerHeader.appendChild(indicator);
+
+            wrapper.classList.add('collapsed');
+
+            explorerHeader.addEventListener('click', function() {
+              wrapper.classList.toggle('collapsed');
+              indicator.innerHTML = wrapper.classList.contains('collapsed') ? ' ▸' : ' ▾';
+            });
+
+            wrapper.addEventListener('click', function(e) {
+              if (e.target.closest('.explorer-tree-item')) {
+                wrapper.classList.add('collapsed');
+                indicator.innerHTML = ' ▸';
+              }
+            });
+          }
+        }
+
+        // 5. Filter & Search Reordering on Mobile
+        var searchInput = document.querySelector('input[placeholder*="Search"]');
+        var sourceSelect = Array.from(document.querySelectorAll('select')).find(function(sel) {
+          return sel.textContent.includes('All Sources') || sel.innerHTML.includes('Generated') || sel.id === 'source-filter' || sel.className.includes('source') || (sel.parentNode && sel.parentNode.className.includes('toolbar'));
+        }) || document.querySelector('.files-toolbar select');
+
+        var deleteBtn = document.querySelector('.mobile-delete-icon-btn');
+        var typesTabs = document.querySelector('.explorer-main .workspace-nav') || document.querySelector('.files-toolbar .workspace-nav');
+
+        if (searchInput && sourceSelect) {
+          var parent = searchInput.parentNode;
+          if (parent && !parent.classList.contains('mobile-search-row')) {
+            var row1 = document.createElement('div');
+            row1.className = 'mobile-search-row';
+            
+            parent.insertBefore(row1, searchInput);
+            row1.appendChild(searchInput);
+            row1.appendChild(sourceSelect);
+            
+            if (typesTabs) {
+              var row2 = document.createElement('div');
+              row2.className = 'mobile-types-row';
+              row2.style.display = 'flex';
+              row2.style.justifyContent = 'space-between';
+              row2.style.alignItems = 'center';
+              row2.style.gap = '0.5rem';
+              row2.style.marginTop = '0.4rem';
+              row2.style.width = '100%';
+              
+              row1.parentNode.insertBefore(row2, row1.nextSibling);
+              row2.appendChild(typesTabs);
+              if (deleteBtn) {
+                row2.appendChild(deleteBtn);
+              }
+            }
+          }
+        }
+      }
+
+      function handleResize() {
+        var desktopActions = document.querySelector('.studio-topbar-actions');
+        var mobileActions = document.querySelector('.mobile-actions-bar');
+        
+        if (window.innerWidth > 1024) {
+          if (desktopActions && mobileActions && desktopActions.childNodes.length === 0) {
+            while (mobileActions.firstChild) {
+              desktopActions.appendChild(mobileActions.firstChild);
+            }
+          }
+          if (mobileActions) {
+            mobileActions.classList.add('hidden');
+          }
+        } else {
+          applyMobileRefinements();
+        }
       }
 
       var observer = new MutationObserver(applyMobileRefinements);
       document.addEventListener('DOMContentLoaded', function() {
         applyMobileRefinements();
+        window.addEventListener('resize', handleResize);
         if (document.body) {
           observer.observe(document.body, { childList: true, subtree: true });
         }
