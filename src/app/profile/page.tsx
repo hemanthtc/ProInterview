@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData } from "../../utils/storage";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
+import BrandLogo from "../../components/BrandLogo";
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -1041,13 +1042,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
 
             <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80 gap-3">
-                <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                        <Video className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-xl tracking-tight hidden sm:inline">ProInterview</span>
-                    <span className="font-bold text-lg tracking-tight sm:hidden">Pro</span>
-                </Link>
+                <BrandLogo />
                 <div className="flex items-center gap-2 sm:gap-4">
                     <button 
                         onClick={toggleMode}

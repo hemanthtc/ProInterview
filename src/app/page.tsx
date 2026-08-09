@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { marked } from "marked";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
 import { motion } from "framer-motion";
+import BrandLogo from "../components/BrandLogo";
 
 export default function Home() {
     const router = useRouter();
@@ -196,12 +197,7 @@ export default function Home() {
                     borderBottomColor: theme === "light" ? "rgba(15, 23, 42, 0.1)" : theme === "eyeprotect" ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)"
                 }}
             >
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                        <Video className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-xl tracking-tight">ProInterview</span>
-                </div>
+                <BrandLogo />
                 
                 {/* Desktop Navigation */}
                 <nav className="hidden md:flex gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-white/70 items-center">
@@ -315,12 +311,7 @@ export default function Home() {
                 <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col md:hidden animate-in fade-in duration-200">
                     {/* Close header inside mobile overlay */}
                     <div className="flex justify-between items-center p-6 border-b border-white/10">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                                <Video className="w-5 h-5 text-white" />
-                            </div>
-                            <span className="font-bold text-xl tracking-tight">ProInterview</span>
-                        </div>
+                        <BrandLogo />
                         <button 
                             onClick={() => setMobileMenuOpen(false)}
                             className="p-2 bg-white/5 border border-white/10 rounded-full text-white/80 hover:text-white"

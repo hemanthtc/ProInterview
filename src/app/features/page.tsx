@@ -23,6 +23,7 @@ import ErrorBoundary from "../../components/ErrorBoundary";
 import { offCampusMCQs, offCampusCodingQuestions, MCQQuestion, CodingQuestion } from "../../data/offCampusMockTestData";
 import { onCampusMCQs, onCampusCodingQuestions } from "../../data/onCampusMockTestData";
 import { interviewPrepLogic, aptitudeQuestions } from "../../data/aptitudeQuestions";
+import BrandLogo from "../../components/BrandLogo";
 
 import type { SavedResume, SavedRoadmap, PortfolioAnalysisCache, RoadmapData, PausedInterviewSession } from "../../types/features";
 import type { EmailAnalysisResult } from "../../types/analysis";
@@ -3383,12 +3384,7 @@ function FeaturesContent() {
                 <>
                     <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                         <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                                    <Video className="w-5 h-5 text-white" />
-                                </div>
-                                <Link href="/" className="font-bold text-xl tracking-tight hover:text-indigo-400 transition-colors">ProInterview</Link>
-                            </div>
+                            <BrandLogo />
                             {activeModal === "prointerviewer" && isAtsWarningActive && (
                                 <div
                                     className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg lg:ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)] w-fit"
@@ -3495,12 +3491,7 @@ function FeaturesContent() {
                         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col md:hidden animate-in fade-in duration-200">
                             {/* Close header inside mobile overlay */}
                             <div className="flex justify-between items-center p-6 border-b border-white/10">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                                        <Video className="w-5 h-5 text-white" />
-                                    </div>
-                                    <span className="font-bold text-xl tracking-tight">ProInterview</span>
-                                </div>
+                                <BrandLogo />
                                 <button
                                     onClick={() => setMobileMenuOpen(false)}
                                     className="p-2 bg-white/5 border border-white/10 rounded-full text-white/80 hover:text-white"

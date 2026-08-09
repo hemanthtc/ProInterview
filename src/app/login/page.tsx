@@ -6,6 +6,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from "framer-motion";
+import BrandLogo from "@/components/BrandLogo";
 
 const COUNTRIES = [
     { name: "United States", code: "+1", iso: "US" },
@@ -659,13 +660,7 @@ function LoginContent() {
                     ? "border-slate-200 bg-white/90 shadow-sm"
                     : "border-white/10 bg-[#050505]/80"
             }`}>
-                <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0 shadow-md">
-                        <Video className="w-5 h-5 text-white" />
-                    </div>
-                    <span className={`font-bold text-xl tracking-tight hidden sm:inline ${ isLight ? "text-slate-900" : "text-white" }`}>ProInterview</span>
-                    <span className={`font-bold text-lg tracking-tight sm:hidden ${ isLight ? "text-slate-900" : "text-white" }`}>Pro</span>
-                </Link>
+                <BrandLogo />
                 <div className="flex items-center gap-3">
                     {/* Theme Toggle Button */}
                     <button 
