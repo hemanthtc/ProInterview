@@ -60,7 +60,7 @@ const SyntheticFileSchema = new Schema<ISyntheticFile>(
         tags: { type: [String], default: () => [] },
         description: { type: String, default: "" },
         originalPrompt: { type: String, default: "" },
-        aiModel: { type: String, default: "gemini-2.5-flash" },
+        aiModel: { type: String, default: "gemini-2.0-flash" },
         source: {
             type: String,
             enum: ["generated", "uploaded", "continued"],

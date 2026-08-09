@@ -1,7 +1,82 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const GEMINI_API_URL =
-  "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent";
+const ADVANCED_CANDIDATE_MODELS = [
+  // 1. Core Gemini & Flash Models
+  "gemini-3.6-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-3.1-pro-preview",
+  "gemini-3-flash-preview",
+  "gemini-2.5-pro",
+  "gemini-2.5-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-2.0-pro-exp-02-05",
+  "gemini-2.0-flash-thinking-exp-01-21",
+  "gemini-1.5-pro",
+  "gemini-1.5-flash",
+  "gemini-1.5-flash-8b",
+
+  // 2. Real-Time Audio & Live Conversational Models
+  "gemini-omni-flash",
+  "gemini-3.5-live-translate-preview",
+  "gemini-3.1-flash-live-preview",
+  "gemini-3.1-flash-tts-preview",
+  "gemini-2.5-flash-live",
+
+  // 3. Generative Media & Specialized Task Models
+  "gemini-3.1-flash-image",
+  "gemini-3-pro-image",
+  "gemini-embedding-2-preview",
+  "gemini-robotics-er-2-preview",
+];
+
+/**
+ * Dynamically queries Google API for models supported and enabled for the provided API key
+ */
+async function fetchKeySupportedModels(apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    if (!Array.isArray(json?.models)) return [];
+
+    const supported = json.models
+      .filter((m: any) => Array.isArray(m.supportedGenerationMethods) && m.supportedGenerationMethods.includes("generateContent"))
+      .map((m: any) => (m.name || "").replace(/^models\//, ""))
+      .filter(Boolean);
+
+    return supported;
+  } catch {
+    return [];
+  }
+}
+
+async function fetchGeminiContent(
+  prompt: string,
+  jsonMode: boolean,
+  temperature: number,
+  model: string,
+  apiKey: string
+): Promise<Response> {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature,
+        responseMimeType: jsonMode ? "application/json" : "text/plain",
+      },
+    }),
+  });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,34 +95,46 @@ export async function POST(req: NextRequest) {
       typeof body?.temperature === "number" && Number.isFinite(body.temperature)
         ? body.temperature
         : 0.7;
-    const targetModel =
-      typeof body?.model === "string" && body.model.trim()
+
+    const requestedModel =
+      typeof body?.model === "string" && body.model.trim() && body.model.trim() !== "gemini-2.5-flash"
         ? body.model.trim()
-        : "gemini-2.5-flash";
+        : ADVANCED_CANDIDATE_MODELS[0];
 
     if (!prompt.trim()) {
       return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${API_KEY}`;
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          temperature,
-          responseMimeType: jsonMode ? "application/json" : "text/plain",
-        },
-      }),
-    });
+    // Auto-detect key supported models dynamically from Google API
+    const detectedKeyModels = await fetchKeySupportedModels(API_KEY);
+    const modelQueue = Array.from(
+      new Set([requestedModel, ...detectedKeyModels, ...ADVANCED_CANDIDATE_MODELS])
+    );
 
-    const data = await response.json().catch(() => ({}));
+    let lastResponse: Response | null = null;
+    let data: any = null;
+    let lastErrorMsg = "";
 
-    if (!response.ok) {
+    for (const currentModel of modelQueue) {
+      try {
+        const resp = await fetchGeminiContent(prompt, jsonMode, temperature, currentModel, API_KEY);
+        lastResponse = resp;
+        data = await resp.json().catch(() => ({}));
+        if (resp.ok) {
+          break;
+        }
+        lastErrorMsg = data?.error?.message || `HTTP ${resp.status}`;
+        console.warn(`[Gemini Route] Model '${currentModel}' failed (${lastErrorMsg}). Retrying next model...`);
+      } catch (err: any) {
+        lastErrorMsg = err?.message || "Fetch network error";
+      }
+    }
+
+    if (!lastResponse || !lastResponse.ok) {
+      const status = lastResponse?.status || 500;
       const message =
-        data?.error?.message || `Gemini request failed (${response.status})`;
-      return NextResponse.json({ error: message }, { status: response.status });
+        data?.error?.message || lastErrorMsg || `Gemini request failed (${status})`;
+      return NextResponse.json({ error: message }, { status });
     }
 
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;

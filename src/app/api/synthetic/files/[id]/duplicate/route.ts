@@ -52,7 +52,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
             tags: Array.isArray(source.tags) ? [...source.tags, "duplicated"] : ["duplicated"],
             description: source.description || "",
             originalPrompt: source.originalPrompt || "",
-            aiModel: source.aiModel || "gemini-2.5-flash",
+            aiModel: source.aiModel || "gemini-2.0-flash",
             source: source.source || "generated",
             parentId: String(source._id),
             rowCount: Number(source.rowCount || 0),
