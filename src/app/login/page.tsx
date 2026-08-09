@@ -697,15 +697,11 @@ function LoginContent() {
                     isLight ? "bg-purple-300/20" : "bg-purple-600/10"
                 }`} />
 
-                <motion.div
-                    layout
-                    transition={{ layout: { duration: 0.3, ease: "easeInOut" } }}
-                    className={`max-w-md w-full min-h-[520px] flex flex-col justify-between rounded-3xl p-8 z-10 relative transition-all duration-300 border ${
-                        isLight
-                            ? "bg-white border-slate-200 shadow-[0_8px_40px_rgba(99,102,241,0.12),0_2px_12px_rgba(0,0,0,0.06)]"
-                            : "bg-[#111] border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
-                    }`}
-                >
+                <div className={`max-w-md w-full rounded-3xl p-8 z-10 relative transition-all duration-300 border ${
+                    isLight
+                        ? "bg-white border-slate-200 shadow-[0_8px_40px_rgba(99,102,241,0.12),0_2px_12px_rgba(0,0,0,0.06)]"
+                        : "bg-[#111] border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
+                }`}>
                     <div className="text-center mb-6">
                         <h1 className={`text-3xl font-bold mb-2 ${ isLight ? "text-slate-900" : "text-white" }`}>{headerInfo.title}</h1>
                         <p className={`text-sm ${ isLight ? "text-slate-500" : "text-white/50" }`}>{headerInfo.subtitle}</p>
@@ -1347,7 +1343,7 @@ function LoginContent() {
                     <p className={`mt-6 text-center text-xs ${ isLight ? "text-slate-400" : "text-white/30" }`}>
                         Credentials secured in Cloud & Sync cache. End-to-end protected.
                     </p>
-                </motion.div>
+                </div>
             </main>
         </div>
     );

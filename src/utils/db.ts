@@ -142,26 +142,30 @@ async function connectDB() {
             connectTimeoutMS: 8000,
         };
 
-        // Try connecting directly with the original MONGODB_URI first.
-        cached.promise = mongoose.connect(MONGODB_URI, opts)
-            .then((mongooseInstance) => {
-                console.log("Connected to MongoDB directly using original MONGODB_URI.");
-                return mongooseInstance;
-            })
-            .catch(async (directError) => {
-                console.warn("Direct connection failed, attempting DNS-over-HTTPS fallback...", directError.message || directError);
+        // If using mongodb+srv://, resolve via DoH first to avoid 8s local DNS timeout on blocked UDP port 53
+        cached.promise = (async () => {
+            let targetUri = MONGODB_URI;
+            if (MONGODB_URI.startsWith("mongodb+srv://")) {
                 try {
-                    const resolvedUri = await resolveSrvConnectionString(MONGODB_URI);
-                    if (resolvedUri === MONGODB_URI) {
-                        throw directError;
-                    }
-                    console.log("Retrying database connection with DoH resolved replica set URI...");
-                    return await mongoose.connect(resolvedUri, opts);
-                } catch (fallbackError) {
-                    console.error("MongoDB failover fallback connection also failed:", fallbackError);
-                    throw directError;
+                    targetUri = await resolveSrvConnectionString(MONGODB_URI);
+                } catch (dohError) {
+                    console.warn("DoH pre-resolution failed, trying original MONGODB_URI...", dohError);
+                    targetUri = MONGODB_URI;
                 }
-            });
+            }
+
+            try {
+                const mongooseInstance = await mongoose.connect(targetUri, opts);
+                console.log("Connected to MongoDB successfully.");
+                return mongooseInstance;
+            } catch (firstError) {
+                if (targetUri !== MONGODB_URI) {
+                    console.warn("Resolved URI connection failed, falling back to original MONGODB_URI...", firstError);
+                    return await mongoose.connect(MONGODB_URI, opts);
+                }
+                throw firstError;
+            }
+        })();
     }
 
     try {
