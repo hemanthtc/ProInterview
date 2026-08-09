@@ -20,8 +20,9 @@ export default function Home() {
 
     useEffect(() => {
         // Org admins have their own dashboard — redirect them away from the user home
+        const loggedIn = getStorageItem("userLoggedIn") === "true";
         const role = localStorage.getItem("userRole");
-        if (role === "admin") {
+        if (loggedIn && role === "admin") {
             router.push("/admin");
             return;
         }
@@ -59,11 +60,8 @@ export default function Home() {
 
         // Dynamic scrollspy active indicators
         const handleHashChange = () => {
-            if (window.location.hash === "#how-it-works") {
-                setActiveSection("how-it-works");
-            } else {
-                setActiveSection("home");
-            }
+            const targetSection = window.location.hash === "#how-it-works" ? "how-it-works" : "home";
+            setActiveSection((prev) => (prev === targetSection ? prev : targetSection));
         };
 
         const handleScroll = () => {
@@ -71,11 +69,11 @@ export default function Home() {
             if (howItWorks) {
                 const rect = howItWorks.getBoundingClientRect();
                 if (rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2) {
-                    setActiveSection("how-it-works");
+                    setActiveSection((prev) => (prev === "how-it-works" ? prev : "how-it-works"));
                     return;
                 }
             }
-            setActiveSection("home");
+            setActiveSection((prev) => (prev === "home" ? prev : "home"));
         };
 
         window.addEventListener("hashchange", handleHashChange);

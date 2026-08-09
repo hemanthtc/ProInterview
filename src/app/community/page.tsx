@@ -71,6 +71,7 @@ export default function CommunityPage() {
     const [mobileShowSidebar, setMobileShowSidebar] = useState(true);
     const bottomRef = useRef<HTMLDivElement>(null);
     const lastStampRef = useRef<string>("");
+    const authDeadRef = useRef(false);
 
     const activeRoom = useMemo(
         () => rooms.find((r) => r.slug === activeSlug) || rooms[0],
@@ -86,10 +87,20 @@ export default function CommunityPage() {
         setReady(true);
     }, [router]);
 
+    /** Redirect to login on 401 and stop all further polling. */
+    const handleAuthExpired = useCallback(() => {
+        if (authDeadRef.current) return;
+        authDeadRef.current = true;
+        try { localStorage.removeItem("userLoggedIn"); } catch { /* ignore */ }
+        router.push("/login");
+    }, [router]);
+
     const loadRooms = useCallback(async () => {
+        if (authDeadRef.current) return;
         setLoadingRooms(true);
         try {
             const res = await fetch("/api/community/rooms");
+            if (res.status === 401) { handleAuthExpired(); return; }
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Failed to load rooms");
             const nextRooms: Room[] = data.rooms || [];
@@ -104,16 +115,17 @@ export default function CommunityPage() {
         } finally {
             setLoadingRooms(false);
         }
-    }, []);
+    }, [handleAuthExpired]);
 
     const loadMessages = useCallback(
         async (opts?: { incremental?: boolean }) => {
-            if (!activeSlug) return;
+            if (!activeSlug || authDeadRef.current) return;
             try {
                 const after = opts?.incremental ? lastStampRef.current : "";
                 const qs = new URLSearchParams({ room: activeSlug, limit: "100" });
                 if (after) qs.set("after", after);
                 const res = await fetch(`/api/community/messages?${qs.toString()}`);
+                if (res.status === 401) { handleAuthExpired(); return; }
                 const data = await res.json();
                 if (!res.ok) throw new Error(data.error || "Failed to load chat");
                 const incoming: ChatMessage[] = data.messages || [];
@@ -142,17 +154,20 @@ export default function CommunityPage() {
                 }
             }
         },
-        [activeSlug]
+        [activeSlug, handleAuthExpired]
     );
 
     const loadPresence = useCallback(async () => {
+        if (authDeadRef.current) return;
         try {
-            await fetch("/api/community/presence", {
+            const postRes = await fetch("/api/community/presence", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ roomSlug: activeSlug }),
             });
+            if (postRes.status === 401) { handleAuthExpired(); return; }
             const res = await fetch("/api/community/presence");
+            if (res.status === 401) { handleAuthExpired(); return; }
             const data = await res.json();
             if (res.ok) {
                 if (data.me?.publicId) setMePublicId(data.me.publicId);
@@ -161,7 +176,7 @@ export default function CommunityPage() {
         } catch {
             /* ignore */
         }
-    }, [activeSlug]);
+    }, [activeSlug, handleAuthExpired]);
 
     useEffect(() => {
         if (!ready) return;

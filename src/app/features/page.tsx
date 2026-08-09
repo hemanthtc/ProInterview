@@ -528,10 +528,6 @@ function FeaturesContent() {
 
         const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
         setIsRealisticMode(isRealistic);
-        if (isRealistic) {
-            router.push("/");
-            return;
-        }
         syncAccountDetailsFromStorage();
 
         const savedTheme = localStorage.getItem("globalTheme") as any;
