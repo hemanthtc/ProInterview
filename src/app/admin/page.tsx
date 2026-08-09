@@ -180,7 +180,7 @@ export default function AdminDashboard() {
         }
         ["userLoggedIn","userName","userIdentifier","userRole","userType",
          "userOrgName","userSubscriptionPlan"].forEach(k => localStorage.removeItem(k));
-        router.push("/login");
+        window.location.href = "/login";
     };
 
     // ── Add Employee ────────────────────────────────────────────────────────────

@@ -377,7 +377,7 @@ export default function ProfilePage() {
         removeStorageItem("userIdentifier");
         removeStorageItem("userType");
         removeStorageItem("userRole");
-        router.push("/");
+        window.location.href = "/";
     };
 
     const initiatePayment = async (planName: string) => {
