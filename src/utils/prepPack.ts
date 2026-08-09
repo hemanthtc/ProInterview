@@ -7,6 +7,8 @@ export interface PrepPack {
     interviewDate?: string;
     interviewAt?: number | null;
     platform?: string;
+    /** Google Meet / Zoom deep link extracted from invite */
+    meetingUrl?: string;
     skills: string[];
     checklist: { id: string; label: string; done: boolean }[];
     reminders: { id: string; label: string; at: number; fired?: boolean }[];
@@ -23,12 +25,22 @@ function parseLooseDate(raw?: string): number | null {
     return null;
 }
 
+/** Pull Google Meet / Zoom / Teams links from invite text */
+export function extractMeetingUrl(text?: string): string | undefined {
+    if (!text) return undefined;
+    const match = text.match(
+        /https?:\/\/(?:meet\.google\.com|zoom\.us\/j|teams\.microsoft\.com\/l\/meetup)[^\s<>"']+/i
+    );
+    return match?.[0];
+}
+
 export function buildPrepPackFromEmail(input: {
     company?: string;
     role?: string;
     hrName?: string;
     interviewDate?: string;
     platform?: string;
+    meetingUrl?: string;
     skills?: string[];
     mandatoryThings?: string[] | string;
     importantPoints?: string[] | string;
@@ -92,6 +104,7 @@ export function buildPrepPackFromEmail(input: {
         interviewDate: input.interviewDate,
         interviewAt,
         platform: input.platform,
+        meetingUrl: input.meetingUrl,
         skills: input.skills || [],
         checklist,
         reminders,

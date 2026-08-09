@@ -6,6 +6,8 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTr
 import { motion } from "framer-motion";
 import { marked } from "marked";
 import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageItem } from "../../utils/storage";
+import { computeFinalInterviewScore } from "../../utils/scoring";
+import SessionRecorder from "../../components/SessionRecorder";
 import VoiceCoachPanel from "../../components/VoiceCoachPanel";
 import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapshot } from "../../utils/voiceCoach";
 import { syncSessionsToCloud } from "../../utils/cloudSync";
@@ -485,6 +487,8 @@ export default function InterviewRoom() {
                     level,
                     hrIntel: activeHrIntel || undefined,
                     companyClone: companyCloneMode,
+                    domainPackId: getStorageItem("domainPackId") || undefined,
+                    voiceLanguage: getStorageItem("voiceLanguage") || "en-IN",
                 }),
             });
             const data = await res.json();
@@ -844,7 +848,7 @@ export default function InterviewRoom() {
             
             let finalOutput = iScore;
             if (hasPortfolio) {
-                finalOutput = Math.round(pRatingValue * 0.35 + iScore * 0.65);
+                finalOutput = computeFinalInterviewScore(pRatingValue, iScore);
             }
             // Clamp to valid range
             finalOutput = Math.max(0, Math.min(100, finalOutput));
@@ -947,6 +951,15 @@ export default function InterviewRoom() {
                         </div>
                     ) : finalScores ? (
                         <div className="mb-6">
+                            <div className="mb-4">
+                                <SessionRecorder
+                                    title="ProInterview Mock Interview"
+                                    transcript={
+                                        finalScores.annotatedTranscript ||
+                                        messages.map((m) => `${m.role === "user" ? "YOU" : "AI"}: ${m.content}`).join("\n\n")
+                                    }
+                                />
+                            </div>
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6 text-left">
                                 <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4">Final Evaluation</h3>
                                 {typeof finalScores.portfolio === 'number' && (

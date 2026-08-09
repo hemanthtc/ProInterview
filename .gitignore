@@ -48,6 +48,7 @@ next-env.d.ts
 !tsconfig.json
 !models.json
 !.cursor/environment.json
+!public/manifest.json
 *.log
 err.json
 err2.json

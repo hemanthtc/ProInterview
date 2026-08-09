@@ -1,18 +1,31 @@
 import crypto from "crypto";
 import { cookies } from "next/headers";
+import type { AccountType } from "@/types/auth";
 
-const JWT_SECRET = process.env.JWT_SECRET || "default-fallback-super-secure-key-123456-prointerview";
+function getJwtSecret(): string {
+    const secret = process.env.JWT_SECRET?.trim();
+    if (!secret) {
+        throw new Error(
+            "JWT_SECRET is not set. Add a strong secret to your environment (see .env.example)."
+        );
+    }
+    if (secret.length < 32) {
+        throw new Error("JWT_SECRET must be at least 32 characters.");
+    }
+    return secret;
+}
 
 export interface SessionPayload {
     identifier: string;
-    role: "user" | "admin" | "employee";
+    role: AccountType;
     isOrganization: boolean;
 }
 
 /**
- * Creates a signed JWT using native Node.js crypto.
+ * Creates a signed JWT using native Node.js crypto (HMAC-SHA256).
  */
 export function createToken(payload: SessionPayload): string {
+    const JWT_SECRET = getJwtSecret();
     const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
     const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 })).toString("base64url");
     const signature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${data}`).digest("base64url");
@@ -24,16 +37,21 @@ export function createToken(payload: SessionPayload): string {
  */
 export function verifyToken(token: string): SessionPayload | null {
     try {
+        const JWT_SECRET = getJwtSecret();
         const parts = token.split(".");
         if (parts.length !== 3) return null;
         const [header, data, signature] = parts;
         const expectedSignature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${data}`).digest("base64url");
         if (signature !== expectedSignature) return null;
-        
+
         const payload = JSON.parse(Buffer.from(data, "base64url").toString("utf8"));
         if (payload.exp && Date.now() > payload.exp) return null;
-        return payload;
-    } catch (e) {
+        return {
+            identifier: payload.identifier,
+            role: payload.role,
+            isOrganization: !!payload.isOrganization,
+        };
+    } catch {
         return null;
     }
 }
@@ -77,7 +95,7 @@ export async function getVerifiedSession(): Promise<SessionPayload | null> {
         const token = cookieStore.get("session")?.value;
         if (!token) return null;
         return verifyToken(token);
-    } catch (e) {
+    } catch {
         return null;
     }
 }

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ArrowLeft, Video, LogOut, Clock, Download, TrendingUp, User, Award, Activity, Trash2, CheckSquare, Square, Sparkles, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, Film, Share2 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
+import type { ProfileInterviewSession, ProfileToastState } from "../../types/profile";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData } from "../../utils/storage";
@@ -12,7 +13,7 @@ export default function ProfilePage() {
     const router = useRouter();
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const [isRealisticMode, setIsRealisticMode] = useState(false);
-    const [sessions, setSessions] = useState<any[]>([]);
+    const [sessions, setSessions] = useState<ProfileInterviewSession[]>([]);
     const [userName, setUserName] = useState<string>("Guest");
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
     const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
@@ -35,7 +36,7 @@ export default function ProfilePage() {
     const [isDeleting, setIsDeleting] = useState(false);
     
     // Toast success/info messages state
-    const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" | "info" }>({ show: false, message: "", type: "success" });
+    const [toast, setToast] = useState<ProfileToastState>({ show: false, message: "", type: "success" });
 
     // Profile photo states
     const [profilePhoto, setProfilePhoto] = useState<string>("");

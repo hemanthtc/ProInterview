@@ -23,6 +23,7 @@ export default function SetupPage() {
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [companyCloneMode, setCompanyCloneMode] = useState(true);
     const [hrPersonaPreview, setHrPersonaPreview] = useState<{ name?: string; title?: string } | null>(null);
+    const [voiceLanguage, setVoiceLanguage] = useState("en-IN");
     const router = useRouter();
 
     const [hasAccountPortfolio, setHasAccountPortfolio] = useState(false);
@@ -173,6 +174,7 @@ export default function SetupPage() {
             setStorageItem("interviewLevel", level);
             setStorageItem("interviewType", globalMode);
             setStorageItem("aiProvider", provider);
+            setStorageItem("voiceLanguage", voiceLanguage);
             if (portfolioUrl.trim()) {
                 setStorageItem("userPortfolio", portfolioUrl.trim());
             }
@@ -382,6 +384,46 @@ export default function SetupPage() {
                             ))}
                         </div>
                     </div>
+
+                        <div className="mt-8">
+                            <label className="text-white/80 font-semibold mb-3 flex items-center gap-2"><Cpu className="w-4 h-4"/> Select AI Provider</label>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                {[
+                                    { id: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
+                                    { id: "sarvam", label: "Sarvam AI", desc: "Hindi / regional-friendly voice path." }
+                                ].map((prov) => (
+                                    <button
+                                        key={prov.id}
+                                        type="button"
+                                        onClick={() => setProvider(prov.id)}
+                                        className={`p-4 rounded-xl border text-left transition-all ${provider === prov.id ? "bg-indigo-600/20 border-indigo-500 shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
+                                    >
+                                        <span className={`block font-bold mb-1 ${provider === prov.id ? "text-indigo-300" : ""}`}>{prov.label}</span>
+                                        <span className="text-xs opacity-70 leading-relaxed block">{prov.desc}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="mt-4">
+                                <label className="text-white/70 text-sm font-medium mb-2 block">Interview language / voice locale</label>
+                                <select
+                                    value={voiceLanguage}
+                                    onChange={(e) => setVoiceLanguage(e.target.value)}
+                                    className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
+                                >
+                                    <option value="en-IN">English (India)</option>
+                                    <option value="en-US">English (US)</option>
+                                    <option value="hi-IN">Hindi (हिन्दी)</option>
+                                    <option value="ta-IN">Tamil</option>
+                                    <option value="te-IN">Telugu</option>
+                                    <option value="kn-IN">Kannada</option>
+                                    <option value="mr-IN">Marathi</option>
+                                    <option value="bn-IN">Bengali</option>
+                                </select>
+                                <p className="text-[11px] text-white/40 mt-1">
+                                    Sarvam path prefers Indian languages; browser speech synthesis uses this locale when available.
+                                </p>
+                            </div>
+                        </div>
                 )}
 
                 {error && <p className="text-red-400 mt-4 text-sm font-semibold">{error}</p>}
