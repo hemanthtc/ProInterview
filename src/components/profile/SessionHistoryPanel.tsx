@@ -12,24 +12,10 @@ import {
     Square,
     Trash2,
 } from "lucide-react";
-
-export interface ProfileSessionSummary {
-    timestamp: number;
-    summary?: string;
-    transcript?: string;
-    finalScore?: number;
-    technicalRating?: number;
-    behavioralRating?: number;
-    communicationRating?: number;
-    portfolioRating?: number | string;
-    interviewRating?: number;
-    userName?: string;
-    company?: string;
-    role?: string;
-}
+import type { ProfileInterviewSession } from "../../types/profile";
 
 interface SessionHistoryPanelProps {
-    sessions: ProfileSessionSummary[];
+    sessions: ProfileInterviewSession[];
     selectedIds: Set<number>;
     expandedIds: Set<number>;
     onToggleSelect: (idx: number) => void;
@@ -37,7 +23,7 @@ interface SessionHistoryPanelProps {
     onToggleExpand: (idx: number) => void;
     onDeleteSelected: () => void;
     onDownloadTranscript: (text: string, date: number) => void;
-    onShareScorecard: (session: ProfileSessionSummary) => void;
+    onShareScorecard: (session: ProfileInterviewSession) => void;
 }
 
 /** Interview session history list — select/expand/delete/download/share for each past attempt. */
