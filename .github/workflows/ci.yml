@@ -17,6 +17,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - name: Lint (non-blocking while pre-existing issues are paid down)
+        continue-on-error: true
+        run: npm run lint
       - name: Build
         env:
           JWT_SECRET: ci-build-secret-key-with-at-least-32-chars
