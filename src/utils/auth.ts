@@ -42,7 +42,11 @@ export function verifyToken(token: string): SessionPayload | null {
         if (parts.length !== 3) return null;
         const [header, data, signature] = parts;
         const expectedSignature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${data}`).digest("base64url");
-        if (signature !== expectedSignature) return null;
+        const sigBuffer = Buffer.from(signature);
+        const expectedBuffer = Buffer.from(expectedSignature);
+        if (sigBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(sigBuffer, expectedBuffer)) {
+            return null;
+        }
 
         const payload = JSON.parse(Buffer.from(data, "base64url").toString("utf8"));
         if (payload.exp && Date.now() > payload.exp) return null;

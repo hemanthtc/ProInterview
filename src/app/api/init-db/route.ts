@@ -16,10 +16,12 @@ export async function GET(req: NextRequest) {
 
         const initKey = new URL(req.url).searchParams.get("key") || req.headers.get("x-init-key");
         const configuredKey = process.env.INIT_DB_KEY;
-        if (process.env.NODE_ENV === "production") {
-            if (!configuredKey || initKey !== configuredKey) {
+        if (configuredKey) {
+            if (!initKey || initKey !== configuredKey) {
                 return NextResponse.json({ error: "Unauthorized access. Database initialization is locked." }, { status: 403 });
             }
+        } else if (process.env.NODE_ENV === "production") {
+            return NextResponse.json({ error: "Unauthorized access. INIT_DB_KEY is required in production." }, { status: 403 });
         }
 
         const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;

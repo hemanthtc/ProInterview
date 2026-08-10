@@ -48,7 +48,7 @@ export async function GET(req: NextRequest) {
         }
 
         const Model = getModel(accountType);
-        const account = await Model.findOne({ identifier });
+        const account = await Model.findOne({ identifier }).select("-password");
         if (!account) {
             return NextResponse.json({ error: "Account not found." }, { status: 404 });
         }
@@ -93,7 +93,8 @@ export async function GET(req: NextRequest) {
         });
     } catch (error: any) {
         console.error("GET Profile API error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        const sanitizedMessage = process.env.NODE_ENV === "production" ? "Internal server error." : (error.message || "Internal server error");
+        return NextResponse.json({ error: sanitizedMessage }, { status: 500 });
     }
 }
 
@@ -209,10 +210,20 @@ export async function DELETE(req: NextRequest) {
     try {
         await connectDB();
         const { searchParams } = new URL(req.url);
-        const identifier = searchParams.get("identifier");
-        const accountType = searchParams.get("accountType") || "user";
-        const mode = searchParams.get("mode") || "account";
-        const password = searchParams.get("password");
+        let identifier = searchParams.get("identifier") || "";
+        let accountType = searchParams.get("accountType") || "user";
+        let mode = searchParams.get("mode") || "account";
+        let password = searchParams.get("password") || "";
+
+        try {
+            const body = await req.json();
+            if (body && typeof body === "object") {
+                if (body.identifier) identifier = String(body.identifier);
+                if (body.accountType) accountType = String(body.accountType);
+                if (body.mode) mode = String(body.mode);
+                if (body.password) password = String(body.password);
+            }
+        } catch {}
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });

@@ -634,9 +634,15 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         const role = getStorageItem("userRole") || "user";
         try {
             if (identifier) {
-                const url = `/api/auth/profile?identifier=${encodeURIComponent(identifier)}&accountType=${role}&mode=${deleteConfirmMode}&password=${encodeURIComponent(confirmPassword)}`;
-                const res = await fetch(url, {
-                    method: "DELETE"
+                const res = await fetch("/api/auth/profile", {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        identifier,
+                        accountType: role,
+                        mode: deleteConfirmMode,
+                        password: confirmPassword,
+                    }),
                 });
                 const result = await res.json();
                 

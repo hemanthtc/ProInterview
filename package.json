@@ -9,7 +9,7 @@
     "jszip": "^3.10.1",
     "lucide-react": "^0.577.0",
     "marked": "^17.0.6",
-    "mongoose": "^9.7.3",
+    "mongoose": "^9.9.1",
     "next": "^16.2.9",
     "nodemailer": "^9.0.3",
     "pdf-parse": "^1.1.1",
@@ -35,6 +35,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "aws-cdk-lib": "^2.244.0",
+    "caniuse-lite": "^1.0.30001809",
     "constructs": "^10.8.1",
     "esbuild": "^0.28.1",
     "postcss": "^8.5.8",
@@ -42,5 +43,8 @@
     "tsx": "^4.23.11",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
+  },
+  "overrides": {
+    "@opentelemetry/core": "^2.0.0"
   }
 }
