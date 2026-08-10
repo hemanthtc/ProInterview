@@ -1,11 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
+import { rateLimit } from "@/utils/rateLimit";
+import {
+    extractResumeProfileHeuristic,
+    searchMatchingJobs,
+    webSearchUrls,
+    type JobType,
+    type MatchedJob,
+    type ResumeProfile,
+} from "@/utils/jobSearch";
 
 export interface JobListing {
     id: string;
     company: string;
     role: string;
     location: string;
-    type: "full-time" | "intern" | "contract";
+    type: JobType;
     remote: boolean;
     tags: string[];
     salaryRange?: string;
@@ -14,7 +24,7 @@ export interface JobListing {
     postedAt: string;
 }
 
-const JOBS: JobListing[] = [
+const FALLBACK_JOBS: JobListing[] = [
     {
         id: "job_stripe_be",
         company: "Stripe",
@@ -82,11 +92,8 @@ const JOBS: JobListing[] = [
     },
 ];
 
-export async function GET(req: NextRequest) {
-    const { searchParams } = new URL(req.url);
-    const q = (searchParams.get("q") || "").toLowerCase();
-    const tag = (searchParams.get("tag") || "").toLowerCase();
-    let list = JOBS;
+function filterStatic(q: string, tag: string): JobListing[] {
+    let list = FALLBACK_JOBS;
     if (q) {
         list = list.filter(
             (j) =>
@@ -98,5 +105,146 @@ export async function GET(req: NextRequest) {
     if (tag) {
         list = list.filter((j) => j.tags.some((t) => t.toLowerCase().includes(tag)));
     }
-    return NextResponse.json({ jobs: list });
+    return list;
+}
+
+async function enrichProfileWithGemini(resumeText: string, heuristic: ResumeProfile): Promise<ResumeProfile> {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key || key === "dummy" || key.includes("your_gemini")) {
+        return heuristic;
+    }
+
+    try {
+        const prompt = `Extract a job-search profile from this resume. Return JSON only:
+{
+  "roles": ["target job titles, max 4"],
+  "skills": ["technical skills, max 15"],
+  "keywords": ["extra searchable keywords, max 12"],
+  "seniority": "junior|mid|senior",
+  "summary": "one short sentence"
+}
+
+RESUME:
+${resumeText.slice(0, 9000)}`;
+
+        const raw = await cachedGenerate(promptCacheKey("job-profile", resumeText.slice(0, 2000)), prompt);
+        const parsed = parseJsonFromModel(raw) as Partial<ResumeProfile>;
+        return {
+            roles: Array.isArray(parsed.roles) && parsed.roles.length ? parsed.roles.map(String).slice(0, 5) : heuristic.roles,
+            skills: Array.isArray(parsed.skills) && parsed.skills.length ? parsed.skills.map(String).slice(0, 15) : heuristic.skills,
+            keywords:
+                Array.isArray(parsed.keywords) && parsed.keywords.length
+                    ? parsed.keywords.map(String).slice(0, 20)
+                    : heuristic.keywords,
+            seniority: typeof parsed.seniority === "string" ? parsed.seniority : heuristic.seniority,
+            summary: typeof parsed.summary === "string" ? parsed.summary : heuristic.summary,
+        };
+    } catch {
+        return heuristic;
+    }
+}
+
+function scoreFallbackJobs(profile: ResumeProfile, location: string): MatchedJob[] {
+    return FALLBACK_JOBS.map((job) => {
+        const hay = `${job.role} ${job.company} ${job.location} ${job.tags.join(" ")} ${job.description}`.toLowerCase();
+        let score = 8;
+        const reasons: string[] = ["Curated fallback listing"];
+        for (const role of profile.roles) {
+            if (hay.includes(role.toLowerCase()) || role.toLowerCase().split(/\s+/).some((p) => p.length > 3 && hay.includes(p))) {
+                score += 18;
+                reasons.push(`Role overlap: ${role}`);
+                break;
+            }
+        }
+        const skillHits = profile.skills.filter((s) => hay.includes(s.toLowerCase()));
+        if (skillHits.length) {
+            score += Math.min(24, skillHits.length * 5);
+            reasons.push(`Skills: ${skillHits.slice(0, 3).join(", ")}`);
+        }
+        const loc = location.toLowerCase();
+        if (loc && (job.location.toLowerCase().includes(loc.split(/[\s,/]/)[0] || "") || (job.remote && loc.includes("remote")))) {
+            score += 16;
+            reasons.push(`Location match: ${location}`);
+        } else if (job.remote) {
+            score += 8;
+            reasons.push("Remote-friendly opening");
+        }
+        return {
+            ...job,
+            applyUrl: job.applyUrl || "#",
+            source: "ProInterview curated",
+            matchPercent: Math.min(90, score),
+            matchReasons: reasons.slice(0, 4),
+        };
+    }).sort((a, b) => b.matchPercent - a.matchPercent);
+}
+
+/** Simple keyword filter over curated listings (backward compatible). */
+export async function GET(req: NextRequest) {
+    const { searchParams } = new URL(req.url);
+    const q = (searchParams.get("q") || "").toLowerCase();
+    const tag = (searchParams.get("tag") || "").toLowerCase();
+    return NextResponse.json({ jobs: filterStatic(q, tag) });
+}
+
+/**
+ * Resume + preferred-location match: searches public internet job boards
+ * and returns ranked openings with apply links.
+ */
+export async function POST(req: NextRequest) {
+    try {
+        const body = await req.json();
+        const resumeText = String(body.resumeText || "").trim();
+        const location = String(body.location || "").trim();
+
+        if (!resumeText || resumeText.length < 40) {
+            return NextResponse.json(
+                { error: "Please provide a resume (upload or paste at least a short resume)." },
+                { status: 400 }
+            );
+        }
+        if (!location) {
+            return NextResponse.json({ error: "Preferred location is required." }, { status: 400 });
+        }
+
+        const rl = rateLimit(`jobs-match:${req.headers.get("x-forwarded-for") || "anon"}`, {
+            limit: 12,
+            windowMs: 15 * 60 * 1000,
+        });
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
+                { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+            );
+        }
+
+        const heuristic = extractResumeProfileHeuristic(resumeText);
+        const profile = await enrichProfileWithGemini(resumeText, heuristic);
+        const live = await searchMatchingJobs(profile, location);
+
+        let jobs = live.jobs;
+        let usedFallback = false;
+        if (jobs.length < 5) {
+            const fallback = scoreFallbackJobs(profile, location);
+            const seen = new Set(jobs.map((j) => j.id));
+            for (const f of fallback) {
+                if (!seen.has(f.id)) jobs.push(f);
+            }
+            usedFallback = true;
+            jobs = jobs.sort((a, b) => b.matchPercent - a.matchPercent).slice(0, 30);
+        }
+
+        return NextResponse.json({
+            jobs,
+            profile,
+            queries: live.queries,
+            sourcesTried: live.sourcesTried,
+            usedFallback,
+            webSearches: webSearchUrls(profile, location),
+            location,
+        });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to match jobs";
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
 }
