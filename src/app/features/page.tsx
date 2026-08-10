@@ -3664,9 +3664,11 @@ function FeaturesContent() {
             ) : (
 
                 <main className={`flex-1 flex flex-col items-center justify-center relative ${activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : "px-6 py-12 overflow-hidden"}`}>
-                    <div className="w-full max-w-4xl mb-6">
-                        <LabsBanner isLight={isLight} />
-                    </div>
+                    {activeModal === null && (
+                        <div className="w-full max-w-4xl mb-6">
+                            <LabsBanner isLight={isLight} />
+                        </div>
+                    )}
                     <div className="absolute top-[10%] left-[20%] w-[500px] h-[500px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
                     <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 
