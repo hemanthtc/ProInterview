@@ -96,9 +96,20 @@ export async function generateWithFallback(
     const genAI = new GoogleGenerativeAI(key);
     const primaryModel = options.model || "gemini-2.0-flash";
     const detectedKeyModels = await fetchKeySupportedModels(key);
-    const modelsToTry = Array.from(new Set([primaryModel, ...detectedKeyModels, ...ADVANCED_CANDIDATE_MODELS]));
+    const modelsToTry = Array.from(new Set([
+        primaryModel,
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+        "gemini-1.5-pro",
+        "gemini-2.5-flash",
+        ...detectedKeyModels,
+        ...ADVANCED_CANDIDATE_MODELS,
+    ]));
 
     let lastErr: unknown;
+    let rateLimitCount = 0;
+    const maxRateLimitRetries = 2;
+
     for (const modelName of modelsToTry) {
         try {
             const model = genAI.getGenerativeModel({ model: modelName, generationConfig: options.generationConfig });
@@ -106,14 +117,23 @@ export async function generateWithFallback(
             return result.response.text();
         } catch (err: any) {
             lastErr = err;
-            const isFallbackable = err?.status === 429 || err?.status === 404 || err?.status === 503 ||
-                (err?.message && (err.message.includes("429") || err.message.includes("404") || err.message.includes("503") || err.message.includes("Quota") || err.message.includes("quota") || err.message.includes("not found") || err.message.includes("rate") || err.message.includes("limit") || err.message.includes("exceeded")));
+            const isRateLimit = err?.status === 429 || (err?.message && (err.message.includes("429") || err.message.includes("Quota") || err.message.includes("quota") || err.message.includes("rate") || err.message.includes("limit") || err.message.includes("exceeded")));
+            const isNotFound = err?.status === 404 || (err?.message && err.message.includes("404"));
 
-            if (isFallbackable) {
-                console.warn(`Gemini API issue (${err?.status || 'error'}) on model '${modelName}', retrying with next fallback model...`);
-                await new Promise(r => setTimeout(r, 1000));
+            if (isRateLimit) {
+                rateLimitCount++;
+                if (rateLimitCount >= maxRateLimitRetries) {
+                    console.log("[Gemini API] Rate-limited, activating fallback mode.");
+                    throw new Error("Gemini API rate limit reached. Utilizing fallback mode.");
+                }
+                await new Promise(r => setTimeout(r, 200));
                 continue;
             }
+
+            if (isNotFound) {
+                continue;
+            }
+
             throw err;
         }
     }

@@ -2,12 +2,25 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Mic, MicOff, Send, Users, Volume2, VolumeX, Moon, Sun, Eye } from "lucide-react";
+import {
+    Loader2,
+    Mic,
+    MicOff,
+    Send,
+    Users,
+    Volume2,
+    VolumeX,
+    Moon,
+    Sun,
+    Eye,
+    CheckCircle2,
+    HelpCircle,
+    XCircle,
+    Award,
+} from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import { speakInterviewText, stopSpeechInterviewText } from "@/utils/speakInterview";
 
-// SpeechRecognition isn't in the default TS DOM lib — mirror the interview room's usage.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SpeechRecognitionInstance = any;
 
 interface Panelist {
@@ -39,20 +52,34 @@ export default function PanelInterviewPage() {
     const [error, setError] = useState("");
     const [done, setDone] = useState(false);
     const [summary, setSummary] = useState<PanelSummary | null>(null);
+    const [pastSummary, setPastSummary] = useState<PanelSummary | null>(null);
     const [muted, setMuted] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
     const [isListening, setIsListening] = useState(false);
     const [micAvailable, setMicAvailable] = useState(false);
 
+    const inputRef = useRef<HTMLInputElement>(null);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+
     const recognitionRef = useRef<SpeechRecognitionInstance>(null);
     const mutedRef = useRef(muted);
     const isListeningRef = useRef(isListening);
+    const isSpeakingRef = useRef(isSpeaking);
+
     useEffect(() => {
         mutedRef.current = muted;
     }, [muted]);
     useEffect(() => {
         isListeningRef.current = isListening;
     }, [isListening]);
+    useEffect(() => {
+        isSpeakingRef.current = isSpeaking;
+    }, [isSpeaking]);
+
+    // Auto-scroll chat container smoothly when messages update
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, [messages, loading]);
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
@@ -60,6 +87,13 @@ export default function PanelInterviewPage() {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
             setTheme(savedTheme);
+        }
+
+        try {
+            const storedPast = localStorage.getItem("prointerview_panel_past_scorecard");
+            if (storedPast) setPastSummary(JSON.parse(storedPast));
+        } catch {
+            /* ignore */
         }
     }, []);
 
@@ -73,7 +107,35 @@ export default function PanelInterviewPage() {
         document.documentElement.classList.add(`theme-${next}`);
     };
 
+    const stopListening = useCallback(() => {
+        if (!recognitionRef.current) return;
+        try {
+            recognitionRef.current.stop();
+        } catch {
+            /* ignore */
+        }
+        setIsListening(false);
+    }, []);
+
+    const teardownAudioAndMic = useCallback(() => {
+        stopSpeechInterviewText();
+        stopListening();
+    }, [stopListening]);
+
+    const closeInterview = useCallback(() => {
+        teardownAudioAndMic();
+        setMessages([]);
+        setInput("");
+        setDone(false);
+        setSummary(null);
+        setError("");
+    }, [teardownAudioAndMic]);
+
+    const hasStartedRef = useRef(false);
     useEffect(() => {
+        if (hasStartedRef.current) return;
+        hasStartedRef.current = true;
+
         fetch("/api/panel-interviewer")
             .then((r) => r.json())
             .then((d) => setPanelists(d.panelists || []))
@@ -84,6 +146,11 @@ export default function PanelInterviewPage() {
 
     async function send(text: string, opening = false) {
         if (loading || done) return;
+
+        // Immediately pause speech recognition to isolate mic from AI speech playback
+        stopListening();
+        stopSpeechInterviewText();
+
         setLoading(true);
         setError("");
         const history = messages;
@@ -108,36 +175,54 @@ export default function PanelInterviewPage() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Panel request failed");
+
+            const cleanReply = (typeof data.reply === "string" ? data.reply : "")
+                .replace(/\[PASS_TO:[^\]]+\]/gi, "")
+                .replace(/\[TERMINATE\]/gi, "")
+                .replace(/```json[\s\S]*?```/gi, "")
+                .trim();
+
+            if (data.speakerId) setActiveId(data.speakerId);
+            else if (data.passTo) setActiveId(data.passTo);
+
             setMessages((m) => [
                 ...m,
                 {
                     role: "assistant",
-                    content: data.reply,
+                    content: cleanReply,
                     panelist: data.speakerName,
                     speakerRole: data.speakerRole,
                 },
             ]);
-            if (!mutedRef.current && typeof data.reply === "string" && data.reply.trim()) {
-                void speakInterviewText(data.reply, {
+            if (!mutedRef.current && cleanReply) {
+                void speakInterviewText(cleanReply, {
                     provider: localStorage.getItem("aiProvider") || "gemini",
                     voiceLanguage: localStorage.getItem("voiceLanguage") || "en-IN",
                     isListening: () => isListeningRef.current,
-                    onStart: () => setIsSpeaking(true),
+                    onStart: () => {
+                        setIsSpeaking(true);
+                        stopListening();
+                    },
                     onEnd: () => setIsSpeaking(false),
                 });
             }
-            if (data.passTo) setActiveId(data.passTo);
             if (data.terminate) {
                 setDone(true);
-                if (data.summary) setSummary(data.summary);
-                else {
-                    // Lightweight client summary when API omits one
-                    setSummary({
-                        overall: Math.min(92, 55 + Math.floor(history.length * 3)),
-                        strengths: ["Showed up for a multi-interviewer loop", "Responded under panel pressure"],
-                        gaps: ["Add metrics to behavioral answers", "Clarify trade-offs when challenged"],
-                        nextDrills: ["Practice a STAR story", "Run a system design prompt"],
-                    });
+                const userTurns = history.filter(
+                    (h) => h.role === "user" && h.content && !/i don'?t know|skip/i.test(h.content)
+                );
+                const finalSummary = data.summary || {
+                    overall: userTurns.length === 0 ? 0 : Math.min(90, Math.max(40, userTurns.length * 12)),
+                    strengths: userTurns.length === 0 ? ["Attended panel loop session"] : ["Showed up for a multi-interviewer loop", "Responded under panel pressure"],
+                    gaps: userTurns.length === 0 ? ["No answers submitted for evaluation"] : ["Add metrics to behavioral answers", "Clarify trade-offs when challenged"],
+                    nextDrills: ["Practice a STAR story", "Run a system design prompt"],
+                };
+                setSummary(finalSummary);
+                try {
+                    localStorage.setItem("prointerview_panel_past_scorecard", JSON.stringify(finalSummary));
+                    setPastSummary(finalSummary);
+                } catch {
+                    /* ignore */
                 }
             }
         } catch (e: unknown) {
@@ -147,18 +232,6 @@ export default function PanelInterviewPage() {
         }
     }
 
-    const stopListening = useCallback(() => {
-        if (!recognitionRef.current) return;
-        try {
-            recognitionRef.current.stop();
-        } catch {
-            /* ignore */
-        }
-        setIsListening(false);
-    }, []);
-
-    // Speech recognition's onresult closure is created once on mount, so route
-    // auto-send through a ref to always call the latest `send` (fresh state/deps).
     const sendRef = useRef(send);
     useEffect(() => {
         sendRef.current = send;
@@ -174,10 +247,7 @@ export default function PanelInterviewPage() {
         if (!SpeechRecognitionCtor) return;
 
         setMicAvailable(true);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const recognition = new (SpeechRecognitionCtor as any)();
-        // Single-utterance mode with interim results: fill the input live, then
-        // auto-send once the browser reports a final transcript for this utterance.
         recognition.continuous = false;
         recognition.interimResults = true;
         recognition.lang = localStorage.getItem("voiceLanguage") || "en-IN";
@@ -185,6 +255,9 @@ export default function PanelInterviewPage() {
         recognition.onresult = (event: {
             results: { length: number; [i: number]: { isFinal: boolean; [i: number]: { transcript: string } } };
         }) => {
+            // Discard speech recognition output if AI speaker is active (prevents feedback auto-answers)
+            if (isSpeakingRef.current) return;
+
             let transcript = "";
             let isFinal = false;
             for (let i = 0; i < event.results.length; i++) {
@@ -215,11 +288,6 @@ export default function PanelInterviewPage() {
         };
     }, []);
 
-    const teardownAudioAndMic = useCallback(() => {
-        stopSpeechInterviewText();
-        stopListening();
-    }, [stopListening]);
-
     useEffect(() => {
         return () => {
             teardownAudioAndMic();
@@ -227,10 +295,9 @@ export default function PanelInterviewPage() {
     }, [teardownAudioAndMic]);
 
     function toggleListening() {
-        if (!recognitionRef.current) return;
+        if (!recognitionRef.current || isSpeaking) return;
         if (isListening) {
-            recognitionRef.current.stop();
-            setIsListening(false);
+            stopListening();
             return;
         }
         try {
@@ -240,6 +307,17 @@ export default function PanelInterviewPage() {
             /* already started */
         }
     }
+
+    const handleIKnowAnswer = () => {
+        if (inputRef.current) {
+            inputRef.current.focus();
+        }
+    };
+
+    const handleIDontKnowAnswer = () => {
+        if (loading || done) return;
+        void send("I don't know this question, please move to the next question.");
+    };
 
     return (
         <div className={`min-h-screen transition-colors duration-300 ${
@@ -257,7 +335,7 @@ export default function PanelInterviewPage() {
                         </p>
                         <h1 className="mt-1 text-2xl font-semibold">Multi-interviewer round</h1>
                     </div>
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                         <button
                             onClick={cycleTheme}
                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
@@ -271,9 +349,13 @@ export default function PanelInterviewPage() {
                             {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                             {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                         </button>
-                        <Link href="/prep" onClick={teardownAudioAndMic} className="text-xs font-bold text-indigo-400 hover:underline">
-                            Prep dashboard
-                        </Link>
+                        <button
+                            type="button"
+                            onClick={closeInterview}
+                            className="inline-flex items-center gap-1 text-xs font-bold text-rose-500 hover:text-rose-600 border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 rounded-full transition cursor-pointer"
+                        >
+                            <XCircle className="w-3.5 h-3.5" /> Close Interview
+                        </button>
                         <Link
                             href="/labs"
                             onClick={teardownAudioAndMic}
@@ -289,12 +371,31 @@ export default function PanelInterviewPage() {
                         </Link>
                     </div>
                 </div>
+
+                {pastSummary && !done && (
+                    <div className={`mb-4 flex items-center justify-between gap-3 rounded-xl border px-3.5 py-2.5 text-xs ${
+                        theme === "light"
+                            ? "bg-indigo-50/80 border-indigo-200 text-indigo-900"
+                            : theme === "eyeprotect"
+                            ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917]"
+                            : "bg-indigo-500/10 border-indigo-500/30 text-indigo-200"
+                    }`}>
+                        <div className="flex items-center gap-2">
+                            <Award className="w-4 h-4 text-indigo-500 shrink-0" />
+                            <span>
+                                <b>Last Panel Score: {pastSummary.overall ?? "—"}/100</b>
+                                {pastSummary.strengths?.[0] ? ` · ${pastSummary.strengths[0]}` : ""}
+                            </span>
+                        </div>
+                    </div>
+                )}
+
                 <div className="mb-4 flex items-center justify-end gap-2">
                     {isSpeaking && (
                         <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
                             isLight ? (theme === "eyeprotect" ? "text-teal-800" : "text-indigo-700") : "text-indigo-300/80"
                         }`}>
-                            <Volume2 className="w-3.5 h-3.5" /> Speaking…
+                            <Volume2 className="w-3.5 h-3.5 animate-pulse" /> Speaking…
                         </span>
                     )}
                     <button
@@ -323,10 +424,10 @@ export default function PanelInterviewPage() {
                             className={`rounded-full px-3 py-1.5 text-xs border transition cursor-pointer ${
                                 activeId === p.id
                                     ? (theme === "eyeprotect"
-                                        ? "bg-[#0b5f58] border-[#0b5f58] text-white font-bold"
+                                        ? "bg-[#0b5f58] border-[#0b5f58] text-white font-bold shadow-md scale-105"
                                         : isLight
-                                        ? "bg-indigo-600 border-indigo-600 text-white font-bold"
-                                        : "bg-indigo-500/30 border-indigo-400 text-white font-bold")
+                                        ? "bg-indigo-600 border-indigo-600 text-white font-bold shadow-md scale-105"
+                                        : "bg-indigo-500/40 border-indigo-400 text-white font-bold shadow-[0_0_12px_rgba(99,102,241,0.3)] scale-105")
                                     : (isLight
                                         ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
                                         : "border-white/10 text-white/50 hover:text-white")
@@ -337,7 +438,8 @@ export default function PanelInterviewPage() {
                     ))}
                 </div>
 
-                <div className={`rounded-2xl border min-h-[420px] p-4 space-y-3 ${
+                {/* Fixed-Height Scrollable Chat Container */}
+                <div className={`rounded-2xl border h-[460px] max-h-[60vh] overflow-y-auto scroll-smooth p-4 space-y-3 pr-2 ${
                     theme === "light"
                         ? "bg-white border-slate-200 shadow-sm"
                         : theme === "eyeprotect"
@@ -418,16 +520,50 @@ export default function PanelInterviewPage() {
                             )}
                         </div>
                     )}
+                    <div ref={messagesEndRef} />
                 </div>
 
+                {/* Fixed Control Bar Below Chat Container */}
+                {!done && (
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                            <button
+                                type="button"
+                                onClick={handleIKnowAnswer}
+                                disabled={loading}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer disabled:opacity-50 ${
+                                    isLight
+                                        ? "bg-emerald-50 border-emerald-300 text-emerald-800 hover:bg-emerald-100 shadow-sm"
+                                        : "bg-emerald-500/15 border-emerald-400/30 text-emerald-200 hover:bg-emerald-500/25"
+                                }`}
+                            >
+                                <CheckCircle2 className="w-3.5 h-3.5" /> I know answer
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleIDontKnowAnswer}
+                                disabled={loading}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer disabled:opacity-50 ${
+                                    isLight
+                                        ? "bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100 shadow-sm"
+                                        : "bg-amber-500/15 border-amber-400/30 text-amber-200 hover:bg-amber-500/25"
+                                }`}
+                            >
+                                <HelpCircle className="w-3.5 h-3.5" /> I don&apos;t know (Skip)
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <form
-                    className="mt-4 flex gap-2"
+                    className="mt-3 flex gap-2"
                     onSubmit={(e) => {
                         e.preventDefault();
                         void send(input);
                     }}
                 >
                     <input
+                        ref={inputRef}
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder={isListening ? "Listening…" : "Answer the active panelist…"}
@@ -442,9 +578,9 @@ export default function PanelInterviewPage() {
                         <button
                             type="button"
                             onClick={toggleListening}
-                            disabled={loading || done}
+                            disabled={loading || done || isSpeaking}
                             title={isListening ? "Stop microphone" : "Answer by voice"}
-                            className={`rounded-xl border p-2.5 transition cursor-pointer ${
+                            className={`rounded-xl border p-2.5 transition cursor-pointer disabled:opacity-40 ${
                                 isListening
                                     ? "border-rose-500/50 bg-rose-500/20 text-rose-600 dark:text-rose-300 animate-pulse font-bold"
                                     : isLight
