@@ -47,6 +47,7 @@ next-env.d.ts
 !package-lock.json
 !tsconfig.json
 !models.json
+!.cursor/environment.json
 !public/manifest.json
 *.log
 err.json
@@ -54,3 +55,9 @@ err2.json
 response.json
 lint_output.txt
 output.txt
+
+# amplify
+node_modules
+.amplify
+amplify_outputs*
+amplifyconfiguration*

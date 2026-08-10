@@ -15,6 +15,8 @@ export async function POST(req: NextRequest) {
 
         const authHeader = `Basic ${Buffer.from(apiKey).toString("base64")}`;
 
+        const activeSessionId = sessionId || body.session_id;
+
         if (action === "create") {
             console.log("D-ID Stream: Creating new stream session...");
             // POST /talks/streams
@@ -40,6 +42,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(data);
 
         } else if (action === "sdp") {
+            if (!streamId || !activeSessionId) {
+                return NextResponse.json({ error: "Missing streamId or session_id for SDP answer" }, { status: 400 });
+            }
             console.log(`D-ID Stream: Sending SDP answer for stream ${streamId}...`);
             // POST /talks/streams/{streamId}/sdp
             const res = await fetch(`https://api.d-id.com/talks/streams/${streamId}/sdp`, {
@@ -50,7 +55,7 @@ export async function POST(req: NextRequest) {
                 },
                 body: JSON.stringify({
                     answer,
-                    session_id: sessionId
+                    session_id: activeSessionId
                 })
             });
 
@@ -63,6 +68,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(data);
 
         } else if (action === "ice") {
+            if (!streamId || !activeSessionId) {
+                return NextResponse.json({ error: "Missing streamId or session_id for ICE candidate" }, { status: 400 });
+            }
             console.log(`D-ID Stream: Sending ICE candidate for stream ${streamId}...`);
             // POST /talks/streams/{streamId}/ice
             const res = await fetch(`https://api.d-id.com/talks/streams/${streamId}/ice`, {
@@ -75,7 +83,7 @@ export async function POST(req: NextRequest) {
                     candidate,
                     sdpMid,
                     sdpMLineIndex,
-                    session_id: sessionId
+                    session_id: activeSessionId
                 })
             });
 
@@ -88,6 +96,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(data);
 
         } else if (action === "speak") {
+            if (!streamId || !activeSessionId) {
+                return NextResponse.json({ error: "Missing streamId or session_id for speak action" }, { status: 400 });
+            }
             console.log(`D-ID Stream: Requesting speaking animation on stream ${streamId}...`);
             
             // Clean text: strip brackets and terminate tags
@@ -117,7 +128,7 @@ export async function POST(req: NextRequest) {
                         fluent: true,
                         pad_audio: 0.0
                     },
-                    session_id: sessionId
+                    session_id: activeSessionId
                 })
             });
 

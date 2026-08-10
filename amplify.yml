@@ -1,9 +1,16 @@
 version: 1
+backend:
+  phases:
+    build:
+      commands:
+        - npm install
+        - npx cdk bootstrap aws://984174955449/ap-south-1
+        - npx ampx pipeline-deploy --branch $AWS_BRANCH --app-id $AWS_APP_ID
 frontend:
   phases:
     preBuild:
       commands:
-        - npm ci --cache .npm --prefer-offline
+        - npm install
         # Create .env.production to inject variables into Next.js build environment
         - echo "GEMINI_API_KEY=${GEMINI_API_KEY}" >> .env.production
         - echo "SARVAM_API_KEY=${SARVAM_API_KEY}" >> .env.production

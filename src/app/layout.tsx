@@ -71,7 +71,7 @@ export default function RootLayout({
                     }}
                 />
             </head>
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
                 <ErrorBoundary fallbackTitle="ProInterview hit an unexpected error">
                     {children}
                 </ErrorBoundary>

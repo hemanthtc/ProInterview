@@ -2,7 +2,7 @@
 
 **Master your technical interviews with AI.**
 
-ProInterview is a full-stack AI interview platform that simulates realistic technical interviews — with voice, code challenges, drawing boards, portfolio analysis, and career coaching — so candidates can practice under pressure and improve with measurable feedback.
+ProInterview is a full-stack AI interview platform that simulates realistic technical interviews — with voice, code challenges, drawing boards, portfolio analysis, synthetic data generation, and career coaching — so candidates can practice under pressure and improve with measurable feedback.
 
 ---
 
@@ -12,6 +12,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 |--------|-------------|
 | **AI Mock Interviews** | Conversational interviews powered by Google Gemini (optional Sarvam AI), with browser speech recognition and synthesis |
 | **Multi-modal Interaction** | Dynamic UI modes for chat, code editing (`[MODE:CODE]`), and sketching (`[MODE:DRAW]`) driven by the AI |
+| **Synthetic Data Generator** | Interactive tabular dataset & document generator with AI schema design, export (PDF, DOCX, MD, TXT), folder management, and public/private workspace sharing |
 | **Portfolio Pre-Analysis** | Analyze GitHub, LinkedIn, portfolio links, or ZIP project uploads for a baseline score |
 | **Weighted Scoring** | Final grade blends portfolio (35%) and live interview performance (65%) across technical, communication, and behavioral vectors |
 | **Realistic Avatar Mode** | D-ID talking-head avatar via REST video or low-latency WebRTC streaming |
@@ -31,7 +32,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | **Code Runner** | Piston execute + auto-grade in `[MODE:CODE]` |
 | **Shareable Scorecard** | Public link + Print/PDF interview report |
 | **Spaced Drills** | Weak-spot drills with Practice now |
-| **Cloud Session Sync** | Interview history/prep packs synced to Mongo across devices |
+| **Cloud Session Sync** | Interview history, prep packs, and synthetic datasets synced to Mongo across devices |
 
 ---
 
@@ -43,10 +44,10 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | Styling | **Tailwind CSS v4** · **Framer Motion** · **Lucide React** |
 | AI | **Google Gemini** (`@google/generative-ai`) · optional **Sarvam AI** |
 | Avatar | **D-ID** (talk + WebRTC stream) |
-| Data | **MongoDB** (Mongoose) · browser `localStorage` for session state |
+| Data | **MongoDB Atlas** (Mongoose for Synthetic Files, Folders, Profiles & Cloud Sessions) · browser `localStorage` for session state |
 | Auth | Google OAuth · email OTP · bcrypt |
 | Payments | **Razorpay** · UPI |
-| Parsing | `pdf-parse` (resumes) · `jszip` (project ZIPs) · `marked` (markdown reports) |
+| Parsing & Export | `pdf-parse` (resumes) · `html2canvas` (PDF export) · `docx` / `marked` · `jszip` (project ZIPs) |
 | Deploy | **AWS Amplify** (`amplify.yml`) |
 
 ---
@@ -98,9 +99,9 @@ Copy from [`.env.example`](.env.example):
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `GEMINI_API_KEY` | Yes | Interview chat, analysis, resume/roadmap generation |
+| `GEMINI_API_KEY` | Yes | Interview chat, synthetic data, analysis, resume/roadmap generation |
 | `SARVAM_API_KEY` | No | Alternate AI provider |
-| `MONGODB_URI` | Yes* | Auth, profiles, admin data |
+| `MONGODB_URI` | Yes* | Auth, profiles, synthetic files & folders, admin data |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | No* | Google Sign-In |
 | `GOOGLE_CLIENT_SECRET` | No* | Google OAuth backend verification |
 | `DID_API_KEY` | No | Realistic talking-head avatar |
@@ -111,14 +112,14 @@ Copy from [`.env.example`](.env.example):
 | `NEXT_PUBLIC_MERCHANT_UPI_ID` | No | UPI / donation QR |
 | `HAPPENSTANCE_API_KEY` | No | HR people research (falls back to Gemini-only guidance) |
 
-\*Required for full auth and persistence; core interview demos can run with Gemini alone, but login and profile sync need MongoDB and auth keys.
+\*Required for full auth, cloud sync, and synthetic dataset persistence; core interview demos can run with Gemini alone, but login and profile sync need MongoDB and auth keys.
 
 ---
 
 ## How It Works
 
 ```text
-Pre-Analysis → Setup → Live Interview → Grading → Career Coaching
+Pre-Analysis → Setup → Live Interview → Grading → Career Coaching & Synthetic Data Studio
 ```
 
 1. **Pre-Analysis** — Candidate shares GitHub / LinkedIn / portfolio or uploads project ZIPs. `/api/analyze-portfolio` produces a `portfolioRating` (0–100).
@@ -130,7 +131,7 @@ Pre-Analysis → Setup → Live Interview → Grading → Career Coaching
    finalScore = Math.round((portfolioRating * 0.35) + (iScore * 0.65))
    ```
 
-5. **Coaching** — `/api/profile-guidance` reviews past sessions and highlights recurring gaps.
+5. **Synthetic Data Studio** — AI-assisted dataset & document generation saved directly into MongoDB Atlas. Files can be created privately under "My Files" or published to the community under "All Files".
 
 Deep dives: [ARCHITECTURE.md](ARCHITECTURE.md) · contributor notes: [REPORT.md](REPORT.md).
 
@@ -146,7 +147,7 @@ ProInterview/
 ├── .env.example             # Environment template
 ├── next.config.ts
 ├── package.json
-├── public/                  # Static assets & study materials
+├── public/                  # Static assets, study materials & synthetic data web app
 └── src/
     ├── app/
     │   ├── page.tsx                 # Landing / home
@@ -154,13 +155,13 @@ ProInterview/
     │   ├── setup/                   # Interview configuration
     │   ├── interview/               # Main interview engine
     │   ├── realistic-interview/     # D-ID avatar interview
-    │   ├── features/                # Resume, email, roadmaps
+    │   ├── features/                # Resume, email, roadmaps, synthetic data generator
     │   ├── profile/                 # Account, sessions, payments
     │   ├── admin/                   # Org admin dashboard
-    │   └── api/                     # Serverless API routes
-    ├── components/                  # UI (selects, resume builder)
+    │   └── api/                     # Serverless API routes (interview, auth, synthetic files/folders)
+    ├── components/                  # UI (selects, panels, resume builder)
     ├── data/                        # Templates & mock-test data
-    ├── models/                      # Mongoose models
+    ├── models/                      # Mongoose models (User, SyntheticFile, SyntheticFolder, Scorecard)
     └── utils/                       # Auth, DB, mailer, storage, SSRF
 ```
 
@@ -177,7 +178,7 @@ ProInterview/
 | `/setup` | Resume upload & interview options |
 | `/interview` | Standard AI interview |
 | `/realistic-interview` | Avatar / video-style interview |
-| `/features` | Resume builder, email analyser, roadmaps |
+| `/features` | Resume builder, synthetic data generator, email analyser, roadmaps |
 | `/profile` | Profile, history, payments |
 | `/admin` | Admin dashboard |
 
@@ -189,6 +190,11 @@ ProInterview/
 | `POST /api/upload` | Resume PDF → text |
 | `POST /api/interviewer` | Live interview turns |
 | `POST /api/analyze-interview` | Post-interview grading |
+| `POST /api/synthetic-data/gemini` | AI Synthetic dataset & document generation |
+| `GET` / `POST /api/synthetic/files` | Fetch & create user synthetic files in MongoDB Atlas |
+| `GET` / `PUT` / `DELETE /api/synthetic/files/[id]` | Manage synthetic file content & permissions |
+| `PATCH /api/synthetic/files/[id]/visibility` | Toggle file visibility between `private` and `public` |
+| `GET` / `POST /api/synthetic/folders` | Manage folder hierarchy in MongoDB Atlas |
 | `POST /api/profile-guidance` | Cross-session coaching |
 | `POST /api/generate-resume` | AI resume content |
 | `POST /api/analyze-email` | Job invite / offer parsing |
@@ -222,16 +228,6 @@ Ensure all variables from [Environment Variables](#environment-variables) are se
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** — Scoring math, tag interception, D-ID REST/WebRTC, feature suite design
 - **[REPORT.md](REPORT.md)** — Full project report, page/API map, known issues, changelog
 - **[`.env.example`](.env.example)** — Env template for local and production setup
-
----
-
-## Contributing
-
-1. Fork the repo and create a branch: `git checkout -b feature/your-feature`
-2. Install deps and copy `.env.example` → `.env`
-3. Make focused changes; keep secrets out of git
-4. Run `npm run build` locally before opening a PR
-5. Open a pull request with a clear description of what changed and why
 
 ---
 

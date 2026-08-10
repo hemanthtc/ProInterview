@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
             company = "",
             role = "",
             currentOffer = "",
+            currency = "USD",
+            payPeriod = "annually",
             benefits = "",
             targetComp = "",
             batna = "",
@@ -57,7 +59,7 @@ export async function POST(req: NextRequest) {
 
         const genAI = new GoogleGenerativeAI(API_KEY);
         const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash",
             generationConfig: { temperature: 0.45 },
         });
 
@@ -77,9 +79,11 @@ Mode: ${safeMode}
 Context:
 Company: ${company || "Unknown"}
 Role: ${role || "Unknown"}
-Current offer: ${currentOffer || "not specified"}
+Currency: ${currency}
+Pay Period: ${payPeriod}
+Current offer: ${currentOffer ? `${currentOffer} ${currency} (${payPeriod})` : "not specified"}
 Benefits: ${benefits || "not specified"}
-Candidate target: ${targetComp || "not specified"}
+Candidate target: ${targetComp ? `${targetComp} ${currency} (${payPeriod})` : "not specified"}
 BATNA / alternatives: ${batna || "not specified"}
 
 Conversation so far:

@@ -73,8 +73,8 @@ export default function SpacedDrillsPanel({ className = "" }: SpacedDrillsPanelP
     }
 
     return (
-        <div className={`rounded-2xl border border-white/10 bg-[#111] p-5 space-y-4 ${className}`}>
-            <div className="flex items-center justify-between gap-2">
+        <div className={`space-y-4 ${className}`}>
+            <div className="flex items-center justify-between gap-2 pr-12">
                 <h3 className="text-base font-semibold text-white flex items-center gap-2">
                     <Zap className="w-4 h-4 text-amber-400" />
                     Spaced Drills

@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const memory = new Map<string, { at: number; value: string }>();
 
-export function getGeminiModel(model = "gemini-2.5-flash") {
+export function getGeminiModel(model = "gemini-2.0-flash") {
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY is not configured");
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });

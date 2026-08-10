@@ -14,7 +14,7 @@ import { resolveCompanyBank } from "../../data/companyBanks";
 
 export default function RealisticInterviewRoom() {
     const router = useRouter();
-    const videoElementRef = useRef<HTMLVideoElement | null>(null);
+    const videoElementsRef = useRef<Set<HTMLVideoElement>>(new Set());
     const streamRef = useRef<MediaStream | null>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -23,15 +23,18 @@ export default function RealisticInterviewRoom() {
             streamRef.current.getTracks().forEach((track) => track.stop());
             streamRef.current = null;
         }
-        if (videoElementRef.current) {
-            videoElementRef.current.srcObject = null;
-        }
+        videoElementsRef.current.forEach((el) => {
+            el.srcObject = null;
+        });
     }, []);
 
     const videoRef = useCallback((node: HTMLVideoElement | null) => {
-        videoElementRef.current = node;
-        if (node && streamRef.current) {
-            node.srcObject = streamRef.current;
+        if (node) {
+            videoElementsRef.current.add(node);
+            if (streamRef.current) {
+                node.srcObject = streamRef.current;
+                node.play().catch(() => {});
+            }
         }
     }, []);
 
@@ -209,12 +212,20 @@ export default function RealisticInterviewRoom() {
         }
 
         faceDetectionIntervalRef.current = setInterval(() => {
-            if (!videoElementRef.current || !canvasRef.current || isCallEnded) return;
+            if (!canvasRef.current || isCallEnded) return;
 
-            const video = videoElementRef.current;
+            let video: HTMLVideoElement | null = null;
+            for (const el of videoElementsRef.current) {
+                if (el && el.isConnected && el.videoWidth > 0 && el.videoHeight > 0) {
+                    video = el;
+                    break;
+                }
+            }
+
+            if (!video) return;
             const canvas = canvasRef.current;
             const ctx = canvas.getContext("2d");
-            if (!ctx || video.videoWidth === 0) return;
+            if (!ctx) return;
 
             canvas.width = 160;
             canvas.height = 120;
@@ -363,8 +374,13 @@ export default function RealisticInterviewRoom() {
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 streamRef.current = stream;
-                if (isMounted && videoElementRef.current) {
-                    videoElementRef.current.srcObject = stream;
+                if (isMounted) {
+                    videoElementsRef.current.forEach((node) => {
+                        if (node && node.isConnected) {
+                            node.srcObject = stream;
+                            node.play().catch(() => {});
+                        }
+                    });
                     setVideoActive(true);
                 } else if (!isMounted) {
                     stream.getTracks().forEach(track => track.stop());
@@ -495,7 +511,14 @@ export default function RealisticInterviewRoom() {
             }
             
             const data = await res.json();
-            const { id: streamId, offer, ice_servers: iceServers, session_id: sessionId } = data;
+            const streamId = data.id || data.streamId;
+            const sessionId = data.session_id || data.sessionId;
+            const offer = data.offer;
+            const iceServers = data.ice_servers;
+
+            if (!streamId || !sessionId) {
+                throw new Error("Missing streamId or session_id from D-ID stream initialization.");
+            }
             
             streamIdRef.current = streamId;
             sessionIdRef.current = sessionId;
@@ -541,22 +564,34 @@ export default function RealisticInterviewRoom() {
                 }
             };
 
+            // Buffer ICE candidates until SDP answer is sent to D-ID
+            let isSdpAnswerSent = false;
+            const iceCandidateQueue: RTCIceCandidate[] = [];
+
+            const sendIceCandidate = (candidateObj: RTCIceCandidate) => {
+                const { candidate, sdpMid, sdpMLineIndex } = candidateObj;
+                fetch("/api/d-id-stream", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        action: "ice",
+                        streamId,
+                        sessionId,
+                        candidate,
+                        sdpMid,
+                        sdpMLineIndex
+                    })
+                }).catch(err => console.warn("Failed to send ICE candidate:", err));
+            };
+
             // 3. Handle onicecandidate
             pc.onicecandidate = (event) => {
                 if (event.candidate) {
-                    const { candidate, sdpMid, sdpMLineIndex } = event.candidate;
-                    fetch("/api/d-id-stream", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                            action: "ice",
-                            streamId,
-                            sessionId,
-                            candidate,
-                            sdpMid,
-                            sdpMLineIndex
-                        })
-                    }).catch(err => console.warn("Failed to send ICE candidate:", err));
+                    if (!isSdpAnswerSent) {
+                        iceCandidateQueue.push(event.candidate);
+                    } else {
+                        sendIceCandidate(event.candidate);
+                    }
                 }
             };
             
@@ -596,6 +631,15 @@ export default function RealisticInterviewRoom() {
             if (!sdpRes.ok) {
                 const errData = await sdpRes.json().catch(() => ({}));
                 throw new Error(errData.error || `Failed to send SDP answer: Status ${sdpRes.status}`);
+            }
+
+            // Mark SDP answer as sent and flush queued ICE candidates
+            isSdpAnswerSent = true;
+            while (iceCandidateQueue.length > 0) {
+                const queuedCandidate = iceCandidateQueue.shift();
+                if (queuedCandidate) {
+                    sendIceCandidate(queuedCandidate);
+                }
             }
             
             console.log("D-ID WebRTC Stream initialized successfully.");
@@ -881,12 +925,19 @@ export default function RealisticInterviewRoom() {
         setIsSpeaking(false);
 
         // Take a camera snapshot if video is active
-        if (videoElementRef.current && canvasRef.current && videoActive) {
+        let activeVideoEl: HTMLVideoElement | null = null;
+        for (const el of videoElementsRef.current) {
+            if (el && el.isConnected && el.videoWidth > 0 && el.videoHeight > 0) {
+                activeVideoEl = el;
+                break;
+            }
+        }
+        if (activeVideoEl && canvasRef.current && videoActive) {
             const context = canvasRef.current.getContext('2d');
             if (context) {
-                canvasRef.current.width = videoElementRef.current.videoWidth || 640;
-                canvasRef.current.height = videoElementRef.current.videoHeight || 480;
-                context.drawImage(videoElementRef.current, 0, 0, canvasRef.current.width, canvasRef.current.height);
+                canvasRef.current.width = activeVideoEl.videoWidth || 640;
+                canvasRef.current.height = activeVideoEl.videoHeight || 480;
+                context.drawImage(activeVideoEl, 0, 0, canvasRef.current.width, canvasRef.current.height);
                 const dataUrl = canvasRef.current.toDataURL('image/jpeg', 0.5);
                 if (snapshotsRef.current.length < 15) { 
                     snapshotsRef.current.push(dataUrl.split(',')[1]);
@@ -1052,9 +1103,12 @@ export default function RealisticInterviewRoom() {
                 }
                 const stream = await navigator.mediaDevices.getUserMedia({ video: true });
                 streamRef.current = stream;
-                if (videoElementRef.current) {
-                    videoElementRef.current.srcObject = stream;
-                }
+                videoElementsRef.current.forEach((node) => {
+                    if (node && node.isConnected) {
+                        node.srcObject = stream;
+                        node.play().catch(() => {});
+                    }
+                });
             } catch (err) {
                 console.error("Camera access error:", err);
                 setVideoActive(false);
@@ -1221,9 +1275,9 @@ export default function RealisticInterviewRoom() {
     // ---- CALL ENDED NORMALLY ----
     if (isCallEnded) {
         return (
-            <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-6 font-sans">
-                <div className="max-w-xl w-full bg-[#111] p-8 rounded-2xl border border-white/10 shadow-2xl text-center">
-                    <h2 className="text-3xl font-bold mb-4">Interview Completed</h2>
+            <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col items-center justify-center p-3 sm:p-6 font-sans">
+                <div className="max-w-2xl w-full bg-[#111] p-4 sm:p-8 rounded-2xl border border-white/10 shadow-2xl text-center">
+                    <h2 className="text-2xl sm:text-3xl font-bold mb-4">Interview Completed</h2>
                     
                     {isEvaluating ? (
                         <div className="flex flex-col items-center justify-center py-10">
@@ -1241,29 +1295,29 @@ export default function RealisticInterviewRoom() {
                                     </div>
                                 )}
                                 <div className="flex justify-between items-center mb-4">
-                                    <span className="text-white/70">Technical Interview Score</span>
-                                    <span className="font-mono font-medium">{finalScores.interview} / 100</span>
+                                    <span className="text-xs sm:text-sm text-white/70">Technical Interview Score</span>
+                                    <span className="font-mono font-medium text-sm sm:text-base">{finalScores.interview} / 100</span>
                                 </div>
                                 <div className="h-px w-full bg-white/10 mb-4"></div>
                                 <div className="flex justify-between items-center">
-                                    <span className="font-bold text-lg text-white">
+                                    <span className="font-bold text-sm sm:text-lg text-white">
                                         {typeof finalScores.portfolio === 'number' ? 'Weighted Final Rating' : 'Final Interview Rating'}
                                     </span>
-                                    <span className="font-bold text-2xl text-indigo-400">{finalScores.final} / 100</span>
+                                    <span className="font-bold text-xl sm:text-2xl text-indigo-400">{finalScores.final} / 100</span>
                                 </div>
                                 
-                                <div className="grid grid-cols-3 gap-4 my-6">
-                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                                        <span className="text-xs font-bold text-white/50 block mb-1">Technical</span>
-                                        <span className="text-xl font-bold text-white/90">{finalScores.technical}</span>
+                                <div className="grid grid-cols-3 gap-1.5 sm:gap-4 my-6">
+                                    <div className="bg-white/5 border border-white/10 rounded-xl p-2 sm:p-4 text-center">
+                                        <span className="text-[10px] sm:text-xs font-bold text-white/50 block mb-1 truncate">Technical</span>
+                                        <span className="text-lg sm:text-xl font-bold text-white/90">{finalScores.technical}</span>
                                     </div>
-                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                                        <span className="text-xs font-bold text-white/50 block mb-1">Behavioral</span>
-                                        <span className="text-xl font-bold text-white/90">{finalScores.behavioral}</span>
+                                    <div className="bg-white/5 border border-white/10 rounded-xl p-2 sm:p-4 text-center">
+                                        <span className="text-[10px] sm:text-xs font-bold text-white/50 block mb-1 truncate">Behavioral</span>
+                                        <span className="text-lg sm:text-xl font-bold text-white/90">{finalScores.behavioral}</span>
                                     </div>
-                                    <div className="bg-white/5 border border-white/10 rounded-xl p-4 text-center">
-                                        <span className="text-xs font-bold text-white/50 block mb-1">Communication</span>
-                                        <span className="text-xl font-bold text-white/90">{finalScores.communication}</span>
+                                    <div className="bg-white/5 border border-white/10 rounded-xl p-2 sm:p-4 text-center">
+                                        <span className="text-[10px] sm:text-xs font-bold text-white/50 block mb-1 truncate">Communication</span>
+                                        <span className="text-lg sm:text-xl font-bold text-white/90">{finalScores.communication}</span>
                                     </div>
                                 </div>
 
@@ -1300,14 +1354,14 @@ export default function RealisticInterviewRoom() {
                                     )}
                                 </div>
 
-                                <div className="flex flex-wrap gap-2 mb-4">
+                                <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
                                     <button
                                         type="button"
                                         onClick={() => {
                                             const t = lastSavedSessionTsRef.current;
                                             router.push(t ? `/film-room?t=${t}` : "/film-room");
                                         }}
-                                        className="px-4 py-2 bg-white/10 hover:bg-white/20 transition-colors rounded-xl font-medium text-sm flex items-center gap-2"
+                                        className="w-full py-2.5 sm:py-2 bg-white/10 hover:bg-white/20 transition-colors rounded-xl font-medium text-sm flex items-center justify-center gap-2"
                                     >
                                         <Film className="w-4 h-4" /> Film Room
                                     </button>
@@ -1315,7 +1369,7 @@ export default function RealisticInterviewRoom() {
                                         type="button"
                                         onClick={() => void shareScorecard()}
                                         disabled={shareBusy}
-                                        className="px-4 py-2 bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-50 transition-colors rounded-xl font-medium text-sm flex items-center gap-2"
+                                        className="w-full py-2.5 sm:py-2 bg-indigo-600/80 hover:bg-indigo-500 disabled:opacity-50 transition-colors rounded-xl font-medium text-sm flex items-center justify-center gap-2"
                                     >
                                         {shareBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
                                         Share Scorecard
@@ -1396,7 +1450,7 @@ export default function RealisticInterviewRoom() {
                             }
                         `}</style>
 
-                    <div className="flex gap-4 justify-center">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full">
                         <button
                             onClick={() => {
                                 const transcriptContent = finalScores?.annotatedTranscript || messages.map(m => `${m.role === 'user' ? 'YOU' : 'AI'}: ${m.content}`).join('\n\n\n\n');
@@ -1452,13 +1506,13 @@ export default function RealisticInterviewRoom() {
                                 a.click();
                                 URL.revokeObjectURL(url);
                             }}
-                            className="px-6 py-3 bg-white/10 hover:bg-white/20 transition-colors rounded-xl font-medium flex items-center gap-2"
+                            className="w-full sm:w-auto flex-1 py-3 px-5 bg-white/10 hover:bg-white/20 transition-all rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-white/10"
                         >
-                            <Download className="w-5 h-5" /> Download Report (.doc)
+                            <Download className="w-4 h-4 text-indigo-400" /> Download Report (.doc)
                         </button>
                         <button
                             onClick={() => router.push("/")}
-                            className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 transition-colors rounded-xl font-medium"
+                            className="w-full sm:w-auto flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-500 transition-all rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
                         >
                             Return Home
                         </button>

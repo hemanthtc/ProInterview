@@ -73,7 +73,8 @@ html.theme-light .hover\:bg-white\/20:hover {
 
 html.theme-light .bg-indigo-900\/20,
 html.theme-light .bg-indigo-600\/20 {
-  background-color: #f0fdf4 !important; /* light tint bg */
+  background-color: #f0fdf4 !important;
+  /* light tint bg */
   background: #e0e7ff !important;
 }
 
@@ -137,7 +138,8 @@ html.theme-light .border-white\/10,
 html.theme-light .border-white\/5,
 html.theme-light .border,
 html.theme-light hr {
-  border-color: #cbd5e1 !important; /* Crisper, defined card border */
+  border-color: #cbd5e1 !important;
+  /* Crisper, defined card border */
 }
 
 /* Highlight border on hover/interaction */
@@ -220,13 +222,14 @@ html.theme-light .backdrop-blur-xl {
 
 /* Modals & Overlays - Professional Clean Look */
 html.theme-light .fixed.inset-0 {
-  background-color: rgba(15, 23, 42, 0.45) !important; /* Slate backdrop tint */
+  background-color: rgba(15, 23, 42, 0.45) !important;
+  /* Slate backdrop tint */
   backdrop-filter: blur(8px) !important;
 }
 
 /* Modal Inner Container Style override to ensure professional whites/borders */
-html.theme-light .fixed.inset-0 > div,
-html.theme-light .fixed.inset-0 > form,
+html.theme-light .fixed.inset-0>div,
+html.theme-light .fixed.inset-0>form,
 html.theme-light .fixed.inset-0 .bg-\[\#111\],
 html.theme-light .fixed.inset-0 .bg-gradient-to-b {
   background-color: #ffffff !important;
@@ -341,7 +344,8 @@ html.theme-eyeprotect .border-white\/10,
 html.theme-eyeprotect .border-white\/5,
 html.theme-eyeprotect .border,
 html.theme-eyeprotect hr {
-  border-color: #8c8578 !important; /* Defined warm slate/brown-grey border that pops under sepia filter */
+  border-color: #8c8578 !important;
+  /* Defined warm slate/brown-grey border that pops under sepia filter */
 }
 
 /* Make colored borders darker and more prominent in Eye Comfort Mode */
@@ -387,22 +391,26 @@ html.theme-eyeprotect .border-red-500\/30 {
 /* High-contrast and readable styles for soft colored alerts in Light/Eye Comfort Mode */
 html.theme-light .text-indigo-200,
 html.theme-light .text-indigo-300 {
-  color: #312e81 !important; /* Extremely dark indigo for readability */
+  color: #312e81 !important;
+  /* Extremely dark indigo for readability */
 }
 
 html.theme-light .text-emerald-200,
 html.theme-light .text-emerald-300 {
-  color: #064e3b !important; /* Extremely dark emerald for readability */
+  color: #064e3b !important;
+  /* Extremely dark emerald for readability */
 }
 
 html.theme-light .text-sky-200,
 html.theme-light .text-sky-300 {
-  color: #0c4a6e !important; /* Extremely dark sky-blue for readability */
+  color: #0c4a6e !important;
+  /* Extremely dark sky-blue for readability */
 }
 
 html.theme-light .text-teal-200,
 html.theme-light .text-teal-300 {
-  color: #134e4a !important; /* Extremely dark teal for readability */
+  color: #134e4a !important;
+  /* Extremely dark teal for readability */
 }
 
 html.theme-light .bg-indigo-500\/10,
@@ -430,72 +438,90 @@ html.theme-light .bg-sky-500\/5 {
 /* Camera button - Active / Inactive states */
 html.theme-eyeprotect button:has(svg.lucide-video),
 html.theme-eyeprotect button:has(svg.lucide-video-off) {
-  background-color: #e0f2fe !important; /* Soft sky blue */
+  background-color: #e0f2fe !important;
+  /* Soft sky blue */
   border: 2px solid #0284c7 !important;
 }
+
 html.theme-eyeprotect button svg.lucide-video,
 html.theme-eyeprotect button svg.lucide-video-off {
-  color: #0369a1 !important; /* Dark blue icon */
+  color: #0369a1 !important;
+  /* Dark blue icon */
 }
 
 /* Camera button - Inactive (Red tint if videoActive is false) */
 html.theme-eyeprotect button.bg-red-500\/20 {
-  background-color: #fee2e2 !important; /* Soft red */
+  background-color: #fee2e2 !important;
+  /* Soft red */
   border: 2px solid #ef4444 !important;
 }
+
 html.theme-eyeprotect button.bg-red-500\/20 svg {
   color: #b91c1c !important;
 }
 
 /* Pause button */
 html.theme-eyeprotect button:has(svg.lucide-pause) {
-  background-color: #fef3c7 !important; /* Soft amber/yellow */
+  background-color: #fef3c7 !important;
+  /* Soft amber/yellow */
   border: 2px solid #f59e0b !important;
 }
+
 html.theme-eyeprotect button svg.lucide-pause {
-  color: #b45309 !important; /* Dark amber icon */
+  color: #b45309 !important;
+  /* Dark amber icon */
 }
 
 /* End call button */
 html.theme-eyeprotect button:has(svg.lucide-phone-off) {
-  background-color: #dc2626 !important; /* Solid red background */
+  background-color: #dc2626 !important;
+  /* Solid red background */
   border: 2px solid #b91c1c !important;
   box-shadow: 0 4px 6px -1px rgba(220, 38, 38, 0.3) !important;
 }
+
 html.theme-eyeprotect button svg.lucide-phone-off {
   color: #ffffff !important;
 }
 
 /* Mic button - Inactive */
 html.theme-eyeprotect button:has(svg.lucide-mic):not(.bg-green-500) {
-  background-color: #e0e7ff !important; /* Soft indigo */
+  background-color: #e0e7ff !important;
+  /* Soft indigo */
   border: 2px solid #6366f1 !important;
 }
+
 html.theme-eyeprotect button:has(svg.lucide-mic):not(.bg-green-500) svg.lucide-mic {
-  color: #4f46e5 !important; /* Dark indigo icon */
+  color: #4f46e5 !important;
+  /* Dark indigo icon */
 }
 
 /* Mic button - Active (Listening) */
 html.theme-eyeprotect button.bg-green-500 {
-  background-color: #22c55e !important; /* Vibrant green */
+  background-color: #22c55e !important;
+  /* Vibrant green */
   border: 2px solid #16a34a !important;
 }
+
 html.theme-eyeprotect button.bg-green-500 svg.lucide-mic {
   color: #ffffff !important;
 }
 
 /* Send button */
 html.theme-eyeprotect button:has(svg.lucide-send) {
-  background-color: #4f46e5 !important; /* Solid indigo background */
+  background-color: #4f46e5 !important;
+  /* Solid indigo background */
   border: 1px solid #4338ca !important;
 }
+
 html.theme-eyeprotect button svg.lucide-send {
   color: #ffffff !important;
 }
 
 /* Captions text underneath button controls (Camera, Pause, End) */
 html.theme-eyeprotect span.text-white\/40 {
-  color: #475569 !important; /* Darker slate gray text for crisp legibility */
+  color: #475569 !important;
+  /* Darker slate gray text for crisp legibility */
   font-weight: 600 !important;
 }
 
@@ -505,34 +531,43 @@ html.theme-eyeprotect span.text-white\/40 {
 
 /* Log in button overrides for Light Mode & Eye Comfort Mode */
 html.theme-light a[href="/login"].bg-white\/10 {
-  background-color: #e2e8f0 !important; /* Soft blue-grey background */
-  color: #0f172a !important; /* Bold dark slate text */
+  background-color: #e2e8f0 !important;
+  /* Soft blue-grey background */
+  color: #0f172a !important;
+  /* Bold dark slate text */
 }
 
 html.theme-eyeprotect a[href="/login"].bg-white\/10 {
-  background-color: #cbd5e1 !important; /* Darker grey to maintain contrast under sepia filter */
-  color: #0f172a !important; /* Bold dark slate text */
+  background-color: #cbd5e1 !important;
+  /* Darker grey to maintain contrast under sepia filter */
+  color: #0f172a !important;
+  /* Bold dark slate text */
 }
 
 html.theme-light a[href="/login"].bg-white\/10:hover {
-  background-color: #cbd5e1 !important; /* Highlight on hover */
+  background-color: #cbd5e1 !important;
+  /* Highlight on hover */
 }
 
 html.theme-eyeprotect a[href="/login"].bg-white\/10:hover {
-  background-color: #94a3b8 !important; /* Highlight on hover under sepia */
+  background-color: #94a3b8 !important;
+  /* Highlight on hover under sepia */
 }
 
 /* Theme toggle circle border should be solid black in Eye Comfort Mode */
 html.theme-eyeprotect button:has(svg.lucide-eye),
 html.theme-eyeprotect button:has(svg.lucide-sun),
 html.theme-eyeprotect button:has(svg.lucide-moon) {
-  border: 1.5px solid #000000 !important; /* Solid black circle border */
-  background-color: #faf6f0 !important; /* Light-grey/white circle background */
+  border: 1.5px solid #000000 !important;
+  /* Solid black circle border */
+  background-color: #faf6f0 !important;
+  /* Light-grey/white circle background */
 }
 
 /* Make eye comfort yellow/amber icon dark-amber or black for better accent contrast */
 html.theme-eyeprotect button svg.lucide-eye {
-  color: #b45309 !important; /* Warm amber */
+  color: #b45309 !important;
+  /* Warm amber */
 }
 
 /* ==========================================================================
@@ -543,7 +578,8 @@ html.theme-eyeprotect button svg.lucide-eye {
 html.theme-light .text-white\/95,
 html.theme-light .text-white\/90,
 html.theme-light .text-white\/85 {
-  color: #0f172a !important; /* Highly readable dark slate for questions */
+  color: #0f172a !important;
+  /* Highly readable dark slate for questions */
 }
 
 html.theme-light .text-white\/65 {
@@ -602,7 +638,8 @@ html.theme-light .mock-simulator-active textarea.bg-black\/50 {
 }
 
 html.theme-light .mock-simulator-active .text-indigo-200 {
-  color: #1e1b4b !important; /* High contrast dark indigo text inside editor */
+  color: #1e1b4b !important;
+  /* High contrast dark indigo text inside editor */
 }
 
 html.theme-light .mock-simulator-active pre.bg-black\/50,
@@ -650,6 +687,193 @@ html.theme-eyeprotect .mcq-option-item {
 html.theme-eyeprotect .mock-simulator-active textarea {
   color: #000000 !important;
 }
+
 html.theme-eyeprotect .mock-simulator-active .text-indigo-200 {
   color: #000000 !important;
+}
+
+/* 5. Offer Negotiation Lab Theme Adaptations (Light Mode & Eye Protect) */
+
+/* Light Mode Overrides */
+html.theme-light .bg-\[\#1c1c1c\],
+html.theme-light select.bg-\[\#1c1c1c\] {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.theme-light option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .bg-black\/30,
+html.theme-light .bg-black\/40,
+html.theme-light .bg-black\/50 {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.theme-light .bg-white\/\[0\.04\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+html.theme-light .bg-indigo-600\/20 {
+  background-color: #e0e7ff !important;
+  border-color: #c7d2fe !important;
+  color: #3730a3 !important;
+}
+
+html.theme-light .bg-amber-500\/10 {
+  background-color: #fef3c7 !important;
+  border-color: #fde68a !important;
+  color: #92400e !important;
+}
+
+html.theme-light .bg-emerald-500\/10 {
+  background-color: #d1fae5 !important;
+  border-color: #a7f3d0 !important;
+  color: #065f46 !important;
+}
+
+html.theme-light .text-emerald-100\/90 {
+  color: #064e3b !important;
+}
+
+/* Eye Protect / Comfort Mode Overrides - Guaranteed High-Contrast Outlines & Crisp Borders */
+html.theme-eyeprotect .bg-\[\#111\] {
+  background-color: #fcf7ed !important;
+  color: #2d241e !important;
+  border-color: #8c7152 !important;
+  box-shadow: 0 4px 20px rgba(100, 70, 40, 0.15) !important;
+}
+
+html.theme-eyeprotect .bg-\[\#1c1c1c\],
+html.theme-eyeprotect select.bg-\[\#1c1c1c\],
+html.theme-eyeprotect option {
+  background-color: #f4ebd9 !important;
+  color: #382c23 !important;
+  border-color: #9e8262 !important;
+}
+
+html.theme-eyeprotect input,
+html.theme-eyeprotect select,
+html.theme-eyeprotect textarea {
+  background-color: #faf4e8 !important;
+  color: #2d241e !important;
+  border-color: #947858 !important;
+  box-shadow: 0 0 0 1px #947858, inset 0 1px 3px rgba(100, 70, 40, 0.1) !important;
+}
+
+html.theme-eyeprotect input:focus,
+html.theme-eyeprotect select:focus,
+html.theme-eyeprotect textarea:focus {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 2px #059669 !important;
+}
+
+/* Force border colors on all containers, dividers, and inputs in Eye Protect Mode */
+html.theme-eyeprotect label,
+html.theme-eyeprotect button,
+html.theme-eyeprotect div[class*="border"],
+html.theme-eyeprotect form,
+html.theme-eyeprotect .rounded-xl,
+html.theme-eyeprotect .rounded-2xl {
+  border-color: #9e8262 !important;
+}
+
+/* Eye Protect Side Card Crisp Outlines */
+html.theme-eyeprotect .border-emerald-500\/20,
+html.theme-eyeprotect .border-emerald-200,
+html.theme-eyeprotect .border-emerald-300 {
+  border-color: #059669 !important;
+  box-shadow: 0 0 0 1.5px #059669, 0 4px 16px rgba(5, 150, 105, 0.15) !important;
+}
+
+html.theme-eyeprotect .border-red-200,
+html.theme-eyeprotect .border-red-300,
+html.theme-eyeprotect .border-red-500\/20 {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 1.5px #dc2626, 0 4px 16px rgba(220, 38, 38, 0.15) !important;
+}
+
+html.theme-eyeprotect .bg-black\/30,
+html.theme-eyeprotect .bg-black\/40,
+html.theme-eyeprotect .bg-black\/50 {
+  background-color: #f7efe0 !important;
+  border-color: #9e8262 !important;
+  color: #2d241e !important;
+}
+
+html.theme-eyeprotect .bg-white\/\[0\.04\] {
+  background-color: #faf4e8 !important;
+  border-color: #9e8262 !important;
+  color: #2d241e !important;
+}
+
+html.theme-eyeprotect .bg-indigo-600\/20 {
+  background-color: #eee9ff !important;
+  border-color: #8c7be0 !important;
+  color: #331f82 !important;
+}
+
+html.theme-eyeprotect .bg-amber-500\/10 {
+  background-color: #fff6e0 !important;
+  border-color: #c9a14d !important;
+  color: #634305 !important;
+}
+
+html.theme-eyeprotect .bg-emerald-500\/10 {
+  background-color: #e6f7ec !important;
+  border-color: #059669 !important;
+  color: #0d4a23 !important;
+}
+
+html.theme-eyeprotect .text-emerald-100\/90 {
+  color: #0f5629 !important;
+}
+
+/* Light Mode Overrides - Crisp High Contrast Input Borders */
+html.theme-light input,
+html.theme-light select,
+html.theme-light textarea {
+  border-color: #64748b !important;
+  box-shadow: 0 0 0 1px #64748b !important;
+}
+
+html.theme-light .rounded-xl.border,
+html.theme-light .rounded-2xl.border,
+html.theme-light div[class*="border"] {
+  border-color: #94a3b8 !important;
+}
+
+/* Ensure Tactical Red Lines text is always red in Light and Eye Comfort modes */
+html.theme-light .text-red-400,
+html.theme-light .text-red-500,
+html.theme-light .text-red-600,
+html.theme-light .tactical-red-title,
+html.theme-light .tactical-red-title *,
+html.theme-eyeprotect .text-red-400,
+html.theme-eyeprotect .text-red-500,
+html.theme-eyeprotect .text-red-600,
+html.theme-eyeprotect .tactical-red-title,
+html.theme-eyeprotect .tactical-red-title * {
+  color: #dc2626 !important;
+}
+
+html.theme-eyeprotect .bg-red-500\/10,
+html.theme-eyeprotect .bg-red-50\/80 {
+  background-color: #fdf2f2 !important;
+  border-color: #dc2626 !important;
+}
+
+/* Strict Mobile Lock - Zero Horizontal Scrolling for Offer Negotiation */
+.negotiate-modal-lock {
+  max-width: 100vw !important;
+  overflow-x: hidden !important;
+  touch-action: pan-y !important;
 }
