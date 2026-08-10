@@ -211,3 +211,27 @@ html.theme-eyeprotect .schema-desc-input {
     color: #57534e !important;
 }
 
+/* ── Agent Console: Stop / Cancel / Resume Controls ── */
+.btn-stop:hover:not(:disabled){background:#b91c1c!important;box-shadow:0 4px 14px rgba(220,38,38,.45)!important;transform:translateY(-1px)}
+.btn-stop:active:not(:disabled){background:#991b1b!important;transform:translateY(0)}
+.btn-cancel:hover:not(:disabled){color:#f87171!important;border-color:rgba(248,113,113,.5)!important;background:rgba(248,113,113,.08)!important}
+.btn-cancel:active:not(:disabled){color:#ef4444!important;background:rgba(248,113,113,.14)!important}
+.resume-btn{transition:all .15s ease}
+.resume-btn:hover:not(:disabled){box-shadow:0 4px 16px rgba(15,118,110,.5)!important;transform:translateY(-1px)}
+.resume-btn:active:not(:disabled){transform:translateY(0)}
+.progress-fill.paused{opacity:.7;background:var(--warning)!important;animation:none!important}
+.terminal-progress-row{display:flex;align-items:center;gap:10px;width:100%;margin-top:4px}
+
+/* Light theme overrides */
+html.theme-light .btn-stop{box-shadow:0 2px 8px rgba(220,38,38,.2)!important}
+html.theme-light .btn-stop:hover:not(:disabled){box-shadow:0 4px 14px rgba(220,38,38,.3)!important}
+html.theme-light .btn-cancel{color:#64748b!important;border-color:rgba(100,116,139,.3)!important}
+html.theme-light .btn-cancel:hover:not(:disabled){color:#dc2626!important;border-color:rgba(220,38,38,.4)!important;background:rgba(220,38,38,.06)!important}
+
+/* Eye Comfort theme overrides */
+html.theme-eyeprotect .btn-stop{background:#991b1b!important;border-color:#7f1d1d!important;box-shadow:0 2px 8px rgba(153,27,27,.25)!important}
+html.theme-eyeprotect .btn-stop:hover:not(:disabled){background:#7f1d1d!important;box-shadow:0 4px 14px rgba(153,27,27,.3)!important}
+html.theme-eyeprotect .btn-cancel{color:#57534e!important;border-color:#8c8578!important}
+html.theme-eyeprotect .btn-cancel:hover:not(:disabled){color:#991b1b!important;border-color:#991b1b!important;background:rgba(153,27,27,.08)!important}
+html.theme-eyeprotect .resume-btn{box-shadow:0 2px 10px rgba(11,95,88,.3)!important}
+
