@@ -272,6 +272,8 @@ export default function Home() {
                         {theme === "eyeprotect" && <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />}
                     </button>
 
+
+
                     {isLoggedIn ? (
                         <Link href="/profile" className="flex items-center gap-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-3.5 sm:px-5 flex-shrink-0 relative py-1.5 sm:py-2 rounded-full transition-colors font-bold ml-1 sm:ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
                             <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[9px] sm:text-[10px]">US</div>

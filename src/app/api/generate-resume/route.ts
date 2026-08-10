@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import JSZip from "jszip";
 import { getVerifiedSession } from "@/utils/auth";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
@@ -119,9 +119,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY in environment" }, { status: 500 });
         }
 
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.7 } });
-
         let systemPrompt = `You are an expert resume writer.
 Generate professional resume details for a candidate with the following credentials.
 Generate ONLY the requested sections listed here: ${missingSectionsRaw}. Do not generate keys for any other sections.
@@ -213,33 +210,10 @@ CRITICAL ATS OPTIMIZATION RULES:
 `;
         }
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(systemPrompt);
-                break;
-            } catch (retryErr: any) {
-                const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
-                                    (retryErr?.message && (retryErr.message.includes("429") || retryErr.message.includes("503") || retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error (${retryErr?.status || '503'}), retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-
-        if (!result) {
-            return NextResponse.json({ error: "AI rate-limited after retries." }, { status: 429 });
-        }
-
-        const rawText = result.response.text().trim();
-        let parsedJson = {};
+        const rawText = (await generateWithFallback(systemPrompt, { generationConfig: { temperature: 0.7 } })).trim();
+        let parsedJson: unknown = {};
         try {
-            const cleanJson = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
-            parsedJson = JSON.parse(cleanJson);
+            parsedJson = parseJsonFromModel(rawText);
         } catch (e) {
             console.error("JSON parsing failed, returning raw text error:", rawText);
             return NextResponse.json({ error: "Failed to parse AI generated JSON response", rawText }, { status: 500 });

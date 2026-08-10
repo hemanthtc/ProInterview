@@ -6,8 +6,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Synthetic Data Agent — research domains and generate realistic tabular datasets or documents with Gemini." />
     <title>Synthetic Data Agent — Studio</title>
+    <script>
+      (function() {
+        function applyTheme(t) {
+          var theme = t || localStorage.getItem("prointerview_theme") || localStorage.getItem("globalTheme") || "light";
+          document.documentElement.classList.remove("theme-dark", "theme-light", "theme-eyeprotect");
+          if (theme === "eyeprotect") {
+            document.documentElement.classList.add("theme-light", "theme-eyeprotect");
+          } else {
+            document.documentElement.classList.add("theme-" + theme);
+          }
+        }
+        applyTheme();
+        window.addEventListener("message", function(e) {
+          if (e.data && e.data.type === "sync-theme" && e.data.theme) {
+            applyTheme(e.data.theme);
+          }
+        });
+        window.addEventListener("storage", function(e) {
+          if (e.key === "prointerview_theme" || e.key === "globalTheme") {
+            applyTheme();
+          }
+        });
+      })();
+    </script>
     <script type="module" crossorigin src="/synthetic-data-generator/assets/index-DMrAf6qN.js"></script>
     <link rel="stylesheet" crossorigin href="/synthetic-data-generator/assets/index-emc40I-q.css">
+
   </head>
   <body>
     <div id="root"></div>

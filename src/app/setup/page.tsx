@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { UploadCloud, FileText, Loader2, Globe, Cpu, ArrowLeft } from "lucide-react";
 import CompanySelect from "../../components/CompanySelect";
 import RoleSelect from "../../components/RoleSelect";
@@ -208,13 +210,22 @@ export default function SetupPage() {
         <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 sm:p-6 py-8 sm:py-12">
             <div className="max-w-xl w-full bg-[#111] p-5 sm:p-8 rounded-2xl border border-white/10 shadow-2xl">
 
-                <button
-                    onClick={() => router.push(isRealisticMode ? "/" : "/features")}
-                    className="group flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-medium">Back</span>
-                </button>
+                <div className="flex items-center justify-between gap-4 mb-6">
+                    <button
+                        onClick={() => router.push(isRealisticMode ? "/" : "/features")}
+                        className="group flex items-center gap-2 text-white/50 hover:text-white transition-colors"
+                    >
+                        <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                        <span className="text-sm font-medium">Back</span>
+                    </button>
+                    <Link
+                        href="/labs"
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                    >
+                        ← Back to Labs
+                    </Link>
+                </div>
+
 
                 <h2 className="text-3xl font-bold mb-2">Upload Resume</h2>
                 <p className="text-white/50 mb-8">

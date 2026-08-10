@@ -22,15 +22,15 @@ export default function LabsBanner({ isLight = false }: { isLight?: boolean }) {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Link href="/labs" className="rounded-xl bg-indigo-600 px-3 py-2 text-xs font-bold text-white">
-                        Open Labs
+                    <Link href="/labs" className="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition">
+                        ← Back to Labs
                     </Link>
-                    <Link href="/jobs" className={`rounded-xl px-3 py-2 text-xs font-bold border ${isLight ? "border-slate-300 text-slate-700" : "border-white/15 text-white/80"}`}>
+                    <Link href="/jobs" className={`rounded-xl px-3 py-2 text-xs font-bold border transition ${isLight ? "border-slate-300 text-slate-700 bg-white" : "border-white/15 text-white/80"}`}>
                         Jobs
                     </Link>
                     <button
                         type="button"
-                        className={`rounded-xl px-3 py-2 text-xs font-bold border ${isLight ? "border-slate-300 text-slate-700" : "border-white/15 text-white/80"}`}
+                        className={`rounded-xl px-3 py-2 text-xs font-bold border transition ${isLight ? "border-slate-300 text-slate-700 bg-white" : "border-white/15 text-white/80"}`}
                         onClick={() => {
                             const el = document.querySelector("[data-tool=email_analyser], button");
                             window.location.hash = "email";
@@ -38,7 +38,7 @@ export default function LabsBanner({ isLight = false }: { isLight?: boolean }) {
                             alert("Tip: open Email Analyser for Gmail invite import, then Prep Packs / Aptitude / Mock tests from the tool grid.");
                         }}
                     >
-                        Gmail / Aptitude tip
+                        Prep + Gmail
                     </button>
                 </div>
             </div>

@@ -627,10 +627,17 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       }
 
       const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
-      const result = await res.json();
+      let result: any;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        result = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server returned HTTP ${res.status}`);
+      }
 
-      if (result.error) {
-        alert('AI generation failed: ' + result.error);
+      if (!res.ok || result.error) {
+        alert('AI generation failed: ' + (result.error || `HTTP ${res.status}`));
       } else {
         const updatedData = { ...resumeData };
 
@@ -747,10 +754,17 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('userInput', JSON.stringify(optimizationPrompt));
 
       const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
-      const result = await res.json();
+      let result: any;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        result = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server returned HTTP ${res.status}`);
+      }
 
-      if (result.error) {
-        alert('ATS optimization failed: ' + result.error);
+      if (!res.ok || result.error) {
+        alert('ATS optimization failed: ' + (result.error || `HTTP ${res.status}`));
       } else {
         const updatedData = { ...resumeData };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import {
     Briefcase,
     Code2,
@@ -14,38 +15,93 @@ import {
     Users,
     Video,
     Wallet,
+    Sun,
+    Moon,
+    Eye,
 } from "lucide-react";
 
 const ITEMS = [
-    { href: "/community", title: "Community chat", desc: "Talk with other students", icon: Users, color: "text-indigo-300" },
-    { href: "/panel-interview", title: "Panel interviews", desc: "Multi-interviewer rounds", icon: Users, color: "text-indigo-300" },
-    { href: "/system-design", title: "System design lab", desc: "Whiteboard + auto-eval", icon: PenTool, color: "text-cyan-300" },
-    { href: "/star-coach", title: "STAR coach", desc: "Behavioral drills + retakes", icon: Target, color: "text-violet-300" },
-    { href: "/jobs", title: "Job board", desc: "Apply with scorecard", icon: Briefcase, color: "text-emerald-300" },
-    { href: "/coding-lab", title: "Coding lab", desc: "Progressive hidden tests", icon: Code2, color: "text-amber-300" },
-    { href: "/coaches", title: "Coach marketplace", desc: "Book human coaches", icon: Video, color: "text-pink-300" },
-    { href: "/ats-match", title: "ATS match", desc: "JD vs resume %", icon: FileSearch, color: "text-sky-300" },
-    { href: "/domains", title: "Domain packs", desc: "ML, DevOps, Android…", icon: Layers, color: "text-lime-300" },
-    { href: "/referrals", title: "Referrals", desc: "Invite & compare", icon: Share2, color: "text-orange-300" },
-    { href: "/features", title: "Salary intel", desc: "Inside Negotiate tool", icon: Wallet, color: "text-teal-300" },
-    { href: "/setup", title: "Language / Sarvam", desc: "Hindi + regional voice", icon: Globe2, color: "text-fuchsia-300" },
-    { href: "/features", title: "Prep + Gmail", desc: "Invites, aptitude, mocks", icon: Mic2, color: "text-rose-300" },
+    { href: "/community", title: "Community chat", desc: "Talk with other students", icon: Users, color: "text-indigo-400" },
+    { href: "/panel-interview", title: "Panel interviews", desc: "Multi-interviewer rounds", icon: Users, color: "text-indigo-400" },
+    { href: "/system-design", title: "System design lab", desc: "Whiteboard + auto-eval", icon: PenTool, color: "text-cyan-400" },
+    { href: "/star-coach", title: "STAR coach", desc: "Behavioral drills + retakes", icon: Target, color: "text-violet-400" },
+    { href: "/jobs", title: "Job board", desc: "Apply with scorecard", icon: Briefcase, color: "text-emerald-400" },
+    { href: "/coding-lab", title: "Coding lab", desc: "Progressive hidden tests", icon: Code2, color: "text-amber-400" },
+    { href: "/coaches", title: "Coach marketplace", desc: "Book human coaches", icon: Video, color: "text-pink-400" },
+    { href: "/ats-match", title: "ATS match", desc: "JD vs resume %", icon: FileSearch, color: "text-sky-400" },
+    { href: "/domains", title: "Domain packs", desc: "ML, DevOps, Android…", icon: Layers, color: "text-lime-400" },
+    { href: "/referrals", title: "Referrals", desc: "Invite & compare", icon: Share2, color: "text-orange-400" },
+    { href: "/features", title: "Salary intel", desc: "Inside Negotiate tool", icon: Wallet, color: "text-teal-400" },
+    { href: "/setup", title: "Language / Sarvam", desc: "Hindi + regional voice", icon: Globe2, color: "text-fuchsia-400" },
+    { href: "/features", title: "Prep + Gmail", desc: "Invites, aptitude, mocks", icon: Mic2, color: "text-rose-400" },
 ];
 
 export default function LabsPage() {
+    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
+        if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            setTheme(savedTheme);
+        }
+    }, []);
+
+    const isLight = theme === "light" || theme === "eyeprotect";
+
+    const cycleTheme = () => {
+        const next = theme === "dark" ? "light" : theme === "light" ? "eyeprotect" : "dark";
+        setTheme(next);
+        localStorage.setItem("prointerview_theme", next);
+        document.documentElement.classList.remove("theme-dark", "theme-light", "theme-eyeprotect");
+        document.documentElement.classList.add(`theme-${next}`);
+    };
+
     return (
-        <div className="min-h-screen bg-slate-950 text-white">
+        <div className={`min-h-screen transition-colors duration-300 ${
+            theme === "light"
+                ? "bg-slate-100 text-slate-900"
+                : theme === "eyeprotect"
+                ? "bg-[#f3ede3] text-[#1c1917]"
+                : "bg-slate-950 text-white"
+        }`}>
             <div className="max-w-5xl mx-auto px-4 py-10">
-                <div className="mb-8">
-                    <p className="text-xs uppercase tracking-widest text-white/40">ProInterview Labs</p>
-                    <h1 className="text-3xl font-semibold mt-1">New practice surfaces</h1>
-                    <p className="text-white/50 mt-2 max-w-2xl text-sm">
-                        Working MVPs for the product backlog — panel loops, design grading, STAR retakes, jobs, coding progression, coaches, and more.
-                    </p>
-                    <Link href="/" className="inline-block mt-3 text-sm text-indigo-300 hover:underline">
-                        ← Home
-                    </Link>
+                <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
+                    <div>
+                        <p className={`text-xs uppercase tracking-widest ${isLight ? "text-slate-500 font-semibold" : "text-white/40"}`}>ProInterview Labs</p>
+                        <h1 className="text-3xl font-semibold mt-1">New practice surfaces</h1>
+                        <p className={`mt-2 max-w-2xl text-sm ${isLight ? "text-slate-600" : "text-white/50"}`}>
+                            Working MVPs for the product backlog — panel loops, design grading, STAR retakes, jobs, coding progression, coaches, and more.
+                        </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 shrink-0">
+                        <button
+                            onClick={cycleTheme}
+                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                isLight
+                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                            }`}
+                            title={`Current Theme: ${theme}. Click to switch.`}
+                        >
+                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark</>}
+                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> Light</>}
+                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> Eye Protect</>}
+                        </button>
+
+                        <Link
+                            href="/"
+                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold border transition ${
+                                isLight
+                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-sm"
+                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                            }`}
+                        >
+                            Home →
+                        </Link>
+                    </div>
                 </div>
+
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {ITEMS.map((item) => {
                         const Icon = item.icon;
@@ -53,11 +109,17 @@ export default function LabsPage() {
                             <Link
                                 key={item.href + item.title}
                                 href={item.href}
-                                className="rounded-2xl border border-white/10 bg-white/5 hover:bg-white/10 transition p-4"
+                                className={`rounded-2xl border transition p-4 ${
+                                    theme === "light"
+                                        ? "bg-white border-slate-200 hover:border-indigo-500 hover:shadow-md text-slate-900"
+                                        : theme === "eyeprotect"
+                                        ? "bg-[#fffcf5] border-[#8c8578] hover:border-teal-700 hover:shadow-md text-[#1c1917]"
+                                        : "bg-white/5 border-white/10 hover:bg-white/10 text-white"
+                                }`}
                             >
                                 <Icon className={`w-5 h-5 ${item.color}`} />
                                 <h2 className="mt-3 font-medium">{item.title}</h2>
-                                <p className="text-sm text-white/50">{item.desc}</p>
+                                <p className={`text-sm ${isLight ? "text-slate-500" : "text-white/50"}`}>{item.desc}</p>
                             </Link>
                         );
                     })}
@@ -66,3 +128,4 @@ export default function LabsPage() {
         </div>
     );
 }
+

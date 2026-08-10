@@ -389,6 +389,40 @@ function FeaturesContent() {
     };
 
     useEffect(() => {
+        if (typeof window === "undefined") return;
+        const params = new URLSearchParams(window.location.search);
+        const toolFromUrl = params.get("tool") as typeof activeTool | null;
+        const modalFromStorage = localStorage.getItem("prointerview_active_modal") as typeof activeTool | null;
+
+        const targetTool = toolFromUrl || modalFromStorage;
+        const validTools = [
+            "analysis", "resume", "email_analyser", "roadmap_generator", "prointerviewer",
+            "study_materials", "synthetic_data", "aptitude", "progress", "negotiate", "drills", "prep_pack"
+        ];
+
+        if (targetTool && validTools.includes(targetTool)) {
+            setActiveTool(targetTool);
+            setActiveModal(targetTool);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        if (activeModal) {
+            localStorage.setItem("prointerview_active_modal", activeModal);
+            localStorage.setItem("prointerview_active_tool", activeTool);
+            const url = new URL(window.location.href);
+            url.searchParams.set("tool", activeModal);
+            window.history.replaceState(null, "", url.toString());
+        } else {
+            localStorage.removeItem("prointerview_active_modal");
+            const url = new URL(window.location.href);
+            url.searchParams.delete("tool");
+            window.history.replaceState(null, "", url.toString());
+        }
+    }, [activeModal, activeTool]);
+
+    useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data === "CLOSE_SYNTHETIC_STUDIO" || event.data?.type === "CLOSE_SYNTHETIC_STUDIO") {
                 setActiveModal(null);
@@ -397,6 +431,7 @@ function FeaturesContent() {
         window.addEventListener("message", handleMessage);
         return () => window.removeEventListener("message", handleMessage);
     }, []);
+
 
     // Roadmap timeline accordions
     const [expandedPhases, setExpandedPhases] = useState<Record<number, boolean>>({ 0: true });
@@ -3439,7 +3474,20 @@ function FeaturesContent() {
                                 </div>
                             )}
                             {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
+                            <Link
+                                href="/labs"
+                                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
+                                    theme === "eyeprotect"
+                                        ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                        : isLight
+                                        ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                        : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                                }`}
+                            >
+                                ← Back to Labs
+                            </Link>
                             {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
+
 
                             {/* Theme Toggle Button */}
                             <button
@@ -3448,9 +3496,11 @@ function FeaturesContent() {
                                 title={`Current Theme: ${theme}. Click to switch.`}
                             >
                                 {theme === "dark" && <Moon className="w-4 h-4" />}
+
                                 {theme === "light" && <Sun className="w-4 h-4" />}
                                 {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
                             </button>
+
 
                             {isLoggedIn ? (
                                 <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
@@ -3610,14 +3660,18 @@ function FeaturesContent() {
                     />
                 </div>
             ) : activeModal === "synthetic_data" ? (
-                <div className="flex-1 w-full h-[100dvh] relative overflow-hidden bg-[#F7F8FA]">
+                <div className={`flex-1 w-full h-[100dvh] relative overflow-hidden transition-colors duration-300 ${
+                    theme === "light" ? "bg-slate-100" : theme === "eyeprotect" ? "bg-[#f3ede3]" : "bg-[#0b0f14]"
+                }`}>
                     <iframe
+                        id="synthetic-data-iframe"
                         src="/synthetic-data-generator/index.html"
                         className="w-full h-full border-none"
                         title="Synthetic Data Generator"
                     />
                 </div>
             ) : (
+
                 <main className={`flex-1 flex flex-col items-center justify-center relative ${activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : "px-6 py-12 overflow-hidden"}`}>
                     <div className="w-full max-w-4xl mb-6">
                         <LabsBanner isLight={isLight} />
