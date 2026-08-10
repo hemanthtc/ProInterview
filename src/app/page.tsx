@@ -20,7 +20,6 @@ export default function Home() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
-        // Org admins have their own dashboard — redirect them away from the user home
         const loggedIn = getStorageItem("userLoggedIn") === "true";
         const role = localStorage.getItem("userRole");
         if (loggedIn && role === "admin") {
@@ -28,13 +27,7 @@ export default function Home() {
             return;
         }
 
-        // Logged-in, non-admin users land on the unified prep dashboard by default.
-        if (loggedIn) {
-            router.push("/prep");
-            return;
-        }
-
-        setIsLoggedIn(getStorageItem("userLoggedIn") === "true");
+        setIsLoggedIn(loggedIn);
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         
         const savedTheme = localStorage.getItem("globalTheme") as any;

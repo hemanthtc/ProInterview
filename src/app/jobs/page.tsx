@@ -189,7 +189,13 @@ export default function JobsPage() {
                             <Briefcase className="w-4 h-4" /> Job board
                         </p>
                         <h1 className="text-2xl font-semibold mt-1">Open job roles</h1>
-                        <p className="text-sm text-white/50 mt-1">
+                        <p className={`text-sm mt-1 ${
+                            theme === "light"
+                                ? "text-slate-600 font-medium"
+                                : theme === "eyeprotect"
+                                ? "text-[#57534e] font-semibold"
+                                : "text-white/50"
+                        }`}>
                             Match live openings to your resume and preferred location.
                         </p>
                         {scorecardId && (
@@ -240,14 +246,16 @@ export default function JobsPage() {
                         }`}
                     >
                         <div>
-                            <p className={`text-xs uppercase tracking-widest flex items-center gap-2 mb-2 ${
-                                isLight ? "text-slate-500 font-semibold" : "text-white/40"
+                            <p className={`text-xs uppercase tracking-widest flex items-center gap-2 mb-2 font-bold ${
+                                isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/40"
                             }`}>
                                 <FileUp className="w-3.5 h-3.5" /> Resume
                             </p>
                             <label className={`block rounded-xl border border-dashed px-4 py-6 text-center cursor-pointer transition ${
-                                isLight
+                                theme === "light"
                                     ? "border-slate-300 bg-slate-50 hover:border-emerald-600"
+                                    : theme === "eyeprotect"
+                                    ? "border-[#8c8578] bg-[#f5efe6] hover:border-teal-700"
                                     : "border-white/20 bg-black/30 hover:border-emerald-400/40"
                             }`}>
                                 <input
@@ -265,7 +273,13 @@ export default function JobsPage() {
                                         <p className="text-sm font-medium">
                                             {resumeFileName || "Upload resume (PDF / TXT)"}
                                         </p>
-                                        <p className={`text-xs mt-1 ${isLight ? "text-slate-500" : "text-white/40"}`}>
+                                        <p className={`text-xs mt-1 font-medium ${
+                                            theme === "light"
+                                                ? "text-slate-500"
+                                                : theme === "eyeprotect"
+                                                ? "text-[#78716c]"
+                                                : "text-white/40"
+                                        }`}>
                                             Or paste resume text below
                                         </p>
                                     </>
@@ -277,16 +291,18 @@ export default function JobsPage() {
                                 rows={8}
                                 placeholder="Paste your resume text here…"
                                 className={`mt-3 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
-                                    isLight
-                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 shadow-sm"
+                                    theme === "light"
+                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 shadow-sm"
+                                        : theme === "eyeprotect"
+                                        ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
                                         : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500/50"
                                 }`}
                             />
                         </div>
 
                         <div>
-                            <label className={`text-xs uppercase tracking-widest flex items-center gap-2 mb-2 ${
-                                isLight ? "text-slate-500 font-semibold" : "text-white/40"
+                            <label className={`text-xs uppercase tracking-widest flex items-center gap-2 mb-2 font-bold ${
+                                isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/40"
                             }`}>
                                 <MapPin className="w-3.5 h-3.5" /> Preferred location
                             </label>
@@ -295,8 +311,10 @@ export default function JobsPage() {
                                 onChange={(e) => setLocation(e.target.value)}
                                 placeholder="e.g. Bangalore, Hyderabad, Remote, Berlin…"
                                 className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
-                                    isLight
-                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 shadow-sm"
+                                    theme === "light"
+                                        ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 shadow-sm"
+                                        : theme === "eyeprotect"
+                                        ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
                                         : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500/50"
                                 }`}
                                 required
@@ -307,10 +325,18 @@ export default function JobsPage() {
                                         key={loc}
                                         type="button"
                                         onClick={() => setLocation(loc)}
-                                        className={`text-xs rounded-full border px-2.5 py-1 transition ${
+                                        className={`text-xs rounded-full border px-2.5 py-1 transition cursor-pointer font-medium ${
                                             location === loc
-                                                ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
-                                                : "border-white/10 text-white/50 hover:border-emerald-400/30 hover:text-emerald-200"
+                                                ? (theme === "eyeprotect"
+                                                    ? "border-[#0b5f58] bg-[#0b5f58] text-white font-bold"
+                                                    : isLight
+                                                    ? "border-emerald-600 bg-emerald-600 text-white font-bold"
+                                                    : "border-emerald-400/50 bg-emerald-500/15 text-emerald-200 font-bold")
+                                                : (theme === "light"
+                                                    ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+                                                    : theme === "eyeprotect"
+                                                    ? "border-[#8c8578] bg-[#f5efe6] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                    : "border-white/10 text-white/50 hover:border-emerald-400/30 hover:text-emerald-200")
                                         }`}
                                     >
                                         {loc}

@@ -266,13 +266,6 @@ export default function CodingLabPage() {
                                         </ul>
                                     </div>
                                 )}
-                                                <li key={i}>
-                                                    {r.passed ? "✓" : "✗"} {r.hidden ? "Hidden test" : "Public test"}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
                             </>
                         )}
                     </div>

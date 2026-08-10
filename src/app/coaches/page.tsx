@@ -428,7 +428,6 @@ export default function CoachesPage() {
                                         );
                                     })}
                                 </div>
-                                </div>
                             </div>
                         </div>
                     ))}

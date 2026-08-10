@@ -237,6 +237,7 @@ export default function LabsPage() {
                                         ? "bg-[#fffcf5] border-[#8c8578] hover:border-teal-700 hover:shadow-md text-[#1c1917]"
                                         : "bg-white/5 border-white/10 hover:bg-white/10 text-white"
                                 }`}
+                            >
                                 <div>
                                     <div className="flex items-center justify-between gap-2 mb-2">
                                         <Icon className={`w-5 h-5 ${item.color}`} />
@@ -244,7 +245,14 @@ export default function LabsPage() {
                                             {item.badges.map((b) => (
                                                 <span
                                                     key={b}
-                                                    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${BADGE_CLASS[b]}`}
+                                                    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${
+                                                        isLight
+                                                            ? (b === "New" ? "border-emerald-300 bg-emerald-100 text-emerald-800"
+                                                                : b === "Beta" ? "border-amber-300 bg-amber-100 text-amber-800"
+                                                                : b === "Sign-in" ? "border-sky-300 bg-sky-100 text-sky-800"
+                                                                : "border-slate-300 bg-slate-100 text-slate-700")
+                                                            : BADGE_CLASS[b]
+                                                    }`}
                                                 >
                                                     {b}
                                                 </span>

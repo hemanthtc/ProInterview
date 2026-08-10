@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader2, Mic, MicOff, Send, Users, Volume2, VolumeX, Moon, Sun, Eye } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
-import { speakInterviewText } from "@/utils/speakInterview";
+import { speakInterviewText, stopSpeechInterviewText } from "@/utils/speakInterview";
 
 // SpeechRecognition isn't in the default TS DOM lib — mirror the interview room's usage.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -206,6 +206,7 @@ export default function PanelInterviewPage() {
 
         recognitionRef.current = recognition;
         return () => {
+            stopSpeechInterviewText();
             try {
                 recognition.stop();
             } catch {
@@ -213,6 +214,17 @@ export default function PanelInterviewPage() {
             }
         };
     }, []);
+
+    const teardownAudioAndMic = useCallback(() => {
+        stopSpeechInterviewText();
+        stopListening();
+    }, [stopListening]);
+
+    useEffect(() => {
+        return () => {
+            teardownAudioAndMic();
+        };
+    }, [teardownAudioAndMic]);
 
     function toggleListening() {
         if (!recognitionRef.current) return;
@@ -259,11 +271,12 @@ export default function PanelInterviewPage() {
                             {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                             {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                         </button>
-                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
+                        <Link href="/prep" onClick={teardownAudioAndMic} className="text-xs font-bold text-indigo-400 hover:underline">
                             Prep dashboard
                         </Link>
                         <Link
                             href="/labs"
+                            onClick={teardownAudioAndMic}
                             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
                                 theme === "eyeprotect"
                                     ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
@@ -276,10 +289,11 @@ export default function PanelInterviewPage() {
                         </Link>
                     </div>
                 </div>
-
                 <div className="mb-4 flex items-center justify-end gap-2">
                     {isSpeaking && (
-                        <span className="inline-flex items-center gap-1 text-[11px] text-indigo-300/80">
+                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
+                            isLight ? (theme === "eyeprotect" ? "text-teal-800" : "text-indigo-700") : "text-indigo-300/80"
+                        }`}>
                             <Volume2 className="w-3.5 h-3.5" /> Speaking…
                         </span>
                     )}
@@ -287,8 +301,10 @@ export default function PanelInterviewPage() {
                         type="button"
                         onClick={() => setMuted(!muted)}
                         title={muted ? "Unmute panelist voices" : "Mute panelist voices"}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${
-                            muted ? "border-white/10 text-white/50" : "border-indigo-400/30 bg-indigo-500/15 text-indigo-100"
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold cursor-pointer transition ${
+                            isLight
+                                ? (muted ? "border-slate-300 bg-slate-100 text-slate-600" : "border-indigo-300 bg-indigo-100 text-indigo-800 shadow-sm")
+                                : (muted ? "border-white/10 text-white/50" : "border-indigo-400/30 bg-indigo-500/15 text-indigo-100")
                         }`}
                     >
                         {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
@@ -304,7 +320,7 @@ export default function PanelInterviewPage() {
                             key={p.id}
                             type="button"
                             onClick={() => setActiveId(p.id)}
-                            className={`rounded-full px-3 py-1.5 text-xs border transition ${
+                            className={`rounded-full px-3 py-1.5 text-xs border transition cursor-pointer ${
                                 activeId === p.id
                                     ? (theme === "eyeprotect"
                                         ? "bg-[#0b5f58] border-[#0b5f58] text-white font-bold"
@@ -312,7 +328,7 @@ export default function PanelInterviewPage() {
                                         ? "bg-indigo-600 border-indigo-600 text-white font-bold"
                                         : "bg-indigo-500/30 border-indigo-400 text-white font-bold")
                                     : (isLight
-                                        ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+                                        ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
                                         : "border-white/10 text-white/50 hover:text-white")
                             }`}
                         >
@@ -366,31 +382,37 @@ export default function PanelInterviewPage() {
                     )}
                     {error && <p className="text-rose-500 text-sm font-semibold">{error}</p>}
                     {done && (
-                        <div className="space-y-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm">
-                            <p className="text-emerald-200 font-semibold">Panel concluded.</p>
+                        <div className={`space-y-3 rounded-xl border p-4 text-sm ${
+                            theme === "light"
+                                ? "border-emerald-300 bg-emerald-50 text-slate-900 shadow-sm"
+                                : theme === "eyeprotect"
+                                ? "border-emerald-700/50 bg-[#e8f5e9] text-[#1c1917]"
+                                : "border-emerald-400/30 bg-emerald-500/10 text-white"
+                        }`}>
+                            <p className="text-emerald-700 dark:text-emerald-200 font-semibold">Panel concluded.</p>
                             {summary && (
                                 <>
-                                    <div className="text-2xl font-semibold text-emerald-300">
+                                    <div className="text-2xl font-semibold text-emerald-700 dark:text-emerald-300">
                                         {summary.overall ?? "—"}
-                                        <span className="text-sm text-white/40">/100 estimated</span>
+                                        <span className={`text-sm ${isLight ? "text-slate-500" : "text-white/40"}`}>/100 estimated</span>
                                     </div>
                                     {summary.strengths && (
-                                        <ul className="list-disc pl-5 text-white/70">
+                                        <ul className={`list-disc pl-5 ${isLight ? "text-slate-700" : "text-white/70"}`}>
                                             {summary.strengths.map((s) => <li key={s}>{s}</li>)}
                                         </ul>
                                     )}
                                     {summary.gaps && (
                                         <div>
-                                            <p className="mb-1 text-xs uppercase text-amber-200/80">Gaps</p>
-                                            <ul className="list-disc pl-5 text-white/70">
+                                            <p className="mb-1 text-xs uppercase font-bold text-amber-700 dark:text-amber-200/80">Gaps</p>
+                                            <ul className={`list-disc pl-5 ${isLight ? "text-slate-700" : "text-white/70"}`}>
                                                 {summary.gaps.map((s) => <li key={s}>{s}</li>)}
                                             </ul>
                                         </div>
                                     )}
                                     <div className="flex flex-wrap gap-2 pt-1">
-                                        <Link href="/star-coach" className="text-violet-300 underline font-bold">STAR coach →</Link>
-                                        <Link href="/film-room" className="text-rose-300 underline font-bold">Film room →</Link>
-                                        <Link href="/system-design" className="text-cyan-300 underline font-bold">System design →</Link>
+                                        <Link href="/star-coach" className="text-violet-700 dark:text-violet-300 underline font-bold">STAR coach →</Link>
+                                        <Link href="/film-room" className="text-rose-700 dark:text-rose-300 underline font-bold">Film room →</Link>
+                                        <Link href="/system-design" className="text-cyan-700 dark:text-cyan-300 underline font-bold">System design →</Link>
                                     </div>
                                 </>
                             )}
@@ -422,9 +444,11 @@ export default function PanelInterviewPage() {
                             onClick={toggleListening}
                             disabled={loading || done}
                             title={isListening ? "Stop microphone" : "Answer by voice"}
-                            className={`rounded-xl border p-2.5 transition ${
+                            className={`rounded-xl border p-2.5 transition cursor-pointer ${
                                 isListening
-                                    ? "border-rose-500/50 bg-rose-500/20 text-rose-300 animate-pulse"
+                                    ? "border-rose-500/50 bg-rose-500/20 text-rose-600 dark:text-rose-300 animate-pulse font-bold"
+                                    : isLight
+                                    ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
                                     : "border-white/10 bg-white/5 text-white/70 hover:text-white"
                             }`}
                         >
