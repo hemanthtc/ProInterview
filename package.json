@@ -26,21 +26,18 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@aws-amplify/backend": "^1.24.0",
-    "@aws-amplify/backend-cli": "^1.9.0",
     "@tailwindcss/postcss": "^4.2.1",
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^25.3.5",
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "aws-cdk-lib": "^2.244.0",
-    "constructs": "^10.8.1",
-    "esbuild": "^0.28.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.1",
-    "tsx": "^4.23.11",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
-  }
+  },
+  "workspaces": [
+    "amplify"
+  ]
 }
