@@ -81,3 +81,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
+
+export async function GET() {
+    return NextResponse.json(
+        { error: "Method Not Allowed. Please send a POST request with registration details." },
+        { status: 405 }
+    );
+}

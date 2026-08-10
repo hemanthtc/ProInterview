@@ -7,25 +7,25 @@ export default function RateLimitToaster() {
     const [message, setMessage] = useState<string | null>(null);
 
     useEffect(() => {
-        const original = window.fetch.bind(window);
+        if (typeof window === "undefined") return;
+        if ((window as any).__rateLimitInterceptorSet) return;
+        (window as any).__rateLimitInterceptorSet = true;
+
+        const originalFetch = window.fetch;
         window.fetch = async (...args) => {
-            const res = await original(...args);
-            if (res.status === 429) {
+            const res = await originalFetch(...args);
+            if (res && res.status === 429) {
                 try {
                     const input = args[0];
-                    const url =
+                    const urlStr =
                         typeof input === "string"
-                            ? new URL(input, window.location.origin)
+                            ? input
                             : input instanceof URL
-                              ? input
+                              ? input.href
                               : input instanceof Request
-                                ? new URL(input.url, window.location.origin)
-                                : null;
-                    const isSameOriginApi =
-                        url &&
-                        url.origin === window.location.origin &&
-                        url.pathname.startsWith("/api/");
-                    if (isSameOriginApi) {
+                                ? input.url
+                                : "";
+                    if (urlStr.includes("/api/")) {
                         const retry = res.headers.get("Retry-After");
                         setMessage(retry ? `Rate limited — retry in ${retry}s` : "Rate limited — please wait and retry");
                         window.setTimeout(() => setMessage(null), 5000);
@@ -35,9 +35,6 @@ export default function RateLimitToaster() {
                 }
             }
             return res;
-        };
-        return () => {
-            window.fetch = original;
         };
     }, []);
 

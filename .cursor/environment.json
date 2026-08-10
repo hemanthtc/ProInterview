@@ -1,0 +1,10 @@
+{
+  "name": "ProInterview",
+  "install": "cd repos/hemanthtc-ProInterview && npm ci --cache .npm --prefer-offline",
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "cd repos/hemanthtc-ProInterview && npm run dev"
+    }
+  ]
+}

@@ -16,6 +16,19 @@ if (!cached) {
     cached = (global as any).mongoose = { conn: null, promise: null };
 }
 
+async function fetchWithTimeout(url: string, init?: RequestInit, timeoutMs = 2500): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+        return await fetch(url, {
+            ...init,
+            signal: controller.signal
+        });
+    } finally {
+        clearTimeout(id);
+    }
+}
+
 // Resolves a mongodb+srv:// connection string dynamically using DNS over HTTPS (DoH)
 // to bypass local DNS blocks/querySrv ECONNREFUSED issues on port 53.
 async function resolveSrvConnectionString(srvUri: string): Promise<string> {
@@ -51,7 +64,7 @@ async function resolveSrvConnectionString(srvUri: string): Promise<string> {
 
         // 1. Fetch SRV records via Cloudflare DoH (port 443)
         const srvUrl = `https://cloudflare-dns.com/dns-query?name=_mongodb._tcp.${encodeURIComponent(host)}&type=SRV`;
-        const srvRes = await fetch(srvUrl, { headers: { "accept": "application/dns-json" } });
+        const srvRes = await fetchWithTimeout(srvUrl, { headers: { "accept": "application/dns-json" } });
         if (!srvRes.ok) {
             throw new Error(`Cloudflare DoH SRV query failed with status: ${srvRes.status}`);
         }
@@ -78,7 +91,7 @@ async function resolveSrvConnectionString(srvUri: string): Promise<string> {
 
         // 2. Fetch TXT records via Cloudflare DoH for cluster options
         const txtUrl = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=TXT`;
-        const txtRes = await fetch(txtUrl, { headers: { "accept": "application/dns-json" } });
+        const txtRes = await fetchWithTimeout(txtUrl, { headers: { "accept": "application/dns-json" } });
         
         let txtOptions = "";
         if (txtRes.ok) {
@@ -118,7 +131,7 @@ async function connectDB() {
         );
     }
 
-    if (cached.conn) {
+    if (cached.conn && mongoose.connection.readyState === 1) {
         return cached.conn;
     }
 
@@ -129,27 +142,30 @@ async function connectDB() {
             connectTimeoutMS: 8000,
         };
 
-        // Try connecting directly with the original MONGODB_URI first.
-        // If it fails (due to local port 53 DNS blocks), attempt fallback via Cloudflare DNS over HTTPS.
-        cached.promise = mongoose.connect(MONGODB_URI, opts)
-            .then((mongooseInstance) => {
-                console.log("Connected to MongoDB directly using original MONGODB_URI.");
-                return mongooseInstance;
-            })
-            .catch(async (directError) => {
-                console.warn("Direct connection failed, attempting DNS-over-HTTPS fallback...", directError.message || directError);
+        // If using mongodb+srv://, resolve via DoH first to avoid 8s local DNS timeout on blocked UDP port 53
+        cached.promise = (async () => {
+            let targetUri = MONGODB_URI;
+            if (MONGODB_URI.startsWith("mongodb+srv://")) {
                 try {
-                    const resolvedUri = await resolveSrvConnectionString(MONGODB_URI);
-                    if (resolvedUri === MONGODB_URI) {
-                        throw directError;
-                    }
-                    console.log("Retrying database connection with DoH resolved replica set URI...");
-                    return await mongoose.connect(resolvedUri, opts);
-                } catch (fallbackError) {
-                    console.error("MongoDB failover fallback connection also failed:", fallbackError);
-                    throw directError; // Return original error for better diagnostics
+                    targetUri = await resolveSrvConnectionString(MONGODB_URI);
+                } catch (dohError) {
+                    console.warn("DoH pre-resolution failed, trying original MONGODB_URI...", dohError);
+                    targetUri = MONGODB_URI;
                 }
-            });
+            }
+
+            try {
+                const mongooseInstance = await mongoose.connect(targetUri, opts);
+                console.log("Connected to MongoDB successfully.");
+                return mongooseInstance;
+            } catch (firstError) {
+                if (targetUri !== MONGODB_URI) {
+                    console.warn("Resolved URI connection failed, falling back to original MONGODB_URI...", firstError);
+                    return await mongoose.connect(MONGODB_URI, opts);
+                }
+                throw firstError;
+            }
+        })();
     }
 
     try {

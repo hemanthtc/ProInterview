@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData } from "../../utils/storage";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
+import BrandLogo from "../../components/BrandLogo";
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -1041,13 +1042,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[120px] pointer-events-none" />
 
             <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80 gap-3">
-                <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center shrink-0">
-                        <Video className="w-5 h-5 text-white" />
-                    </div>
-                    <span className="font-bold text-xl tracking-tight hidden sm:inline">ProInterview</span>
-                    <span className="font-bold text-lg tracking-tight sm:hidden">Pro</span>
-                </Link>
+                <BrandLogo />
                 <div className="flex items-center gap-2 sm:gap-4">
                     <button 
                         onClick={toggleMode}
@@ -1247,7 +1242,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80">{userName}</span>
                                         <button
                                             onClick={() => { setEditingName(true); setEditNameValue(userName); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit name"
                                         >
                                             <Pencil className="w-3 h-3" />
@@ -1341,7 +1336,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{github || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingGithub(true); setEditGithubValue(github); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit GitHub URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1376,7 +1371,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{linkedin || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingLinkedin(true); setEditLinkedinValue(linkedin); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit LinkedIn URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1411,7 +1406,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{portfolioUrl || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingPortfolio(true); setEditPortfolioValue(portfolioUrl); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit Portfolio URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1446,7 +1441,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{phone || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingPhone(true); setEditPhoneValue(phone); }}
-                                            className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                             title="Edit Phone"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1482,7 +1477,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{additionalEmail || "Not specified"}</span>
                                             <button
                                                 onClick={() => { setEditingAdditionalEmail(true); setEditAdditionalEmailValue(additionalEmail); }}
-                                                className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
                                                 title="Edit Email"
                                             >
                                                 <Pencil className="w-3.5 h-3.5" />
@@ -2270,7 +2265,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     </li>
                                                     <li className="flex items-center gap-2 text-indigo-300 font-semibold">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Multilingual (Gemini & Sarvam AI)
+                                                        Multilingual (Google Gemini)
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
