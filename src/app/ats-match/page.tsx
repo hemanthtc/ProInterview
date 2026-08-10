@@ -63,19 +63,57 @@ export default function AtsMatchPage() {
                 </button>
                 {error && <p className="text-rose-300 text-sm mt-2">{error}</p>}
                 {result && (
-                    <div className="mt-4 rounded-2xl border border-white/10 bg-white/5 p-4 space-y-2 text-sm">
+                    <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm">
                         <div className="text-3xl font-bold text-sky-300">{result.matchPercent}% match</div>
                         <div>
-                            <b>Hits:</b> {(result.keywordHits || []).join(", ")}
+                            <b>Hits:</b> {(result.keywordHits || []).join(", ") || "—"}
                         </div>
                         <div>
-                            <b>Gaps:</b> {(result.keywordGaps || []).join(", ")}
+                            <b>Gaps:</b>{" "}
+                            <span className="text-amber-200/90">
+                                {(result.keywordGaps || []).join(", ") || "—"}
+                            </span>
                         </div>
-                        {result.readyForMock && (
-                            <Link href="/setup" className="inline-block mt-2 text-sky-300 underline">
-                                Ready — start a mock interview →
-                            </Link>
+                        {(result.sectionAdvice || []).length > 0 && (
+                            <div>
+                                <p className="mb-1 text-xs uppercase text-white/40">Section advice</p>
+                                <ul className="list-disc pl-5 text-white/70">
+                                    {result.sectionAdvice.map((a: string, i: number) => (
+                                        <li key={i}>{a}</li>
+                                    ))}
+                                </ul>
+                            </div>
                         )}
+                        {(result.rewrittenBullets || []).length > 0 && (
+                            <div>
+                                <p className="mb-1 text-xs uppercase text-emerald-300/80">Rewrite suggestions</p>
+                                <ul className="space-y-1.5">
+                                    {result.rewrittenBullets.map((b: string, i: number) => (
+                                        <li key={i} className="rounded-lg bg-black/30 px-3 py-2 text-white/80">
+                                            {b}
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+                        <div className="flex flex-wrap gap-3 pt-1">
+                            {result.readyForMock && (
+                                <Link href="/setup" className="text-sky-300 underline">
+                                    Ready — start a mock interview →
+                                </Link>
+                            )}
+                            <Link href="/prep" className="text-indigo-300 underline">
+                                Prep dashboard →
+                            </Link>
+                            {(result.keywordGaps || []).length > 0 && (
+                                <Link
+                                    href={`/star-coach?question=${encodeURIComponent(`Tell me about experience with ${(result.keywordGaps || [])[0]}`)}&weakSpot=${encodeURIComponent("missing keyword evidence")}`}
+                                    className="text-violet-300 underline"
+                                >
+                                    Practice a gap in STAR coach →
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 )}
             </div>

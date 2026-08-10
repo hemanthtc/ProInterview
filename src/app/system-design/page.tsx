@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, PenTool, RefreshCw, Sparkles, Wifi } from "lucide-react";
 import InteractiveWhiteboard from "@/components/system-design/InteractiveWhiteboard";
+import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import type { SystemDesignQuestion } from "@/data/systemDesignQuestions";
 import { BoardShape, summarizeBoard } from "@/utils/systemDesignBoard";
 
@@ -156,6 +157,8 @@ export default function SystemDesignPage() {
                         ← Labs
                     </Link>
                 </div>
+
+                <LabAuthBanner feature="online system-design questions and evaluation" />
 
                 <div className="mb-5 flex flex-wrap items-center gap-2">
                     <select

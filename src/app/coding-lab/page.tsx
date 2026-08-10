@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Code2, Loader2 } from "lucide-react";
+import { CheckCircle2, Code2, Loader2 } from "lucide-react";
+import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import { loadCodingProgress, saveCodingProgress, type CodingProgress } from "@/utils/labProgress";
 
 interface Problem {
     id: string;
@@ -14,33 +16,51 @@ interface Problem {
     topics: string[];
 }
 
+interface GradeResult {
+    score?: number;
+    passedCount?: number;
+    total?: number;
+    unlockedNext?: boolean;
+    nextId?: string;
+    error?: string;
+    results?: { passed: boolean; hidden: boolean }[];
+}
+
 export default function CodingLabPage() {
     const [problems, setProblems] = useState<Problem[]>([]);
     const [active, setActive] = useState<Problem | null>(null);
     const [code, setCode] = useState("");
     const [language, setLanguage] = useState("javascript");
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<GradeResult | null>(null);
     const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState<CodingProgress>({ solvedIds: [], bestScores: {} });
+    const [error, setError] = useState("");
 
     useEffect(() => {
+        setProgress(loadCodingProgress());
         fetch("/api/coding-problems?path=1")
             .then((r) => r.json())
             .then((d) => {
-                const list = (d.problems || []).filter(Boolean);
+                const list = (d.problems || []).filter(Boolean) as Problem[];
                 setProblems(list);
-                if (list[0]) select(list[0]);
+                const saved = loadCodingProgress();
+                const last = list.find((p) => p.id === saved.lastProblemId) || list[0];
+                if (last) select(last, "javascript");
             });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    function select(p: Problem) {
+    function select(p: Problem, lang = language) {
         setActive(p);
-        setCode(p.starterCode?.[language] || p.starterCode?.javascript || "");
+        setCode(p.starterCode?.[lang] || p.starterCode?.javascript || "");
         setResult(null);
+        setError("");
     }
 
     async function grade() {
         if (!active) return;
         setLoading(true);
+        setError("");
         try {
             const res = await fetch("/api/coding-problems", {
                 method: "POST",
@@ -48,12 +68,14 @@ export default function CodingLabPage() {
                 body: JSON.stringify({ problemId: active.id, language, code }),
             });
             const data = await res.json();
+            if (!res.ok) {
+                setError(data.error || "Grading failed — sign in required for online sandbox.");
+                setResult(data);
+                return;
+            }
             setResult(data);
-            if (data.unlockedNext && data.nextId) {
-                const next = problems.find((p) => p.id === data.nextId);
-                if (next) {
-                    // keep result visible; user can advance
-                }
+            if (typeof data.score === "number") {
+                setProgress(saveCodingProgress({ problemId: active.id, score: data.score }));
             }
         } finally {
             setLoading(false);
@@ -62,47 +84,69 @@ export default function CodingLabPage() {
 
     return (
         <div className="min-h-screen bg-slate-950 text-white">
-            <div className="max-w-6xl mx-auto px-4 py-8">
-                <div className="flex items-center justify-between mb-6">
+            <div className="mx-auto max-w-6xl px-4 py-8">
+                <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <p className="text-xs uppercase tracking-widest text-amber-300/80 flex items-center gap-2">
-                            <Code2 className="w-4 h-4" /> Coding lab
+                        <p className="flex items-center gap-2 text-xs uppercase tracking-widest text-amber-300/80">
+                            <Code2 className="h-4 w-4" /> Coding lab
                         </p>
-                        <h1 className="text-2xl font-semibold mt-1">Progressive problems + hidden tests</h1>
+                        <h1 className="mt-1 text-2xl font-semibold">Progressive problems + hidden tests</h1>
+                        <p className="mt-1 text-sm text-white/45">
+                            {progress.solvedIds.length} unlocked · progress saved on this device
+                        </p>
                     </div>
-                    <Link href="/labs" className="text-sm text-white/60 hover:text-white">
-                        ← Labs
-                    </Link>
+                    <div className="flex flex-col items-end gap-1 text-sm">
+                        <Link href="/prep" className="text-indigo-300 hover:underline">
+                            Prep dashboard
+                        </Link>
+                        <Link href="/labs" className="text-white/60 hover:text-white">
+                            ← Labs
+                        </Link>
+                    </div>
                 </div>
 
-                <div className="grid lg:grid-cols-[240px_1fr] gap-4">
+                <LabAuthBanner feature="sandboxed code grading" />
+
+                <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
                     <div className="space-y-2">
-                        {problems.map((p) => (
-                            <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => select(p)}
-                                className={`w-full text-left rounded-xl border px-3 py-2 text-sm ${
-                                    active?.id === p.id ? "border-amber-400/50 bg-amber-500/10" : "border-white/10 bg-white/5"
-                                }`}
-                            >
-                                <div className="font-medium">{p.title}</div>
-                                <div className="text-[10px] uppercase text-white/40">{p.difficulty}</div>
-                            </button>
-                        ))}
+                        {problems.map((p) => {
+                            const best = progress.bestScores[p.id];
+                            const solved = progress.solvedIds.includes(p.id);
+                            return (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => select(p)}
+                                    className={`w-full rounded-xl border px-3 py-2 text-left text-sm ${
+                                        active?.id === p.id
+                                            ? "border-amber-400/50 bg-amber-500/10"
+                                            : "border-white/10 bg-white/5"
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="font-medium">{p.title}</div>
+                                        {solved && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
+                                    </div>
+                                    <div className="text-[10px] uppercase text-white/40">
+                                        {p.difficulty}
+                                        {best != null ? ` · best ${best}%` : ""}
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                     <div className="space-y-3">
                         {active && (
                             <>
                                 <p className="text-sm text-white/70">{active.prompt}</p>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     <select
                                         value={language}
                                         onChange={(e) => {
                                             setLanguage(e.target.value);
                                             setCode(active.starterCode?.[e.target.value] || "");
                                         }}
-                                        className="rounded-lg bg-black/40 border border-white/10 px-2 py-1 text-sm"
+                                        className="rounded-lg border border-white/10 bg-black/40 px-2 py-1 text-sm"
                                     >
                                         <option value="javascript">JavaScript</option>
                                         <option value="python">Python</option>
@@ -113,15 +157,20 @@ export default function CodingLabPage() {
                                         disabled={loading}
                                         className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm disabled:opacity-50"
                                     >
-                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Run hidden tests"}
+                                        {loading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            "Run hidden tests"
+                                        )}
                                     </button>
                                 </div>
                                 <textarea
                                     value={code}
                                     onChange={(e) => setCode(e.target.value)}
-                                    className="w-full min-h-[320px] font-mono text-sm rounded-xl bg-black/50 border border-white/10 p-3"
+                                    className="min-h-[320px] w-full rounded-xl border border-white/10 bg-black/50 p-3 font-mono text-sm"
                                 />
-                                {result && (
+                                {error && <p className="text-sm text-rose-300">{error}</p>}
+                                {result && result.score != null && (
                                     <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm">
                                         <div>
                                             Score: <b>{result.score}</b> ({result.passedCount}/{result.total})
@@ -139,7 +188,7 @@ export default function CodingLabPage() {
                                             </button>
                                         )}
                                         <ul className="mt-2 space-y-1 text-white/60">
-                                            {(result.results || []).map((r: any, i: number) => (
+                                            {(result.results || []).map((r, i) => (
                                                 <li key={i}>
                                                     {r.passed ? "✓" : "✗"} {r.hidden ? "Hidden test" : "Public test"}
                                                 </li>

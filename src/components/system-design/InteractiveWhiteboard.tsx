@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { Eraser, MousePointer2, PenLine, Trash2 } from "lucide-react";
+import { Download, Eraser, MousePointer2, PenLine, Trash2 } from "lucide-react";
 import {
     BoardShape,
     BoardShapeKind,
@@ -305,6 +305,92 @@ export default function InteractiveWhiteboard({
         clearCanvasInk();
     }
 
+    function exportPng() {
+        const ink = canvasRef.current;
+        const board = boardRef.current;
+        if (!ink || !board) return;
+        const out = document.createElement("canvas");
+        out.width = ink.width;
+        out.height = ink.height;
+        const ctx = out.getContext("2d");
+        if (!ctx) return;
+        ctx.fillStyle = "#0b1220";
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(ink, 0, 0);
+
+        const rect = board.getBoundingClientRect();
+        const scaleX = out.width / Math.max(1, rect.width);
+        const scaleY = out.height / Math.max(1, rect.height);
+
+        for (const shape of shapes) {
+            const x = shape.x * scaleX;
+            const y = shape.y * scaleY;
+            const w = shape.w * scaleX;
+            const h = shape.h * scaleY;
+            ctx.strokeStyle = "#67e8f9";
+            ctx.fillStyle = "rgba(8, 47, 73, 0.65)";
+            ctx.lineWidth = 2;
+            switch (shape.kind) {
+                case "circle":
+                case "cloud":
+                    ctx.beginPath();
+                    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    break;
+                case "diamond":
+                    ctx.beginPath();
+                    ctx.moveTo(x + w / 2, y);
+                    ctx.lineTo(x + w, y + h / 2);
+                    ctx.lineTo(x + w / 2, y + h);
+                    ctx.lineTo(x, y + h / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    break;
+                case "arrow":
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + h / 2);
+                    ctx.lineTo(x + w - 12, y + h / 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x + w - 12, y + h / 2 - 8);
+                    ctx.lineTo(x + w, y + h / 2);
+                    ctx.lineTo(x + w - 12, y + h / 2 + 8);
+                    ctx.closePath();
+                    ctx.fillStyle = "#67e8f9";
+                    ctx.fill();
+                    break;
+                case "box":
+                case "service":
+                case "database":
+                case "queue":
+                case "actor":
+                case "text":
+                    ctx.fillRect(x, y, w, h);
+                    ctx.strokeRect(x, y, w, h);
+                    break;
+                default: {
+                    const _exhaustive: never = shape.kind;
+                    void _exhaustive;
+                    break;
+                }
+            }
+            if (shape.label && shape.kind !== "arrow") {
+                ctx.fillStyle = "#e0f2fe";
+                ctx.font = `${Math.max(11, Math.round(12 * scaleX))}px sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(shape.label.slice(0, 28), x + w / 2, y + h / 2, w - 8);
+            }
+        }
+
+        const a = document.createElement("a");
+        a.download = `system-design-board-${Date.now()}.png`;
+        a.href = out.toDataURL("image/png");
+        a.click();
+    }
+
     function deleteSelected() {
         if (!selectedId) return;
         onShapesChange(shapes.filter((s) => s.id !== selectedId));
@@ -360,6 +446,13 @@ export default function InteractiveWhiteboard({
                     className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-rose-200/80 hover:text-rose-100"
                 >
                     <Trash2 className="h-3.5 w-3.5" /> Clear board
+                </button>
+                <button
+                    type="button"
+                    onClick={exportPng}
+                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-100"
+                >
+                    <Download className="h-3.5 w-3.5" /> Export PNG
                 </button>
             </div>
 

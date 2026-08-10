@@ -141,6 +141,12 @@ export default function FilmRoomClient() {
         router.push("/setup");
     };
 
+    const practiceInStarCoach = (prompt: string, weakSpot?: string) => {
+        const q = encodeURIComponent(prompt);
+        const w = encodeURIComponent(weakSpot || "from film room");
+        router.push(`/star-coach?question=${q}&weakSpot=${w}`);
+    };
+
     const rebuild = async () => {
         if (!session?.transcript) return;
         setStorageItem(`filmRoom_${session.timestamp}`, "");
@@ -249,13 +255,15 @@ export default function FilmRoomClient() {
                             {result.practiceFocus?.length > 0 && (
                                 <div className="flex flex-wrap gap-2 pt-2">
                                     {result.practiceFocus.map((f) => (
-                                        <span
+                                        <button
                                             key={f}
-                                            className="inline-flex items-center gap-1 text-[11px] rounded-full border border-indigo-500/30 bg-indigo-500/10 text-indigo-200 px-2.5 py-1"
+                                            type="button"
+                                            onClick={() => practiceInStarCoach(f)}
+                                            className="inline-flex items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2.5 py-1 text-[11px] text-indigo-200 hover:bg-indigo-500/20"
                                         >
-                                            <Target className="w-3 h-3" />
-                                            {f}
-                                        </span>
+                                            <Target className="h-3 w-3" />
+                                            {f} · STAR →
+                                        </button>
                                     ))}
                                 </div>
                             )}
@@ -305,13 +313,22 @@ export default function FilmRoomClient() {
                                         <p className="text-sm text-white/75">
                                             {i + 1}. {p}
                                         </p>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleRetake(p)}
-                                            className="shrink-0 text-[11px] font-bold text-violet-300 hover:text-violet-200 cursor-pointer"
-                                        >
-                                            Practice →
-                                        </button>
+                                        <div className="flex shrink-0 flex-col items-end gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRetake(p)}
+                                                className="text-[11px] font-bold text-violet-300 hover:text-violet-200 cursor-pointer"
+                                            >
+                                                Full rematch →
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => practiceInStarCoach(p)}
+                                                className="text-[11px] font-bold text-indigo-300 hover:text-indigo-200 cursor-pointer"
+                                            >
+                                                STAR coach →
+                                            </button>
+                                        </div>
                                     </div>
                                 ))}
                             </div>

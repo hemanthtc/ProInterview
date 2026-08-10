@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
-import { Loader2, RefreshCw, Sparkles, Target, Wifi } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Clock, History, Loader2, RefreshCw, Sparkles, Target, Wifi } from "lucide-react";
 import {
     STAR_CATEGORY_LABELS,
     type StarCoachQuestion,
     type StarQuestionCategory,
 } from "@/data/starCoachQuestions";
+import { loadStarHistory, saveStarHistoryEntry, type StarHistoryEntry } from "@/utils/labProgress";
+import LabAuthBanner from "@/components/labs/LabAuthBanner";
 
 interface CoachResult {
     score?: number;
@@ -18,7 +21,8 @@ interface CoachResult {
     tips?: string[];
 }
 
-export default function StarCoachPage() {
+function StarCoachInner() {
+    const searchParams = useSearchParams();
     const [question, setQuestion] = useState("Tell me about a time you disagreed with a teammate.");
     const [weakSpot, setWeakSpot] = useState("unclear impact metrics");
     const [story, setStory] = useState("");
@@ -26,32 +30,68 @@ export default function StarCoachPage() {
     const [questionHint, setQuestionHint] = useState("");
     const [questionSource, setQuestionSource] = useState<"custom" | "online" | "seed" | "">("");
     const [result, setResult] = useState<CoachResult | null>(null);
+    const [history, setHistory] = useState<StarHistoryEntry[]>([]);
     const [loadingCoach, setLoadingCoach] = useState(false);
     const [loadingQuestion, setLoadingQuestion] = useState(false);
     const [error, setError] = useState("");
     const [info, setInfo] = useState("");
+    const [timerSec, setTimerSec] = useState(90);
+    const [timerRunning, setTimerRunning] = useState(false);
+    const [company, setCompany] = useState("");
+    const [role, setRole] = useState("");
 
     useEffect(() => {
+        setHistory(loadStarHistory());
+        setCompany(localStorage.getItem("targetCompany") || "");
+        setRole(localStorage.getItem("preferredRoles") || "");
+
+        const q = searchParams.get("question");
+        const w = searchParams.get("weakSpot");
+        const s = searchParams.get("story");
+        if (q) {
+            setQuestion(q);
+            setQuestionSource("custom");
+            setInfo("Loaded practice prompt from Film Room / Prep dashboard.");
+        }
+        if (w) setWeakSpot(w);
+        if (s) setStory(s);
+
         try {
-            const keys = Object.keys(localStorage).filter((k) => k.startsWith("filmRoom_"));
-            if (!keys.length) return;
-            const raw = localStorage.getItem(keys.sort().reverse()[0] || "");
-            if (!raw) return;
-            const data = JSON.parse(raw);
-            const gap = (data.annotations || []).find((a: { kind?: string; text?: string }) => a.kind === "gap");
-            if (gap?.text) setWeakSpot(String(gap.text).slice(0, 180));
-            if (data.practiceFocus?.[0]) {
-                setQuestion(String(data.practiceFocus[0]));
-                setQuestionSource("custom");
-            }
-            if (data.retakePrompts?.[0]) {
-                setQuestion(data.retakePrompts[0]);
-                setQuestionSource("custom");
+            if (!q) {
+                const keys = Object.keys(localStorage).filter((k) => k.startsWith("filmRoom_"));
+                if (keys.length) {
+                    const raw = localStorage.getItem(keys.sort().reverse()[0] || "");
+                    if (raw) {
+                        const data = JSON.parse(raw);
+                        const gap = (data.annotations || []).find(
+                            (a: { kind?: string; text?: string; label?: string }) => a.kind === "gap"
+                        );
+                        if (gap?.text || gap?.label) setWeakSpot(String(gap.text || gap.label).slice(0, 180));
+                        if (data.retakePrompts?.[0]) {
+                            setQuestion(data.retakePrompts[0]);
+                            setQuestionSource("custom");
+                        } else if (data.practiceFocus?.[0]) {
+                            setQuestion(String(data.practiceFocus[0]));
+                            setQuestionSource("custom");
+                        }
+                    }
+                }
             }
         } catch {
             /* ignore */
         }
-    }, []);
+    }, [searchParams]);
+
+    useEffect(() => {
+        if (!timerRunning) return;
+        if (timerSec <= 0) {
+            setTimerRunning(false);
+            setInfo("Time's up — score your story now.");
+            return;
+        }
+        const id = window.setTimeout(() => setTimerSec((t) => t - 1), 1000);
+        return () => window.clearTimeout(id);
+    }, [timerRunning, timerSec]);
 
     function applyGeneratedQuestion(q: StarCoachQuestion, source: "online" | "seed") {
         setQuestion(q.question);
@@ -74,8 +114,8 @@ export default function StarCoachPage() {
                     count: 1,
                     category,
                     exclude: [question],
-                    company: localStorage.getItem("targetCompany") || "",
-                    role: localStorage.getItem("preferredRoles") || "",
+                    company,
+                    role,
                 }),
             });
             const data = await res.json();
@@ -123,8 +163,8 @@ export default function StarCoachPage() {
                     question,
                     weakSpot,
                     mode,
-                    company: localStorage.getItem("targetCompany") || "",
-                    role: localStorage.getItem("preferredRoles") || "",
+                    company,
+                    role,
                 }),
             });
             const data = await res.json();
@@ -135,6 +175,16 @@ export default function StarCoachPage() {
                 setQuestionSource("custom");
             }
             if (data.improvedStory && mode === "coach") setStory(data.improvedStory);
+            if ((mode === "score" || mode === "coach") && (story.trim() || data.improvedStory)) {
+                const list = saveStarHistoryEntry({
+                    question,
+                    story: (mode === "coach" && data.improvedStory) || story,
+                    weakSpot,
+                    score: typeof data.score === "number" ? data.score : undefined,
+                });
+                setHistory(list);
+                setInfo("Saved to your last 5 STAR stories.");
+            }
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Failed");
         } finally {
@@ -154,16 +204,24 @@ export default function StarCoachPage() {
                         </p>
                         <h1 className="mt-1 text-2xl font-semibold">Behavioral drills with retakes</h1>
                         <p className="mt-1 text-sm text-white/45">
-                            Type your own question or generate one, then practice Situation → Task → Action → Result.
+                            {[role, company].filter(Boolean).join(" · ") ||
+                                "Type your own question or generate one — Situation → Task → Action → Result."}
                         </p>
                     </div>
-                    <Link href="/labs" className="shrink-0 text-sm text-white/60 hover:text-white">
-                        ← Labs
-                    </Link>
+                    <div className="flex shrink-0 flex-col items-end gap-1 text-sm">
+                        <Link href="/prep" className="text-indigo-300 hover:underline">
+                            Prep dashboard
+                        </Link>
+                        <Link href="/labs" className="text-white/60 hover:text-white">
+                            ← Labs
+                        </Link>
+                    </div>
                 </div>
 
+                <LabAuthBanner feature="online STAR coaching and question generation" />
+
                 <div className="space-y-4">
-                    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 space-y-3">
+                    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                             <label className="text-xs font-medium uppercase tracking-wide text-white/50">
                                 Behavioral question
@@ -202,6 +260,18 @@ export default function StarCoachPage() {
                                     <RefreshCw className="h-4 w-4" />
                                 )}
                                 Generate question
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setTimerSec(90);
+                                    setTimerRunning(true);
+                                    setInfo("90-second timer started — speak your STAR answer.");
+                                }}
+                                className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/70"
+                            >
+                                <Clock className="h-4 w-4" />
+                                {timerRunning ? `${timerSec}s` : "90s timer"}
                             </button>
                         </div>
 
@@ -286,7 +356,6 @@ export default function StarCoachPage() {
                             <div className="flex items-center gap-2 text-violet-300">
                                 <Sparkles className="h-4 w-4" /> Score: {result.score ?? "—"}/100
                             </div>
-
                             {result.starBreakdown && (
                                 <div className="grid gap-2 sm:grid-cols-2">
                                     {Object.entries(result.starBreakdown).map(([k, v]) => (
@@ -297,7 +366,6 @@ export default function StarCoachPage() {
                                     ))}
                                 </div>
                             )}
-
                             {result.missing && result.missing.length > 0 && (
                                 <div>
                                     <h3 className="mb-1 text-xs font-medium uppercase text-amber-300/90">Missing</h3>
@@ -308,7 +376,6 @@ export default function StarCoachPage() {
                                     </ul>
                                 </div>
                             )}
-
                             {result.improvedStory && (
                                 <div>
                                     <h3 className="mb-1 text-xs font-medium uppercase text-emerald-300/90">
@@ -319,7 +386,6 @@ export default function StarCoachPage() {
                                     </p>
                                 </div>
                             )}
-
                             {result.tips && result.tips.length > 0 && (
                                 <div>
                                     <h3 className="mb-1 text-xs font-medium uppercase text-sky-300/90">Tips</h3>
@@ -332,8 +398,54 @@ export default function StarCoachPage() {
                             )}
                         </div>
                     )}
+
+                    {history.length > 0 && (
+                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                            <h3 className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-white/50">
+                                <History className="h-3.5 w-3.5" /> Last {history.length} stories
+                            </h3>
+                            <ul className="space-y-2">
+                                {history.map((h) => (
+                                    <li key={h.id}>
+                                        <button
+                                            type="button"
+                                            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left text-sm hover:bg-white/10"
+                                            onClick={() => {
+                                                setQuestion(h.question);
+                                                setStory(h.story);
+                                                setWeakSpot(h.weakSpot);
+                                                setQuestionSource("custom");
+                                                setResult(null);
+                                            }}
+                                        >
+                                            <div className="flex justify-between gap-2">
+                                                <span className="line-clamp-1 font-medium">{h.question}</span>
+                                                {h.score != null && (
+                                                    <span className="shrink-0 text-violet-300">{h.score}</span>
+                                                )}
+                                            </div>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function StarCoachPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex min-h-screen items-center justify-center bg-slate-950 text-sm text-white/50">
+                    Loading STAR coach…
+                </div>
+            }
+        >
+            <StarCoachInner />
+        </Suspense>
     );
 }
