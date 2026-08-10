@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Copy, Share2, Moon, Sun, Eye } from "lucide-react";
+import { Copy, Gift, Share2, Moon, Sun, Eye } from "lucide-react";
 
 export default function ReferralsPage() {
     const [code, setCode] = useState("");
@@ -10,6 +10,7 @@ export default function ReferralsPage() {
     const [uses, setUses] = useState(0);
     const [copied, setCopied] = useState(false);
     const [compareId, setCompareId] = useState("");
+    const [referralCredits, setReferralCredits] = useState(0);
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
@@ -44,6 +45,11 @@ export default function ReferralsPage() {
                 setCode(local);
                 setSharePath(`/login?ref=${local}`);
             });
+
+        fetch("/api/usage")
+            .then((r) => r.json())
+            .then((d) => setReferralCredits(d.referralCredits || 0))
+            .catch(() => {});
     }, []);
 
     async function copy() {
@@ -122,6 +128,16 @@ export default function ReferralsPage() {
                     </button>
                 </div>
 
+                <div className="mt-6 rounded-2xl border border-orange-400/20 bg-orange-500/10 p-5 flex items-center gap-4">
+                    <div className="w-11 h-11 rounded-xl bg-orange-500/20 border border-orange-400/30 flex items-center justify-center shrink-0">
+                        <Gift className="w-5 h-5 text-orange-300" />
+                    </div>
+                    <div>
+                        <div className="text-2xl font-bold text-orange-200">{referralCredits}</div>
+                        <p className={`text-xs ${isLight ? "text-slate-600" : "text-white/50"}`}>Referral credits earned — 2 for you and 1 for your friend on every first-time invite.</p>
+                    </div>
+                </div>
+
                 <div className={`mt-6 rounded-2xl border p-5 space-y-3 ${
                     theme === "light"
                         ? "bg-white border-slate-200 shadow-sm"
@@ -129,7 +145,7 @@ export default function ReferralsPage() {
                         ? "bg-[#fffcf5] border-[#8c8578]"
                         : "bg-white/5 border-white/10"
                 }`}>
-                    <h2 className="font-semibold text-base">Compare a friend's scorecard</h2>
+                    <h2 className="font-semibold text-base">Compare a friend&apos;s scorecard</h2>
                     <input
                         value={compareId}
                         onChange={(e) => setCompareId(e.target.value)}

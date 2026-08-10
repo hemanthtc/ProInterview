@@ -1,0 +1,31 @@
+{
+  "note": "Seed data for offline STAR practice. This file is cached during PWA install so drills stay available with no network. For coding problems while offline, open a coding problem at least once while online — /coding-lab caches problem data automatically for offline replay.",
+  "codingLabHref": "/coding-lab",
+  "starQuestions": [
+    {
+      "id": "offline-star-1",
+      "category": "leadership",
+      "question": "Tell me about a time you led a project through a major setback."
+    },
+    {
+      "id": "offline-star-2",
+      "category": "conflict",
+      "question": "Describe a time you disagreed with a teammate or manager. How did you resolve it?"
+    },
+    {
+      "id": "offline-star-3",
+      "category": "ownership",
+      "question": "Tell me about a time you took ownership of a problem that wasn't technically your responsibility."
+    },
+    {
+      "id": "offline-star-4",
+      "category": "failure",
+      "question": "Describe a time you failed at something important. What did you learn?"
+    },
+    {
+      "id": "offline-star-5",
+      "category": "impact",
+      "question": "Tell me about the most impactful project you've shipped and how you measured its success."
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { DOMAIN_PACKS } from "../../data/domainPacks";
 import { Layers, Moon, Sun, Eye } from "lucide-react";
+import LabAuthBanner from "@/components/labs/LabAuthBanner";
 
 export default function DomainsPage() {
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
@@ -39,7 +40,7 @@ export default function DomainsPage() {
                         <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-lime-700 font-bold" : "text-lime-300/80"}`}>
                             <Layers className="w-4 h-4" /> Domain packs
                         </p>
-                        <h1 className="text-2xl font-semibold mt-1">Specialty interview banks</h1>
+                        <h1 className="mt-1 text-2xl font-semibold">Specialty interview banks</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -55,7 +56,9 @@ export default function DomainsPage() {
                             {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                             {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                         </button>
-
+                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
+                            Prep dashboard
+                        </Link>
                         <Link
                             href="/labs"
                             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
@@ -70,6 +73,8 @@ export default function DomainsPage() {
                         </Link>
                     </div>
                 </div>
+
+                <LabAuthBanner feature="domain-targeted online mocks" />
 
                 <div className="space-y-3">
                     {DOMAIN_PACKS.map((d) => (
@@ -89,23 +94,48 @@ export default function DomainsPage() {
                                     <p className={`text-sm ${isLight ? "text-slate-600" : "text-white/60"}`}>{d.description}</p>
                                     <p className={`text-xs mt-2 ${isLight ? "text-slate-500 font-semibold" : "text-white/40"}`}>Focus: {d.focusThemes.join(" · ")}</p>
                                 </div>
-                                <button
-                                    type="button"
-                                    className={`rounded-xl px-4 py-2 text-sm font-bold h-fit transition cursor-pointer ${
-                                        theme === "eyeprotect"
-                                            ? "bg-[#0b5f58] hover:bg-[#084842] text-white"
-                                            : "bg-lime-600 hover:bg-lime-500 text-white"
-                                    }`}
-                                    onClick={() => {
-                                        localStorage.setItem("domainPackId", d.id);
-                                        localStorage.setItem("preferredRoles", d.name);
-                                        window.location.href = "/setup";
-                                    }}
-                                >
-                                    Practice this domain
-                                </button>
+                                <div className="flex h-fit flex-wrap gap-2">
+                                    <button
+                                        type="button"
+                                        className={`rounded-xl px-4 py-2 text-sm font-bold h-fit transition cursor-pointer ${
+                                            theme === "eyeprotect"
+                                                ? "bg-[#0b5f58] hover:bg-[#084842] text-white"
+                                                : "bg-lime-600 hover:bg-lime-500 text-white"
+                                        }`}
+                                        onClick={() => {
+                                            localStorage.setItem("domainPackId", d.id);
+                                            localStorage.setItem("preferredRoles", d.name);
+                                            window.location.href = "/setup";
+                                        }}
+                                    >
+                                        Full mock
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="rounded-xl border border-white/15 px-3 py-2 text-sm text-white/80"
+                                        onClick={() => {
+                                            localStorage.setItem("domainPackId", d.id);
+                                            const q = d.behavioralThemes?.[0]
+                                                ? `Tell me about a time related to: ${d.behavioralThemes[0]}`
+                                                : d.signatureQuestions[0] || "Tell me about a relevant project.";
+                                            window.location.href = `/star-coach?question=${encodeURIComponent(q)}&weakSpot=${encodeURIComponent("domain depth")}`;
+                                        }}
+                                    >
+                                        STAR drill
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="rounded-xl border border-white/15 px-3 py-2 text-sm text-white/80"
+                                        onClick={() => {
+                                            localStorage.setItem("domainPackId", d.id);
+                                            window.location.href = "/system-design";
+                                        }}
+                                    >
+                                        Design lab
+                                    </button>
+                                </div>
                             </div>
-                            <ul className={`mt-3 text-sm list-disc pl-5 ${isLight ? "text-slate-700" : "text-white/70"}`}>
+                            <ul className={`mt-3 list-disc pl-5 text-sm ${isLight ? "text-slate-700" : "text-white/70"}`}>
                                 {d.signatureQuestions.slice(0, 2).map((q) => (
                                     <li key={q}>{q}</li>
                                 ))}

@@ -1,10 +1,30 @@
 import mongoose, { Schema, Document, Model } from "mongoose";
 
+export interface PrepProgressBlob {
+    starHistory: unknown[];
+    codingProgress: {
+        solvedIds: string[];
+        bestScores: Record<string, number>;
+        lastProblemId?: string;
+    };
+    atsMatchPercent?: number;
+    atsLastAt?: number;
+    domainPackId?: string;
+    usage?: {
+        geminiCalls: number;
+        sarvamCalls: number;
+        coachBookings: number;
+        periodStart: number;
+    };
+    referralCredits?: number;
+}
+
 export interface ICloudSessionBlob extends Document {
     identifier: string;
-    sessions: any[];
-    prepPacks: any[];
-    spacedDrills: any[];
+    sessions: unknown[];
+    prepPacks: unknown[];
+    spacedDrills: unknown[];
+    prepProgress: PrepProgressBlob;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -15,6 +35,15 @@ const CloudSessionSchema = new Schema(
         sessions: { type: [Schema.Types.Mixed], default: [] },
         prepPacks: { type: [Schema.Types.Mixed], default: [] },
         spacedDrills: { type: [Schema.Types.Mixed], default: [] },
+        prepProgress: {
+            type: Schema.Types.Mixed,
+            default: () => ({
+                starHistory: [],
+                codingProgress: { solvedIds: [], bestScores: {} },
+                referralCredits: 0,
+                usage: { geminiCalls: 0, sarvamCalls: 0, coachBookings: 0, periodStart: Date.now() },
+            }),
+        },
     },
     {
         timestamps: true,

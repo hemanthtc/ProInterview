@@ -7,6 +7,7 @@ import {
     Code2,
     FileSearch,
     Globe2,
+    LayoutDashboard,
     Layers,
     Mic2,
     PenTool,
@@ -20,22 +21,136 @@ import {
     Eye,
 } from "lucide-react";
 
-const ITEMS = [
-    { href: "/community", title: "Community chat", desc: "Talk with other students", icon: Users, color: "text-indigo-400" },
-    { href: "/panel-interview", title: "Panel interviews", desc: "Multi-interviewer rounds", icon: Users, color: "text-indigo-400" },
-    { href: "/system-design", title: "System design lab", desc: "Interactive board + online eval", icon: PenTool, color: "text-cyan-400" },
-    { href: "/star-coach", title: "STAR coach", desc: "Behavioral drills + retakes", icon: Target, color: "text-violet-400" },
-    { href: "/jobs", title: "Open job roles", desc: "Resume + location matched openings", icon: Briefcase, color: "text-emerald-400" },
-    { href: "/coding-lab", title: "Coding lab", desc: "Progressive hidden tests", icon: Code2, color: "text-amber-400" },
-    { href: "/coaches", title: "Coach marketplace", desc: "Book human coaches", icon: Video, color: "text-pink-400" },
-    { href: "/ats-match", title: "ATS match", desc: "JD vs resume %", icon: FileSearch, color: "text-sky-400" },
-    { href: "/domains", title: "Domain packs", desc: "ML, DevOps, Android…", icon: Layers, color: "text-lime-400" },
-    { href: "/referrals", title: "Referrals", desc: "Invite & compare", icon: Share2, color: "text-orange-400" },
-    { href: "/features", title: "Salary intel", desc: "Inside Negotiate tool", icon: Wallet, color: "text-teal-400" },
-    { href: "/setup", title: "Language / Sarvam", desc: "Hindi + regional voice", icon: Globe2, color: "text-fuchsia-400" },
-    { href: "/features", title: "Prep + Gmail", desc: "Invites, aptitude, mocks", icon: Mic2, color: "text-rose-400" },
+type Badge = "New" | "Beta" | "Sign-in" | "Public";
+
+const ITEMS: {
+    href: string;
+    title: string;
+    desc: string;
+    icon: typeof Users;
+    color: string;
+    badges: Badge[];
+}[] = [
+    {
+        href: "/prep",
+        title: "Prep dashboard",
+        desc: "Unified drills, gaps, and progress",
+        icon: LayoutDashboard,
+        color: "text-indigo-400",
+        badges: ["New"],
+    },
+    {
+        href: "/community",
+        title: "Community chat",
+        desc: "Talk with other students",
+        icon: Users,
+        color: "text-indigo-400",
+        badges: ["Sign-in"],
+    },
+    {
+        href: "/panel-interview",
+        title: "Panel interviews",
+        desc: "Multi-interviewer rounds + end score",
+        icon: Users,
+        color: "text-indigo-400",
+        badges: ["Sign-in", "Beta"],
+    },
+    {
+        href: "/system-design",
+        title: "System design lab",
+        desc: "Shapes, freestyle, export PNG, online eval",
+        icon: PenTool,
+        color: "text-cyan-400",
+        badges: ["New", "Sign-in"],
+    },
+    {
+        href: "/star-coach",
+        title: "STAR coach",
+        desc: "Generate/custom Q, history, Film Room links",
+        icon: Target,
+        color: "text-violet-400",
+        badges: ["New", "Sign-in"],
+    },
+    {
+        href: "/jobs",
+        title: "Open job roles",
+        desc: "Resume + location matched openings",
+        icon: Briefcase,
+        color: "text-emerald-400",
+        badges: ["Sign-in"],
+    },
+    {
+        href: "/coding-lab",
+        title: "Coding lab",
+        desc: "Progressive hidden tests + saved progress",
+        icon: Code2,
+        color: "text-amber-400",
+        badges: ["Sign-in", "Beta"],
+    },
+    {
+        href: "/coaches",
+        title: "Coach marketplace",
+        desc: "Book + pay + Jitsi video room",
+        icon: Video,
+        color: "text-pink-400",
+        badges: ["New", "Sign-in"],
+    },
+    {
+        href: "/ats-match",
+        title: "ATS match",
+        desc: "JD vs resume % + rewrite tips",
+        icon: FileSearch,
+        color: "text-sky-400",
+        badges: ["Sign-in"],
+    },
+    {
+        href: "/domains",
+        title: "Domain packs",
+        desc: "ML, DevOps, Android…",
+        icon: Layers,
+        color: "text-lime-400",
+        badges: ["Public"],
+    },
+    {
+        href: "/referrals",
+        title: "Referrals",
+        desc: "Invite & compare scorecards",
+        icon: Share2,
+        color: "text-orange-400",
+        badges: ["Public"],
+    },
+    {
+        href: "/features",
+        title: "Salary intel",
+        desc: "Inside Negotiate tool",
+        icon: Wallet,
+        color: "text-teal-400",
+        badges: ["Sign-in"],
+    },
+    {
+        href: "/setup",
+        title: "Language / Sarvam",
+        desc: "Hindi + regional voice (Sarvam TTS/chat)",
+        icon: Globe2,
+        color: "text-fuchsia-400",
+        badges: ["New", "Sign-in"],
+    },
+    {
+        href: "/features",
+        title: "Prep + Gmail",
+        desc: "Invites, aptitude, mocks",
+        icon: Mic2,
+        color: "text-rose-400",
+        badges: ["Sign-in"],
+    },
 ];
 
+const BADGE_CLASS: Record<Badge, string> = {
+    New: "border-emerald-400/40 bg-emerald-500/15 text-emerald-300",
+    Beta: "border-amber-400/40 bg-amber-500/15 text-amber-300",
+    "Sign-in": "border-sky-400/40 bg-sky-500/15 text-sky-300",
+    Public: "border-white/20 bg-white/10 text-white/60",
+};
 
 export default function LabsPage() {
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
@@ -69,10 +184,15 @@ export default function LabsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
                     <div>
                         <p className={`text-xs uppercase tracking-widest ${isLight ? "text-slate-500 font-semibold" : "text-white/40"}`}>ProInterview Labs</p>
-                        <h1 className="text-3xl font-semibold mt-1">New practice surfaces</h1>
+                        <h1 className="text-3xl font-semibold mt-1">Practice surfaces</h1>
                         <p className={`mt-2 max-w-2xl text-sm ${isLight ? "text-slate-600" : "text-white/50"}`}>
-                            Working MVPs for the product backlog — panel loops, design grading, STAR retakes, jobs, coding progression, coaches, and more.
+                            Panel loops, design grading, STAR retakes, jobs, coding progression, coaches, and a unified prep dashboard.
                         </p>
+                        <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                            <Link href="/prep" className="font-bold text-indigo-400 hover:underline">
+                                Open prep dashboard →
+                            </Link>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-3 shrink-0">
@@ -110,17 +230,30 @@ export default function LabsPage() {
                             <Link
                                 key={item.href + item.title}
                                 href={item.href}
-                                className={`rounded-2xl border transition p-4 ${
+                                className={`rounded-2xl border transition p-4 flex flex-col justify-between ${
                                     theme === "light"
                                         ? "bg-white border-slate-200 hover:border-indigo-500 hover:shadow-md text-slate-900"
                                         : theme === "eyeprotect"
                                         ? "bg-[#fffcf5] border-[#8c8578] hover:border-teal-700 hover:shadow-md text-[#1c1917]"
                                         : "bg-white/5 border-white/10 hover:bg-white/10 text-white"
                                 }`}
-                            >
-                                <Icon className={`w-5 h-5 ${item.color}`} />
-                                <h2 className="mt-3 font-medium">{item.title}</h2>
-                                <p className={`text-sm ${isLight ? "text-slate-500" : "text-white/50"}`}>{item.desc}</p>
+                                <div>
+                                    <div className="flex items-center justify-between gap-2 mb-2">
+                                        <Icon className={`w-5 h-5 ${item.color}`} />
+                                        <div className="flex flex-wrap gap-1">
+                                            {item.badges.map((b) => (
+                                                <span
+                                                    key={b}
+                                                    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${BADGE_CLASS[b]}`}
+                                                >
+                                                    {b}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <h2 className="font-semibold text-base">{item.title}</h2>
+                                    <p className={`text-xs mt-1 ${isLight ? "text-slate-600" : "text-white/50"}`}>{item.desc}</p>
+                                </div>
                             </Link>
                         );
                     })}

@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
+import connectDB from "@/utils/db";
+import User from "@/models/User";
+import { checkAndIncrementUsage } from "@/utils/usageMeter";
 
 export async function POST(req: NextRequest) {
     try {
@@ -19,14 +22,37 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        let userPlan = "Free Tier";
+        try {
+            await connectDB();
+            const user = await User.findOne({ identifier: session.identifier }).select("subscriptionPlan").lean();
+            userPlan = (user as { subscriptionPlan?: string } | null)?.subscriptionPlan || "Free Tier";
+        } catch (planErr) {
+            console.warn("star-coach: plan lookup skipped", planErr);
+        }
+
+        const usage = await checkAndIncrementUsage(session.identifier, "gemini", userPlan);
+        if (!usage.allowed) {
+            return NextResponse.json(
+                { error: `Monthly AI coaching limit reached (${usage.limit}/month). Upgrade to Pro for more sessions.` },
+                {
+                    status: 429,
+                    headers: usage.retryAfterSec ? { "Retry-After": String(usage.retryAfterSec) } : undefined,
+                }
+            );
+        }
+
         const prompt = `You are a behavioral interview coach using the STAR method (Situation, Task, Action, Result).
 Company: ${company || "tech company"} Role: ${role || "SWE"}
 Target question: ${question || "Tell me about a time you handled conflict."}
 Known weak spot from film room / prior feedback: ${weakSpot || "unclear impact metrics"}
-Mode: ${mode} (coach = rewrite help, score = grade the story, retake = give a tighter prompt)
+Mode: ${mode} (coach = rewrite help, score = grade the story, retake = give a tighter follow-up question)
 
 Candidate story:
 ${story || "(ask them to draft one)"}
+
+Score based on STAR structure, personal ownership ("I" not only "we"), specificity, and measurable results.
+For coach mode, rewrite the story into a tight 90–120 second spoken answer.
 
 Return JSON:
 {

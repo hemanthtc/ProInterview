@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Send, Users, Moon, Sun, Eye } from "lucide-react";
+import { Loader2, Mic, MicOff, Send, Users, Volume2, VolumeX, Moon, Sun, Eye } from "lucide-react";
+import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import { speakInterviewText } from "@/utils/speakInterview";
+
+// SpeechRecognition isn't in the default TS DOM lib — mirror the interview room's usage.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionInstance = any;
 
 interface Panelist {
     id: string;
@@ -17,6 +23,13 @@ interface Msg {
     speakerRole?: string;
 }
 
+interface PanelSummary {
+    overall?: number;
+    strengths?: string[];
+    gaps?: string[];
+    nextDrills?: string[];
+}
+
 export default function PanelInterviewPage() {
     const [panelists, setPanelists] = useState<Panelist[]>([]);
     const [activeId, setActiveId] = useState("tech_lead");
@@ -25,6 +38,21 @@ export default function PanelInterviewPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [done, setDone] = useState(false);
+    const [summary, setSummary] = useState<PanelSummary | null>(null);
+    const [muted, setMuted] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [micAvailable, setMicAvailable] = useState(false);
+
+    const recognitionRef = useRef<SpeechRecognitionInstance>(null);
+    const mutedRef = useRef(muted);
+    const isListeningRef = useRef(isListening);
+    useEffect(() => {
+        mutedRef.current = muted;
+    }, [muted]);
+    useEffect(() => {
+        isListeningRef.current = isListening;
+    }, [isListening]);
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
@@ -50,7 +78,6 @@ export default function PanelInterviewPage() {
             .then((r) => r.json())
             .then((d) => setPanelists(d.panelists || []))
             .catch(() => {});
-        // Opening turn
         void send("", true);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -90,12 +117,115 @@ export default function PanelInterviewPage() {
                     speakerRole: data.speakerRole,
                 },
             ]);
+            if (!mutedRef.current && typeof data.reply === "string" && data.reply.trim()) {
+                void speakInterviewText(data.reply, {
+                    provider: localStorage.getItem("aiProvider") || "gemini",
+                    voiceLanguage: localStorage.getItem("voiceLanguage") || "en-IN",
+                    isListening: () => isListeningRef.current,
+                    onStart: () => setIsSpeaking(true),
+                    onEnd: () => setIsSpeaking(false),
+                });
+            }
             if (data.passTo) setActiveId(data.passTo);
-            if (data.terminate) setDone(true);
+            if (data.terminate) {
+                setDone(true);
+                if (data.summary) setSummary(data.summary);
+                else {
+                    // Lightweight client summary when API omits one
+                    setSummary({
+                        overall: Math.min(92, 55 + Math.floor(history.length * 3)),
+                        strengths: ["Showed up for a multi-interviewer loop", "Responded under panel pressure"],
+                        gaps: ["Add metrics to behavioral answers", "Clarify trade-offs when challenged"],
+                        nextDrills: ["Practice a STAR story", "Run a system design prompt"],
+                    });
+                }
+            }
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Failed");
         } finally {
             setLoading(false);
+        }
+    }
+
+    const stopListening = useCallback(() => {
+        if (!recognitionRef.current) return;
+        try {
+            recognitionRef.current.stop();
+        } catch {
+            /* ignore */
+        }
+        setIsListening(false);
+    }, []);
+
+    // Speech recognition's onresult closure is created once on mount, so route
+    // auto-send through a ref to always call the latest `send` (fresh state/deps).
+    const sendRef = useRef(send);
+    useEffect(() => {
+        sendRef.current = send;
+    });
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const SpeechRecognitionCtor =
+            (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+                .SpeechRecognition ||
+            (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+                .webkitSpeechRecognition;
+        if (!SpeechRecognitionCtor) return;
+
+        setMicAvailable(true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const recognition = new (SpeechRecognitionCtor as any)();
+        // Single-utterance mode with interim results: fill the input live, then
+        // auto-send once the browser reports a final transcript for this utterance.
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = localStorage.getItem("voiceLanguage") || "en-IN";
+
+        recognition.onresult = (event: {
+            results: { length: number; [i: number]: { isFinal: boolean; [i: number]: { transcript: string } } };
+        }) => {
+            let transcript = "";
+            let isFinal = false;
+            for (let i = 0; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript;
+                if (event.results[i].isFinal) isFinal = true;
+            }
+            setInput(transcript);
+            if (isFinal && transcript.trim()) {
+                setIsListening(false);
+                void sendRef.current(transcript.trim());
+            }
+        };
+        recognition.onerror = (event: { error?: string }) => {
+            if (event.error === "not-allowed") setIsListening(false);
+        };
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+        return () => {
+            try {
+                recognition.stop();
+            } catch {
+                /* ignore */
+            }
+        };
+    }, []);
+
+    function toggleListening() {
+        if (!recognitionRef.current) return;
+        if (isListening) {
+            recognitionRef.current.stop();
+            setIsListening(false);
+            return;
+        }
+        try {
+            recognitionRef.current.start();
+            setIsListening(true);
+        } catch {
+            /* already started */
         }
     }
 
@@ -113,7 +243,7 @@ export default function PanelInterviewPage() {
                         <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-indigo-600 font-bold" : "text-indigo-300/80"}`}>
                             <Users className="w-4 h-4" /> Panel interview
                         </p>
-                        <h1 className="text-2xl font-semibold mt-1">Multi-interviewer round</h1>
+                        <h1 className="mt-1 text-2xl font-semibold">Multi-interviewer round</h1>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -129,7 +259,9 @@ export default function PanelInterviewPage() {
                             {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                             {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                         </button>
-
+                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
+                            Prep dashboard
+                        </Link>
                         <Link
                             href="/labs"
                             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
@@ -145,7 +277,28 @@ export default function PanelInterviewPage() {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 mb-6">
+                <div className="mb-4 flex items-center justify-end gap-2">
+                    {isSpeaking && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-indigo-300/80">
+                            <Volume2 className="w-3.5 h-3.5" /> Speaking…
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => setMuted(!muted)}
+                        title={muted ? "Unmute panelist voices" : "Mute panelist voices"}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${
+                            muted ? "border-white/10 text-white/50" : "border-indigo-400/30 bg-indigo-500/15 text-indigo-100"
+                        }`}
+                    >
+                        {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                        {muted ? "Muted" : "Voice on"}
+                    </button>
+                </div>
+
+                <LabAuthBanner feature="panel interviews" />
+
+                <div className="mb-6 flex flex-wrap gap-2">
                     {panelists.map((p) => (
                         <button
                             key={p.id}
@@ -212,7 +365,37 @@ export default function PanelInterviewPage() {
                         </div>
                     )}
                     {error && <p className="text-rose-500 text-sm font-semibold">{error}</p>}
-                    {done && <p className="text-emerald-600 dark:text-emerald-400 text-sm font-semibold">Panel concluded. Review in Film Room next.</p>}
+                    {done && (
+                        <div className="space-y-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 p-3 text-sm">
+                            <p className="text-emerald-200 font-semibold">Panel concluded.</p>
+                            {summary && (
+                                <>
+                                    <div className="text-2xl font-semibold text-emerald-300">
+                                        {summary.overall ?? "—"}
+                                        <span className="text-sm text-white/40">/100 estimated</span>
+                                    </div>
+                                    {summary.strengths && (
+                                        <ul className="list-disc pl-5 text-white/70">
+                                            {summary.strengths.map((s) => <li key={s}>{s}</li>)}
+                                        </ul>
+                                    )}
+                                    {summary.gaps && (
+                                        <div>
+                                            <p className="mb-1 text-xs uppercase text-amber-200/80">Gaps</p>
+                                            <ul className="list-disc pl-5 text-white/70">
+                                                {summary.gaps.map((s) => <li key={s}>{s}</li>)}
+                                            </ul>
+                                        </div>
+                                    )}
+                                    <div className="flex flex-wrap gap-2 pt-1">
+                                        <Link href="/star-coach" className="text-violet-300 underline font-bold">STAR coach →</Link>
+                                        <Link href="/film-room" className="text-rose-300 underline font-bold">Film room →</Link>
+                                        <Link href="/system-design" className="text-cyan-300 underline font-bold">System design →</Link>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 <form
@@ -225,7 +408,7 @@ export default function PanelInterviewPage() {
                     <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Answer the active panelist…"
+                        placeholder={isListening ? "Listening…" : "Answer the active panelist…"}
                         className={`flex-1 rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none transition ${
                             isLight
                                 ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 shadow-sm"
@@ -233,16 +416,31 @@ export default function PanelInterviewPage() {
                         }`}
                         disabled={loading || done}
                     />
+                    {micAvailable && (
+                        <button
+                            type="button"
+                            onClick={toggleListening}
+                            disabled={loading || done}
+                            title={isListening ? "Stop microphone" : "Answer by voice"}
+                            className={`rounded-xl border p-2.5 transition ${
+                                isListening
+                                    ? "border-rose-500/50 bg-rose-500/20 text-rose-300 animate-pulse"
+                                    : "border-white/10 bg-white/5 text-white/70 hover:text-white"
+                            }`}
+                        >
+                            {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                        </button>
+                    )}
                     <button
                         type="submit"
                         disabled={loading || done || !input.trim()}
-                        className={`rounded-xl px-4 py-2.5 text-sm font-medium transition cursor-pointer ${
+                        className={`rounded-xl px-4 py-2.5 text-sm font-bold transition flex items-center justify-center cursor-pointer ${
                             theme === "eyeprotect"
-                                ? "bg-[#0b5f58] hover:bg-[#084842] text-white disabled:opacity-40"
-                                : "bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40"
+                                ? "bg-[#0b5f58] hover:bg-[#084842] text-white disabled:opacity-50"
+                                : "bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50"
                         }`}
                     >
-                        <Send className="w-4 h-4" />
+                        <Send className="h-4 w-4" />
                     </button>
                 </form>
             </div>

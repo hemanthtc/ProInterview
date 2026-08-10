@@ -1,12 +1,13 @@
-# AI Interviewer Platform — Full Development Report
+# AI Interviewer Platform (ProInterview) — Full Development Report
 
-> **Last Updated:** 2026-06-23  
+> **Last Updated:** 2026-08-10  
 > **Purpose:** This report documents the complete project structure, all modifications made, known issues, environment setup, and important context for any agent or contributor working on this codebase.
 
 ---
 
 ## Table of Contents
 
+0. [2026-08-10 Update — Platform Feature Summary](#0-2026-08-10-update--platform-feature-summary)
 1. [Project Overview](#1-project-overview)
 2. [Technology Stack](#2-technology-stack)
 3. [Project Structure](#3-project-structure)
@@ -16,7 +17,32 @@
 7. [API Routes Reference](#7-api-routes-reference)
 8. [Known Issues & Gotchas](#8-known-issues--gotchas)
 9. [Build & Dev Server Instructions](#9-build--dev-server-instructions)
-10. [Future Work & Open Items](#10-future-work--open-items)
+10. [Testing & Quality Tooling](#10-testing--quality-tooling)
+11. [Future Work & Open Items](#11-future-work--open-items)
+
+---
+
+## 0. 2026-08-10 Update — Platform Feature Summary
+
+The project has grown well beyond the original email-analyser/interview MVP described in the sections below (which are kept for history). ProInterview is now a much larger prep platform. The features below are **implemented and shipped** — sections 1–9 predate them and are only accurate for the original feature set.
+
+| Feature | Where it lives | Notes |
+|---|---|---|
+| **Sarvam TTS / Indic voice** | `src/utils/sarvam.ts`, `src/app/api/sarvam/tts` | Optional AI provider (`aiProvider=sarvam`) for Indic-language text-to-speech in interviews; `toSarvamLanguageCode()` maps browser locales (e.g. `hi-IN`, `ta-IN`) to Sarvam voice codes, defaulting to `en-IN`. Gated behind `SARVAM_API_KEY`; metered via `usageMeter.ts` (`sarvamCalls`, `FREE_SARVAM_MONTHLY` / `PRO_SARVAM_MONTHLY`). |
+| **Labs hub** | `src/app/labs/page.tsx`, `src/components/labs/` | Public entry point (no auth required) linking out to STAR Coach, Coding Lab, System Design, ATS Match, Panel Interview, and Film Room. Also the PWA offline shell root (see below). |
+| **Prep packs / spaced drills** | `src/app/prep/page.tsx`, `src/utils/prepPack.ts`, `src/utils/spacedDrills.ts` | Builds a "prep pack" (checklist + meeting link extraction) from a pasted job/interview email and schedules spaced-repetition drills leading up to the interview date. |
+| **Coaches marketplace v2** | `src/app/coaches/page.tsx`, `src/data/coaches.ts`, `src/app/api/coaches/*` | Curated human-coach directory (`COACHES`) with INR/USD rates, domains, and available slots; `buildMeetLink()` generates a `meet.jit.si/ProInterview-*` room per booking. Razorpay-backed booking + a cron-triggered reminder endpoint (`/api/coaches/reminders`, gated by `CRON_SECRET`). |
+| **Sync-prep (cross-device progress)** | `src/app/api/sync-prep/route.ts`, `src/utils/usageMeter.ts`, `src/models/CloudSession.ts` | Merges local (`localStorage`) and cloud (`CloudSession.prepProgress`) STAR history, coding progress, ATS scores, referral credits, and monthly usage counters — last-write-wins per field, union/max for lists and counters. `mergePrepProgress`/`ensurePrepProgressShape`/`mergeStarHistory` are pure and unit-tested (see `tests/sync-prep.test.ts`). |
+| **Notifications** | `src/app/api/notifications`, `src/app/api/notify-prep`, `src/models/Notification.ts` | In-app notification feed (`kind: "prep" \| "coach" \| "gmail" \| "referral" \| "system"`) plus a PWA web-push handler in `public/sw.js` (`self.addEventListener("push", ...)`) for prep reminders. |
+| **Adzuna India jobs** | `src/utils/jobSearch.ts` (`fetchAdzunaIndia`, `INDIA_FALLBACK_JOBS`), `src/app/api/jobs/route.ts` | Live India job search via the Adzuna API (`ADZUNA_APP_ID`/`ADZUNA_APP_KEY`, `country=in`), combined with Remotive/Arbeitnow/RemoteOK. Falls back gracefully to a curated `INDIA_FALLBACK_JOBS` list (Bangalore/Hyderabad-heavy) when credentials are absent or live results are sparse. India city-synonym matching (Bangalore/Bengaluru, Gurgaon/Gurugram/NCR/Delhi, etc.) lives in `locationMatches`/`indiaCitySynonyms`. |
+| **Vision system-design eval** | `src/app/api/evaluate-system-design/route.ts` | Sends the candidate's whiteboard as a base64 image (`diagramImageBase64` + `mimeType`) to Gemini's multimodal ("vision") endpoint alongside the text notes/board summary, so architecture diagrams — not just typed notes — are graded. Requires `GEMINI_API_KEY`; rate-limited per session. |
+| **Voice STAR / panel coaching** | `src/utils/voiceCoach.ts`, `src/app/star-coach/page.tsx`, `src/app/panel-interview/page.tsx` | Real-time speech analysis of interview answers: filler-word detection (`countFillers`), words-per-minute, silence tracking, and a `moodHint` ("calm"/"rushed"/"hesitant"/"strong") surfaced live during STAR practice and multi-panelist mock interviews. |
+| **Usage meters / plan limits** | `src/utils/usageMeter.ts` | Per-identifier, per-calendar-month counters for Gemini calls, Sarvam calls, and coach bookings (`checkAndIncrementUsage`), with `getPlanLimits(plan)` distinguishing Free Tier from Pro/Elite/Enterprise. Resets automatically when `periodStart` rolls into a new month. |
+| **Referral credits** | `src/app/referrals/page.tsx`, `src/app/api/referrals/route.ts`, `addReferralCredits()` | Per-user referral code (`Referral` model) tracks invite usage; successful referrals add credits via `usageMeter.addReferralCredits`, stored on `prepProgress.referralCredits` and merged across devices by `mergePrepProgress`. |
+| **PWA offline drills** | `public/manifest.json`, `public/sw.js`, `public/offline-drills.json` | Installable PWA (`display: standalone`) with shell cache `prointerview-shell-v4` covering `/`, `/labs`, `/prep`, `/star-coach`, `/coding-lab`, and seed STAR drills; network-first cache for `/api/star-coach-questions` and `/api/coding-problems`. Self-unregisters on `localhost`. |
+| **Admin funnel dashboard** | `src/app/admin/page.tsx`, `src/app/api/admin/stats`, `/users`, `/employees`, `/leaderboard`, `/create-admin` | Signup → activation funnel (signups → first mock → first STAR drill → confirmed coach booking) plus user/employee management and a leaderboard, gated by admin-role JWT sessions (`getVerifiedSession`). |
+
+**Related environment variables** (already documented in `.env.example`): `SARVAM_API_KEY`, `ADZUNA_APP_ID` / `ADZUNA_APP_KEY`, `RAZORPAY_WEBHOOK_SECRET` (for `/api/razorpay/webhook`), `CRON_SECRET` (for `/api/coaches/reminders`), `HAPPENSTANCE_API_KEY`. See `AGENTS.md` for the minimal set needed for build/dev.
 
 ---
 
@@ -462,23 +488,83 @@ Route (app)                    Size
 
 ---
 
-## 10. Future Work & Open Items
+## 10. Testing & Quality Tooling
+
+### Unit / API tests (Vitest)
+
+`npm test` runs `vitest run` over `tests/**/*.test.ts` (Node environment, no external services required — MongoDB/Gemini/Sarvam calls are never exercised by this suite). As of 2026-08-10:
+
+| File | Covers |
+|---|---|
+| `tests/auth-security.test.ts` | OTP hashing/verification, rate limiting, interview scoring, JWT create/verify |
+| `tests/backlog-features.test.ts` | Prep-pack meeting link extraction, coding progression, domain packs, rate limiting |
+| `tests/coaches-sarvam.test.ts` | Coach catalog data shape, Sarvam locale-code mapping |
+| `tests/community.test.ts` | Community store helpers |
+| `tests/job-search.test.ts` | Resume-profile heuristic, generic search query building, web-search deep links |
+| `tests/lab-progress.test.ts` | `localStorage`-backed STAR history and coding-progress helpers |
+| `tests/star-coach.test.ts` | STAR question bank, shuffling, generated-question normalization |
+| `tests/system-design.test.ts` | System design board helpers |
+| **`tests/sync-prep.test.ts`** *(new)* | `mergePrepProgress`, `ensurePrepProgressShape`, `getPlanLimits`, `mergeStarHistory` from `usageMeter.ts` — pure merge/shape logic used by `/api/sync-prep` |
+| **`tests/job-india.test.ts`** *(new)* | `INDIA_FALLBACK_JOBS` shape/coverage (Bangalore/Hyderabad/remote) and India-city-aware `buildSearchQueries` (Bangalore/Bengaluru/Hyderabad) from `jobSearch.ts` |
+| **`tests/api-error.test.ts`** *(new)* | `formatRateLimitMessage` and `readApiError` from `apiError.ts` against mocked `Response` objects |
+| **`tests/coach-catalog.test.ts`** *(new)* | `buildGoogleCalendarUrl` and `nextSlotDate` from `googleCalendar.ts` (used by the coaches marketplace "Add to Calendar" flow) |
+
+Note: `locationMatches`/`indiaCitySynonyms` in `jobSearch.ts` are module-private, so India location-matching is exercised indirectly through the exported `INDIA_FALLBACK_JOBS` data and `buildSearchQueries`, per the existing `job-search.test.ts` pattern of only testing exported surface area. `searchMatchingJobs` itself performs live `fetch()` calls (Remotive/Arbeitnow/RemoteOK/Adzuna) and is intentionally left untested at the unit level — it would need network mocking to be a reliable pure test.
+
+Full suite: **12 test files / 76 tests**, all passing (`npm test`).
+
+### ESLint
+
+Next.js 16 removed `next lint` in favor of running ESLint directly, and `eslint-config-next` 16.x ships native flat config. This repo now has:
+
+- `eslint` + `eslint-config-next` (matched to the installed `next@16.3.0`) as devDependencies.
+- `eslint.config.mjs` — flat config spreading `eslint-config-next/core-web-vitals` and `eslint-config-next/typescript`, with `@typescript-eslint/no-explicit-any` downgraded from the default `error` to `warn` (the codebase relies on `any` heavily for Gemini/Mongo/legacy API payloads; tightening this is tracked as backlog, not blocked on).
+- `"lint": "eslint \"src/**/*.{ts,tsx}\" --max-warnings 999"` in `package.json` — the high `--max-warnings` threshold and `warn`-level `any`/unused-vars mean the script exists and is useful without being blocked by the current warning backlog (~380 warnings, mostly `no-explicit-any` and unused vars).
+- `.github/workflows/ci.yml` runs `npm run lint` as a **non-blocking** (`continue-on-error: true`) step between `npm test` and `npm run build`, so CI surfaces lint output without gating merges on pre-existing issues.
+
+**Known pre-existing lint errors (not introduced by this change, left untouched to avoid unrelated risk):** ~66 hard errors as of 2026-08-10, mostly:
+- `react-hooks/set-state-in-effect` / `react-hooks/purity` / `react-hooks/immutability` (32 + 7) — newer React Compiler-oriented rules flagging pre-existing `useEffect` patterns (e.g. `ProInterviewerApp.tsx` calling `setState` synchronously inside effects).
+- `react/no-unescaped-entities` (17) — raw `'`/`"` in JSX text.
+- `@typescript-eslint/no-require-imports` (6) — `require()` used for `pdf-parse` in a few API routes (likely intentional, to avoid bundling issues).
+- `react-hooks/rules-of-hooks` (2) — a plain helper function named `useMockFallbackRoadmap` in `features/page.tsx` is not actually a hook, just misnamed.
+- `prefer-const` (2) — in `src/utils/db.ts`.
+
+These are real, fixable issues but are pre-existing and out of scope for this pass; see the CI step's `continue-on-error` and the rule breakdown above for anyone picking this up next.
+
+### End-to-end / smoke testing
+
+No Playwright (or other browser-automation) dependency is installed — adding one is a non-trivial dependency + browser-download footprint for a "minimal smoke" ask, so instead:
+
+- `docs/E2E.md` *(new)* — a manual smoke-test checklist covering login → STAR coach → coding lab → jobs search, plus the public-page and auth-gated-route matrix from `AGENTS.md`. Use this as a scripted manual QA pass, or as the basis for a future `tests/e2e/*.spec.ts` suite once Playwright is added.
+- The pure-function Vitest suite above (`sync-prep`, `job-india`, `api-error`, `coach-catalog`, plus the pre-existing files) covers the underlying utility logic that those flows depend on, without needing a running server or browser.
+
+---
+
+## 11. Future Work & Open Items
 
 ### Pending Verification
 - [ ] **Email Analyser E2E Test** — Verify "Interview Invitation" classification renders Platform/Schedule fields correctly.
 - [ ] **Email Analyser E2E Test** — Verify "Offer Letter" classification renders Salary/Benefits/Joining Date fields correctly.
 - [ ] Test the "Save & Re-verify" flow (inline edit company/location → re-call API → updated scores).
 - [ ] Test "Create Preparation Roadmap" redirect with offer letter context (salary, benefits pre-populated).
+- [ ] Run through `docs/E2E.md` manually against a real MongoDB + Gemini key before each release.
 
 ### Potential Improvements
 - [ ] Break `features/page.tsx` (~2680 lines) into smaller components for maintainability.
-- [ ] Break `profile/page.tsx` (~2188 lines) into smaller components.
-- [ ] Add proper TypeScript interfaces for `emailAnalysisResult` instead of `any`.
+- [ ] Break `profile/page.tsx` (~2188 lines) and `admin/page.tsx` (~1221 lines) into smaller components.
+- [ ] Add proper TypeScript interfaces for `emailAnalysisResult` and other `any`-typed API payloads (see the ESLint `no-explicit-any` backlog above — ~270 warnings).
 - [ ] Add error boundary components for graceful failure handling.
 - [ ] Consider caching Gemini responses (e.g., for repeated analysis of the same email).
 - [ ] Add rate-limit UI feedback (show countdown timer when 429 is hit).
-- [ ] Add unit tests for API routes.
-- [ ] Add Sarvam AI as alternative provider for email analysis (currently only Gemini).
+- [ ] Add route-level (`/api/*`) integration tests once a test MongoDB instance is available in CI.
+- [ ] Fix the pre-existing ESLint hard errors listed in [§10](#10-testing--quality-tooling) (`react-hooks/set-state-in-effect`, `no-unescaped-entities`, `no-require-imports`, the misnamed `useMockFallbackRoadmap` helper, `prefer-const` in `db.ts`), then flip `npm run lint` (and the CI step) back to blocking.
+- [ ] Add a real Playwright/browser E2E suite once the team decides on a CI runner budget for it; `docs/E2E.md` is the interim manual checklist.
+
+### Honest gaps (as of 2026-08-10)
+- Sarvam AI is now implemented as an alternative TTS/voice provider (see §0) — no longer a gap, but it is **not** used for the text-based email/portfolio analysis routes, which remain Gemini-only.
+- E2E coverage is a manual checklist (`docs/E2E.md`), not automated — see "Potential Improvements" above.
+- ESLint has a real backlog of ~66 hard errors and ~380 warnings on pre-existing code; the lint script and CI step exist and run, but are intentionally non-blocking until that backlog is paid down.
+- Admin funnel stats (`/api/admin/stats`) and the coaches/referrals flows depend on MongoDB; they are untested at the API level in this pass (only their pure helper functions are unit-tested).
 
 ---
 

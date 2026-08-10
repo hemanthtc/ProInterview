@@ -1,7 +1,16 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
-import { Eraser, MousePointer2, PenLine, Trash2 } from "lucide-react";
+import {
+    forwardRef,
+    useEffect,
+    useId,
+    useImperativeHandle,
+    useRef,
+    useState,
+    type DragEvent,
+    type PointerEvent as ReactPointerEvent,
+} from "react";
+import { Download, Eraser, MousePointer2, PenLine, Trash2 } from "lucide-react";
 import {
     BoardShape,
     BoardShapeKind,
@@ -16,6 +25,11 @@ interface InteractiveWhiteboardProps {
     onFreehandChange?: (hasInk: boolean) => void;
     theme?: "dark" | "light" | "eyeprotect";
     isLight?: boolean;
+}
+
+export interface InteractiveWhiteboardHandle {
+    /** Renders the current ink + shapes to a PNG data URL without triggering a download. */
+    getPngDataUrl: () => string | null;
 }
 
 function ShapeVisual({ shape }: { shape: BoardShape }) {
@@ -107,13 +121,8 @@ function ShapeVisual({ shape }: { shape: BoardShape }) {
     }
 }
 
-export default function InteractiveWhiteboard({
-    shapes,
-    onShapesChange,
-    onFreehandChange,
-    theme = "dark",
-    isLight = false,
-}: InteractiveWhiteboardProps) {
+const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, InteractiveWhiteboardProps>(
+    function InteractiveWhiteboard({ shapes, onShapesChange, onFreehandChange, theme = "dark", isLight = false }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const boardRef = useRef<HTMLDivElement>(null);
     const drawing = useRef(false);
@@ -259,16 +268,16 @@ export default function InteractiveWhiteboard({
         if (!dragShapeId.current || tool !== "select") return;
         const id = dragShapeId.current;
         const pt = boardPointFromClient(e.clientX, e.clientY);
+        const board = boardRef.current;
+        const maxW = board?.clientWidth ?? 900;
+        const maxH = board?.clientHeight ?? 560;
         onShapesChange(
-            shapes.map((s) =>
-                s.id === id
-                    ? {
-                          ...s,
-                          x: Math.max(0, pt.x - dragOffset.current.x),
-                          y: Math.max(0, pt.y - dragOffset.current.y),
-                      }
-                    : s
-            )
+            shapes.map((s) => {
+                if (s.id !== id) return s;
+                const x = Math.min(Math.max(0, pt.x - dragOffset.current.x), Math.max(0, maxW - s.w));
+                const y = Math.min(Math.max(0, pt.y - dragOffset.current.y), Math.max(0, maxH - s.h));
+                return { ...s, x, y };
+            })
         );
     }
 
@@ -308,6 +317,102 @@ export default function InteractiveWhiteboard({
         setEditingId(null);
         clearCanvasInk();
     }
+
+    function buildPngDataUrl(): string | null {
+        const ink = canvasRef.current;
+        const board = boardRef.current;
+        if (!ink || !board) return null;
+        const out = document.createElement("canvas");
+        out.width = ink.width;
+        out.height = ink.height;
+        const ctx = out.getContext("2d");
+        if (!ctx) return null;
+        ctx.fillStyle = "#0b1220";
+        ctx.fillRect(0, 0, out.width, out.height);
+        ctx.drawImage(ink, 0, 0);
+
+        const rect = board.getBoundingClientRect();
+        const scaleX = out.width / Math.max(1, rect.width);
+        const scaleY = out.height / Math.max(1, rect.height);
+
+        for (const shape of shapes) {
+            const x = shape.x * scaleX;
+            const y = shape.y * scaleY;
+            const w = shape.w * scaleX;
+            const h = shape.h * scaleY;
+            ctx.strokeStyle = "#67e8f9";
+            ctx.fillStyle = "rgba(8, 47, 73, 0.65)";
+            ctx.lineWidth = 2;
+            switch (shape.kind) {
+                case "circle":
+                case "cloud":
+                    ctx.beginPath();
+                    ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+                    break;
+                case "diamond":
+                    ctx.beginPath();
+                    ctx.moveTo(x + w / 2, y);
+                    ctx.lineTo(x + w, y + h / 2);
+                    ctx.lineTo(x + w / 2, y + h);
+                    ctx.lineTo(x, y + h / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                    break;
+                case "arrow":
+                    ctx.beginPath();
+                    ctx.moveTo(x, y + h / 2);
+                    ctx.lineTo(x + w - 12, y + h / 2);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x + w - 12, y + h / 2 - 8);
+                    ctx.lineTo(x + w, y + h / 2);
+                    ctx.lineTo(x + w - 12, y + h / 2 + 8);
+                    ctx.closePath();
+                    ctx.fillStyle = "#67e8f9";
+                    ctx.fill();
+                    break;
+                case "box":
+                case "service":
+                case "database":
+                case "queue":
+                case "actor":
+                case "text":
+                    ctx.fillRect(x, y, w, h);
+                    ctx.strokeRect(x, y, w, h);
+                    break;
+                default: {
+                    const _exhaustive: never = shape.kind;
+                    void _exhaustive;
+                    break;
+                }
+            }
+            if (shape.label && shape.kind !== "arrow") {
+                ctx.fillStyle = "#e0f2fe";
+                ctx.font = `${Math.max(11, Math.round(12 * scaleX))}px sans-serif`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(shape.label.slice(0, 28), x + w / 2, y + h / 2, w - 8);
+            }
+        }
+
+        return out.toDataURL("image/png");
+    }
+
+    function exportPng() {
+        const dataUrl = buildPngDataUrl();
+        if (!dataUrl) return;
+        const a = document.createElement("a");
+        a.download = `system-design-board-${Date.now()}.png`;
+        a.href = dataUrl;
+        a.click();
+    }
+
+    useImperativeHandle(ref, () => ({
+        getPngDataUrl: () => buildPngDataUrl(),
+    }));
 
     function deleteSelected() {
         if (!selectedId) return;
@@ -394,6 +499,13 @@ export default function InteractiveWhiteboard({
                 >
                     <Trash2 className="h-3.5 w-3.5" /> Clear board
                 </button>
+                <button
+                    type="button"
+                    onClick={exportPng}
+                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-100"
+                >
+                    <Download className="h-3.5 w-3.5" /> Export PNG
+                </button>
             </div>
 
             <div className="flex flex-wrap gap-2" aria-label="Shape palette">
@@ -403,7 +515,20 @@ export default function InteractiveWhiteboard({
                         draggable
                         onDragStart={(e) => onPaletteDragStart(e, item.kind)}
                         onClick={() => {
-                            const shape = createBoardShape(item.kind, 40 + shapes.length * 12, 40 + shapes.length * 10);
+                            const board = boardRef.current;
+                            const scale =
+                                board && board.clientWidth < 480
+                                    ? 0.72
+                                    : 1;
+                            const shape = createBoardShape(
+                                item.kind,
+                                24 + shapes.length * 10,
+                                24 + shapes.length * 8
+                            );
+                            if (scale !== 1) {
+                                shape.w = Math.round(shape.w * scale);
+                                shape.h = Math.round(shape.h * scale);
+                            }
                             onShapesChange([...shapes, shape]);
                             setSelectedId(shape.id);
                             setTool("select");
@@ -437,7 +562,7 @@ export default function InteractiveWhiteboard({
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className="relative aspect-[900/560] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220]"
+                className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] min-h-[280px] aspect-[4/3] sm:aspect-[900/560] sm:min-h-0`}
             >
                 <canvas
                     ref={canvasRef}
@@ -459,7 +584,16 @@ export default function InteractiveWhiteboard({
                                 setEditingId(shape.id);
                                 setSelectedId(shape.id);
                             }}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (tool === "select") {
+                                    setSelectedId(shape.id);
+                                    // Single tap opens label edit on coarse pointers (mobile)
+                                    if (window.matchMedia("(pointer: coarse)").matches) {
+                                        setEditingId(shape.id);
+                                    }
+                                }
+                            }}
                             style={{
                                 left: shape.x,
                                 top: shape.y,
@@ -490,4 +624,7 @@ export default function InteractiveWhiteboard({
             </div>
         </div>
     );
-}
+    }
+);
+
+export default InteractiveWhiteboard;

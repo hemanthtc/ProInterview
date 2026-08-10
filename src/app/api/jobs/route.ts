@@ -5,6 +5,7 @@ import {
     extractResumeProfileHeuristic,
     searchMatchingJobs,
     webSearchUrls,
+    INDIA_FALLBACK_JOBS,
     type JobType,
     type MatchedJob,
     type ResumeProfile,
@@ -92,8 +93,11 @@ const FALLBACK_JOBS: JobListing[] = [
     },
 ];
 
+/** Static fallback + curated India (Bangalore/Hyderabad-focused) listings combined. */
+const ALL_FALLBACK_JOBS: (JobListing & { source?: string })[] = [...FALLBACK_JOBS, ...INDIA_FALLBACK_JOBS];
+
 function filterStatic(q: string, tag: string): JobListing[] {
-    let list = FALLBACK_JOBS;
+    let list: JobListing[] = ALL_FALLBACK_JOBS;
     if (q) {
         list = list.filter(
             (j) =>
@@ -145,7 +149,7 @@ ${resumeText.slice(0, 9000)}`;
 }
 
 function scoreFallbackJobs(profile: ResumeProfile, location: string): MatchedJob[] {
-    return FALLBACK_JOBS.map((job) => {
+    return ALL_FALLBACK_JOBS.map((job) => {
         const hay = `${job.role} ${job.company} ${job.location} ${job.tags.join(" ")} ${job.description}`.toLowerCase();
         let score = 8;
         const reasons: string[] = ["Curated fallback listing"];
@@ -172,7 +176,7 @@ function scoreFallbackJobs(profile: ResumeProfile, location: string): MatchedJob
         return {
             ...job,
             applyUrl: job.applyUrl || "#",
-            source: "ProInterview curated",
+            source: job.source || "ProInterview curated",
             matchPercent: Math.min(90, score),
             matchReasons: reasons.slice(0, 4),
         };

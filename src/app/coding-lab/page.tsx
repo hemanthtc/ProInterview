@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Code2, Loader2, Moon, Sun, Eye } from "lucide-react";
+import { CheckCircle2, Code2, Loader2, Moon, Sun, Eye } from "lucide-react";
+import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import { loadCodingProgress, saveCodingProgress, type CodingProgress } from "@/utils/labProgress";
 
 interface Problem {
     id: string;
@@ -14,13 +16,25 @@ interface Problem {
     topics: string[];
 }
 
+interface GradeResult {
+    score?: number;
+    passedCount?: number;
+    total?: number;
+    unlockedNext?: boolean;
+    nextId?: string;
+    error?: string;
+    results?: { passed: boolean; hidden: boolean }[];
+}
+
 export default function CodingLabPage() {
     const [problems, setProblems] = useState<Problem[]>([]);
     const [active, setActive] = useState<Problem | null>(null);
     const [code, setCode] = useState("");
     const [language, setLanguage] = useState("javascript");
-    const [result, setResult] = useState<any>(null);
+    const [result, setResult] = useState<GradeResult | null>(null);
     const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState<CodingProgress>({ solvedIds: [], bestScores: {} });
+    const [error, setError] = useState("");
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
@@ -42,24 +56,30 @@ export default function CodingLabPage() {
     };
 
     useEffect(() => {
+        setProgress(loadCodingProgress());
         fetch("/api/coding-problems?path=1")
             .then((r) => r.json())
             .then((d) => {
-                const list = (d.problems || []).filter(Boolean);
+                const list = (d.problems || []).filter(Boolean) as Problem[];
                 setProblems(list);
-                if (list[0]) select(list[0]);
+                const saved = loadCodingProgress();
+                const last = list.find((p) => p.id === saved.lastProblemId) || list[0];
+                if (last) select(last, "javascript");
             });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    function select(p: Problem) {
+    function select(p: Problem, lang = language) {
         setActive(p);
-        setCode(p.starterCode?.[language] || p.starterCode?.javascript || "");
+        setCode(p.starterCode?.[lang] || p.starterCode?.javascript || "");
         setResult(null);
+        setError("");
     }
 
     async function grade() {
         if (!active) return;
         setLoading(true);
+        setError("");
         try {
             const res = await fetch("/api/coding-problems", {
                 method: "POST",
@@ -67,7 +87,16 @@ export default function CodingLabPage() {
                 body: JSON.stringify({ problemId: active.id, language, code }),
             });
             const data = await res.json();
+            if (!res.ok) {
+                setError(data.error || "Grading failed — sign in required for online sandbox.");
+                setResult(data);
+                return;
+            }
             setResult(data);
+            setResult(data);
+            if (typeof data.score === "number") {
+                setProgress(saveCodingProgress({ problemId: active.id, score: data.score }));
+            }
         } finally {
             setLoading(false);
         }
@@ -87,7 +116,10 @@ export default function CodingLabPage() {
                         <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-amber-700 font-bold" : "text-amber-300/80"}`}>
                             <Code2 className="w-4 h-4" /> Coding lab
                         </p>
-                        <h1 className="text-2xl font-semibold mt-1">Progressive problems + hidden tests</h1>
+                        <h1 className="mt-1 text-2xl font-semibold">Progressive problems + hidden tests</h1>
+                        <p className={`mt-1 text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
+                            {progress.solvedIds.length} unlocked · progress saved on this device
+                        </p>
                     </div>
                     <div className="flex items-center gap-3">
                         <button
@@ -103,7 +135,9 @@ export default function CodingLabPage() {
                             {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                             {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                         </button>
-
+                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
+                            Prep dashboard
+                        </Link>
                         <Link
                             href="/labs"
                             className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
@@ -119,35 +153,47 @@ export default function CodingLabPage() {
                     </div>
                 </div>
 
-                <div className="grid lg:grid-cols-[240px_1fr] gap-4">
+                <LabAuthBanner feature="sandboxed code grading" />
+
+                <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
                     <div className="space-y-2">
-                        {problems.map((p) => (
-                            <button
-                                key={p.id}
-                                type="button"
-                                onClick={() => select(p)}
-                                className={`w-full text-left rounded-xl border px-3.5 py-2.5 text-sm transition ${
-                                    active?.id === p.id
-                                        ? (theme === "eyeprotect"
-                                            ? "bg-[#0b5f58] border-[#0b5f58] text-white font-bold"
-                                            : isLight
-                                            ? "bg-indigo-600 border-indigo-600 text-white font-bold"
-                                            : "border-amber-400/50 bg-amber-500/20 text-white font-bold")
-                                        : (isLight
-                                            ? "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-sm"
-                                            : "border-white/10 bg-white/5 text-white/70 hover:text-white")
-                                }`}
-                            >
-                                <div className="font-semibold">{p.title}</div>
-                                <div className={`text-[10px] uppercase font-bold ${active?.id === p.id ? "text-white/80" : isLight ? "text-slate-500" : "text-white/40"}`}>{p.difficulty}</div>
-                            </button>
-                        ))}
+                        {problems.map((p) => {
+                            const best = progress.bestScores[p.id];
+                            const solved = progress.solvedIds.includes(p.id);
+                            return (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => select(p)}
+                                    className={`w-full text-left rounded-xl border px-3.5 py-2.5 text-sm transition ${
+                                        active?.id === p.id
+                                            ? (theme === "eyeprotect"
+                                                ? "bg-[#0b5f58] border-[#0b5f58] text-white font-bold"
+                                                : isLight
+                                                ? "bg-indigo-600 border-indigo-600 text-white font-bold"
+                                                : "border-amber-400/50 bg-amber-500/20 text-white font-bold")
+                                            : (isLight
+                                                ? "border-slate-200 bg-white text-slate-800 hover:bg-slate-50 shadow-sm"
+                                                : "border-white/10 bg-white/5 text-white/70 hover:text-white")
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between gap-2">
+                                        <div className="font-semibold">{p.title}</div>
+                                        {solved && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-400" />}
+                                    </div>
+                                    <div className={`text-[10px] uppercase font-bold ${active?.id === p.id ? "text-white/80" : isLight ? "text-slate-500" : "text-white/40"}`}>
+                                        {p.difficulty}
+                                        {best != null ? ` · best ${best}%` : ""}
+                                    </div>
+                                </button>
+                            );
+                        })}
                     </div>
                     <div className="space-y-3">
                         {active && (
                             <>
                                 <p className={`text-sm leading-relaxed ${isLight ? "text-slate-700 font-medium" : "text-white/80"}`}>{active.prompt}</p>
-                                <div className="flex gap-2">
+                                <div className="flex flex-wrap gap-2">
                                     <select
                                         value={language}
                                         onChange={(e) => {
@@ -171,7 +217,11 @@ export default function CodingLabPage() {
                                                 : "bg-amber-600 hover:bg-amber-500 text-white disabled:opacity-50"
                                         }`}
                                     >
-                                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Run hidden tests"}
+                                        {loading ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            "Run hidden tests"
+                                        )}
                                     </button>
                                 </div>
                                 <textarea
@@ -183,7 +233,8 @@ export default function CodingLabPage() {
                                             : "bg-black/60 text-amber-200 border-white/10"
                                     }`}
                                 />
-                                {result && (
+                                {error && <p className="text-sm text-rose-300">{error}</p>}
+                                {result && result.score != null && (
                                     <div className={`rounded-xl border p-4 text-sm ${
                                         theme === "light"
                                             ? "bg-white border-slate-200 shadow-sm"
@@ -208,6 +259,13 @@ export default function CodingLabPage() {
                                         )}
                                         <ul className={`mt-2 space-y-1 font-medium ${isLight ? "text-slate-700" : "text-white/70"}`}>
                                             {(result.results || []).map((r: any, i: number) => (
+                                                <li key={i}>
+                                                    {r.passed ? "✓" : "✗"} {r.hidden ? "Hidden test" : "Public test"}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
                                                 <li key={i}>
                                                     {r.passed ? "✓" : "✗"} {r.hidden ? "Hidden test" : "Public test"}
                                                 </li>

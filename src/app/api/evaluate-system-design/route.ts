@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
+import { cachedGenerate, getGeminiModel, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
+
+/** Splits a `data:<mime>;base64,<data>` URL into its parts; falls back to raw base64 input. */
+function parseImageDataUrl(input: string, fallbackMimeType?: string): { data: string; mimeType: string } {
+    const match = input.match(/^data:([^;]+);base64,([\s\S]*)$/);
+    if (match) return { data: match[2], mimeType: match[1] };
+    return { data: input, mimeType: fallbackMimeType || "image/png" };
+}
 
 /**
  * Online-only system design evaluation (Gemini).
@@ -21,7 +28,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { prompt, sketchDescription, boardSummary, notes, company, role, level } = await req.json();
+        const { prompt, sketchDescription, boardSummary, notes, company, role, level, diagramImageBase64, mimeType } =
+            await req.json();
         const rl = rateLimit(`sysdesign:${session.identifier}`, { limit: 20, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
@@ -72,12 +80,33 @@ Return JSON only:
   "followUpQuestions": ["..."]
 }`;
 
-        const raw = await cachedGenerate(
-            promptCacheKey("sysdesign", company, role, level, prompt, notes, board),
-            designPrompt
-        );
+        const hasImage = typeof diagramImageBase64 === "string" && diagramImageBase64.trim().length > 0;
+
+        let raw: string;
+        if (hasImage) {
+            // Multimodal path: image bytes are never hashed into the cache key, so skip
+            // the shared prompt cache entirely rather than caching per-screenshot.
+            const { data, mimeType: resolvedMimeType } = parseImageDataUrl(diagramImageBase64.trim(), mimeType);
+            const visionPrompt = `${designPrompt}\n\nA screenshot of the candidate's whiteboard is attached — read the boxes, arrows, and labels directly from the image in addition to the notes above.`;
+            const model = getGeminiModel();
+            const result = await model.generateContent([
+                { text: visionPrompt },
+                { inlineData: { data, mimeType: resolvedMimeType } },
+            ]);
+            raw = result.response.text();
+        } else {
+            raw = await cachedGenerate(
+                promptCacheKey("sysdesign", company, role, level, prompt, notes, board),
+                designPrompt
+            );
+        }
+
         const parsed = parseJsonFromModel(raw);
-        return NextResponse.json({ ...((parsed && typeof parsed === "object" ? parsed : {}) as object), source: "online" });
+        return NextResponse.json({
+            ...((parsed && typeof parsed === "object" ? parsed : {}) as object),
+            source: "online",
+            usedImage: hasImage,
+        });
     } catch (error: unknown) {
         console.error("evaluate-system-design", error);
         const message = error instanceof Error ? error.message : "Internal error";
