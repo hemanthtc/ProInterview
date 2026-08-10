@@ -6,6 +6,7 @@ export interface ProfileInterviewSession {
     behavioralRating?: number;
     communicationRating?: number;
     portfolioRating?: number | string;
+    interviewRating?: number;
     summary?: string;
     transcript?: string;
     company?: string;
