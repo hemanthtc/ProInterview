@@ -160,7 +160,7 @@ export default function SystemDesignPage() {
 
                 <LabAuthBanner feature="online system-design questions and evaluation" />
 
-                <div className="mb-5 flex flex-wrap items-center gap-2">
+                <div className="mb-5 flex flex-wrap items-center gap-2 overflow-x-auto pb-1">
                     <select
                         value={difficulty}
                         onChange={(e) =>

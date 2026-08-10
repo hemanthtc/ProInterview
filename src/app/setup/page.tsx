@@ -391,7 +391,7 @@ export default function SetupPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 {[
                                     { id: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
-                                    { id: "sarvam", label: "Sarvam AI", desc: "Hindi / regional-friendly voice path." }
+                                    { id: "sarvam", label: "Sarvam AI", desc: "Indic TTS + chat (needs SARVAM_API_KEY). Falls back to Gemini if needed." }
                                 ].map((prov) => (
                                     <button
                                         key={prov.id}
@@ -421,7 +421,7 @@ export default function SetupPage() {
                                     <option value="bn-IN">Bengali</option>
                                 </select>
                                 <p className="text-[11px] text-white/40 mt-1">
-                                    Sarvam path prefers Indian languages; browser speech synthesis uses this locale when available.
+                                    With Sarvam selected, interview replies use Sarvam TTS when configured; mic recognition uses this locale. Chat falls back to Gemini if Sarvam is unavailable.
                                 </p>
                             </div>
                         </div>

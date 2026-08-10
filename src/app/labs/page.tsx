@@ -86,10 +86,10 @@ const ITEMS: {
     {
         href: "/coaches",
         title: "Coach marketplace",
-        desc: "Book human coaches",
+        desc: "Book + pay + Jitsi video room",
         icon: Video,
         color: "text-pink-300",
-        badges: ["Beta"],
+        badges: ["New", "Sign-in"],
     },
     {
         href: "/ats-match",
@@ -126,10 +126,10 @@ const ITEMS: {
     {
         href: "/setup",
         title: "Language / Sarvam",
-        desc: "Hindi + regional voice",
+        desc: "Hindi + regional voice (Sarvam TTS/chat)",
         icon: Globe2,
         color: "text-fuchsia-300",
-        badges: ["Sign-in"],
+        badges: ["New", "Sign-in"],
     },
     {
         href: "/features",

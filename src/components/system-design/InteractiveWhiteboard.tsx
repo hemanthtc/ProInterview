@@ -255,16 +255,16 @@ export default function InteractiveWhiteboard({
         if (!dragShapeId.current || tool !== "select") return;
         const id = dragShapeId.current;
         const pt = boardPointFromClient(e.clientX, e.clientY);
+        const board = boardRef.current;
+        const maxW = board?.clientWidth ?? 900;
+        const maxH = board?.clientHeight ?? 560;
         onShapesChange(
-            shapes.map((s) =>
-                s.id === id
-                    ? {
-                          ...s,
-                          x: Math.max(0, pt.x - dragOffset.current.x),
-                          y: Math.max(0, pt.y - dragOffset.current.y),
-                      }
-                    : s
-            )
+            shapes.map((s) => {
+                if (s.id !== id) return s;
+                const x = Math.min(Math.max(0, pt.x - dragOffset.current.x), Math.max(0, maxW - s.w));
+                const y = Math.min(Math.max(0, pt.y - dragOffset.current.y), Math.max(0, maxH - s.h));
+                return { ...s, x, y };
+            })
         );
     }
 
@@ -463,7 +463,20 @@ export default function InteractiveWhiteboard({
                         draggable
                         onDragStart={(e) => onPaletteDragStart(e, item.kind)}
                         onClick={() => {
-                            const shape = createBoardShape(item.kind, 40 + shapes.length * 12, 40 + shapes.length * 10);
+                            const board = boardRef.current;
+                            const scale =
+                                board && board.clientWidth < 480
+                                    ? 0.72
+                                    : 1;
+                            const shape = createBoardShape(
+                                item.kind,
+                                24 + shapes.length * 10,
+                                24 + shapes.length * 8
+                            );
+                            if (scale !== 1) {
+                                shape.w = Math.round(shape.w * scale);
+                                shape.h = Math.round(shape.h * scale);
+                            }
                             onShapesChange([...shapes, shape]);
                             setSelectedId(shape.id);
                             setTool("select");
@@ -489,7 +502,7 @@ export default function InteractiveWhiteboard({
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className="relative aspect-[900/560] w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220]"
+                className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] min-h-[280px] aspect-[4/3] sm:aspect-[900/560] sm:min-h-0`}
             >
                 <canvas
                     ref={canvasRef}
@@ -511,7 +524,16 @@ export default function InteractiveWhiteboard({
                                 setEditingId(shape.id);
                                 setSelectedId(shape.id);
                             }}
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (tool === "select") {
+                                    setSelectedId(shape.id);
+                                    // Single tap opens label edit on coarse pointers (mobile)
+                                    if (window.matchMedia("(pointer: coarse)").matches) {
+                                        setEditingId(shape.id);
+                                    }
+                                }
+                            }}
                             style={{
                                 left: shape.x,
                                 top: shape.y,

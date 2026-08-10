@@ -7,6 +7,7 @@ import {
     formatGeminiParts,
     sendGeminiMessageWithRetry,
 } from "@/utils/interviewHelper";
+import { getSarvamKey, sarvamChatCompletion } from "@/utils/sarvam";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -14,16 +15,20 @@ export async function POST(req: NextRequest) {
     try {
         const {
             history = [], resume, github, linkedin, portfolioUrl, message, attachment, type,
-            company, roles, level, hrIntel, companyClone,
+            company, roles, level, hrIntel, companyClone, provider, voiceLanguage,
         } = await req.json();
 
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
         const safeLevel = level || "intermediate";
+        const useSarvam = String(provider || "").toLowerCase() === "sarvam";
 
         const bank = companyClone !== false ? resolveCompanyBank(safeCompany) : null;
         const companyCloneBlock = bank ? `\n\n${companyBankPromptBlock(bank)}\n` : "";
         const hrPersonaBlock = buildHrPersonaBlock(hrIntel);
+        const languageBlock = voiceLanguage && voiceLanguage !== "en-US"
+            ? `\nCandidate preferred language/locale: ${voiceLanguage}. You may greet bilingually for Indian locales; keep technical terms precise.\n`
+            : "";
 
         const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
 - You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.
@@ -37,6 +42,7 @@ export async function POST(req: NextRequest) {
 ${difficultyInstruction}
 ${companyCloneBlock}
 ${hrPersonaBlock}
+${languageBlock}
 
 PERSONA & TONE:
 - Tone: Professional, encouraging, conversational, and direct. You are a real human sitting across the table.
@@ -74,6 +80,20 @@ PRACTICAL QUESTION RULES:
 - If the conversation history is NOT empty and the candidate says "I am back," do NOT re-welcome them. Just jump straight into the next question.
 
 ${profileSection}`;
+
+        if (useSarvam && getSarvamKey()) {
+            const hist = (history as { role: string; content: string }[]).map((h) => ({
+                role: (h.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+                content: String(h.content || ""),
+            }));
+            const sarvamReply = await sarvamChatCompletion(systemPrompt, hist, message || "Hello!");
+            if (sarvamReply) {
+                const withMode = /\[MODE:(CHAT|CODE|DRAW)\]/i.test(sarvamReply)
+                    ? sarvamReply
+                    : `[MODE:CHAT] ${sarvamReply}`;
+                return NextResponse.json({ message: withMode, provider: "sarvam" });
+            }
+        }
 
         if (!GEMINI_API_KEY) {
             throw new Error("Missing GEMINI_API_KEY in environment variables.");

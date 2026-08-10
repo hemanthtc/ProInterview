@@ -1,70 +1,223 @@
-import { NextResponse } from "next/server";
-
-export interface CoachProfile {
-    id: string;
-    name: string;
-    headline: string;
-    domains: string[];
-    companies: string[];
-    rateUsd: number;
-    rating: number;
-    slots: string[];
-    bio: string;
-}
-
-const COACHES: CoachProfile[] = [
-    {
-        id: "coach_priya",
-        name: "Priya Nair",
-        headline: "Ex-Google SWE · System design specialist",
-        domains: ["backend", "system-design"],
-        companies: ["Google", "Flipkart"],
-        rateUsd: 89,
-        rating: 4.9,
-        slots: ["Tue 18:00 IST", "Thu 20:00 IST", "Sat 11:00 IST"],
-        bio: "Warm up with AI mocks, then book a 45-min human loop focused on design tradeoffs.",
-    },
-    {
-        id: "coach_marcus",
-        name: "Marcus Webb",
-        headline: "Ex-Meta EM · Behavioral + leadership",
-        domains: ["behavioral", "frontend"],
-        companies: ["Meta", "Airbnb"],
-        rateUsd: 120,
-        rating: 4.8,
-        slots: ["Mon 09:00 PT", "Wed 17:00 PT"],
-        bio: "STAR storytelling, leveling narratives, and bar-raiser style pressure drills.",
-    },
-    {
-        id: "coach_aisha",
-        name: "Aisha Rahman",
-        headline: "ML infra · FAANG loop coach",
-        domains: ["ml", "devops"],
-        companies: ["Amazon", "NVIDIA"],
-        rateUsd: 99,
-        rating: 4.7,
-        slots: ["Fri 19:00 IST", "Sun 10:00 IST"],
-        bio: "Pairs AI film-room gaps with human retakes on ML system design and production metrics.",
-    },
-];
+import { NextRequest, NextResponse } from "next/server";
+import crypto from "crypto";
+import Razorpay from "razorpay";
+import connectDB from "@/utils/db";
+import CoachBooking from "@/models/CoachBooking";
+import { getVerifiedSession } from "@/utils/auth";
+import { rateLimit } from "@/utils/rateLimit";
+import { buildMeetLink, COACHES, getCoach } from "@/data/coaches";
 
 export async function GET() {
-    return NextResponse.json({ coaches: COACHES });
+    return NextResponse.json({
+        coaches: COACHES,
+        paymentsConfigured: Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET),
+    });
 }
 
-export async function POST(req: Request) {
-    const body = await req.json();
-    const coach = COACHES.find((c) => c.id === body.coachId);
-    if (!coach) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
-    const slot = body.slot || coach.slots[0];
-    // Demo-only hold — no real calendar booking or confirmation email yet.
-    return NextResponse.json({
-        demo: true,
-        success: true,
-        bookingId: `demo_${Date.now()}`,
-        coach: coach.name,
-        slot,
-        message: `Demo hold with ${coach.name} at ${slot}. Real bookings and confirmation emails are not enabled yet.`,
-        meetLink: null,
-    });
+/** Create a coach booking — paid via Razorpay when configured, otherwise instant Jitsi confirm. */
+export async function POST(req: NextRequest) {
+    try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
+        const rl = rateLimit(`coach-book:${session.identifier}`, { limit: 20, windowMs: 15 * 60 * 1000 });
+        if (!rl.allowed) {
+            return NextResponse.json(
+                { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
+                { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+            );
+        }
+
+        const body = await req.json();
+        const coach = getCoach(body.coachId);
+        if (!coach) return NextResponse.json({ error: "Coach not found" }, { status: 404 });
+        const slot = typeof body.slot === "string" && body.slot ? body.slot : coach.slots[0];
+        const mode = body.mode === "create_order" ? "create_order" : body.mode === "confirm" ? "confirm" : "book";
+
+        const bookingId = `cb_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const meetLink = buildMeetLink(bookingId);
+        const amountPaise = coach.rateInr * 100;
+        const keyId = process.env.RAZORPAY_KEY_ID;
+        const keySecret = process.env.RAZORPAY_KEY_SECRET;
+        const paymentsConfigured = Boolean(keyId && keySecret);
+
+        if (mode === "create_order") {
+            if (!paymentsConfigured) {
+                return NextResponse.json({
+                    success: true,
+                    paymentsConfigured: false,
+                    bookingId,
+                    amountPaise,
+                    currency: "INR",
+                    message: "Razorpay not configured — use free confirm to get a Meet link.",
+                });
+            }
+
+            const razorpay = new Razorpay({ key_id: keyId!, key_secret: keySecret! });
+            const order = await razorpay.orders.create({
+                amount: amountPaise,
+                currency: "INR",
+                receipt: bookingId.slice(0, 40),
+                notes: {
+                    kind: "coach",
+                    coachId: coach.id,
+                    slot,
+                    userIdentifier: session.identifier,
+                    bookingId,
+                },
+            });
+
+            try {
+                await connectDB();
+                await CoachBooking.create({
+                    bookingId,
+                    userIdentifier: session.identifier,
+                    coachId: coach.id,
+                    coachName: coach.name,
+                    slot,
+                    amountPaise,
+                    currency: "INR",
+                    razorpayOrderId: order.id,
+                    meetLink,
+                    status: "pending",
+                });
+            } catch (dbErr) {
+                console.warn("CoachBooking persist skipped", dbErr);
+            }
+
+            return NextResponse.json({
+                success: true,
+                paymentsConfigured: true,
+                bookingId,
+                orderId: order.id,
+                amount: order.amount,
+                currency: order.currency,
+                keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || keyId,
+                coach: coach.name,
+                slot,
+                meetLink,
+            });
+        }
+
+        if (mode === "confirm") {
+            const {
+                bookingId: existingId,
+                razorpay_payment_id,
+                razorpay_order_id,
+                razorpay_signature,
+            } = body;
+
+            if (paymentsConfigured && razorpay_payment_id && razorpay_order_id && razorpay_signature) {
+                const expected = crypto
+                    .createHmac("sha256", keySecret!)
+                    .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+                    .digest("hex");
+                if (expected !== razorpay_signature) {
+                    return NextResponse.json({ error: "Invalid payment signature." }, { status: 400 });
+                }
+
+                let meet = meetLink;
+                let finalId = existingId || bookingId;
+                try {
+                    await connectDB();
+                    const updated = await CoachBooking.findOneAndUpdate(
+                        { razorpayOrderId: razorpay_order_id },
+                        {
+                            status: "confirmed",
+                            razorpayPaymentId: razorpay_payment_id,
+                        },
+                        { new: true }
+                    );
+                    if (updated) {
+                        meet = updated.meetLink;
+                        finalId = updated.bookingId;
+                    }
+                } catch (dbErr) {
+                    console.warn("CoachBooking confirm persist skipped", dbErr);
+                }
+
+                return NextResponse.json({
+                    success: true,
+                    paid: true,
+                    bookingId: finalId,
+                    coach: coach.name,
+                    slot,
+                    meetLink: meet,
+                    message: `Booked ${coach.name} at ${slot}. Join the video room at session time.`,
+                });
+            }
+
+            // Free / demo confirm when Razorpay is not configured
+            const freeId = existingId || bookingId;
+            const freeMeet = buildMeetLink(freeId);
+            try {
+                await connectDB();
+                await CoachBooking.create({
+                    bookingId: freeId,
+                    userIdentifier: session.identifier,
+                    coachId: coach.id,
+                    coachName: coach.name,
+                    slot,
+                    amountPaise: 0,
+                    currency: "INR",
+                    meetLink: freeMeet,
+                    status: "confirmed",
+                });
+            } catch (dbErr) {
+                console.warn("CoachBooking free persist skipped", dbErr);
+            }
+
+            return NextResponse.json({
+                success: true,
+                demo: !paymentsConfigured,
+                paid: false,
+                bookingId: freeId,
+                coach: coach.name,
+                slot,
+                meetLink: freeMeet,
+                message: paymentsConfigured
+                    ? `Hold created with ${coach.name}. Complete payment to confirm.`
+                    : `Session reserved with ${coach.name} at ${slot}. Video room ready (Razorpay not configured — free confirm).`,
+            });
+        }
+
+        // Default book = free confirm path (backward compatible)
+        const freeMeet = meetLink;
+        try {
+            await connectDB();
+            await CoachBooking.create({
+                bookingId,
+                userIdentifier: session.identifier,
+                coachId: coach.id,
+                coachName: coach.name,
+                slot,
+                amountPaise: paymentsConfigured ? amountPaise : 0,
+                currency: "INR",
+                meetLink: freeMeet,
+                status: paymentsConfigured ? "pending" : "confirmed",
+            });
+        } catch (dbErr) {
+            console.warn("CoachBooking book persist skipped", dbErr);
+        }
+
+        return NextResponse.json({
+            success: true,
+            demo: !paymentsConfigured,
+            bookingId,
+            coach: coach.name,
+            slot,
+            meetLink: freeMeet,
+            paymentsConfigured,
+            amountPaise,
+            message: paymentsConfigured
+                ? `Ready to pay ₹${coach.rateInr} for ${coach.name} at ${slot}.`
+                : `Session reserved with ${coach.name} at ${slot}. Join via Meet link.`,
+        });
+    } catch (error: unknown) {
+        console.error("coaches", error);
+        const message = error instanceof Error ? error.message : "Internal error";
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
 }
