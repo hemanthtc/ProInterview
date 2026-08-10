@@ -2,14 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-<<<<<<< HEAD
-import { Loader2, PenTool, Sparkles, Moon, Sun, Eye } from "lucide-react";
-=======
-import { Loader2, PenTool, RefreshCw, Sparkles, Wifi } from "lucide-react";
+import { Loader2, PenTool, RefreshCw, Sparkles, Wifi, Moon, Sun, Eye } from "lucide-react";
 import InteractiveWhiteboard from "@/components/system-design/InteractiveWhiteboard";
 import type { SystemDesignQuestion } from "@/data/systemDesignQuestions";
 import { BoardShape, summarizeBoard } from "@/utils/systemDesignBoard";
->>>>>>> 8fa80ea9fdffb5a8528435e76b5395ce0bf52091
 
 interface EvalResult {
     overall?: number;
@@ -36,8 +32,8 @@ export default function SystemDesignPage() {
     const [error, setError] = useState("");
     const [info, setInfo] = useState("");
 
-<<<<<<< HEAD
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
@@ -208,7 +204,6 @@ export default function SystemDesignPage() {
     }
 
     return (
-<<<<<<< HEAD
         <div className={`min-h-screen transition-colors duration-300 ${
             theme === "light"
                 ? "bg-slate-100 text-slate-900"
@@ -221,21 +216,12 @@ export default function SystemDesignPage() {
                     <div>
                         <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-cyan-700 font-bold" : "text-cyan-300/80"}`}>
                             <PenTool className="w-4 h-4" /> System design lab
-=======
-        <div className="min-h-screen bg-slate-950 text-white">
-            <div className="mx-auto max-w-6xl px-4 py-8">
-                <div className="mb-6 flex items-center justify-between gap-4">
-                    <div>
-                        <p className="flex items-center gap-2 text-xs uppercase tracking-widest text-cyan-300/80">
-                            <PenTool className="h-4 w-4" /> System design lab
                         </p>
                         <h1 className="mt-1 text-2xl font-semibold">Interactive whiteboard + online eval</h1>
-                        <p className="mt-1 max-w-xl text-sm text-white/45">
+                        <p className={`mt-1 max-w-xl text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
                             Pull random prompts online, drag shapes or draw freestyle, then grade the design online only.
->>>>>>> 8fa80ea9fdffb5a8528435e76b5395ce0bf52091
                         </p>
                     </div>
-<<<<<<< HEAD
                     <div className="flex items-center gap-3">
                         <button
                             onClick={cycleTheme}
