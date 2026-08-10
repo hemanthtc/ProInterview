@@ -13,6 +13,7 @@ import SpacedDrillsPanel from "../../components/SpacedDrillsPanel";
 import PrepPackPanel from "../../components/PrepPackPanel";
 import LabsBanner from "../../components/LabsBanner";
 import ProgressPanel from "../../components/features/ProgressPanel";
+import FeatureToolsGrid from "../../components/features/FeatureToolsGrid";
 import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
@@ -3346,6 +3347,58 @@ function FeaturesContent() {
                     <div className="absolute bottom-[10%] right-[20%] w-[400px] h-[400px] bg-purple-600/15 rounded-full blur-[100px] pointer-events-none" />
 
                     {activeModal === null ? (
+                        <FeatureToolsGrid
+                            isLight={isLight}
+                            isRealisticMode={isRealisticMode}
+                            onSelectAnalysis={() => {
+                                setActiveModal("analysis");
+                                setActiveTool("analysis");
+                                setShowAnalysis(false);
+                                setShowResume(false);
+                            }}
+                            onStartInterview={() => launchInterviewSetup(isRealisticMode ? "realistic" : "technical")}
+                            onSelectAptitude={() => {
+                                setActiveModal("aptitude");
+                                setActiveTool("aptitude");
+                                setAptitudePath(null);
+                                setActiveQuizCategory(null);
+                                setIsMockTestMode(false);
+                            }}
+                            onSelectEmailAnalyser={() => {
+                                setActiveModal("email_analyser");
+                                setActiveTool("email_analyser");
+                            }}
+                            onSelectPrepPack={() => {
+                                setActiveModal("prep_pack");
+                                setActiveTool("prep_pack");
+                            }}
+                            onSelectDrills={() => {
+                                setActiveModal("drills");
+                                setActiveTool("drills");
+                            }}
+                            onSelectNegotiate={() => {
+                                setActiveModal("negotiate");
+                                setActiveTool("negotiate");
+                            }}
+                            onSelectRoadmap={() => {
+                                setActiveModal("roadmap_generator");
+                                setActiveTool("roadmap_generator");
+                                setRoadmapTasksChecked({});
+                            }}
+                            onSelectProInterviewer={launchProInterviewer}
+                            onSelectStudyMaterials={() => {
+                                setActiveModal("study_materials");
+                                setActiveTool("study_materials");
+                            }}
+                            onSelectSyntheticData={() => {
+                                setActiveModal("synthetic_data");
+                                setActiveTool("synthetic_data");
+                            }}
+                            onSelectProgress={() => {
+                                setActiveModal("progress");
+                                setActiveTool("progress");
+                            }}
+                        />
                     ) : activeModal === "negotiate" ? (
                         <div className="w-full max-w-4xl lg:max-w-full overflow-x-hidden negotiate-modal-lock px-1 sm:px-3 pt-28 lg:pt-0 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
                             {/* Mobile Top Controls Bar (Positioned cleanly below main site navbar) */}
