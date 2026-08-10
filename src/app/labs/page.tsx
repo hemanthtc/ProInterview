@@ -25,7 +25,7 @@ const ITEMS = [
     { href: "/panel-interview", title: "Panel interviews", desc: "Multi-interviewer rounds", icon: Users, color: "text-indigo-400" },
     { href: "/system-design", title: "System design lab", desc: "Interactive board + online eval", icon: PenTool, color: "text-cyan-400" },
     { href: "/star-coach", title: "STAR coach", desc: "Behavioral drills + retakes", icon: Target, color: "text-violet-400" },
-    { href: "/jobs", title: "Job board", desc: "Apply with scorecard", icon: Briefcase, color: "text-emerald-400" },
+    { href: "/jobs", title: "Open job roles", desc: "Resume + location matched openings", icon: Briefcase, color: "text-emerald-400" },
     { href: "/coding-lab", title: "Coding lab", desc: "Progressive hidden tests", icon: Code2, color: "text-amber-400" },
     { href: "/coaches", title: "Coach marketplace", desc: "Book human coaches", icon: Video, color: "text-pink-400" },
     { href: "/ats-match", title: "ATS match", desc: "JD vs resume %", icon: FileSearch, color: "text-sky-400" },
