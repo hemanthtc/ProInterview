@@ -3,7 +3,19 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import OrgEmployee from "@/models/OrgEmployee";
 import OrgAdmin from "@/models/OrgAdmin";
+import CloudSession from "@/models/CloudSession";
+import CoachBooking from "@/models/CoachBooking";
 import { getVerifiedSession } from "@/utils/auth";
+
+/** Signup → activation funnel counts for the admin dashboard. */
+async function buildFunnelStats(signups: number) {
+    const [mocks, starDrills, coachBookings] = await Promise.all([
+        CloudSession.countDocuments({ "sessions.0": { $exists: true } }),
+        CloudSession.countDocuments({ "prepProgress.starHistory.0": { $exists: true } }),
+        CoachBooking.countDocuments({ status: "confirmed" }),
+    ]);
+    return { signups, mocks, starDrills, coachBookings };
+}
 
 export async function GET(req: NextRequest) {
     try {
@@ -82,6 +94,9 @@ export async function GET(req: NextRequest) {
                 .sort({ createdAt: -1 });
         }
 
+        // ── Activation funnel: signups → mock sessions → STAR drills → coach bookings ──
+        const funnel = await buildFunnelStats(totalUsers);
+
         return NextResponse.json({
             success: true,
             totalUsers,
@@ -96,6 +111,7 @@ export async function GET(req: NextRequest) {
             unverifiedUsers,
             employees,
             admins,
+            funnel,
         });
     } catch (error: any) {
         console.error("Admin stats error:", error);

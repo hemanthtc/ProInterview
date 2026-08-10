@@ -14,6 +14,16 @@ export interface ICoachBooking extends Document {
     razorpayPaymentId?: string;
     meetLink: string;
     status: CoachBookingStatus;
+    /** Set once a 24h-ahead reminder has been sent, to avoid duplicate sends. */
+    reminderSentAt?: Date;
+    /** Set when the user or an admin cancels the booking. */
+    cancelledAt?: Date;
+    /** Razorpay refund id when a refund was initiated on cancellation. */
+    refundId?: string;
+    /** Optional external calendar event id (reserved for future OAuth-based sync). */
+    calendarEventId?: string;
+    /** "Add to Google Calendar" template link generated on confirm. */
+    googleCalendarLink?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -35,6 +45,11 @@ const CoachBookingSchema: Schema<ICoachBooking> = new Schema(
             enum: ["pending", "paid", "confirmed", "cancelled"],
             default: "pending",
         },
+        reminderSentAt: { type: Date },
+        cancelledAt: { type: Date },
+        refundId: { type: String },
+        calendarEventId: { type: String },
+        googleCalendarLink: { type: String },
     },
     { timestamps: true, collection: "coach_bookings" }
 );

@@ -1,4 +1,4 @@
-/* ProInterview PWA service worker — cache shell for offline practice entry */
+/* ProInterview PWA service worker — cache shell + offline drills for practice entry */
 
 /* On localhost, immediately self-destruct to prevent dev-mode reload loops */
 const IS_LOCAL = self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1";
@@ -15,8 +15,15 @@ if (IS_LOCAL) {
     );
   });
 } else {
-  const CACHE = "prointerview-shell-v3";
-  const SHELL = ["/", "/labs", "/manifest.json"];
+  const CACHE = "prointerview-shell-v4";
+  const SHELL = ["/", "/labs", "/prep", "/star-coach", "/coding-lab", "/manifest.json", "/offline-drills.json"];
+
+  // API GET responses that are safe to cache network-first, for offline drill practice.
+  const OFFLINE_DRILL_API_PATHS = ["/api/star-coach-questions", "/api/coding-problems"];
+
+  function isOfflineDrillApi(pathname) {
+    return OFFLINE_DRILL_API_PATHS.some((p) => pathname.startsWith(p));
+  }
 
   self.addEventListener("install", (event) => {
     event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -33,7 +40,25 @@ if (IS_LOCAL) {
     if (req.method !== "GET") return;
 
     const url = new URL(req.url);
-    // Never cache API/auth responses
+
+    // Network-first with cache fallback for the small set of drill/question APIs so
+    // star-coach + coding-lab practice keeps working offline once primed while online.
+    if (url.origin === self.location.origin && isOfflineDrillApi(url.pathname)) {
+      event.respondWith(
+        fetch(req)
+          .then((res) => {
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((cache) => cache.put(req, copy));
+            }
+            return res;
+          })
+          .catch(() => caches.match(req))
+      );
+      return;
+    }
+
+    // Never cache other API/auth responses
     if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) {
       event.respondWith(fetch(req));
       return;
@@ -60,4 +85,3 @@ if (IS_LOCAL) {
     event.waitUntil(self.registration.showNotification(data.title || "ProInterview", { body: data.body || "", icon: "/icons/icon-192.png" }));
   });
 }
-

@@ -45,6 +45,8 @@ interface WebSearchLink {
 
 type Step = "intake" | "results";
 
+const QUICK_LOCATIONS = ["Bangalore", "Hyderabad", "Pune", "Remote India"];
+
 export default function JobsPage() {
     const [step, setStep] = useState<Step>("intake");
     const [jobs, setJobs] = useState<MatchedJob[]>([]);
@@ -224,6 +226,22 @@ export default function JobsPage() {
                                 className="w-full rounded-xl bg-black/40 border border-white/10 px-3 py-2 text-sm"
                                 required
                             />
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                                {QUICK_LOCATIONS.map((loc) => (
+                                    <button
+                                        key={loc}
+                                        type="button"
+                                        onClick={() => setLocation(loc)}
+                                        className={`text-xs rounded-full border px-2.5 py-1 transition ${
+                                            location === loc
+                                                ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
+                                                : "border-white/10 text-white/50 hover:border-emerald-400/30 hover:text-emerald-200"
+                                        }`}
+                                    >
+                                        {loc}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
 
                         {error && (

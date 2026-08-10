@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
+import { getVerifiedSession } from "@/utils/auth";
+
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per file
+const MAX_FILES = 5;
 
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
@@ -65,12 +69,32 @@ async function fetchUrlText(url: string) {
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const data = await req.formData();
         const files = data.getAll("file") as File[];
         const portfolioUrl = data.get("portfolioUrl") as string;
 
         if (!files.length && !portfolioUrl) {
             return NextResponse.json({ error: "No file or URL provided" }, { status: 400 });
+        }
+
+        if (files.length > MAX_FILES) {
+            return NextResponse.json(
+                { error: `Too many files. Maximum ${MAX_FILES} files per upload.` },
+                { status: 400 }
+            );
+        }
+
+        const oversized = files.find((f) => f.size > MAX_FILE_SIZE_BYTES);
+        if (oversized) {
+            return NextResponse.json(
+                { error: `File "${oversized.name}" exceeds the 5MB size limit.` },
+                { status: 413 }
+            );
         }
 
         let combinedText = "";

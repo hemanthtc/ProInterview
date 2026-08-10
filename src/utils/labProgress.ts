@@ -1,4 +1,5 @@
 import { getStorageItem, setStorageItem } from "@/utils/storage";
+import type { PrepProgressBlob } from "@/models/CloudSession";
 
 export interface StarHistoryEntry {
     id: string;
@@ -133,4 +134,43 @@ export function buildPrepSnapshot(): PrepSnapshot {
         filmRoomGaps: [...new Set(filmGaps)].slice(0, 5),
         domainPackId: localStorage.getItem("domainPackId") || undefined,
     };
+}
+
+export function buildLocalPrepProgress(): PrepProgressBlob {
+    const atsRaw = localStorage.getItem("atsMatchPercent");
+    const atsMatch = atsRaw ? Number(atsRaw) : undefined;
+    const atsLastAtRaw = localStorage.getItem("atsMatchAt");
+    return {
+        starHistory: loadStarHistory(),
+        codingProgress: loadCodingProgress(),
+        atsMatchPercent: Number.isFinite(atsMatch) ? atsMatch : undefined,
+        atsLastAt: atsLastAtRaw ? Number(atsLastAtRaw) : undefined,
+        domainPackId: localStorage.getItem("domainPackId") || undefined,
+    };
+}
+
+export function applyCloudPrepProgress(prep: PrepProgressBlob) {
+    if (Array.isArray(prep.starHistory)) {
+        const json = JSON.stringify(prep.starHistory.slice(0, MAX));
+        try {
+            setStorageItem(KEY, json);
+            localStorage.setItem(KEY, json);
+        } catch {
+            /* ignore */
+        }
+    }
+    if (prep.codingProgress) {
+        const json = JSON.stringify(prep.codingProgress);
+        try {
+            setStorageItem(CODING_KEY, json);
+            localStorage.setItem(CODING_KEY, json);
+        } catch {
+            /* ignore */
+        }
+    }
+    if (typeof prep.atsMatchPercent === "number") {
+        localStorage.setItem("atsMatchPercent", String(prep.atsMatchPercent));
+        if (prep.atsLastAt) localStorage.setItem("atsMatchAt", String(prep.atsLastAt));
+    }
+    if (prep.domainPackId) localStorage.setItem("domainPackId", prep.domainPackId);
 }

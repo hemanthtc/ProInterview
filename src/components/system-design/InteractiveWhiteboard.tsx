@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from "react";
+import {
+    forwardRef,
+    useEffect,
+    useId,
+    useImperativeHandle,
+    useRef,
+    useState,
+    type DragEvent,
+    type PointerEvent as ReactPointerEvent,
+} from "react";
 import { Download, Eraser, MousePointer2, PenLine, Trash2 } from "lucide-react";
 import {
     BoardShape,
@@ -14,6 +23,11 @@ interface InteractiveWhiteboardProps {
     shapes: BoardShape[];
     onShapesChange: (shapes: BoardShape[]) => void;
     onFreehandChange?: (hasInk: boolean) => void;
+}
+
+export interface InteractiveWhiteboardHandle {
+    /** Renders the current ink + shapes to a PNG data URL without triggering a download. */
+    getPngDataUrl: () => string | null;
 }
 
 function ShapeVisual({ shape }: { shape: BoardShape }) {
@@ -105,11 +119,8 @@ function ShapeVisual({ shape }: { shape: BoardShape }) {
     }
 }
 
-export default function InteractiveWhiteboard({
-    shapes,
-    onShapesChange,
-    onFreehandChange,
-}: InteractiveWhiteboardProps) {
+const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, InteractiveWhiteboardProps>(
+    function InteractiveWhiteboard({ shapes, onShapesChange, onFreehandChange }, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const boardRef = useRef<HTMLDivElement>(null);
     const drawing = useRef(false);
@@ -305,15 +316,15 @@ export default function InteractiveWhiteboard({
         clearCanvasInk();
     }
 
-    function exportPng() {
+    function buildPngDataUrl(): string | null {
         const ink = canvasRef.current;
         const board = boardRef.current;
-        if (!ink || !board) return;
+        if (!ink || !board) return null;
         const out = document.createElement("canvas");
         out.width = ink.width;
         out.height = ink.height;
         const ctx = out.getContext("2d");
-        if (!ctx) return;
+        if (!ctx) return null;
         ctx.fillStyle = "#0b1220";
         ctx.fillRect(0, 0, out.width, out.height);
         ctx.drawImage(ink, 0, 0);
@@ -385,11 +396,21 @@ export default function InteractiveWhiteboard({
             }
         }
 
+        return out.toDataURL("image/png");
+    }
+
+    function exportPng() {
+        const dataUrl = buildPngDataUrl();
+        if (!dataUrl) return;
         const a = document.createElement("a");
         a.download = `system-design-board-${Date.now()}.png`;
-        a.href = out.toDataURL("image/png");
+        a.href = dataUrl;
         a.click();
     }
+
+    useImperativeHandle(ref, () => ({
+        getPngDataUrl: () => buildPngDataUrl(),
+    }));
 
     function deleteSelected() {
         if (!selectedId) return;
@@ -564,4 +585,7 @@ export default function InteractiveWhiteboard({
             </div>
         </div>
     );
-}
+    }
+);
+
+export default InteractiveWhiteboard;
