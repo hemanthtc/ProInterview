@@ -8,6 +8,7 @@ import {
     formatGeminiParts,
     sendGeminiMessageWithRetry,
 } from "@/utils/interviewHelper";
+import { getSarvamKey, sarvamChatCompletion } from "@/utils/sarvam";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -21,13 +22,14 @@ export async function POST(req: NextRequest) {
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
         const safeLevel = level || "intermediate";
+        const useSarvam = String(provider || "").toLowerCase() === "sarvam";
 
         const bank = companyClone !== false ? resolveCompanyBank(safeCompany) : null;
         const companyCloneBlock = bank ? `\n\n${companyBankPromptBlock(bank)}\n` : "";
         const domain = resolveDomainPack(domainPackId);
         const domainBlock = domain ? `\n\n${domainPackPromptBlock(domain)}\n` : "";
         const languageBlock = voiceLanguage && voiceLanguage !== "en-US"
-            ? `\nCandidate preferred language/locale: ${voiceLanguage}. Prefer clear phrasing; if locale is hi-IN or other Indian languages, you may greet bilingually but keep technical terms precise.\n`
+            ? `\nCandidate preferred language/locale: ${voiceLanguage}. Prefer clear phrasing; if locale is hi-IN or other Indian languages, you may greet bilingually but keep technical terms precise. When speaking Hindi/regional languages, keep code identifiers in English.\n`
             : "";
         const hrPersonaBlock = buildHrPersonaBlock(hrIntel);
 
@@ -61,6 +63,21 @@ CRITICAL RULES FOR ASKING QUESTIONS:
 
 ${candidateProfileInfo}`;
 
+        if (useSarvam && getSarvamKey()) {
+            const hist = (history as { role: string; content: string }[]).map((h) => ({
+                role: (h.role === "assistant" ? "assistant" : "user") as "user" | "assistant",
+                content: String(h.content || ""),
+            }));
+            const sarvamReply = await sarvamChatCompletion(systemPrompt, hist, message || "Hello!");
+            if (sarvamReply) {
+                const withMode = /\[MODE:(CHAT|CODE|DRAW)\]/i.test(sarvamReply)
+                    ? sarvamReply
+                    : `[MODE:CHAT] ${sarvamReply}`;
+                return NextResponse.json({ message: withMode, provider: "sarvam" });
+            }
+            // fall through to Gemini if Sarvam chat fails
+        }
+
         if (!GEMINI_API_KEY) {
             throw new Error("Missing GEMINI_API_KEY in environment variables.");
         }
@@ -85,7 +102,7 @@ ${candidateProfileInfo}`;
             return responseResult; // NextResponse fallback object
         }
 
-        return NextResponse.json({ message: responseResult });
+        return NextResponse.json({ message: responseResult, provider: useSarvam ? "gemini_fallback" : "gemini" });
     } catch (error: any) {
         console.error("AI Provider Error:", error);
         if (error?.status === 429 || String(error?.message || "").includes("quota")) {

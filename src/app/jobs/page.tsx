@@ -58,6 +58,7 @@ export default function JobsPage() {
     const [error, setError] = useState("");
     const [scorecardId, setScorecardId] = useState("");
     const [sourcesTried, setSourcesTried] = useState<string[]>([]);
+    const [usedFallback, setUsedFallback] = useState(false);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -129,6 +130,7 @@ export default function JobsPage() {
             setProfile(data.profile || null);
             setWebSearches(data.webSearches || []);
             setSourcesTried(data.sourcesTried || []);
+            setUsedFallback(Boolean(data.usedFallback));
             setStep("results");
         } catch (err: unknown) {
             setError(err instanceof Error ? err.message : "Job search failed");
@@ -265,6 +267,12 @@ export default function JobsPage() {
                                     {sourcesTried.length > 0 && (
                                         <p className="text-xs text-white/35 mt-1">
                                             Searched: {sourcesTried.join(", ")}
+                                        </p>
+                                    )}
+                                    {usedFallback && (
+                                        <p className="text-xs text-amber-200/80 mt-1">
+                                            Live boards returned few hits — included curated fallback listings. Use Google
+                                            Jobs / LinkedIn links below for more local openings.
                                         </p>
                                     )}
                                 </div>

@@ -13,6 +13,7 @@ import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapsh
 import { syncSessionsToCloud } from "../../utils/cloudSync";
 import { buildSpacedDrills } from "../../utils/spacedDrills";
 import { resolveCompanyBank } from "../../data/companyBanks";
+import { speakInterviewText } from "../../utils/speakInterview";
 
 export default function InterviewRoom() {
     const router = useRouter();
@@ -335,6 +336,7 @@ export default function InterviewRoom() {
             // Changed to continuous so the mic doesn't automatically cut off when they pause
             recognitionRef.current.continuous = true;
             recognitionRef.current.interimResults = false;
+            recognitionRef.current.lang = getStorageItem("voiceLanguage") || "en-IN";
 
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             recognitionRef.current.onresult = (event: any) => {
@@ -536,34 +538,13 @@ export default function InterviewRoom() {
     };
 
     const speakText = (text: string) => {
-        if ("speechSynthesis" in window) {
-            if (isListeningRef.current) {
-                // Do not speak if the user is already activating the microphone to talk
-                return;
-            }
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(text);
-
-            const setVoice = () => {
-                const voices = window.speechSynthesis.getVoices();
-                const preferredVoice = voices.find(v => v.lang === "en-US" && v.name.includes("Google")) || voices[0];
-                if (preferredVoice) utterance.voice = preferredVoice;
-                utterance.onstart = () => {
-                    setIsSpeaking(true);
-                };
-                utterance.onend = () => {
-                    setIsSpeaking(false);
-                };
-                utterance.rate = 1.05;
-                window.speechSynthesis.speak(utterance);
-            };
-
-            if (window.speechSynthesis.getVoices().length > 0) {
-                setVoice();
-            } else {
-                window.speechSynthesis.onvoiceschanged = setVoice;
-            }
-        }
+        void speakInterviewText(text, {
+            provider: getStorageItem("aiProvider") || "gemini",
+            voiceLanguage: getStorageItem("voiceLanguage") || "en-IN",
+            isListening: () => isListeningRef.current,
+            onStart: () => setIsSpeaking(true),
+            onEnd: () => setIsSpeaking(false),
+        });
     };
 
     // Keep refs for fresh state

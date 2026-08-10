@@ -77,8 +77,15 @@ Return JSON:
   "speakerRole": "${panelist.role}",
   "reply": "...",
   "passTo": "${nextPanelist.id}" | null,
-  "terminate": false
-}`;
+  "terminate": false,
+  "summary": null | {
+    "overall": 0-100,
+    "strengths": ["..."],
+    "gaps": ["..."],
+    "nextDrills": ["..."]
+  }
+}
+When terminate is true, include a short summary of the candidate's panel performance.`;
 
         const raw = await cachedGenerate(
             promptCacheKey("panel", panelist.id, company, role, level, resume, transcript, message),

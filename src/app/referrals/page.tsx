@@ -59,7 +59,20 @@ export default function ReferralsPage() {
                 </div>
 
                 <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
-                    <h2 className="font-medium">Compare a friend's scorecard</h2>
+                    <h2 className="font-medium">Your invite stats</h2>
+                    <p className="text-sm text-white/55">
+                        Uses tracked: <span className="text-orange-200 font-medium">{uses}</span>
+                    </p>
+                    <p className="text-xs text-white/40">
+                        Share your link — when friends sign up with your code, the count goes up. Compare scorecards below.
+                    </p>
+                    <Link href="/prep" className="inline-block text-sm text-indigo-300 underline">
+                        Back to prep dashboard →
+                    </Link>
+                </div>
+
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 space-y-3">
+                    <h2 className="font-medium">Compare a friend&apos;s scorecard</h2>
                     <input
                         value={compareId}
                         onChange={(e) => setCompareId(e.target.value)}
