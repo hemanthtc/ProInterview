@@ -22,15 +22,21 @@ export default function LabsBanner({ isLight = false }: { isLight?: boolean }) {
                     </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                    <Link href="/labs" className="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition">
-                        ← Back to Labs
+                    <Link
+                        href="/labs"
+                        className="rounded-xl bg-indigo-600 hover:bg-indigo-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition border border-indigo-500/30"
+                    >
+                        Open Labs
                     </Link>
-                    <Link href="/jobs" className={`rounded-xl px-3 py-2 text-xs font-bold border transition ${isLight ? "border-slate-300 text-slate-700 bg-white" : "border-white/15 text-white/80"}`}>
+                    <Link
+                        href="/jobs"
+                        className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition border border-emerald-500/30"
+                    >
                         Jobs
                     </Link>
                     <button
                         type="button"
-                        className={`rounded-xl px-3 py-2 text-xs font-bold border transition ${isLight ? "border-slate-300 text-slate-700 bg-white" : "border-white/15 text-white/80"}`}
+                        className="rounded-xl bg-rose-600 hover:bg-rose-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition border border-rose-500/30 cursor-pointer"
                         onClick={() => {
                             const el = document.querySelector("[data-tool=email_analyser], button");
                             window.location.hash = "email";

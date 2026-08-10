@@ -3474,17 +3474,8 @@ function FeaturesContent() {
                                 </div>
                             )}
                             {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
-                            <Link
-                                href="/labs"
-                                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
-                                    theme === "eyeprotect"
-                                        ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
-                                        : isLight
-                                        ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
-                                        : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
-                                }`}
-                            >
-                                ← Back to Labs
+                            <Link href="/labs" className="hover:text-white transition-colors">
+                                Labs
                             </Link>
                             {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
 
