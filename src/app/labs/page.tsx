@@ -19,7 +19,7 @@ import {
 const ITEMS = [
     { href: "/community", title: "Community chat", desc: "Talk with other students", icon: Users, color: "text-indigo-300" },
     { href: "/panel-interview", title: "Panel interviews", desc: "Multi-interviewer rounds", icon: Users, color: "text-indigo-300" },
-    { href: "/system-design", title: "System design lab", desc: "Whiteboard + auto-eval", icon: PenTool, color: "text-cyan-300" },
+    { href: "/system-design", title: "System design lab", desc: "Interactive board + online eval", icon: PenTool, color: "text-cyan-300" },
     { href: "/star-coach", title: "STAR coach", desc: "Behavioral drills + retakes", icon: Target, color: "text-violet-300" },
     { href: "/jobs", title: "Job board", desc: "Apply with scorecard", icon: Briefcase, color: "text-emerald-300" },
     { href: "/coding-lab", title: "Coding lab", desc: "Progressive hidden tests", icon: Code2, color: "text-amber-300" },
