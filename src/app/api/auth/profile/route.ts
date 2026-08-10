@@ -80,13 +80,17 @@ export async function GET(req: NextRequest) {
                 department: (account as any).department || "",
                 adminId: (account as any).adminId || "",
                 // Profile fields (individual users only)
-                profilePhoto: profile?.profilePhoto || "",
+                profilePhoto: profile?.profilePhotoUrl || profile?.profilePhoto || "",
+                profilePhotoKey: profile?.profilePhotoKey || "",
+                profilePhotoUrl: profile?.profilePhotoUrl || "",
                 additionalEmail: profile?.additionalEmail || "",
                 github: profile?.github || "",
                 linkedin: profile?.linkedin || "",
                 portfolioUrl: profile?.portfolioUrl || "",
                 resumeCvName: profile?.resumeCvName || "",
                 resumeCvText: profile?.resumeCvText || "",
+                resumeCvKey: profile?.resumeCvKey || "",
+                resumeCvUrl: profile?.resumeCvUrl || "",
                 phone: profile?.phone || "",
                 educationData: profile?.educationData || {},
             }
@@ -110,12 +114,16 @@ export async function POST(req: NextRequest) {
             organizationName,
             department,
             profilePhoto,
+            profilePhotoKey,
+            profilePhotoUrl,
             additionalEmail,
             github,
             linkedin,
             portfolioUrl,
             resumeCvName,
             resumeCvText,
+            resumeCvKey,
+            resumeCvUrl,
             phone,
             educationData
         } = body;
@@ -155,14 +163,18 @@ export async function POST(req: NextRequest) {
         // Individual users: also update ProfileData
         let updatedProfile: any = null;
         if (accountType === "user") {
-            const profileUpdateFields: any = {};
+            const profileUpdateFields: Record<string, unknown> = {};
             if (profilePhoto !== undefined)      profileUpdateFields.profilePhoto = profilePhoto;
+            if (profilePhotoKey !== undefined)   profileUpdateFields.profilePhotoKey = profilePhotoKey;
+            if (profilePhotoUrl !== undefined)   profileUpdateFields.profilePhotoUrl = profilePhotoUrl;
             if (additionalEmail !== undefined)   profileUpdateFields.additionalEmail = additionalEmail;
             if (github !== undefined)            profileUpdateFields.github = github;
             if (linkedin !== undefined)          profileUpdateFields.linkedin = linkedin;
             if (portfolioUrl !== undefined)      profileUpdateFields.portfolioUrl = portfolioUrl;
             if (resumeCvName !== undefined)      profileUpdateFields.resumeCvName = resumeCvName;
             if (resumeCvText !== undefined)      profileUpdateFields.resumeCvText = resumeCvText;
+            if (resumeCvKey !== undefined)       profileUpdateFields.resumeCvKey = resumeCvKey;
+            if (resumeCvUrl !== undefined)       profileUpdateFields.resumeCvUrl = resumeCvUrl;
             if (phone !== undefined)             profileUpdateFields.phone = phone;
             if (educationData !== undefined)     profileUpdateFields.educationData = educationData;
 
@@ -187,13 +199,17 @@ export async function POST(req: NextRequest) {
                 organizationName: (account as any).organizationName || "",
                 department: (account as any).department || "",
                 adminId: (account as any).adminId || "",
-                profilePhoto: updatedProfile?.profilePhoto || "",
+                profilePhoto: updatedProfile?.profilePhotoUrl || updatedProfile?.profilePhoto || "",
+                profilePhotoKey: updatedProfile?.profilePhotoKey || "",
+                profilePhotoUrl: updatedProfile?.profilePhotoUrl || "",
                 additionalEmail: updatedProfile?.additionalEmail || "",
                 github: updatedProfile?.github || "",
                 linkedin: updatedProfile?.linkedin || "",
                 portfolioUrl: updatedProfile?.portfolioUrl || "",
                 resumeCvName: updatedProfile?.resumeCvName || "",
                 resumeCvText: updatedProfile?.resumeCvText || "",
+                resumeCvKey: updatedProfile?.resumeCvKey || "",
+                resumeCvUrl: updatedProfile?.resumeCvUrl || "",
                 phone: updatedProfile?.phone || "",
                 educationData: updatedProfile?.educationData || {},
             }

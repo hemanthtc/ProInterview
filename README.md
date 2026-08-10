@@ -111,6 +111,8 @@ Copy from [`.env.example`](.env.example):
 | `NEXT_PUBLIC_RAZORPAY_KEY_ID` | No | Razorpay client key |
 | `NEXT_PUBLIC_MERCHANT_UPI_ID` | No | UPI / donation QR |
 | `HAPPENSTANCE_API_KEY` | No | HR people research (falls back to Gemini-only guidance) |
+| `S3_BUCKET` / `AWS_REGION` / `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` | No | Amazon S3 for profile photos, resumes, uploads (presigned PUT) |
+| `S3_PUBLIC_BASE_URL` | No | Optional CloudFront/CDN base URL for S3 objects |
 
 \*Required for full auth, cloud sync, and synthetic dataset persistence; core interview demos can run with Gemini alone, but login and profile sync need MongoDB and auth keys.
 
