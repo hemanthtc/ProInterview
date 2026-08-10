@@ -3,6 +3,10 @@ import crypto from "crypto";
 import connectDB from "@/utils/db";
 import { getVerifiedSession } from "@/utils/auth";
 import mongoose, { Schema, Document, Model } from "mongoose";
+import { addReferralCredits, pushNotification } from "@/utils/usageMeter";
+
+const OWNER_CREDIT = 2;
+const INVITEE_CREDIT = 1;
 
 interface IReferral extends Document {
     code: string;
@@ -78,13 +82,38 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Cannot redeem your own referral code" }, { status: 400 });
         }
 
+        let creditsAwarded = 0;
         if (!ref.invited.includes(inviteeIdentifier)) {
             ref.invited.push(inviteeIdentifier);
             ref.uses += 1;
             await ref.save();
+
+            // First-time redemption — reward both the referrer and the new invitee.
+            const [ownerCredits, inviteeCredits] = await Promise.all([
+                addReferralCredits(ref.ownerIdentifier, OWNER_CREDIT),
+                addReferralCredits(inviteeIdentifier, INVITEE_CREDIT),
+            ]);
+            creditsAwarded = INVITEE_CREDIT;
+
+            await Promise.all([
+                pushNotification({
+                    userIdentifier: ref.ownerIdentifier,
+                    kind: "referral",
+                    title: "Referral reward earned",
+                    body: `Someone joined using your invite code — you earned ${OWNER_CREDIT} credits (${ownerCredits} total).`,
+                    href: "/referrals",
+                }),
+                pushNotification({
+                    userIdentifier: inviteeIdentifier,
+                    kind: "referral",
+                    title: "Welcome bonus applied",
+                    body: `You earned ${INVITEE_CREDIT} credit for joining via an invite link (${inviteeCredits} total).`,
+                    href: "/referrals",
+                }),
+            ]);
         }
         // Do not leak ownerIdentifier (PII) to redeemers.
-        return NextResponse.json({ success: true, uses: ref.uses });
+        return NextResponse.json({ success: true, uses: ref.uses, creditsAwarded });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Internal error";
         return NextResponse.json({ error: message }, { status: 500 });

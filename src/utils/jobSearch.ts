@@ -223,15 +223,60 @@ export function buildSearchQueries(profile: ResumeProfile, location: string): st
     return uniqueStrings(queries, 4);
 }
 
+/**
+ * Synonym groups for major Indian tech hubs so "Bangalore" also matches "Bengaluru",
+ * "Gurgaon" matches "Gurugram", NCR listings match "Delhi", etc.
+ */
+const INDIA_CITY_SYNONYMS: Record<string, string[]> = {
+    bangalore: ["bangalore", "bengaluru"],
+    bengaluru: ["bangalore", "bengaluru"],
+    hyderabad: ["hyderabad", "secunderabad"],
+    mumbai: ["mumbai", "bombay"],
+    delhi: ["delhi", "new delhi", "ncr", "gurugram", "gurgaon", "noida"],
+    ncr: ["delhi", "new delhi", "ncr", "gurugram", "gurgaon", "noida"],
+    pune: ["pune"],
+    chennai: ["chennai", "madras"],
+    gurgaon: ["gurgaon", "gurugram", "ncr", "delhi"],
+    gurugram: ["gurgaon", "gurugram", "ncr", "delhi"],
+    noida: ["noida", "ncr", "delhi"],
+    kolkata: ["kolkata", "calcutta"],
+};
+
+/** Returns the synonym group covering `pref` (an India city name), or null if not an India city. */
+function indiaCitySynonyms(pref: string): string[] | null {
+    for (const [city, group] of Object.entries(INDIA_CITY_SYNONYMS)) {
+        if (pref.includes(city)) return group;
+    }
+    return null;
+}
+
 function locationMatches(jobLocation: string, preferred: string, remote: boolean): { score: number; reason?: string } {
     const pref = preferred.trim().toLowerCase();
     if (!pref) return { score: remote ? 8 : 0, reason: remote ? "Remote-friendly opening" : undefined };
 
     const loc = jobLocation.toLowerCase();
+    const indiaGroup = indiaCitySynonyms(pref);
+    const locIsIndia =
+        loc.includes("india") ||
+        /(^|,\s*)in(\s*$|\s*,)/.test(loc) ||
+        (indiaGroup ? indiaGroup.some((c) => loc.includes(c)) : false);
+
     if (pref.includes("remote") || pref === "anywhere") {
+        const wantsIndia = indiaGroup !== null || pref.includes("india");
+        if (wantsIndia && remote && locIsIndia) {
+            return { score: 32, reason: "Remote role based in India" };
+        }
         return remote || loc.includes("remote") || loc.includes("worldwide") || loc.includes("anywhere")
             ? { score: 28, reason: "Matches remote preference" }
             : { score: 0 };
+    }
+
+    if (indiaGroup) {
+        const cityHit = indiaGroup.some((c) => loc.includes(c));
+        if (cityHit) return { score: 34, reason: `Location match: ${preferred} (India)` };
+        if (locIsIndia) {
+            return { score: 20, reason: `India-based opening near ${preferred}` };
+        }
     }
 
     const tokens = pref.split(/[\s,/|-]+/).filter((t) => t.length > 2);
@@ -432,6 +477,162 @@ async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPerc
     });
 }
 
+/**
+ * Adzuna India job search (https://developer.adzuna.com). Requires ADZUNA_APP_ID +
+ * ADZUNA_APP_KEY; returns an empty list (no network call) when either is missing so
+ * callers can include it in sourcesTried without special-casing configuration.
+ */
+async function fetchAdzunaIndia(query: string, location: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> {
+    const appId = process.env.ADZUNA_APP_ID;
+    const appKey = process.env.ADZUNA_APP_KEY;
+    if (!appId || !appKey) return [];
+
+    const params = new URLSearchParams({
+        app_id: appId,
+        app_key: appKey,
+        results_per_page: "30",
+        "content-type": "application/json",
+    });
+    if (query) params.set("what", query);
+    const where = location && !location.toLowerCase().includes("remote") ? location : "";
+    if (where) params.set("where", where);
+
+    const url = `https://api.adzuna.com/v1/api/jobs/in/search/1?${params.toString()}`;
+    const res = await fetchWithTimeout(url);
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+        results?: Array<{
+            id?: string | number;
+            title?: string;
+            company?: { display_name?: string };
+            location?: { display_name?: string };
+            description?: string;
+            redirect_url?: string;
+            created?: string;
+            contract_type?: string;
+            contract_time?: string;
+            salary_min?: number;
+            salary_max?: number;
+            category?: { label?: string };
+        }>;
+    };
+    return (data.results || [])
+        .filter((j) => j.redirect_url)
+        .slice(0, 40)
+        .map((j) => {
+            const salary =
+                j.salary_min && j.salary_max
+                    ? `₹${Math.round(j.salary_min / 1000)}k–₹${Math.round(j.salary_max / 1000)}k`
+                    : undefined;
+            const jobLocation = j.location?.display_name || "India";
+            return {
+                id: `adzuna_${j.id}`,
+                company: j.company?.display_name || "Unknown",
+                role: j.title || "Role",
+                location: jobLocation,
+                type: normalizeType(j.contract_type || j.contract_time),
+                remote: /remote/i.test(jobLocation),
+                tags: j.category?.label ? [j.category.label] : [],
+                salaryRange: salary,
+                description: stripHtml(j.description || "").slice(0, 320),
+                applyUrl: j.redirect_url || "",
+                postedAt: (j.created || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+                source: "Adzuna India",
+            };
+        });
+}
+
+/**
+ * Curated India-focused listings (Bangalore/Hyderabad heavy) used as a top-up when
+ * live sources return too few results for an India-based preferred location.
+ */
+export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReasons">[] = [
+    {
+        id: "job_in_razorpay_be",
+        company: "Razorpay",
+        role: "Backend Engineer",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["Node.js", "Payments", "API"],
+        salaryRange: "₹18L–₹32L",
+        description: "Build payment and banking infrastructure powering businesses across India.",
+        applyUrl: "https://razorpay.com/jobs/",
+        postedAt: "2026-07-28",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_swiggy_fullstack",
+        company: "Swiggy",
+        role: "Full-Stack Engineer",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["React", "Node.js", "Microservices"],
+        salaryRange: "₹20L–₹38L",
+        description: "Ship consumer and logistics features for one of India's largest delivery platforms.",
+        applyUrl: "https://careers.swiggy.com/",
+        postedAt: "2026-07-26",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_flipkart_sde2",
+        company: "Flipkart",
+        role: "SDE II",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["Java", "Distributed Systems", "Scale"],
+        salaryRange: "₹22L–₹40L",
+        description: "Work on high-throughput commerce systems serving hundreds of millions of users.",
+        applyUrl: "https://www.flipkartcareers.com/",
+        postedAt: "2026-07-24",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_microsoft_swe",
+        company: "Microsoft India",
+        role: "Software Engineer",
+        location: "Hyderabad",
+        type: "full-time",
+        remote: false,
+        tags: ["C#", "Azure", "Cloud"],
+        salaryRange: "₹25L–₹45L",
+        description: "Build cloud services for Microsoft's Hyderabad engineering center.",
+        applyUrl: "https://careers.microsoft.com/",
+        postedAt: "2026-07-27",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_salesforce_ase",
+        company: "Salesforce",
+        role: "Associate Software Engineer",
+        location: "Hyderabad",
+        type: "full-time",
+        remote: false,
+        tags: ["Java", "Apex", "SaaS"],
+        salaryRange: "₹15L–₹26L",
+        description: "Join Salesforce's Hyderabad hub building multi-tenant SaaS platform features.",
+        applyUrl: "https://careers.salesforce.com/",
+        postedAt: "2026-07-21",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_remote_india_devrel",
+        company: "Postman",
+        role: "Developer Advocate",
+        location: "Remote (India)",
+        type: "full-time",
+        remote: true,
+        tags: ["API", "Community", "Content"],
+        salaryRange: "₹16L–₹28L",
+        description: "Fully remote role for engineers across India supporting the API developer community.",
+        applyUrl: "https://www.postman.com/company/careers/",
+        postedAt: "2026-07-19",
+        source: "ProInterview curated (India)",
+    },
+];
+
 /** Fetch live openings from public job boards and rank them against the resume profile. */
 export async function searchMatchingJobs(
     profile: ResumeProfile,
@@ -446,6 +647,7 @@ export async function searchMatchingJobs(
         { name: "Remotive", run: () => fetchRemotive(primary) },
         { name: "Arbeitnow", run: () => fetchArbeitnow(primary) },
         { name: "RemoteOK", run: () => fetchRemoteOK(primary) },
+        { name: "Adzuna India", run: () => fetchAdzunaIndia(primary, preferredLocation) },
     ];
 
     const settled = await Promise.allSettled(

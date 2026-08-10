@@ -23,6 +23,7 @@ interface StatsData {
     unverifiedUsers: { displayName: string; identifier: string; createdAt: string; type: string }[];
     employees: { identifier: string; displayName: string; department: string; isVerified: boolean; isOnline?: boolean; lastActive?: string; createdAt: string; organizationName: string }[];
     admins?: { identifier: string; displayName: string; organizationName: string; isVerified: boolean; isOnline?: boolean; lastActive?: string; createdAt: string }[];
+    funnel?: { signups: number; mocks: number; starDrills: number; coachBookings: number };
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -627,6 +628,36 @@ export default function AdminDashboard() {
                                             </div>
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Activation Funnel */}
+                        {!loading && stats && stats.funnel && (
+                            <div className={`rounded-2xl border ${isDark ? "border-white/8 bg-white/4" : "border-slate-200 bg-white"} p-6`}>
+                                <div className="flex items-center justify-between mb-5">
+                                    <h3 className="font-semibold text-sm flex items-center gap-2">
+                                        <TrendingUp className="w-4 h-4 text-indigo-400" /> Activation Funnel
+                                    </h3>
+                                    <span className={`text-xs ${isDark ? "text-white/40" : "text-slate-400"}`}>Signup → mock → STAR drill → coach booking</span>
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                    {[
+                                        { label: "Signups", value: stats.funnel.signups, color: "text-emerald-400" },
+                                        { label: "Ran a Mock", value: stats.funnel.mocks, color: "text-indigo-400" },
+                                        { label: "STAR Drills", value: stats.funnel.starDrills, color: "text-purple-400" },
+                                        { label: "Coach Bookings", value: stats.funnel.coachBookings, color: "text-pink-400" },
+                                    ].map((step) => (
+                                        <div key={step.label} className={`p-3 rounded-xl text-center ${isDark ? "bg-white/3" : "bg-slate-50"}`}>
+                                            <p className={`text-[10px] uppercase tracking-wide ${isDark ? "text-white/40" : "text-slate-400"}`}>{step.label}</p>
+                                            <p className={`text-lg font-bold ${step.color}`}>{step.value.toLocaleString()}</p>
+                                            {stats.funnel!.signups > 0 && (
+                                                <p className={`text-[10px] ${isDark ? "text-white/30" : "text-slate-400"}`}>
+                                                    {Math.round((step.value / stats.funnel!.signups) * 100)}% of signups
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}

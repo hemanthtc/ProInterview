@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, Loader2, Star, Users, Video } from "lucide-react";
+import { Calendar, CalendarPlus, Loader2, Star, Users, Video, X } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import NotificationBell from "@/components/NotificationBell";
+import { getStorageItem } from "@/utils/storage";
+import { readApiError } from "@/utils/apiError";
 
 interface Coach {
     id: string;
@@ -17,6 +20,7 @@ interface Coach {
     slots: string[];
     bio: string;
     durationMin: number;
+    slotInventory?: Record<string, number>;
 }
 
 interface BookingResult {
@@ -24,11 +28,22 @@ interface BookingResult {
     error?: string;
     message?: string;
     meetLink?: string | null;
+    googleCalendarLink?: string;
     bookingId?: string;
     coach?: string;
     slot?: string;
     demo?: boolean;
     paid?: boolean;
+}
+
+interface MyBooking {
+    bookingId: string;
+    coachName: string;
+    slot: string;
+    status: "pending" | "paid" | "confirmed" | "cancelled";
+    meetLink: string;
+    googleCalendarLink?: string;
+    createdAt: string;
 }
 
 declare global {
@@ -43,8 +58,25 @@ export default function CoachesPage() {
     const [booking, setBooking] = useState<BookingResult | null>(null);
     const [busy, setBusy] = useState<string | null>(null);
     const [error, setError] = useState("");
+    const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
+    const [cancelling, setCancelling] = useState<string | null>(null);
+    const [loggedIn, setLoggedIn] = useState(false);
+
+    const loadMyBookings = useCallback(async () => {
+        try {
+            const res = await fetch("/api/coaches/bookings");
+            if (!res.ok) return;
+            const data = await res.json();
+            setMyBookings(Array.isArray(data.bookings) ? data.bookings : []);
+        } catch {
+            /* ignore — bookings list is a non-critical enhancement */
+        }
+    }, []);
 
     useEffect(() => {
+        const isLoggedIn = getStorageItem("userLoggedIn") === "true" || localStorage.getItem("userLoggedIn") === "true";
+        setLoggedIn(isLoggedIn);
+
         fetch("/api/coaches")
             .then((r) => r.json())
             .then((d) => {
@@ -52,13 +84,15 @@ export default function CoachesPage() {
                 setPaymentsConfigured(Boolean(d.paymentsConfigured));
             });
 
+        if (isLoggedIn) void loadMyBookings();
+
         if (!document.querySelector('script[src*="checkout.razorpay.com"]')) {
             const script = document.createElement("script");
             script.src = "https://checkout.razorpay.com/v1/checkout.js";
             script.async = true;
             document.body.appendChild(script);
         }
-    }, []);
+    }, [loadMyBookings]);
 
     async function book(coach: Coach, slot: string) {
         setBusy(coach.id);
@@ -71,8 +105,11 @@ export default function CoachesPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ coachId: coach.id, slot, mode: "create_order" }),
                 });
+                if (!orderRes.ok) {
+                    const { message } = await readApiError(orderRes);
+                    throw new Error(message);
+                }
                 const order = await orderRes.json();
-                if (!orderRes.ok) throw new Error(order.error || "Could not create order");
 
                 if (!order.paymentsConfigured || !order.orderId) {
                     const confirmRes = await fetch("/api/coaches", {
@@ -85,7 +122,12 @@ export default function CoachesPage() {
                             bookingId: order.bookingId,
                         }),
                     });
+                    if (!confirmRes.ok) {
+                        const { message } = await readApiError(confirmRes);
+                        throw new Error(message);
+                    }
                     setBooking(await confirmRes.json());
+                    void loadMyBookings();
                     return;
                 }
 
@@ -114,9 +156,12 @@ export default function CoachesPage() {
                                         ...response,
                                     }),
                                 });
-                                const data = await confirmRes.json();
-                                if (!confirmRes.ok) throw new Error(data.error || "Confirm failed");
-                                setBooking(data);
+                                if (!confirmRes.ok) {
+                                    const { message } = await readApiError(confirmRes);
+                                    throw new Error(message);
+                                }
+                                setBooking(await confirmRes.json());
+                                void loadMyBookings();
                                 resolve();
                             } catch (e) {
                                 reject(e);
@@ -135,14 +180,38 @@ export default function CoachesPage() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ coachId: coach.id, slot, mode: "confirm" }),
                 });
-                const data = await res.json();
-                if (!res.ok) throw new Error(data.error || "Booking failed");
-                setBooking(data);
+                if (!res.ok) {
+                    const { message } = await readApiError(res);
+                    throw new Error(message);
+                }
+                setBooking(await res.json());
+                void loadMyBookings();
             }
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Booking failed");
         } finally {
             setBusy(null);
+        }
+    }
+
+    async function cancelBooking(bookingId: string) {
+        setCancelling(bookingId);
+        setError("");
+        try {
+            const res = await fetch("/api/coaches/bookings", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ bookingId }),
+            });
+            if (!res.ok) {
+                const { message } = await readApiError(res);
+                throw new Error(message);
+            }
+            await loadMyBookings();
+        } catch (e: unknown) {
+            setError(e instanceof Error ? e.message : "Cancel failed");
+        } finally {
+            setCancelling(null);
         }
     }
 
@@ -161,9 +230,12 @@ export default function CoachesPage() {
                                 : "Book a session · instant Jitsi video room (payments optional when Razorpay is configured)"}
                         </p>
                     </div>
-                    <Link href="/labs" className="text-sm text-white/60 hover:text-white">
-                        ← Labs
-                    </Link>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <NotificationBell />
+                        <Link href="/labs" className="text-sm text-white/60 hover:text-white">
+                            ← Labs
+                        </Link>
+                    </div>
                 </div>
 
                 <LabAuthBanner feature="coach booking" />
@@ -171,22 +243,82 @@ export default function CoachesPage() {
                 {booking?.success && (
                     <div className="mb-4 rounded-xl border border-pink-400/30 bg-pink-500/10 p-4 text-sm space-y-2">
                         <p>{booking.message}</p>
-                        {booking.meetLink && (
-                            <a
-                                className="inline-flex items-center gap-2 rounded-lg bg-pink-500/90 px-3 py-2 text-xs font-medium"
-                                href={booking.meetLink}
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                <Video className="h-3.5 w-3.5" /> Join video room
-                            </a>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                            {booking.meetLink && (
+                                <a
+                                    className="inline-flex items-center gap-2 rounded-lg bg-pink-500/90 px-3 py-2 text-xs font-medium"
+                                    href={booking.meetLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <Video className="h-3.5 w-3.5" /> Join video room
+                                </a>
+                            )}
+                            {booking.googleCalendarLink && (
+                                <a
+                                    className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-xs font-medium hover:bg-white/15"
+                                    href={booking.googleCalendarLink}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                >
+                                    <CalendarPlus className="h-3.5 w-3.5" /> Add to Google Calendar
+                                </a>
+                            )}
+                        </div>
                         {booking.bookingId && (
                             <p className="text-xs text-white/40">Booking ID: {booking.bookingId}</p>
                         )}
                     </div>
                 )}
                 {error && <p className="mb-3 text-sm text-rose-300">{error}</p>}
+
+                {loggedIn && myBookings.some((b) => b.status !== "cancelled") && (
+                    <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <h2 className="mb-3 text-sm font-medium text-white/80">Your bookings</h2>
+                        <div className="space-y-2">
+                            {myBookings
+                                .filter((b) => b.status !== "cancelled")
+                                .map((b) => (
+                                    <div
+                                        key={b.bookingId}
+                                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="font-medium">{b.coachName}</p>
+                                            <p className="text-xs text-white/50">
+                                                {b.slot} · <span className="capitalize">{b.status}</span>
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {b.status === "confirmed" && (
+                                                <a
+                                                    href={b.meetLink}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="rounded-lg bg-pink-500/80 px-2.5 py-1 text-xs"
+                                                >
+                                                    Join
+                                                </a>
+                                            )}
+                                            <button
+                                                type="button"
+                                                disabled={cancelling === b.bookingId}
+                                                onClick={() => void cancelBooking(b.bookingId)}
+                                                className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
+                                            >
+                                                {cancelling === b.bookingId ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : (
+                                                    <X className="h-3 w-3" />
+                                                )}
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                        </div>
+                    </div>
+                )}
 
                 <div className="space-y-3">
                     {coaches.map((c) => (
@@ -208,22 +340,31 @@ export default function CoachesPage() {
                                     </div>
                                 </div>
                                 <div className="flex flex-col gap-2">
-                                    {c.slots.map((slot) => (
-                                        <button
-                                            key={slot}
-                                            type="button"
-                                            disabled={busy === c.id}
-                                            onClick={() => void book(c, slot)}
-                                            className="flex items-center gap-1 rounded-lg bg-pink-500/90 px-3 py-1.5 text-xs disabled:opacity-50"
-                                        >
-                                            {busy === c.id ? (
-                                                <Loader2 className="h-3 w-3 animate-spin" />
-                                            ) : (
-                                                <Calendar className="h-3 w-3" />
-                                            )}
-                                            {slot}
-                                        </button>
-                                    ))}
+                                    {c.slots.map((slot) => {
+                                        const remaining = c.slotInventory?.[slot];
+                                        const soldOut = remaining !== undefined && remaining <= 0;
+                                        return (
+                                            <button
+                                                key={slot}
+                                                type="button"
+                                                disabled={busy === c.id || soldOut}
+                                                onClick={() => void book(c, slot)}
+                                                className="flex items-center gap-1 rounded-lg bg-pink-500/90 px-3 py-1.5 text-xs disabled:opacity-50"
+                                            >
+                                                {busy === c.id ? (
+                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                ) : (
+                                                    <Calendar className="h-3 w-3" />
+                                                )}
+                                                {slot}
+                                                {remaining !== undefined && (
+                                                    <span className="text-white/70">
+                                                        {soldOut ? "· full" : `· ${remaining} left`}
+                                                    </span>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>

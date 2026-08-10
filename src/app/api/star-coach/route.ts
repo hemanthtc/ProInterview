@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
+import connectDB from "@/utils/db";
+import User from "@/models/User";
+import { checkAndIncrementUsage } from "@/utils/usageMeter";
 
 export async function POST(req: NextRequest) {
     try {
@@ -16,6 +19,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(
                 { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
                 { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } }
+            );
+        }
+
+        let userPlan = "Free Tier";
+        try {
+            await connectDB();
+            const user = await User.findOne({ identifier: session.identifier }).select("subscriptionPlan").lean();
+            userPlan = (user as { subscriptionPlan?: string } | null)?.subscriptionPlan || "Free Tier";
+        } catch (planErr) {
+            console.warn("star-coach: plan lookup skipped", planErr);
+        }
+
+        const usage = await checkAndIncrementUsage(session.identifier, "gemini", userPlan);
+        if (!usage.allowed) {
+            return NextResponse.json(
+                { error: `Monthly AI coaching limit reached (${usage.limit}/month). Upgrade to Pro for more sessions.` },
+                {
+                    status: 429,
+                    headers: usage.retryAfterSec ? { "Retry-After": String(usage.retryAfterSec) } : undefined,
+                }
             );
         }
 

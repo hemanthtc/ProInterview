@@ -20,6 +20,13 @@ Copy `.env.example` → `.env` before running the app. Minimum for **build + dev
 
 Full auth/persistence E2E also needs `MONGODB_URI`. Other keys (Google OAuth, D-ID, Razorpay, SMTP) are optional per feature.
 
+Additional optional feature keys (all fail gracefully / fall back when unset — see `.env.example` for full descriptions):
+
+- `SARVAM_API_KEY` — Indic TTS/voice provider (`aiProvider=sarvam`); without it that provider is unavailable but Gemini flows are unaffected.
+- `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` — live India job search in `/api/jobs`; without them, Adzuna is skipped and curated India fallback listings are used instead.
+- `RAZORPAY_WEBHOOK_SECRET` — verifies `/api/razorpay/webhook` payloads.
+- `CRON_SECRET` — shared secret for the cron-triggered coach-booking reminder endpoint (`/api/coaches/reminders`).
+
 **Do not wrap `.env` values in extra quotes** — the README warns this can break OAuth and UPI.
 
 ### Common commands
@@ -29,10 +36,11 @@ Full auth/persistence E2E also needs `MONGODB_URI`. Other keys (Google OAuth, D-
 | Install deps | `npm install` |
 | Dev server | `npm run dev` → http://localhost:3000 |
 | Unit tests | `npm test` (Vitest; no external services) |
+| Lint | `npm run lint` (ESLint via `eslint.config.mjs` / `eslint-config-next` flat config) |
 | Production build | `npm run build` (needs `JWT_SECRET` + `GEMINI_API_KEY` in env) |
 | Production serve | `npm start` |
 
-There is **no lint script** in `package.json`; CI runs `npm test` and `npm run build` only.
+CI runs `npm test`, then `npm run lint` (non-blocking — `continue-on-error: true`, since there's a pre-existing lint warning/error backlog), then `npm run build`.
 
 ### Gotchas
 

@@ -9,6 +9,10 @@ import {
     sendGeminiMessageWithRetry,
 } from "@/utils/interviewHelper";
 import { getSarvamKey, sarvamChatCompletion } from "@/utils/sarvam";
+import { getVerifiedSession } from "@/utils/auth";
+import connectDB from "@/utils/db";
+import User from "@/models/User";
+import { checkAndIncrementUsage } from "@/utils/usageMeter";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -18,6 +22,30 @@ export async function POST(req: NextRequest) {
             history = [], resume, github, linkedin, portfolioUrl, message, attachment, type, provider,
             company, roles, level, hrIntel, companyClone, domainPackId, voiceLanguage,
         } = await req.json();
+
+        // Logged-in users are metered by account; guests (public practice mode) are metered by IP.
+        const session = await getVerifiedSession();
+        const identifier = session?.identifier || `anon:${req.headers.get("x-forwarded-for") || "unknown"}`;
+        let userPlan = "Free Tier";
+        if (session) {
+            try {
+                await connectDB();
+                const user = await User.findOne({ identifier: session.identifier }).select("subscriptionPlan").lean();
+                userPlan = (user as { subscriptionPlan?: string } | null)?.subscriptionPlan || "Free Tier";
+            } catch (planErr) {
+                console.warn("interviewer: plan lookup skipped", planErr);
+            }
+        }
+        const usage = await checkAndIncrementUsage(identifier, "gemini", userPlan);
+        if (!usage.allowed) {
+            return NextResponse.json(
+                { error: `Monthly AI interview usage limit reached (${usage.limit}/month). Upgrade to Pro or sign in for more.` },
+                {
+                    status: 429,
+                    headers: usage.retryAfterSec ? { "Retry-After": String(usage.retryAfterSec) } : undefined,
+                }
+            );
+        }
 
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";

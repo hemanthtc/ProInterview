@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Video, LogOut, Clock, Download, TrendingUp, User, Award, Activity, Trash2, CheckSquare, Square, Sparkles, Loader2, ChevronDown, ChevronUp, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, Film, Share2 } from "lucide-react";
+import { ArrowLeft, Video, LogOut, Download, TrendingUp, User, Award, Activity, Trash2, Sparkles, Loader2, ChevronDown, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { ProfileInterviewSession, ProfileToastState } from "../../types/profile";
 import { useRouter } from "next/navigation";
@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData } from "../../utils/storage";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
 import BrandLogo from "../../components/BrandLogo";
+import PhotoCropperModal from "../../components/profile/PhotoCropperModal";
+import SessionHistoryPanel from "../../components/profile/SessionHistoryPanel";
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -51,13 +53,6 @@ export default function ProfilePage() {
     // WhatsApp-like cropping states
     const [cropModalOpen, setCropModalOpen] = useState(false);
     const [tempImageSrc, setTempImageSrc] = useState("");
-    const [scale, setScale] = useState(1);
-    const [offset, setOffset] = useState({ x: 0, y: 0 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-    const [imgDimensions, setImgDimensions] = useState({ width: 0, height: 0 });
-    const imageRef = useRef<HTMLImageElement>(null);
-    const containerRef = useRef<HTMLDivElement>(null);
 
     // Additional email for phone logins
     const [additionalEmail, setAdditionalEmail] = useState("");
@@ -788,93 +783,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         }
     };
 
-    const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-        const img = e.currentTarget;
-        const naturalWidth = img.naturalWidth;
-        const naturalHeight = img.naturalHeight;
-        
-        let w = 340;
-        let h = 340;
-        if (naturalWidth > naturalHeight) {
-            h = 340;
-            w = 340 * (naturalWidth / naturalHeight);
-        } else {
-            w = 340;
-            h = 340 * (naturalHeight / naturalWidth);
-        }
-        setImgDimensions({ width: w, height: h });
-        setOffset({ x: (340 - w) / 2, y: (340 - h) / 2 });
-        setScale(1);
-    };
-
-    const handleMouseDown = (e: React.MouseEvent) => {
-        e.preventDefault();
-        setIsDragging(true);
-        setDragStart({ x: e.clientX - offset.x, y: e.clientY - offset.y });
-    };
-
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (!isDragging) return;
-        setOffset({
-            x: e.clientX - dragStart.x,
-            y: e.clientY - dragStart.y
-        });
-    };
-
-    const handleMouseUp = () => {
-        setIsDragging(false);
-    };
-
-    const handleTouchStart = (e: React.TouchEvent) => {
-        setIsDragging(true);
-        const touch = e.touches[0];
-        setDragStart({ x: touch.clientX - offset.x, y: touch.clientY - offset.y });
-    };
-
-    const handleTouchMove = (e: React.TouchEvent) => {
-        if (!isDragging) return;
-        const touch = e.touches[0];
-        setOffset({
-            x: touch.clientX - dragStart.x,
-            y: touch.clientY - dragStart.y
-        });
-    };
-
-    const handleSaveCrop = () => {
-        const img = imageRef.current;
-        if (!img) return;
-
-        const canvas = document.createElement("canvas");
-        canvas.width = 300;
-        canvas.height = 300;
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-
-        // Math for centered scaling origin transform mapping to 300x300 canvas (1:1 ratio)
-        const x_scaled = (imgDimensions.width / 2) + offset.x - (imgDimensions.width / 2) * scale;
-        const y_scaled = (imgDimensions.height / 2) + offset.y - (imgDimensions.height / 2) * scale;
-        const w_scaled = imgDimensions.width * scale;
-        const h_scaled = imgDimensions.height * scale;
-
-        // Circle crop size 300px inside a 340px container (starts at 20px padding)
-        const crop_left = 20;
-        const crop_top = 20;
-
-        const canvas_x = x_scaled - crop_left;
-        const canvas_y = y_scaled - crop_top;
-        const canvas_w = w_scaled;
-        const canvas_h = h_scaled;
-
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, 300, 300);
-
-        ctx.beginPath();
-        ctx.arc(150, 150, 150, 0, Math.PI * 2);
-        ctx.clip();
-
-        ctx.drawImage(img, canvas_x, canvas_y, canvas_w, canvas_h);
-
-        const base64String = canvas.toDataURL("image/jpeg", 0.9);
+    const handleCropSave = (base64String: string) => {
         setStorageItem("userProfilePhoto", base64String);
         setProfilePhoto(base64String);
         syncProfileToCloud({ profilePhoto: base64String });
@@ -1759,150 +1668,17 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                 </div>
 
                 {/* Session Logs Section */}
-                <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-xl font-bold flex items-center gap-3">
-                        <Clock className="w-5 h-5 text-indigo-400" />
-                        Interview Sessions
-                        <span className="text-sm font-normal text-white/40">({totalInterviews} within 1 year)</span>
-                    </h2>
-                    {sessions.length > 0 && (
-                        <div className="flex items-center gap-3">
-                            <button onClick={toggleSelectAll} className="text-xs text-white/50 hover:text-white transition-colors font-semibold flex items-center gap-1.5">
-                                {selectedIds.size === sessions.length ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
-                                {selectedIds.size === sessions.length ? "Deselect All" : "Select All"}
-                            </button>
-                            {selectedIds.size > 0 && (
-                                <button onClick={deleteSelected} className="flex items-center gap-1.5 text-xs font-bold bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 px-3 py-1.5 rounded-lg transition-colors">
-                                    <Trash2 className="w-3.5 h-3.5" /> Delete {selectedIds.size} selected
-                                </button>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                <div className="space-y-3">
-                    {sessions.length === 0 ? (
-                        <div className="bg-[#111] border border-white/10 rounded-2xl p-12 text-center text-white/40">
-                            <Clock className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                            <p className="font-bold text-lg mb-1">No sessions found</p>
-                            <p className="text-sm">Complete an interview to see your history here.</p>
-                        </div>
-                    ) : (
-                        sessions.map((session: any, idx) => {
-                            const isSelected = selectedIds.has(idx);
-                            const isExpanded = expandedIds.has(idx);
-                            const scoreColor = session.finalScore >= 70 ? "text-green-400" : session.finalScore >= 50 ? "text-yellow-400" : "text-red-400";
-
-                            return (
-                                <div key={idx} className={`bg-[#111] border rounded-2xl overflow-hidden transition-all duration-200 ${isSelected ? "border-indigo-500/50 shadow-[0_0_15px_rgba(79,70,229,0.15)]" : "border-white/10 hover:border-white/20"}`}>
-                                    {/* Row Header */}
-                                    <div className="p-5 flex items-center gap-4">
-                                        {/* Checkbox */}
-                                        <button onClick={() => toggleSelect(idx)} className="shrink-0">
-                                            {isSelected
-                                                ? <CheckSquare className="w-5 h-5 text-indigo-400" />
-                                                : <Square className="w-5 h-5 text-white/30 hover:text-white/60 transition-colors" />}
-                                        </button>
-
-                                        {/* Session Info */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-3 mb-0.5">
-                                                <span className="font-bold">Interview #{totalInterviews - idx}</span>
-                                                <span className="text-xs text-white/40 font-mono">{new Date(session.timestamp).toLocaleString()}</span>
-                                            </div>
-                                            <p className="text-sm text-white/50 truncate max-w-xl">
-                                                {session.summary?.slice(0, 100) || "No summary available"}
-                                                {session.summary?.length > 100 ? "…" : ""}
-                                            </p>
-                                        </div>
-
-                                        {/* Scores row */}
-                                        <div className="hidden md:flex items-center gap-5 shrink-0">
-                                            {session.technicalRating !== undefined && (
-                                                <div className="text-center">
-                                                    <p className="text-xs text-white/40 mb-0.5">Tech</p>
-                                                    <p className="font-bold text-sm">{session.technicalRating}<span className="text-white/30">/100</span></p>
-                                                </div>
-                                            )}
-                                            {session.behavioralRating !== undefined && (
-                                                <div className="text-center">
-                                                    <p className="text-xs text-white/40 mb-0.5">Behav</p>
-                                                    <p className="font-bold text-sm">{session.behavioralRating}<span className="text-white/30">/100</span></p>
-                                                </div>
-                                            )}
-                                            {session.communicationRating !== undefined && (
-                                                <div className="text-center">
-                                                    <p className="text-xs text-white/40 mb-0.5">Comm</p>
-                                                    <p className="font-bold text-sm">{session.communicationRating}<span className="text-white/30">/100</span></p>
-                                                </div>
-                                            )}
-                                            <div className="text-center">
-                                                <p className="text-xs text-white/40 mb-0.5">Final</p>
-                                                <p className={`font-black text-xl ${scoreColor}`}>{session.finalScore ?? "N/A"}<span className="text-sm text-white/30">/100</span></p>
-                                            </div>
-                                        </div>
-
-                                        {/* Actions */}
-                                        <div className="flex items-center gap-2 shrink-0">
-                                            <Link
-                                                href={`/film-room?t=${session.timestamp}`}
-                                                className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-violet-500 hover:border-violet-400 transition-all text-white/50 hover:text-white"
-                                                title="Film Room"
-                                            >
-                                                <Film className="w-4 h-4" />
-                                            </Link>
-                                            <button
-                                                onClick={() => void shareSessionScorecard(session)}
-                                                className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-emerald-500 hover:border-emerald-400 transition-all text-white/50 hover:text-white"
-                                                title="Share Scorecard"
-                                            >
-                                                <Share2 className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => downloadTranscript(session.transcript, session.timestamp)} className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-indigo-500 hover:border-indigo-400 transition-all text-white/50 hover:text-white" title="Download Transcript">
-                                                <Download className="w-4 h-4" />
-                                            </button>
-                                            <button onClick={() => toggleExpand(idx)} className="h-9 w-9 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all text-white/50 hover:text-white" title="Expand">
-                                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                                            </button>
-                                        </div>
-                                    </div>
-
-                                    {/* Expanded Detail */}
-                                    {isExpanded && (
-                                        <div className="border-t border-white/10 p-5 bg-black/20 space-y-4">
-                                            {/* Score Breakdown */}
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                                {[
-                                                    { label: "Final Score", value: session.finalScore, color: scoreColor },
-                                                    { label: "Technical", value: session.technicalRating ?? session.interviewRating },
-                                                    { label: "Behavioral", value: session.behavioralRating },
-                                                    { label: "Communication", value: session.communicationRating },
-                                                    { label: "Portfolio", value: session.portfolioRating === "Skipped" ? "Skipped" : session.portfolioRating },
-                                                    { label: "Combined Interview", value: session.interviewRating },
-                                                ].filter(item => item.value !== undefined).map((item, i) => (
-                                                    <div key={i} className="bg-white/5 rounded-xl p-3">
-                                                        <p className="text-xs text-white/40 mb-1 uppercase tracking-wider">{item.label}</p>
-                                                        <p className={`font-bold text-lg ${item.color || "text-white"}`}>
-                                                            {typeof item.value === "number" ? `${item.value}/100` : item.value ?? "N/A"}
-                                                        </p>
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* Full Summary */}
-                                            {session.summary && (
-                                                <div className="bg-white/5 rounded-xl p-4">
-                                                    <p className="text-xs text-white/40 uppercase tracking-wider font-bold mb-2">Session Summary & Feedback</p>
-                                                    <p className="text-sm text-white/70 leading-relaxed whitespace-pre-wrap">{session.summary}</p>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
+                <SessionHistoryPanel
+                    sessions={sessions}
+                    selectedIds={selectedIds}
+                    expandedIds={expandedIds}
+                    onToggleSelect={toggleSelect}
+                    onToggleSelectAll={toggleSelectAll}
+                    onToggleExpand={toggleExpand}
+                    onDeleteSelected={deleteSelected}
+                    onDownloadTranscript={downloadTranscript}
+                    onShareScorecard={(session) => void shareSessionScorecard(session)}
+                />
             </main>
 
             {/* Manage Subscription Plan Modal */}
@@ -2452,113 +2228,15 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             </AnimatePresence>
 
             {/* WhatsApp-like Image Cropping Modal */}
-            <AnimatePresence>
-                {cropModalOpen && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4"
-                    >
-                        <motion.div
-                            initial={{ scale: 0.95, y: 20 }}
-                            animate={{ scale: 1, y: 0 }}
-                            exit={{ scale: 0.95, y: 20 }}
-                            className="bg-gradient-to-b from-[#16161a] to-[#0c0c0e] border border-white/10 rounded-3xl p-6 max-w-md w-full shadow-[0_20px_50px_rgba(79,70,229,0.25)] flex flex-col items-center animate-none"
-                        >
-                            <h3 className="text-lg font-bold text-white mb-2">Edit Profile Picture</h3>
-                            <p className="text-xs text-white/50 mb-6 text-center">Drag to adjust position and slide to zoom.</p>
-
-                            {/* Cropper viewport */}
-                            <div 
-                                ref={containerRef}
-                                className="w-[340px] h-[340px] bg-black/60 rounded-2xl overflow-hidden relative border border-white/5 select-none touch-none flex items-center justify-center"
-                                onMouseMove={handleMouseMove}
-                                onMouseUp={handleMouseUp}
-                                onMouseLeave={handleMouseUp}
-                                onTouchMove={handleTouchMove}
-                                onTouchEnd={handleMouseUp}
-                            >
-                                <img
-                                    src={tempImageSrc}
-                                    ref={imageRef}
-                                    onLoad={handleImageLoad}
-                                    onMouseDown={handleMouseDown}
-                                    onTouchStart={handleTouchStart}
-                                    alt="Crop target"
-                                    className="select-none pointer-events-auto"
-                                    style={{
-                                        width: `${imgDimensions.width}px`,
-                                        height: `${imgDimensions.height}px`,
-                                        transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
-                                        transformOrigin: "center center",
-                                        cursor: isDragging ? "grabbing" : "grab",
-                                        position: "absolute",
-                                        maxWidth: "none",
-                                    }}
-                                />
-                                
-                                {/* WhatsApp-like radial gradient mask */}
-                                <div 
-                                    className="absolute inset-0 pointer-events-none"
-                                    style={{
-                                        background: "radial-gradient(circle at 170px 170px, transparent 150px, rgba(5, 5, 5, 0.85) 150px)"
-                                    }}
-                                />
-                                
-                                {/* Target guide ring */}
-                                <div 
-                                    className="absolute pointer-events-none rounded-full border border-dashed border-indigo-500/40"
-                                    style={{
-                                        width: "300px",
-                                        height: "300px",
-                                        left: "20px",
-                                        top: "20px"
-                                    }}
-                                />
-                            </div>
-
-                            {/* Zoom range control */}
-                            <div className="mt-6 w-full flex flex-col gap-2">
-                                <div className="flex justify-between text-[10px] text-white/40 font-extrabold uppercase tracking-wider">
-                                    <span>Zoom</span>
-                                    <span className="font-mono">{Math.round(scale * 100)}%</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="3"
-                                    step="0.01"
-                                    value={scale}
-                                    onChange={e => setScale(parseFloat(e.target.value))}
-                                    className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                                />
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex gap-3 w-full mt-6">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setCropModalOpen(false);
-                                        setTempImageSrc("");
-                                    }}
-                                    className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleSaveCrop}
-                                    className="flex-1 py-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl text-xs font-bold transition-colors text-white shadow-lg shadow-indigo-600/20"
-                                >
-                                    Save Photo
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            <PhotoCropperModal
+                open={cropModalOpen}
+                imageSrc={tempImageSrc}
+                onCancel={() => {
+                    setCropModalOpen(false);
+                    setTempImageSrc("");
+                }}
+                onSave={handleCropSave}
+            />
 
             {/* Custom Wiped Data Success Toast */}
             <AnimatePresence>

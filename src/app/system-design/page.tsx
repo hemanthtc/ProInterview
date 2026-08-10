@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Loader2, PenTool, RefreshCw, Sparkles, Wifi } from "lucide-react";
-import InteractiveWhiteboard from "@/components/system-design/InteractiveWhiteboard";
+import InteractiveWhiteboard, {
+    type InteractiveWhiteboardHandle,
+} from "@/components/system-design/InteractiveWhiteboard";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import type { SystemDesignQuestion } from "@/data/systemDesignQuestions";
 import { BoardShape, summarizeBoard } from "@/utils/systemDesignBoard";
@@ -16,9 +18,11 @@ interface EvalResult {
     modelAnswerOutline?: string[];
     followUpQuestions?: string[];
     source?: string;
+    usedImage?: boolean;
 }
 
 export default function SystemDesignPage() {
+    const whiteboardRef = useRef<InteractiveWhiteboardHandle>(null);
     const [questions, setQuestions] = useState<SystemDesignQuestion[]>([]);
     const [activeId, setActiveId] = useState<string>("");
     const [prompt, setPrompt] = useState("");
@@ -115,6 +119,7 @@ export default function SystemDesignPage() {
         setInfo("");
         try {
             const boardSummary = summarizeBoard(shapes, hasFreehand);
+            const diagramImageBase64 = whiteboardRef.current?.getPngDataUrl() || undefined;
             const res = await fetch("/api/evaluate-system-design", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -126,12 +131,18 @@ export default function SystemDesignPage() {
                     company: localStorage.getItem("targetCompany") || "",
                     role: localStorage.getItem("preferredRoles") || "",
                     level: localStorage.getItem("interviewLevel") || "intermediate",
+                    diagramImageBase64,
+                    mimeType: "image/png",
                 }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Online evaluation failed");
             setResult(data);
-            setInfo("Scored online via Gemini — no local heuristic scoring.");
+            setInfo(
+                data.usedImage
+                    ? "Scored online via Gemini vision — read your whiteboard screenshot directly."
+                    : "Scored online via Gemini — no local heuristic scoring."
+            );
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Failed");
             setResult(null);
@@ -243,6 +254,7 @@ export default function SystemDesignPage() {
                             ) : null}
 
                             <InteractiveWhiteboard
+                                ref={whiteboardRef}
                                 shapes={shapes}
                                 onShapesChange={setShapes}
                                 onFreehandChange={setHasFreehand}

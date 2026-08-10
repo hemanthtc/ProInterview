@@ -1,9 +1,9 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Clock, History, Loader2, RefreshCw, Sparkles, Target, Wifi } from "lucide-react";
+import { Clock, History, Loader2, Mic, MicOff, RefreshCw, Sparkles, Target, Volume2, Wifi } from "lucide-react";
 import {
     STAR_CATEGORY_LABELS,
     type StarCoachQuestion,
@@ -11,6 +11,12 @@ import {
 } from "@/data/starCoachQuestions";
 import { loadStarHistory, saveStarHistoryEntry, type StarHistoryEntry } from "@/utils/labProgress";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import { readApiError } from "@/utils/apiError";
+import { speakInterviewText } from "@/utils/speakInterview";
+
+// SpeechRecognition isn't in the default TS DOM lib — mirror the interview room's usage.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionInstance = any;
 
 interface CoachResult {
     score?: number;
@@ -19,6 +25,14 @@ interface CoachResult {
     improvedStory?: string;
     retakePrompt?: string;
     tips?: string[];
+}
+
+/** Short spoken summary of the score + top tips read back to the candidate. */
+function buildSpeechSummary(data: CoachResult): string {
+    const parts: string[] = [];
+    if (typeof data.score === "number") parts.push(`Score: ${data.score} out of 100.`);
+    if (data.tips && data.tips.length) parts.push(`Tips: ${data.tips.slice(0, 3).join(". ")}.`);
+    return parts.join(" ").trim();
 }
 
 function StarCoachInner() {
@@ -39,6 +53,84 @@ function StarCoachInner() {
     const [timerRunning, setTimerRunning] = useState(false);
     const [company, setCompany] = useState("");
     const [role, setRole] = useState("");
+    const [isListening, setIsListening] = useState(false);
+    const [micAvailable, setMicAvailable] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+
+    const recognitionRef = useRef<SpeechRecognitionInstance>(null);
+    const isListeningRef = useRef(isListening);
+    useEffect(() => {
+        isListeningRef.current = isListening;
+    }, [isListening]);
+
+    const startListening = useCallback(() => {
+        if (!recognitionRef.current || isListeningRef.current) return;
+        try {
+            window.speechSynthesis?.cancel();
+            recognitionRef.current.start();
+            setIsListening(true);
+        } catch {
+            /* already started */
+        }
+    }, []);
+
+    const stopListening = useCallback(() => {
+        if (!recognitionRef.current) return;
+        try {
+            recognitionRef.current.stop();
+        } catch {
+            /* ignore */
+        }
+        setIsListening(false);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const SpeechRecognitionCtor =
+            (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+                .SpeechRecognition ||
+            (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+                .webkitSpeechRecognition;
+        if (!SpeechRecognitionCtor) return;
+
+        setMicAvailable(true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const recognition = new (SpeechRecognitionCtor as any)();
+        recognition.continuous = true;
+        recognition.interimResults = false;
+        recognition.lang = localStorage.getItem("voiceLanguage") || "en-IN";
+
+        recognition.onresult = (event: { resultIndex: number; results: { length: number; [i: number]: { [i: number]: { transcript: string } } } }) => {
+            let chunk = "";
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                chunk += event.results[i][0].transcript;
+            }
+            if (chunk.trim()) {
+                setStory((prev) => (prev.trim() ? `${prev.trim()} ${chunk.trim()}` : chunk.trim()));
+            }
+        };
+        recognition.onerror = (event: { error?: string }) => {
+            if (event.error === "not-allowed") setIsListening(false);
+        };
+        recognition.onend = () => {
+            if (isListeningRef.current) {
+                try {
+                    recognition.start();
+                } catch {
+                    setIsListening(false);
+                }
+            }
+        };
+
+        recognitionRef.current = recognition;
+        return () => {
+            try {
+                recognition.stop();
+            } catch {
+                /* ignore */
+            }
+        };
+    }, []);
 
     useEffect(() => {
         setHistory(loadStarHistory());
@@ -87,11 +179,12 @@ function StarCoachInner() {
         if (timerSec <= 0) {
             setTimerRunning(false);
             setInfo("Time's up — score your story now.");
+            stopListening();
             return;
         }
         const id = window.setTimeout(() => setTimerSec((t) => t - 1), 1000);
         return () => window.clearTimeout(id);
-    }, [timerRunning, timerSec]);
+    }, [timerRunning, timerSec, stopListening]);
 
     function applyGeneratedQuestion(q: StarCoachQuestion, source: "online" | "seed") {
         setQuestion(q.question);
@@ -118,7 +211,6 @@ function StarCoachInner() {
                     role,
                 }),
             });
-            const data = await res.json();
             if (!res.ok) {
                 if (res.status === 401) {
                     const seedRes = await fetch(
@@ -132,8 +224,10 @@ function StarCoachInner() {
                     setInfo("Sign in to generate fresh online questions.");
                     return;
                 }
-                throw new Error(data.error || "Failed to generate question");
+                const { message } = await readApiError(res);
+                throw new Error(message);
             }
+            const data = await res.json();
             const q = data.questions?.[0];
             if (!q) throw new Error("No question returned");
             applyGeneratedQuestion(q, data.source === "online" ? "online" : "seed");
@@ -167,8 +261,11 @@ function StarCoachInner() {
                     role,
                 }),
             });
+            if (!res.ok) {
+                const { message } = await readApiError(res);
+                throw new Error(message);
+            }
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Coach failed");
             setResult(data);
             if (mode === "retake" && data.retakePrompt) {
                 setQuestion(data.retakePrompt);
@@ -184,6 +281,18 @@ function StarCoachInner() {
                 });
                 setHistory(list);
                 setInfo("Saved to your last 5 STAR stories.");
+            }
+            if (mode === "score" || mode === "coach") {
+                const speechSummary = buildSpeechSummary(data as CoachResult);
+                if (speechSummary) {
+                    void speakInterviewText(speechSummary, {
+                        provider: localStorage.getItem("aiProvider") || "gemini",
+                        voiceLanguage: localStorage.getItem("voiceLanguage") || "en-IN",
+                        isListening: () => isListeningRef.current,
+                        onStart: () => setIsSpeaking(true),
+                        onEnd: () => setIsSpeaking(false),
+                    });
+                }
             }
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Failed");
@@ -266,7 +375,12 @@ function StarCoachInner() {
                                 onClick={() => {
                                     setTimerSec(90);
                                     setTimerRunning(true);
-                                    setInfo("90-second timer started — speak your STAR answer.");
+                                    if (micAvailable) {
+                                        startListening();
+                                        setInfo("90-second timer started — mic is listening, speak your STAR answer.");
+                                    } else {
+                                        setInfo("90-second timer started — speak your STAR answer.");
+                                    }
                                 }}
                                 className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/70"
                             >
@@ -307,9 +421,33 @@ function StarCoachInner() {
                     </div>
 
                     <div>
-                        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-white/50">
-                            Your STAR story
-                        </label>
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                            <label className="text-xs font-medium uppercase tracking-wide text-white/50">
+                                Your STAR story
+                            </label>
+                            <div className="flex items-center gap-2">
+                                {isSpeaking && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-violet-300/80">
+                                        <Volume2 className="h-3 w-3" /> Speaking…
+                                    </span>
+                                )}
+                                {micAvailable && (
+                                    <button
+                                        type="button"
+                                        onClick={() => (isListening ? stopListening() : startListening())}
+                                        title={isListening ? "Stop dictation" : "Dictate your story via microphone"}
+                                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                                            isListening
+                                                ? "bg-green-500 text-black shadow-lg shadow-green-500/30 animate-pulse"
+                                                : "border border-white/10 text-white/60 hover:text-white"
+                                        }`}
+                                    >
+                                        {isListening ? <Mic className="h-3.5 w-3.5" /> : <MicOff className="h-3.5 w-3.5" />}
+                                        {isListening ? "Listening…" : "Dictate"}
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                         <textarea
                             value={story}
                             onChange={(e) => setStory(e.target.value)}

@@ -28,6 +28,12 @@ export default function Home() {
             return;
         }
 
+        // Logged-in, non-admin users land on the unified prep dashboard by default.
+        if (loggedIn) {
+            router.push("/prep");
+            return;
+        }
+
         setIsLoggedIn(getStorageItem("userLoggedIn") === "true");
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         
@@ -472,7 +478,7 @@ export default function Home() {
                     </p>
 
                     <Link 
-                        href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
+                        href={isLoggedIn ? (isRealisticMode ? "/setup" : "/prep") : "/login"}
                         className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-indigo-600 font-pj rounded-xl hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-xl shadow-indigo-500/20"
                     >
                         {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}

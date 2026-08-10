@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { buildPrepSnapshot, loadStarHistory, type PrepSnapshot, type StarHistoryEntry } from "@/utils/labProgress";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import NotificationBell from "@/components/NotificationBell";
 
 export default function PrepDashboardPage() {
     const [snap, setSnap] = useState<PrepSnapshot | null>(null);
@@ -90,9 +91,12 @@ export default function PrepDashboardPage() {
                                 : "Set company/role in Setup to personalize drills."}
                         </p>
                     </div>
-                    <Link href="/labs" className="shrink-0 text-sm text-white/60 hover:text-white">
-                        ← Labs
-                    </Link>
+                    <div className="flex items-center gap-3 shrink-0">
+                        <NotificationBell />
+                        <Link href="/labs" className="text-sm text-white/60 hover:text-white">
+                            ← Labs
+                        </Link>
+                    </div>
                 </div>
 
                 <LabAuthBanner feature="online coaching, grading, and question generation" />

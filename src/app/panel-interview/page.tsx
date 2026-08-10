@@ -1,9 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Loader2, Send, Users } from "lucide-react";
+import { Loader2, Mic, MicOff, Send, Users, Volume2, VolumeX } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import { speakInterviewText } from "@/utils/speakInterview";
+
+// SpeechRecognition isn't in the default TS DOM lib — mirror the interview room's usage.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionInstance = any;
 
 interface Panelist {
     id: string;
@@ -34,6 +39,20 @@ export default function PanelInterviewPage() {
     const [error, setError] = useState("");
     const [done, setDone] = useState(false);
     const [summary, setSummary] = useState<PanelSummary | null>(null);
+    const [muted, setMuted] = useState(false);
+    const [isSpeaking, setIsSpeaking] = useState(false);
+    const [isListening, setIsListening] = useState(false);
+    const [micAvailable, setMicAvailable] = useState(false);
+
+    const recognitionRef = useRef<SpeechRecognitionInstance>(null);
+    const mutedRef = useRef(muted);
+    const isListeningRef = useRef(isListening);
+    useEffect(() => {
+        mutedRef.current = muted;
+    }, [muted]);
+    useEffect(() => {
+        isListeningRef.current = isListening;
+    }, [isListening]);
 
     useEffect(() => {
         fetch("/api/panel-interviewer")
@@ -79,6 +98,15 @@ export default function PanelInterviewPage() {
                     speakerRole: data.speakerRole,
                 },
             ]);
+            if (!mutedRef.current && typeof data.reply === "string" && data.reply.trim()) {
+                void speakInterviewText(data.reply, {
+                    provider: localStorage.getItem("aiProvider") || "gemini",
+                    voiceLanguage: localStorage.getItem("voiceLanguage") || "en-IN",
+                    isListening: () => isListeningRef.current,
+                    onStart: () => setIsSpeaking(true),
+                    onEnd: () => setIsSpeaking(false),
+                });
+            }
             if (data.passTo) setActiveId(data.passTo);
             if (data.terminate) {
                 setDone(true);
@@ -100,6 +128,90 @@ export default function PanelInterviewPage() {
         }
     }
 
+    const stopListening = useCallback(() => {
+        if (!recognitionRef.current) return;
+        try {
+            recognitionRef.current.stop();
+        } catch {
+            /* ignore */
+        }
+        setIsListening(false);
+    }, []);
+
+    // Speech recognition's onresult closure is created once on mount, so route
+    // auto-send through a ref to always call the latest `send` (fresh state/deps).
+    const sendRef = useRef(send);
+    useEffect(() => {
+        sendRef.current = send;
+    });
+
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        const SpeechRecognitionCtor =
+            (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+                .SpeechRecognition ||
+            (window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown })
+                .webkitSpeechRecognition;
+        if (!SpeechRecognitionCtor) return;
+
+        setMicAvailable(true);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const recognition = new (SpeechRecognitionCtor as any)();
+        // Single-utterance mode with interim results: fill the input live, then
+        // auto-send once the browser reports a final transcript for this utterance.
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = localStorage.getItem("voiceLanguage") || "en-IN";
+
+        recognition.onresult = (event: {
+            results: { length: number; [i: number]: { isFinal: boolean; [i: number]: { transcript: string } } };
+        }) => {
+            let transcript = "";
+            let isFinal = false;
+            for (let i = 0; i < event.results.length; i++) {
+                transcript += event.results[i][0].transcript;
+                if (event.results[i].isFinal) isFinal = true;
+            }
+            setInput(transcript);
+            if (isFinal && transcript.trim()) {
+                setIsListening(false);
+                void sendRef.current(transcript.trim());
+            }
+        };
+        recognition.onerror = (event: { error?: string }) => {
+            if (event.error === "not-allowed") setIsListening(false);
+        };
+        recognition.onend = () => {
+            setIsListening(false);
+        };
+
+        recognitionRef.current = recognition;
+        return () => {
+            try {
+                recognition.stop();
+            } catch {
+                /* ignore */
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    function toggleListening() {
+        if (!recognitionRef.current) return;
+        if (isListening) {
+            stopListening();
+            return;
+        }
+        window.speechSynthesis?.cancel();
+        setIsSpeaking(false);
+        try {
+            recognitionRef.current.start();
+            setIsListening(true);
+        } catch {
+            /* already started */
+        }
+    }
+
     return (
         <div className="min-h-screen bg-slate-950 text-white">
             <div className="mx-auto max-w-4xl px-4 py-8">
@@ -118,6 +230,33 @@ export default function PanelInterviewPage() {
                             ← Labs
                         </Link>
                     </div>
+                </div>
+
+                <div className="mb-4 flex items-center justify-end gap-2">
+                    {isSpeaking && (
+                        <span className="inline-flex items-center gap-1 text-[11px] text-indigo-300/80">
+                            <Volume2 className="h-3.5 w-3.5" /> Speaking…
+                        </span>
+                    )}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setMuted((m) => !m);
+                            if (!muted) {
+                                window.speechSynthesis?.cancel();
+                                setIsSpeaking(false);
+                            }
+                        }}
+                        title={muted ? "Unmute panelist voices" : "Mute panelist voices"}
+                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${
+                            muted
+                                ? "border-white/10 text-white/50"
+                                : "border-indigo-400/30 bg-indigo-500/15 text-indigo-100"
+                        }`}
+                    >
+                        {muted ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+                        {muted ? "Muted" : "Voice on"}
+                    </button>
                 </div>
 
                 <LabAuthBanner feature="panel interviews" />
@@ -214,10 +353,25 @@ export default function PanelInterviewPage() {
                     <input
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Answer the active panelist…"
+                        placeholder={isListening ? "Listening…" : "Answer the active panelist…"}
                         className="flex-1 rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm"
                         disabled={loading || done}
                     />
+                    {micAvailable && (
+                        <button
+                            type="button"
+                            onClick={toggleListening}
+                            disabled={loading || done}
+                            title={isListening ? "Stop microphone" : "Answer by voice"}
+                            className={`shrink-0 rounded-xl px-3 py-2.5 transition-colors disabled:opacity-40 ${
+                                isListening
+                                    ? "bg-green-500 text-black shadow-lg shadow-green-500/30 animate-pulse"
+                                    : "border border-white/10 text-white/70 hover:text-white"
+                            }`}
+                        >
+                            {isListening ? <Mic className="h-4 w-4" /> : <MicOff className="h-4 w-4" />}
+                        </button>
+                    )}
                     <button
                         type="submit"
                         disabled={loading || done || !input.trim()}
