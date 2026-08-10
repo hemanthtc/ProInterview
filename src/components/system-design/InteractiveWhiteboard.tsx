@@ -14,6 +14,8 @@ interface InteractiveWhiteboardProps {
     shapes: BoardShape[];
     onShapesChange: (shapes: BoardShape[]) => void;
     onFreehandChange?: (hasInk: boolean) => void;
+    theme?: "dark" | "light" | "eyeprotect";
+    isLight?: boolean;
 }
 
 function ShapeVisual({ shape }: { shape: BoardShape }) {
@@ -109,6 +111,8 @@ export default function InteractiveWhiteboard({
     shapes,
     onShapesChange,
     onFreehandChange,
+    theme = "dark",
+    isLight = false,
 }: InteractiveWhiteboardProps) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const boardRef = useRef<HTMLDivElement>(null);
@@ -321,7 +325,13 @@ export default function InteractiveWhiteboard({
     return (
         <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-                <div className="inline-flex rounded-xl border border-white/10 bg-black/30 p-1">
+                <div className={`inline-flex rounded-xl border p-1 ${
+                    theme === "eyeprotect"
+                        ? "border-[#8c8578] bg-[#fffcf5] shadow-sm"
+                        : isLight
+                        ? "border-slate-300 bg-white shadow-sm"
+                        : "border-white/10 bg-black/30"
+                }`}>
                     {(
                         [
                             { id: "select" as const, icon: MousePointer2, title: "Select / move" },
@@ -330,14 +340,25 @@ export default function InteractiveWhiteboard({
                         ] as const
                     ).map((t) => {
                         const Icon = t.icon;
+                        const isActive = tool === t.id;
                         return (
                             <button
                                 key={t.id}
                                 type="button"
                                 title={t.title}
                                 onClick={() => setTool(t.id)}
-                                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs ${
-                                    tool === t.id ? "bg-cyan-500/25 text-cyan-100" : "text-white/60 hover:text-white"
+                                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                                    isActive
+                                        ? theme === "eyeprotect"
+                                            ? "bg-[#0b5f58] text-white font-bold"
+                                            : isLight
+                                            ? "bg-cyan-600 text-white font-bold shadow-sm"
+                                            : "bg-cyan-500/25 text-cyan-100"
+                                        : theme === "eyeprotect"
+                                        ? "text-[#1c1917] hover:bg-[#f5ebd9]"
+                                        : isLight
+                                        ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
+                                        : "text-white/60 hover:text-white"
                                 }`}
                             >
                                 <Icon className="h-3.5 w-3.5" />
@@ -350,14 +371,26 @@ export default function InteractiveWhiteboard({
                     type="button"
                     onClick={deleteSelected}
                     disabled={!selectedId}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-white/60 hover:text-white disabled:opacity-40"
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer disabled:opacity-40 ${
+                        theme === "eyeprotect"
+                            ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917] hover:bg-[#f5ebd9] shadow-sm"
+                            : isLight
+                            ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+                            : "border-white/10 text-white/60 hover:text-white"
+                    }`}
                 >
                     Delete shape
                 </button>
                 <button
                     type="button"
                     onClick={clearAll}
-                    className="inline-flex items-center gap-1 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-rose-200/80 hover:text-rose-100"
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                        theme === "eyeprotect"
+                            ? "border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100 shadow-sm"
+                            : isLight
+                            ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm"
+                            : "border-white/10 text-rose-200/80 hover:text-rose-100"
+                    }`}
                 >
                     <Trash2 className="h-3.5 w-3.5" /> Clear board
                 </button>
@@ -375,14 +408,22 @@ export default function InteractiveWhiteboard({
                             setSelectedId(shape.id);
                             setTool("select");
                         }}
-                        className="cursor-grab rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-[11px] text-white/70 active:cursor-grabbing hover:bg-white/10"
+                        className={`cursor-grab rounded-lg border px-2.5 py-1.5 text-[11px] font-semibold transition active:cursor-grabbing ${
+                            theme === "eyeprotect"
+                                ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917] hover:bg-[#f5ebd9] shadow-sm"
+                                : isLight
+                                ? "border-slate-300 bg-white text-slate-800 hover:bg-slate-100 shadow-sm"
+                                : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                        }`}
                         title={`Drag onto board or click to place: ${item.label}`}
                     >
                         {item.label}
                     </div>
                 ))}
             </div>
-            <p className="text-[11px] text-white/40">
+            <p className={`text-[11px] ${
+                theme === "eyeprotect" ? "text-[#57534e] font-medium" : isLight ? "text-slate-600 font-medium" : "text-white/40"
+            }`}>
                 Drag shapes onto the board (or tap to place), move them in Select mode, or switch to Draw for freestyle.
             </p>
 

@@ -274,7 +274,7 @@ export default function SystemDesignPage() {
                                 }`}
                             >
                                 <div className="font-medium leading-snug">{q.title}</div>
-                                <div className={`mt-0.5 text-[10px] uppercase tracking-wide ${isLight ? "text-slate-400" : "text-white/40"}`}>
+                                <div className={`mt-0.5 text-[10px] uppercase tracking-wide ${isLight ? "text-slate-600 font-semibold" : "text-white/40"}`}>
                                     {q.difficulty}
                                     {q.topics?.[0] ? ` · ${q.topics[0]}` : ""}
                                 </div>
@@ -284,13 +284,15 @@ export default function SystemDesignPage() {
 
                     <div className="grid gap-6 lg:grid-cols-2">
                         <div className="space-y-3">
-                            <label className={`text-xs ${isLight ? "text-slate-600 font-semibold" : "text-white/50"}`}>Active prompt</label>
+                            <label className={`text-xs ${isLight ? "text-slate-700 font-bold" : "text-white/50"}`}>Active prompt</label>
                             <textarea
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
                                 rows={3}
                                 className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
-                                    isLight
+                                    theme === "eyeprotect"
+                                        ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917]"
+                                        : isLight
                                         ? "bg-white border-slate-300 text-slate-900 shadow-sm"
                                         : "bg-black/40 border-white/10 text-white"
                                 }`}
@@ -301,7 +303,11 @@ export default function SystemDesignPage() {
                                         <li
                                             key={c}
                                             className={`rounded-md border px-2 py-0.5 text-[11px] ${
-                                                isLight ? "border-slate-300 bg-slate-100 text-slate-700" : "border-white/10 bg-white/5 text-white/55"
+                                                theme === "eyeprotect"
+                                                    ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917] font-semibold"
+                                                    : isLight
+                                                    ? "border-slate-300 bg-slate-100 text-slate-800 font-semibold"
+                                                    : "border-white/10 bg-white/5 text-white/55"
                                             }`}
                                         >
                                             {c}
@@ -314,6 +320,8 @@ export default function SystemDesignPage() {
                                 shapes={shapes}
                                 onShapesChange={setShapes}
                                 onFreehandChange={setHasFreehand}
+                                theme={theme}
+                                isLight={isLight}
                             />
 
                             <textarea
@@ -321,7 +329,9 @@ export default function SystemDesignPage() {
                                 onChange={(e) => setNotes(e.target.value)}
                                 placeholder="Components, APIs, capacity estimates, tradeoffs…"
                                 className={`min-h-[110px] w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
-                                    isLight
+                                    theme === "eyeprotect"
+                                        ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#57534e]"
+                                        : isLight
                                         ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 shadow-sm"
                                         : "bg-black/40 border-white/10 text-white placeholder:text-white/40"
                                 }`}
@@ -355,7 +365,9 @@ export default function SystemDesignPage() {
                                 : "bg-white/5 border-white/10"
                         }`}>
                             {!result ? (
-                                <p className={`text-sm ${isLight ? "text-slate-500" : "text-white/40"}`}>
+                                <p className={`text-sm ${
+                                    theme === "eyeprotect" ? "text-[#57534e] font-medium" : isLight ? "text-slate-600 font-medium" : "text-white/40"
+                                }`}>
                                     Online scores for latency thinking, capacity, APIs, and tradeoffs appear here after
                                     evaluation.
                                 </p>
