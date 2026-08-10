@@ -23,10 +23,13 @@ export async function POST(req: NextRequest) {
 Company: ${company || "tech company"} Role: ${role || "SWE"}
 Target question: ${question || "Tell me about a time you handled conflict."}
 Known weak spot from film room / prior feedback: ${weakSpot || "unclear impact metrics"}
-Mode: ${mode} (coach = rewrite help, score = grade the story, retake = give a tighter prompt)
+Mode: ${mode} (coach = rewrite help, score = grade the story, retake = give a tighter follow-up question)
 
 Candidate story:
 ${story || "(ask them to draft one)"}
+
+Score based on STAR structure, personal ownership ("I" not only "we"), specificity, and measurable results.
+For coach mode, rewrite the story into a tight 90–120 second spoken answer.
 
 Return JSON:
 {
