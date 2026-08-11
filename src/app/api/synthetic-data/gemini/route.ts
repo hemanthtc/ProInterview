@@ -24,15 +24,18 @@ async function fetchGeminiContent(
 
 export async function POST(req: NextRequest) {
   try {
-    const API_KEY = process.env.GEMINI_API_KEY;
+    const body = await req.json();
+    const API_KEY = (typeof body?.apiKey === "string" && body.apiKey.trim())
+      ? body.apiKey.trim()
+      : process.env.GEMINI_API_KEY;
+
     if (!API_KEY) {
       return NextResponse.json(
-        { error: "Integrated Gemini API is not configured on the server." },
+        { error: "Gemini API key is not configured or provided on the server." },
         { status: 500 }
       );
     }
 
-    const body = await req.json();
     const prompt = typeof body?.prompt === "string" ? body.prompt : "";
     const jsonMode = Boolean(body?.jsonMode);
     const temperature =
