@@ -6,7 +6,7 @@ import {
     Users, UserPlus, Trash2, BarChart3, ShieldCheck, LogOut,
     TrendingUp, Server, Crown, Zap, RefreshCw, X, Eye, EyeOff,
     Building2, ChevronRight, Activity, Calendar, Mail, Briefcase,
-    Sun, Moon, AlertCircle, CheckCircle2, Clock, Star
+    Sun, Moon, AlertCircle, CheckCircle2, Clock, Star, PenTool
 } from "lucide-react";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; l
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account" | "leaderboard">("dashboard");
+    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account" | "leaderboard" | "ratelimits">("dashboard");
     const [leaderboard, setLeaderboard] = useState<any[]>([]);
     const [leaderboardMeta, setLeaderboardMeta] = useState<{ organizationName?: string; seatsUsed?: number; planHint?: string }>({});
     const [stats, setStats] = useState<StatsData | null>(null);
@@ -112,6 +112,36 @@ export default function AdminDashboard() {
 
     // Subscription breakdown active tab
     const [breakdownCycle, setBreakdownCycle] = useState<"monthly" | "yearly">("monthly");
+
+    // Rate limit configuration state
+    const [rateLimitConfigs, setRateLimitConfigs] = useState<any[]>([]);
+    const [selectedRateLimitTier, setSelectedRateLimitTier] = useState<string>("free");
+    const [rateLimitMode, setRateLimitMode] = useState<"unlimited" | "customized">("customized");
+    const [rateLimitMaxReq, setRateLimitMaxReq] = useState<number>(15);
+    const [rateLimitWindowMin, setRateLimitWindowMin] = useState<number>(15);
+    const [rateLimitEnabled, setRateLimitEnabled] = useState<boolean>(true);
+    const [isEditingRateLimits, setIsEditingRateLimits] = useState<boolean>(false);
+    const [rateLimitSaving, setRateLimitSaving] = useState<boolean>(false);
+    const [rateLimitMsg, setRateLimitMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    const fetchRateLimits = useCallback(() => {
+        fetch("/api/admin/rate-limits")
+            .then((r) => r.json())
+            .then((d) => {
+                if (d.configs) {
+                    setRateLimitConfigs(d.configs);
+                    const current = d.configs.find((c: any) => c.tier === selectedRateLimitTier) || d.configs[0];
+                    if (current) {
+                        const mode = current.mode || (current.isEnabled ? "customized" : "unlimited");
+                        setRateLimitMode(mode);
+                        setRateLimitMaxReq(current.maxRequests);
+                        setRateLimitWindowMin(current.windowMinutes);
+                        setRateLimitEnabled(current.isEnabled);
+                    }
+                }
+            })
+            .catch(() => {});
+    }, [selectedRateLimitTier]);
 
     // Unverified users actions modal
     const [showUnverifiedModal, setShowUnverifiedModal] = useState(false);
@@ -351,7 +381,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <nav className="hidden md:flex items-center gap-1">
-                    {(["dashboard", "employees", "leaderboard", "account"] as const).map(tab => (
+                    {(["dashboard", "employees", "leaderboard", "ratelimits", "account"] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => {
@@ -368,6 +398,8 @@ export default function AdminDashboard() {
                                             });
                                         })
                                         .catch(() => setLeaderboard([]));
+                                } else if (tab === "ratelimits") {
+                                    fetchRateLimits();
                                 }
                             }}
                             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
@@ -376,7 +408,7 @@ export default function AdminDashboard() {
                                     : `${isDark ? "text-white/50 hover:text-white hover:bg-white/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"}`
                             }`}
                         >
-                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : tab === "leaderboard" ? "Team / College" : "Dashboard"}
+                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : tab === "leaderboard" ? "Team / College" : tab === "ratelimits" ? "Rate Limits" : "Dashboard"}
                         </button>
                     ))}
                 </nav>
@@ -988,6 +1020,261 @@ export default function AdminDashboard() {
                                             ))
                                         )}
                                     </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === "ratelimits" && (
+                    <div className="space-y-6">
+                        <div className={`p-6 rounded-2xl border ${isDark ? "border-white/10 bg-white/5" : "border-slate-200 bg-white"} shadow-xl backdrop-blur-xl`}>
+                            <div className="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+                                <div>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">
+                                        <Zap className="w-5 h-5 text-indigo-400" /> Dynamic Tier Rate Limits
+                                    </h2>
+                                    <p className="text-xs opacity-60 mt-1">Configure rate limit caps and sliding windows for each user tier across the platform.</p>
+                                </div>
+
+                                {!isEditingRateLimits ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsEditingRateLimits(true)}
+                                        className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-semibold shadow-lg shadow-indigo-600/30 hover:bg-indigo-500 transition-all flex items-center gap-1.5"
+                                    >
+                                        <PenTool className="w-3.5 h-3.5" /> Edit Tier Limits
+                                    </button>
+                                ) : (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsEditingRateLimits(false);
+                                                fetchRateLimits();
+                                            }}
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-medium border ${
+                                                isDark ? "border-white/15 text-white/70 hover:bg-white/10" : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                                            }`}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+
+                            {rateLimitMsg && (
+                                <div className={`p-3.5 mb-6 rounded-xl border text-sm flex items-center gap-2 ${
+                                    rateLimitMsg.type === "success" 
+                                        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" 
+                                        : "bg-red-500/10 border-red-500/30 text-red-400"
+                                }`}>
+                                    {rateLimitMsg.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+                                    {rateLimitMsg.text}
+                                </div>
+                            )}
+
+                            {/* Tier selection tabs */}
+                            <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 border-b border-white/10">
+                                {[
+                                    { id: "free", label: "Free Tier" },
+                                    { id: "pro_monthly", label: "Pro Monthly" },
+                                    { id: "pro_yearly", label: "Pro Yearly" },
+                                    { id: "elite", label: "Elite Tier" },
+                                    { id: "enterprise", label: "Enterprise Tier" },
+                                ].map((t) => {
+                                    const cfg = rateLimitConfigs.find((c: any) => c.tier === t.id);
+                                    const mode = cfg?.mode || (cfg?.isEnabled === false ? "unlimited" : "customized");
+                                    return (
+                                        <button
+                                            key={t.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedRateLimitTier(t.id);
+                                                setIsEditingRateLimits(false);
+                                                if (cfg) {
+                                                    setRateLimitMode(mode);
+                                                    setRateLimitMaxReq(cfg.maxRequests);
+                                                    setRateLimitWindowMin(cfg.windowMinutes);
+                                                    setRateLimitEnabled(cfg.isEnabled);
+                                                }
+                                            }}
+                                            className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
+                                                selectedRateLimitTier === t.id
+                                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
+                                                    : isDark ? "bg-white/5 text-white/70 hover:bg-white/10" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                            }`}
+                                        >
+                                            {t.label}
+                                            <span className={`px-1.5 py-0.5 rounded-md text-[10px] ${
+                                                mode === "unlimited" ? "bg-purple-500/20 text-purple-300" : "bg-emerald-500/20 text-emerald-300"
+                                            }`}>
+                                                {mode === "unlimited" ? "Unlimited" : `${cfg?.maxRequests || rateLimitMaxReq} req / ${cfg?.windowMinutes || rateLimitWindowMin}m`}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Rate Limit Mode Options */}
+                            <div className="mb-6">
+                                <label className="block text-xs font-semibold uppercase tracking-wider mb-3 opacity-70">
+                                    Rate Limit Mode for Tier: <span className="text-indigo-400 font-bold">
+                                        {[
+                                            { id: "free", label: "Free Tier" },
+                                            { id: "pro_monthly", label: "Pro Monthly" },
+                                            { id: "pro_yearly", label: "Pro Yearly" },
+                                            { id: "elite", label: "Elite Tier" },
+                                            { id: "enterprise", label: "Enterprise Tier" },
+                                        ].find(t => t.id === selectedRateLimitTier)?.label}
+                                    </span>
+                                </label>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <button
+                                        type="button"
+                                        disabled={!isEditingRateLimits}
+                                        onClick={() => setRateLimitMode("unlimited")}
+                                        className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                                            rateLimitMode === "unlimited"
+                                                ? "border-purple-500/50 bg-purple-500/10 ring-1 ring-purple-500/30"
+                                                : isDark ? "border-white/10 bg-white/5 opacity-70 hover:opacity-100" : "border-slate-200 bg-slate-50 opacity-70 hover:opacity-100"
+                                        } ${!isEditingRateLimits ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                                    >
+                                        <div className="p-2 rounded-lg bg-purple-500/20 text-purple-300">
+                                            <Crown className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                                Unlimited Access
+                                                {rateLimitMode === "unlimited" && <CheckCircle2 className="w-4 h-4 text-purple-400" />}
+                                            </h3>
+                                            <p className="text-xs opacity-60 mt-1">Disables rate limits completely for this tier. Users can call APIs & generation without quota limits.</p>
+                                        </div>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        disabled={!isEditingRateLimits}
+                                        onClick={() => setRateLimitMode("customized")}
+                                        className={`p-4 rounded-xl border text-left transition-all flex items-start gap-3 ${
+                                            rateLimitMode === "customized"
+                                                ? "border-indigo-500/50 bg-indigo-500/10 ring-1 ring-indigo-500/30"
+                                                : isDark ? "border-white/10 bg-white/5 opacity-70 hover:opacity-100" : "border-slate-200 bg-slate-50 opacity-70 hover:opacity-100"
+                                        } ${!isEditingRateLimits ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+                                    >
+                                        <div className="p-2 rounded-lg bg-indigo-500/20 text-indigo-300">
+                                            <Zap className="w-5 h-5" />
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                                                Customize Limits
+                                                {rateLimitMode === "customized" && <CheckCircle2 className="w-4 h-4 text-indigo-400" />}
+                                            </h3>
+                                            <p className="text-xs opacity-60 mt-1">Set custom max request count and sliding window duration in minutes for this tier.</p>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Active tier custom fields */}
+                            {rateLimitMode === "customized" && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-white/10">
+                                    <div>
+                                        <label className="block text-xs font-medium mb-2 opacity-80">Max Requests Per Window</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="10000"
+                                            disabled={!isEditingRateLimits}
+                                            value={rateLimitMaxReq}
+                                            onChange={(e) => setRateLimitMaxReq(Number(e.target.value))}
+                                            className={`w-full px-4 py-2.5 rounded-xl border text-sm font-semibold outline-none ${
+                                                isDark ? "bg-white/5 border-white/10 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 text-slate-900"
+                                            } ${!isEditingRateLimits ? "opacity-50 cursor-not-allowed" : ""}`}
+                                        />
+                                        <p className="text-[11px] opacity-50 mt-1.5">Maximum API & generation calls allowed per window duration.</p>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-xs font-medium mb-2 opacity-80">Window Duration (Minutes)</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="1440"
+                                            disabled={!isEditingRateLimits}
+                                            value={rateLimitWindowMin}
+                                            onChange={(e) => setRateLimitWindowMin(Number(e.target.value))}
+                                            className={`w-full px-4 py-2.5 rounded-xl border text-sm font-semibold outline-none ${
+                                                isDark ? "bg-white/5 border-white/10 text-white focus:border-indigo-500" : "bg-slate-50 border-slate-200 text-slate-900"
+                                            } ${!isEditingRateLimits ? "opacity-50 cursor-not-allowed" : ""}`}
+                                        />
+                                        <p className="text-[11px] opacity-50 mt-1.5">Sliding window duration in minutes before rate counter resets.</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            {isEditingRateLimits && (
+                                <div className="flex items-center justify-end gap-3 mt-6 pt-6 border-t border-white/10">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsEditingRateLimits(false);
+                                            fetchRateLimits();
+                                        }}
+                                        className={`px-5 py-2.5 rounded-xl text-sm font-medium border ${
+                                            isDark ? "border-white/15 text-white/70 hover:bg-white/10" : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                                        }`}
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        disabled={rateLimitSaving}
+                                        onClick={() => {
+                                            setRateLimitSaving(true);
+                                            setRateLimitMsg(null);
+                                            const tierObj = [
+                                                { id: "free", label: "Free Tier" },
+                                                { id: "pro_monthly", label: "Pro Monthly" },
+                                                { id: "pro_yearly", label: "Pro Yearly" },
+                                                { id: "elite", label: "Elite Tier" },
+                                                { id: "enterprise", label: "Enterprise Tier" },
+                                            ].find(t => t.id === selectedRateLimitTier);
+
+                                            fetch("/api/admin/rate-limits", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({
+                                                    tier: selectedRateLimitTier,
+                                                    tierLabel: tierObj?.label || selectedRateLimitTier,
+                                                    mode: rateLimitMode,
+                                                    maxRequests: rateLimitMaxReq,
+                                                    windowMinutes: rateLimitWindowMin,
+                                                    isEnabled: rateLimitMode === "customized",
+                                                }),
+                                            })
+                                                .then(r => r.json())
+                                                .then(d => {
+                                                    setRateLimitSaving(false);
+                                                    if (d.error) {
+                                                        setRateLimitMsg({ type: "error", text: d.error });
+                                                    } else {
+                                                        setRateLimitMsg({ type: "success", text: "Rate limits updated successfully!" });
+                                                        setIsEditingRateLimits(false);
+                                                        fetchRateLimits();
+                                                    }
+                                                })
+                                                .catch((err) => {
+                                                    setRateLimitSaving(false);
+                                                    setRateLimitMsg({ type: "error", text: err.message || "Failed to update rate limits." });
+                                                });
+                                        }}
+                                        className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50"
+                                    >
+                                        {rateLimitSaving ? "Saving..." : "Save Rate Limits"}
+                                    </button>
                                 </div>
                             )}
                         </div>

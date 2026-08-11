@@ -9,8 +9,12 @@ const buckets = new Map<string, Bucket>();
 
 export function rateLimit(
     key: string,
-    { limit = 10, windowMs = 15 * 60 * 1000 }: { limit?: number; windowMs?: number } = {}
+    { limit = 10, windowMs = 15 * 60 * 1000, isEnabled = true }: { limit?: number; windowMs?: number; isEnabled?: boolean } = {}
 ): { allowed: boolean; retryAfterSec: number } {
+    if (!isEnabled) {
+        return { allowed: true, retryAfterSec: 0 };
+    }
+
     const now = Date.now();
     const bucket = buckets.get(key) ?? { timestamps: [] };
     bucket.timestamps = bucket.timestamps.filter((t) => now - t < windowMs);

@@ -8,11 +8,17 @@ import {
     sendGeminiMessageWithRetry,
 } from "@/utils/interviewHelper";
 import { getSarvamKey, sarvamChatCompletion } from "@/utils/sarvam";
+import { getVerifiedSession } from "@/utils/auth";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const {
             history = [], resume, github, linkedin, portfolioUrl, message, attachment, type,
             company, roles, level, hrIntel, companyClone, provider, voiceLanguage,

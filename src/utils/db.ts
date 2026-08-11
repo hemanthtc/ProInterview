@@ -131,8 +131,14 @@ async function connectDB() {
         );
     }
 
-    if (cached.conn && mongoose.connection.readyState === 1) {
+    if (mongoose.connection.readyState === 1 && cached.conn) {
         return cached.conn;
+    }
+
+    // Reset cached state if connection was dropped or disconnected
+    if (mongoose.connection.readyState === 0) {
+        cached.conn = null;
+        cached.promise = null;
     }
 
     if (!cached.promise) {

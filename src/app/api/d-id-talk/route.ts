@@ -1,7 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const { text } = await req.json();
         
         const apiKey = process.env.DID_API_KEY;

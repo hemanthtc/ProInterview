@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ADVANCED_CANDIDATE_MODELS, fetchKeySupportedModels } from "@/utils/gemini";
+import { getVerifiedSession } from "@/utils/auth";
 
 async function fetchGeminiContent(
   prompt: string,
@@ -24,6 +25,14 @@ async function fetchGeminiContent(
 
 export async function POST(req: NextRequest) {
   try {
+    const session = await getVerifiedSession();
+    if (!session) {
+      return NextResponse.json(
+        { error: "Unauthorized access: Please sign in." },
+        { status: 401 }
+      );
+    }
+
     const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) {
       return NextResponse.json(
@@ -47,6 +56,13 @@ export async function POST(req: NextRequest) {
 
     if (!prompt.trim()) {
       return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
+    }
+
+    if (prompt.length > 50000) {
+      return NextResponse.json(
+        { error: "Prompt exceeds maximum allowed length (50,000 characters)." },
+        { status: 400 }
+      );
     }
 
     // Auto-detect key supported models dynamically from Google API

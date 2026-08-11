@@ -34,7 +34,7 @@ export async function POST(req: NextRequest, ctx: Ctx) {
             userId,
             ownerName,
             visibility: "private",
-            folderId: body?.folderId !== undefined ? body.folderId : null,
+            folderId: body?.folderId !== undefined ? body.folderId : (source.folderId || null),
             title: `${source.title || source.filename} (Copy)`,
             filename: String(source.filename || "file").replace(/(\.[^.]+)?$/, "_copy$1"),
             topic: source.topic || "",

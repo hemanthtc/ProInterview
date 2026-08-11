@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
+import { getVerifiedSession } from "@/utils/auth";
 
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
@@ -70,6 +71,11 @@ async function fetchUrlText(url: string) {
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const formData = await req.formData();
         const github = formData.get("github") as string;
         const linkedin = formData.get("linkedin") as string;

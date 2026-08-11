@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
 import crypto from "crypto";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         await connectDB();
 
         const {
@@ -16,12 +22,14 @@ export async function POST(req: NextRequest) {
             userIdentifier,
         } = await req.json();
 
+        const targetIdentifier = session.identifier || userIdentifier;
+
         if (
             !razorpay_payment_id ||
             !razorpay_order_id ||
             !razorpay_signature ||
             !planName ||
-            !userIdentifier
+            !targetIdentifier
         ) {
             return NextResponse.json(
                 { error: "Payment verification details and user identifier are required." },

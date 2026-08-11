@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getVerifiedSession } from "@/utils/auth";
 import {
     buildPersonDescription,
     createHappenstanceResearch,
@@ -180,6 +181,11 @@ Rules:
 /** Start Happenstance research (or Gemini-only fallback). */
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
         const body = await req.json();
         const hrName = typeof body.hrName === "string" ? body.hrName.trim() : "";
         const company = typeof body.company === "string" ? body.company.trim() : "";

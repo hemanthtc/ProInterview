@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageItem } from "../../utils/storage";
 import { computeFinalInterviewScore } from "../../utils/scoring";
 import SessionRecorder from "../../components/SessionRecorder";
@@ -1055,7 +1056,7 @@ export default function InterviewRoom() {
                                 <div 
                                     className={`prose ${theme === 'dark' ? 'prose-invert' : ''} prose-sm max-w-none transcript-display`}
                                     dangerouslySetInnerHTML={{ 
-                                        __html: marked.parse(finalScores.annotatedTranscript, { gfm: true, breaks: true }) 
+                                        __html: DOMPurify.sanitize(String(marked.parse(finalScores.annotatedTranscript, { gfm: true, breaks: true })))
                                     }}
                                 />
                             ) : (

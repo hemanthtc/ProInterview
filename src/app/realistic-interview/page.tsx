@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play } from "lucide-react";
 import { motion } from "framer-motion";
 import { marked } from "marked";
+import DOMPurify from "dompurify";
 import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageItem } from "../../utils/storage";
 import VoiceCoachPanel from "../../components/VoiceCoachPanel";
 import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapshot } from "../../utils/voiceCoach";
@@ -1382,7 +1383,7 @@ export default function RealisticInterviewRoom() {
                                 <div 
                                     className={`prose ${theme === 'dark' ? 'prose-invert' : ''} prose-sm max-w-none transcript-display`}
                                     dangerouslySetInnerHTML={{ 
-                                        __html: marked.parse(finalScores.annotatedTranscript, { gfm: true, breaks: true }) 
+                                        __html: DOMPurify.sanitize(String(marked.parse(finalScores.annotatedTranscript, { gfm: true, breaks: true })))
                                     }}
                                 />
                             ) : (

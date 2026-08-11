@@ -156,9 +156,30 @@ export default function LabsPage() {
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
+        const savedTheme = (localStorage.getItem("globalTheme") || localStorage.getItem("prointerview_theme")) as "dark" | "light" | "eyeprotect" | null;
+        let active: "dark" | "light" | "eyeprotect" = "dark";
+
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
-            setTheme(savedTheme);
+            active = savedTheme;
+        } else if (typeof document !== "undefined") {
+            if (document.documentElement.classList.contains("theme-eyeprotect")) {
+                active = "eyeprotect";
+            } else if (document.documentElement.classList.contains("theme-light")) {
+                active = "light";
+            }
+        }
+
+        setTheme(active);
+        localStorage.setItem("globalTheme", active);
+        localStorage.setItem("prointerview_theme", active);
+
+        document.documentElement.classList.remove("theme-dark", "theme-light", "theme-eyeprotect");
+        if (active === "eyeprotect") {
+            document.documentElement.classList.add("theme-light", "theme-eyeprotect");
+            document.documentElement.style.colorScheme = "light";
+        } else {
+            document.documentElement.classList.add(`theme-${active}`);
+            document.documentElement.style.colorScheme = active;
         }
     }, []);
 
@@ -167,9 +188,16 @@ export default function LabsPage() {
     const cycleTheme = () => {
         const next = theme === "dark" ? "light" : theme === "light" ? "eyeprotect" : "dark";
         setTheme(next);
+        localStorage.setItem("globalTheme", next);
         localStorage.setItem("prointerview_theme", next);
         document.documentElement.classList.remove("theme-dark", "theme-light", "theme-eyeprotect");
-        document.documentElement.classList.add(`theme-${next}`);
+        if (next === "eyeprotect") {
+            document.documentElement.classList.add("theme-light", "theme-eyeprotect");
+            document.documentElement.style.colorScheme = "light";
+        } else {
+            document.documentElement.classList.add(`theme-${next}`);
+            document.documentElement.style.colorScheme = next;
+        }
     };
 
     return (
@@ -178,7 +206,7 @@ export default function LabsPage() {
                 ? "bg-slate-100 text-slate-900"
                 : theme === "eyeprotect"
                 ? "bg-[#f3ede3] text-[#1c1917]"
-                : "bg-slate-950 text-white"
+                : "bg-[#050816] text-white"
         }`}>
             <div className="max-w-5xl mx-auto px-4 py-10">
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
@@ -235,7 +263,7 @@ export default function LabsPage() {
                                         ? "bg-white border-slate-200 hover:border-indigo-500 hover:shadow-md text-slate-900"
                                         : theme === "eyeprotect"
                                         ? "bg-[#fffcf5] border-[#8c8578] hover:border-teal-700 hover:shadow-md text-[#1c1917]"
-                                        : "bg-white/5 border-white/10 hover:bg-white/10 text-white"
+                                        : "bg-[#0b1329] border-white/10 hover:border-indigo-500/50 hover:bg-[#111c3a] text-white shadow-lg shadow-black/20"
                                 }`}
                             >
                                 <div>

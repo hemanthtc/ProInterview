@@ -2,14 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
 import Razorpay from "razorpay";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in to purchase a plan." }, { status: 401 });
+        }
+
         await connectDB();
 
         const { planName, billingCycle, userIdentifier } = await req.json();
+        const targetIdentifier = session.identifier || userIdentifier;
 
-        if (!planName || !billingCycle || !userIdentifier) {
+        if (!planName || !billingCycle || !targetIdentifier) {
             return NextResponse.json(
                 { error: "Plan name, billing cycle, and user identifier are required." },
                 { status: 400 }
@@ -17,7 +24,7 @@ export async function POST(req: NextRequest) {
         }
 
         // Verify user exists
-        const user = await User.findOne({ identifier: userIdentifier });
+        const user = await User.findOne({ identifier: targetIdentifier });
         if (!user) {
             return NextResponse.json({ error: "User not found." }, { status: 404 });
         }
