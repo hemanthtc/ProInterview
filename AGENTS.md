@@ -26,6 +26,7 @@ Additional optional feature keys (all fail gracefully / fall back when unset —
 - `ADZUNA_APP_ID` / `ADZUNA_APP_KEY` — live India job search in `/api/jobs`; without them, Adzuna is skipped and curated India fallback listings are used instead.
 - `RAZORPAY_WEBHOOK_SECRET` — verifies `/api/razorpay/webhook` payloads.
 - `CRON_SECRET` — shared secret for the cron-triggered coach-booking reminder endpoint (`/api/coaches/reminders`).
+- `S3_BUCKET` + `AWS_REGION` + `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` — Amazon S3 for profile photos, resumes, and `/api/upload` storage (`/api/s3/presign`). Optional `S3_PUBLIC_BASE_URL` for CloudFront. Without S3, uploads fall back to base64/Mongo as before.
 
 **Do not wrap `.env` values in extra quotes** — the README warns this can break OAuth and UPI.
 

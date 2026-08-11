@@ -11,6 +11,17 @@ import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSyn
 import BrandLogo from "../../components/BrandLogo";
 import PhotoCropperModal from "../../components/profile/PhotoCropperModal";
 import SessionHistoryPanel from "../../components/profile/SessionHistoryPanel";
+import { uploadFileToS3 } from "../../utils/s3ClientUpload";
+
+function dataUrlToFile(dataUrl: string, filename: string): File {
+    const [header, base64] = dataUrl.split(",");
+    const mimeMatch = header?.match(/data:(.*?);/);
+    const mime = mimeMatch?.[1] || "image/png";
+    const binary = atob(base64 || "");
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new File([bytes], filename, { type: mime });
+}
 
 export default function ProfilePage() {
     const router = useRouter();
@@ -208,9 +219,10 @@ export default function ProfilePage() {
                         setEditNameValue(u.displayName);
                         setStorageItem("userName", u.displayName);
 
-                        if (u.profilePhoto) {
-                            setProfilePhoto(u.profilePhoto);
-                            setStorageItem("userProfilePhoto", u.profilePhoto);
+                        if (u.profilePhotoUrl || u.profilePhoto) {
+                            const photo = u.profilePhotoUrl || u.profilePhoto;
+                            setProfilePhoto(photo);
+                            setStorageItem("userProfilePhoto", photo);
                         }
                         if (u.additionalEmail) {
                             setAdditionalEmail(u.additionalEmail);
@@ -765,6 +777,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         try {
             const formData = new FormData();
             formData.append("file", file);
+            formData.append("storeInS3", "1");
 
             const res = await fetch("/api/upload", {
                 method: "POST",
@@ -776,11 +789,16 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                 throw new Error(data.error || "Failed to upload resume/CV");
             }
 
+            const stored = Array.isArray(data.stored) ? data.stored[0] : undefined;
             setResumeCvName(file.name);
             setResumeCvText(data.text || "");
             setStorageItem("userResumeCvName", file.name);
             setStorageItem("userResumeCvText", data.text || "");
-            syncProfileToCloud({ resumeCvName: file.name, resumeCvText: data.text || "" });
+            syncProfileToCloud({
+                resumeCvName: file.name,
+                resumeCvText: data.text || "",
+                ...(stored?.key ? { resumeCvKey: stored.key, resumeCvUrl: stored.url } : {}),
+            });
         } catch (error) {
             console.error("Resume/CV upload failed:", error);
             alert((error as Error).message || "Failed to upload resume/CV.");
@@ -789,18 +807,40 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         }
     };
 
-    const handleCropSave = (base64String: string) => {
+    const handleCropSave = async (base64String: string) => {
         setStorageItem("userProfilePhoto", base64String);
         setProfilePhoto(base64String);
-        syncProfileToCloud({ profilePhoto: base64String });
         setCropModalOpen(false);
         setTempImageSrc("");
+
+        try {
+            const file = dataUrlToFile(base64String, "profile-photo.png");
+            const s3 = await uploadFileToS3(file, "profile-photos");
+            if (s3) {
+                setProfilePhoto(s3.publicUrl);
+                setStorageItem("userProfilePhoto", s3.publicUrl);
+                syncProfileToCloud({
+                    profilePhoto: s3.publicUrl,
+                    profilePhotoKey: s3.key,
+                    profilePhotoUrl: s3.publicUrl,
+                });
+                return;
+            }
+        } catch (err) {
+            console.warn("S3 profile photo upload failed; saving base64 fallback", err);
+        }
+        syncProfileToCloud({ profilePhoto: base64String });
     };
 
     const handleRemoveResumeCv = () => {
         removeStorageItem("userResumeCvName");
         removeStorageItem("userResumeCvText");
-        syncProfileToCloud({ resumeCvName: "", resumeCvText: "" });
+        syncProfileToCloud({
+            resumeCvName: "",
+            resumeCvText: "",
+            resumeCvKey: "",
+            resumeCvUrl: "",
+        });
         setResumeCvName("");
         setResumeCvText("");
     };
