@@ -9,42 +9,30 @@ async function fetchGeminiContent(
   apiKey: string
 ): Promise<Response> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  
-  const body: any = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature,
-      responseMimeType: jsonMode ? "application/json" : "text/plain",
-    },
-  };
-
-  if (jsonMode) {
-    body.systemInstruction = {
-      parts: [{ text: "You are a strict data generation engine. You must output a single, valid, parseable JSON object matching the requested structure. Do not include any explanations, introduction, markdown code block backticks (like ```json), or any text outside of the JSON braces." }]
-    };
-  }
-
   return fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature,
+        responseMimeType: jsonMode ? "application/json" : "text/plain",
+      },
+    }),
   });
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
-    const API_KEY = (typeof body?.apiKey === "string" && body.apiKey.trim())
-      ? body.apiKey.trim()
-      : process.env.GEMINI_API_KEY;
-
+    const API_KEY = process.env.GEMINI_API_KEY;
     if (!API_KEY) {
       return NextResponse.json(
-        { error: "Gemini API key is not configured or provided on the server." },
+        { error: "Integrated Gemini API is not configured on the server." },
         { status: 500 }
       );
     }
 
+    const body = await req.json();
     const prompt = typeof body?.prompt === "string" ? body.prompt : "";
     const jsonMode = Boolean(body?.jsonMode);
     const temperature =
@@ -70,27 +58,20 @@ export async function POST(req: NextRequest) {
     let lastResponse: Response | null = null;
     let data: any = null;
     let lastErrorMsg = "";
-    let selectedModelUsed = "";
 
     for (const currentModel of modelQueue) {
       try {
-        console.log(`[Gemini Proxy] Trying model '${currentModel}' for generation...`);
         const resp = await fetchGeminiContent(prompt, jsonMode, temperature, currentModel, API_KEY);
         lastResponse = resp;
         data = await resp.json().catch(() => ({}));
         if (resp.ok) {
-          selectedModelUsed = currentModel;
           break;
         }
         lastErrorMsg = data?.error?.message || `HTTP ${resp.status}`;
-        console.warn(`[Gemini Proxy] Model '${currentModel}' failed (${lastErrorMsg}). Retrying next model...`);
+        console.warn(`[Gemini Route] Model '${currentModel}' failed (${lastErrorMsg}). Retrying next model...`);
       } catch (err: any) {
         lastErrorMsg = err?.message || "Fetch network error";
       }
-    }
-
-    if (selectedModelUsed) {
-      console.log(`[Gemini Proxy] Request processed successfully using model: ${selectedModelUsed}`);
     }
 
     if (!lastResponse || !lastResponse.ok) {
