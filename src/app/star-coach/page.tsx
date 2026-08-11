@@ -3,7 +3,7 @@
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { Clock, History, Loader2, Mic, MicOff, RefreshCw, Sparkles, Target, Volume2, Wifi } from "lucide-react";
+import { Clock, History, Loader2, Mic, MicOff, RefreshCw, Sparkles, Target, Volume2, Wifi, Moon, Sun, Eye } from "lucide-react";
 import {
     STAR_CATEGORY_LABELS,
     type StarCoachQuestion,
@@ -12,7 +12,7 @@ import {
 import { loadStarHistory, saveStarHistoryEntry, type StarHistoryEntry } from "@/utils/labProgress";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import { readApiError } from "@/utils/apiError";
-import { speakInterviewText } from "@/utils/speakInterview";
+import { speakInterviewText, stopSpeechInterviewText } from "@/utils/speakInterview";
 
 // SpeechRecognition isn't in the default TS DOM lib — mirror the interview room's usage.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -56,6 +56,25 @@ function StarCoachInner() {
     const [isListening, setIsListening] = useState(false);
     const [micAvailable, setMicAvailable] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
+
+    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
+        if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            setTheme(savedTheme);
+        }
+    }, []);
+
+    const isLight = theme === "light" || theme === "eyeprotect";
+
+    const cycleTheme = () => {
+        const next = theme === "dark" ? "light" : theme === "light" ? "eyeprotect" : "dark";
+        setTheme(next);
+        localStorage.setItem("prointerview_theme", next);
+        document.documentElement.classList.remove("theme-dark", "theme-light", "theme-eyeprotect");
+        document.documentElement.classList.add(`theme-${next}`);
+    };
 
     const recognitionRef = useRef<SpeechRecognitionInstance>(null);
     const isListeningRef = useRef(isListening);
@@ -124,6 +143,7 @@ function StarCoachInner() {
 
         recognitionRef.current = recognition;
         return () => {
+            stopSpeechInterviewText();
             try {
                 recognition.stop();
             } catch {
@@ -304,25 +324,53 @@ function StarCoachInner() {
     const busy = loadingCoach || loadingQuestion;
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white">
-            <div className="mx-auto max-w-3xl px-4 py-8">
-                <div className="mb-6 flex items-center justify-between gap-4">
+        <div className={`min-h-screen transition-colors duration-300 ${
+            theme === "light"
+                ? "bg-slate-100 text-slate-900"
+                : theme === "eyeprotect"
+                ? "bg-[#f3ede3] text-[#1c1917]"
+                : "bg-slate-950 text-white"
+        }`}>
+            <div className="max-w-3xl mx-auto px-4 py-8">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                     <div>
-                        <p className="flex items-center gap-2 text-xs uppercase tracking-widest text-violet-300/80">
-                            <Target className="h-4 w-4" /> STAR coach
+                        <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-violet-700 font-bold" : "text-violet-300/80"}`}>
+                            <Target className="w-4 h-4" /> STAR coach
                         </p>
                         <h1 className="mt-1 text-2xl font-semibold">Behavioral drills with retakes</h1>
-                        <p className="mt-1 text-sm text-white/45">
+                        <p className={`mt-1 text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
                             {[role, company].filter(Boolean).join(" · ") ||
                                 "Type your own question or generate one — Situation → Task → Action → Result."}
                         </p>
                     </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1 text-sm">
-                        <Link href="/prep" className="text-indigo-300 hover:underline">
+                    <div className="flex items-center gap-3 shrink-0">
+                        <button
+                            onClick={cycleTheme}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                isLight
+                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                            }`}
+                            title={`Current Theme: ${theme}. Click to switch.`}
+                        >
+                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
+                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
+                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
+                        </button>
+                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
                             Prep dashboard
                         </Link>
-                        <Link href="/labs" className="text-white/60 hover:text-white">
-                            ← Labs
+                        <Link
+                            href="/labs"
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
+                                theme === "eyeprotect"
+                                    ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                    : isLight
+                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                    : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                            }`}
+                        >
+                            ← Back to Labs
                         </Link>
                     </div>
                 </div>
@@ -330,13 +378,23 @@ function StarCoachInner() {
                 <LabAuthBanner feature="online STAR coaching and question generation" />
 
                 <div className="space-y-4">
-                    <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <div className={`space-y-3 rounded-2xl border p-4 transition-colors ${
+                        theme === "light"
+                            ? "bg-white border-slate-200 shadow-sm"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffcf5] border-[#8c8578] shadow-sm"
+                            : "bg-white/5 border-white/10"
+                    }`}>
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                            <label className="text-xs font-medium uppercase tracking-wide text-white/50">
+                            <label className={`text-xs font-semibold uppercase tracking-wide ${
+                                isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/60"
+                            }`}>
                                 Behavioral question
                             </label>
                             {questionSource && questionSource !== "custom" && (
-                                <span className="inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] text-white/45">
+                                <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${
+                                    isLight ? "border-slate-300 bg-slate-100 text-slate-700" : "border-white/10 text-white/45"
+                                }`}>
                                     <Wifi className="h-3 w-3" />
                                     {questionSource}
                                 </span>
@@ -347,7 +405,13 @@ function StarCoachInner() {
                             <select
                                 value={category}
                                 onChange={(e) => setCategory(e.target.value as StarQuestionCategory)}
-                                className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                                className={`rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                    theme === "light"
+                                        ? "bg-white border-slate-300 text-slate-900 focus:border-indigo-600 shadow-sm"
+                                        : theme === "eyeprotect"
+                                        ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] focus:border-teal-700"
+                                        : "bg-black/40 border-white/10 text-white focus:border-violet-400/50"
+                                }`}
                             >
                                 {(Object.entries(STAR_CATEGORY_LABELS) as [StarQuestionCategory, string][]).map(
                                     ([value, label]) => (
@@ -361,7 +425,13 @@ function StarCoachInner() {
                                 type="button"
                                 disabled={busy}
                                 onClick={() => void generateQuestion()}
-                                className="inline-flex items-center gap-2 rounded-xl border border-violet-400/30 bg-violet-500/15 px-3 py-2 text-sm text-violet-100 disabled:opacity-50"
+                                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition cursor-pointer disabled:opacity-50 ${
+                                    theme === "light"
+                                        ? "border-violet-300 bg-violet-100 text-violet-800 hover:bg-violet-200 shadow-sm"
+                                        : theme === "eyeprotect"
+                                        ? "border-[#0b5f58]/40 bg-[#0b5f58]/15 text-[#0b5f58] hover:bg-[#0b5f58]/25 font-bold"
+                                        : "border-violet-400/30 bg-violet-500/15 text-violet-200 hover:bg-violet-500/25"
+                                }`}
                             >
                                 {loadingQuestion ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -382,7 +452,13 @@ function StarCoachInner() {
                                         setInfo("90-second timer started — speak your STAR answer.");
                                     }
                                 }}
-                                className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-sm text-white/70"
+                                className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition cursor-pointer ${
+                                    theme === "light"
+                                        ? "border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200 shadow-sm"
+                                        : theme === "eyeprotect"
+                                        ? "border-[#8c8578] bg-[#e8dcc8]/60 text-[#1c1917] hover:bg-[#e8dcc8]"
+                                        : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
+                                }`}
                             >
                                 <Clock className="h-4 w-4" />
                                 {timerRunning ? `${timerSec}s` : "90s timer"}
@@ -397,37 +473,53 @@ function StarCoachInner() {
                                 setQuestionHint("");
                             }}
                             rows={2}
-                            className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                            className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                theme === "light"
+                                    ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 shadow-sm"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
+                                    : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-violet-400/50"
+                            }`}
                             placeholder="Or type your own behavioral question…"
                         />
                         {questionHint && (
-                            <p className="text-xs text-violet-200/70">
-                                <span className="text-white/40">Focus: </span>
+                            <p className={`text-xs font-medium ${isLight ? (theme === "eyeprotect" ? "text-teal-800" : "text-indigo-700") : "text-violet-200/70"}`}>
+                                <span className={isLight ? (theme === "eyeprotect" ? "text-[#78716c]" : "text-slate-500") : "text-white/40"}>Focus: </span>
                                 {questionHint}
                             </p>
                         )}
                     </div>
 
                     <div>
-                        <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-white/50">
+                        <label className={`mb-1.5 block text-xs font-semibold uppercase tracking-wide ${
+                            isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/60"
+                        }`}>
                             Weak spot to improve
                         </label>
                         <input
                             value={weakSpot}
                             onChange={(e) => setWeakSpot(e.target.value)}
-                            className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                            className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                theme === "light"
+                                    ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 shadow-sm"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
+                                    : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-violet-400/50"
+                            }`}
                             placeholder="e.g. unclear impact metrics, too much 'we', rambling"
                         />
                     </div>
 
                     <div>
                         <div className="mb-1.5 flex items-center justify-between gap-2">
-                            <label className="text-xs font-medium uppercase tracking-wide text-white/50">
+                            <label className={`text-xs font-semibold uppercase tracking-wide ${
+                                isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/60"
+                            }`}>
                                 Your STAR story
                             </label>
                             <div className="flex items-center gap-2">
                                 {isSpeaking && (
-                                    <span className="inline-flex items-center gap-1 text-[10px] text-violet-300/80">
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-violet-600 font-bold">
                                         <Volume2 className="h-3 w-3" /> Speaking…
                                     </span>
                                 )}
@@ -436,9 +528,11 @@ function StarCoachInner() {
                                         type="button"
                                         onClick={() => (isListening ? stopListening() : startListening())}
                                         title={isListening ? "Stop dictation" : "Dictate your story via microphone"}
-                                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors ${
+                                        className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs transition-colors font-semibold cursor-pointer ${
                                             isListening
-                                                ? "bg-green-500 text-black shadow-lg shadow-green-500/30 animate-pulse"
+                                                ? "bg-emerald-500 text-slate-950 shadow-md animate-pulse font-bold"
+                                                : isLight
+                                                ? "border border-slate-300 bg-slate-100 text-slate-800 hover:bg-slate-200"
                                                 : "border border-white/10 text-white/60 hover:text-white"
                                         }`}
                                     >
@@ -451,7 +545,13 @@ function StarCoachInner() {
                         <textarea
                             value={story}
                             onChange={(e) => setStory(e.target.value)}
-                            className="min-h-[180px] w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
+                            className={`min-h-[180px] w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                theme === "light"
+                                    ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 shadow-sm"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
+                                    : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-violet-400/50"
+                            }`}
                             placeholder="Situation → Task → Action → Result…"
                         />
                     </div>
@@ -461,7 +561,11 @@ function StarCoachInner() {
                             type="button"
                             disabled={busy}
                             onClick={() => void run("coach")}
-                            className="rounded-xl bg-violet-500 px-4 py-2 text-sm disabled:opacity-50"
+                            className={`rounded-xl px-4 py-2 text-sm font-bold transition cursor-pointer ${
+                                theme === "eyeprotect"
+                                    ? "bg-[#0b5f58] hover:bg-[#084842] text-white disabled:opacity-50"
+                                    : "bg-violet-600 hover:bg-violet-500 text-white disabled:opacity-50"
+                            }`}
                         >
                             Rewrite with coach
                         </button>
@@ -469,7 +573,11 @@ function StarCoachInner() {
                             type="button"
                             disabled={busy}
                             onClick={() => void run("score")}
-                            className="rounded-xl bg-white/10 px-4 py-2 text-sm disabled:opacity-50"
+                            className={`rounded-xl border px-4 py-2 text-sm font-semibold transition cursor-pointer ${
+                                isLight
+                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                    : "bg-white/10 border-white/20 text-white hover:bg-white/20 disabled:opacity-50"
+                            }`}
                         >
                             Score story
                         </button>
@@ -477,37 +585,49 @@ function StarCoachInner() {
                             type="button"
                             disabled={busy}
                             onClick={() => void run("retake")}
-                            className="rounded-xl bg-white/10 px-4 py-2 text-sm disabled:opacity-50"
+                            className={`rounded-xl border px-4 py-2 text-sm font-semibold transition cursor-pointer ${
+                                isLight
+                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                    : "bg-white/10 border-white/20 text-white hover:bg-white/20 disabled:opacity-50"
+                            }`}
                         >
                             New retake prompt
                         </button>
                         {loadingCoach && (
-                            <Loader2 className="h-4 w-4 animate-spin self-center text-white/50" />
+                            <Loader2 className="h-4 w-4 animate-spin self-center text-violet-500" />
                         )}
                     </div>
 
-                    {info && <p className="text-sm text-violet-200/70">{info}</p>}
-                    {error && <p className="text-sm text-rose-300">{error}</p>}
+                    {info && <p className="text-sm text-violet-400 font-medium">{info}</p>}
+                    {error && <p className="text-sm text-rose-500 font-semibold">{error}</p>}
 
                     {result && (
-                        <div className="space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm">
-                            <div className="flex items-center gap-2 text-violet-300">
+                        <div className={`space-y-3 rounded-2xl border p-4 text-sm ${
+                            theme === "light"
+                                ? "bg-white border-slate-200 shadow-sm text-slate-900"
+                                : theme === "eyeprotect"
+                                ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917]"
+                                : "bg-white/5 border-white/10 text-white"
+                        }`}>
+                            <div className="flex items-center gap-2 font-bold text-violet-400">
                                 <Sparkles className="h-4 w-4" /> Score: {result.score ?? "—"}/100
                             </div>
                             {result.starBreakdown && (
                                 <div className="grid gap-2 sm:grid-cols-2">
                                     {Object.entries(result.starBreakdown).map(([k, v]) => (
-                                        <div key={k} className="rounded-lg bg-black/30 p-2">
-                                            <div className="text-[10px] uppercase text-white/40">{k}</div>
-                                            <div className="text-white/80">{v}</div>
+                                        <div key={k} className={`rounded-lg p-2.5 border ${
+                                            isLight ? "bg-slate-50 border-slate-200" : "bg-black/30 border-white/5"
+                                        }`}>
+                                            <div className={`text-[10px] uppercase font-bold ${isLight ? "text-slate-500" : "text-white/40"}`}>{k}</div>
+                                            <div className={isLight ? "text-slate-800 font-medium" : "text-white/80"}>{String(v)}</div>
                                         </div>
                                     ))}
                                 </div>
                             )}
                             {result.missing && result.missing.length > 0 && (
                                 <div>
-                                    <h3 className="mb-1 text-xs font-medium uppercase text-amber-300/90">Missing</h3>
-                                    <ul className="list-disc pl-5 text-white/70">
+                                    <h3 className="mb-1 text-xs font-semibold uppercase text-amber-500">Missing</h3>
+                                    <ul className={`list-disc pl-5 ${isLight ? "text-slate-700" : "text-white/70"}`}>
                                         {result.missing.map((m, i) => (
                                             <li key={i}>{m}</li>
                                         ))}
@@ -516,18 +636,20 @@ function StarCoachInner() {
                             )}
                             {result.improvedStory && (
                                 <div>
-                                    <h3 className="mb-1 text-xs font-medium uppercase text-emerald-300/90">
+                                    <h3 className="mb-1 text-xs font-semibold uppercase text-emerald-500">
                                         Improved story
                                     </h3>
-                                    <p className="whitespace-pre-wrap rounded-lg bg-black/30 p-3 text-white/80">
+                                    <p className={`whitespace-pre-wrap rounded-lg p-3 ${
+                                        isLight ? "bg-slate-100 text-slate-800" : "bg-black/30 text-white/80"
+                                    }`}>
                                         {result.improvedStory}
                                     </p>
                                 </div>
                             )}
                             {result.tips && result.tips.length > 0 && (
                                 <div>
-                                    <h3 className="mb-1 text-xs font-medium uppercase text-sky-300/90">Tips</h3>
-                                    <ul className="list-disc pl-5 text-white/70">
+                                    <h3 className="mb-1 text-xs font-semibold uppercase text-sky-500">Tips</h3>
+                                    <ul className={`list-disc pl-5 ${isLight ? "text-slate-700" : "text-white/70"}`}>
                                         {result.tips.map((t, i) => (
                                             <li key={i}>{t}</li>
                                         ))}
@@ -538,8 +660,16 @@ function StarCoachInner() {
                     )}
 
                     {history.length > 0 && (
-                        <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                            <h3 className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-white/50">
+                        <div className={`rounded-2xl border p-4 ${
+                            theme === "light"
+                                ? "bg-white border-slate-200 text-slate-900 shadow-sm"
+                                : theme === "eyeprotect"
+                                ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917]"
+                                : "bg-black/20 border-white/10 text-white"
+                        }`}>
+                            <h3 className={`mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wide ${
+                                isLight ? "text-slate-600" : "text-white/50"
+                            }`}>
                                 <History className="h-3.5 w-3.5" /> Last {history.length} stories
                             </h3>
                             <ul className="space-y-2">
@@ -547,7 +677,13 @@ function StarCoachInner() {
                                     <li key={h.id}>
                                         <button
                                             type="button"
-                                            className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-left text-sm hover:bg-white/10"
+                                            className={`w-full rounded-lg border px-3 py-2 text-left text-sm transition font-medium cursor-pointer ${
+                                                theme === "light"
+                                                    ? "bg-slate-50 border-slate-200 text-slate-900 hover:bg-slate-100"
+                                                    : theme === "eyeprotect"
+                                                    ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                    : "bg-white/5 border-white/10 text-white hover:bg-white/10"
+                                            }`}
                                             onClick={() => {
                                                 setQuestion(h.question);
                                                 setStory(h.story);
@@ -559,7 +695,7 @@ function StarCoachInner() {
                                             <div className="flex justify-between gap-2">
                                                 <span className="line-clamp-1 font-medium">{h.question}</span>
                                                 {h.score != null && (
-                                                    <span className="shrink-0 text-violet-300">{h.score}</span>
+                                                    <span className={`shrink-0 font-bold ${isLight ? "text-violet-700" : "text-violet-300"}`}>{h.score}</span>
                                                 )}
                                             </div>
                                         </button>

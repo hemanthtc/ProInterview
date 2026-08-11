@@ -20,7 +20,6 @@ export default function Home() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     useEffect(() => {
-        // Org admins have their own dashboard — redirect them away from the user home
         const loggedIn = getStorageItem("userLoggedIn") === "true";
         const role = localStorage.getItem("userRole");
         if (loggedIn && role === "admin") {
@@ -28,13 +27,7 @@ export default function Home() {
             return;
         }
 
-        // Logged-in, non-admin users land on the unified prep dashboard by default.
-        if (loggedIn) {
-            router.push("/prep");
-            return;
-        }
-
-        setIsLoggedIn(getStorageItem("userLoggedIn") === "true");
+        setIsLoggedIn(loggedIn);
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         
         const savedTheme = localStorage.getItem("globalTheme") as any;
@@ -68,7 +61,7 @@ export default function Home() {
         // Dynamic scrollspy active indicators
         const handleHashChange = () => {
             const targetSection = window.location.hash === "#how-it-works" ? "how-it-works" : "home";
-            setActiveSection((prev) => (prev === targetSection ? prev : targetSection));
+            setActiveSection((prev: "home" | "how-it-works") => (prev === targetSection ? prev : targetSection));
         };
 
         const handleScroll = () => {
@@ -76,11 +69,11 @@ export default function Home() {
             if (howItWorks) {
                 const rect = howItWorks.getBoundingClientRect();
                 if (rect.top <= window.innerHeight / 2 && rect.bottom >= window.innerHeight / 2) {
-                    setActiveSection((prev) => (prev === "how-it-works" ? prev : "how-it-works"));
+                    setActiveSection((prev: "home" | "how-it-works") => (prev === "how-it-works" ? prev : "how-it-works"));
                     return;
                 }
             }
-            setActiveSection((prev) => (prev === "home" ? prev : "home"));
+            setActiveSection((prev: "home" | "how-it-works") => (prev === "home" ? prev : "home"));
         };
 
         window.addEventListener("hashchange", handleHashChange);
@@ -277,6 +270,8 @@ export default function Home() {
                         {theme === "light" && <Sun className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                         {theme === "eyeprotect" && <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />}
                     </button>
+
+
 
                     {isLoggedIn ? (
                         <Link href="/profile" className="flex items-center gap-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-3.5 sm:px-5 flex-shrink-0 relative py-1.5 sm:py-2 rounded-full transition-colors font-bold ml-1 sm:ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
@@ -558,7 +553,7 @@ export default function Home() {
                         </div>
                         
                         <div className="space-y-3">
-                            {pastSessions.map((s, idx) => (
+                            {pastSessions.map((s: any, idx: number) => (
                                 <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-black/40 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
                                     <div className="flex flex-col">
                                         <span className="font-semibold text-sm">Interview Session</span>

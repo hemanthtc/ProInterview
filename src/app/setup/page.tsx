@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
 import { UploadCloud, FileText, Loader2, Globe, Cpu, ArrowLeft } from "lucide-react";
 import CompanySelect from "../../components/CompanySelect";
 import RoleSelect from "../../components/RoleSelect";
@@ -20,6 +22,7 @@ export default function SetupPage() {
     const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const isLight = theme === "light" || theme === "eyeprotect";
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [companyCloneMode, setCompanyCloneMode] = useState(true);
     const [hrPersonaPreview, setHrPersonaPreview] = useState<{ name?: string; title?: string } | null>(null);
@@ -205,19 +208,48 @@ export default function SetupPage() {
     if (!isAuthChecked) return null;
 
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 sm:p-6 py-8 sm:py-12">
-            <div className="max-w-xl w-full bg-[#111] p-5 sm:p-8 rounded-2xl border border-white/10 shadow-2xl">
+        <div className={`min-h-screen flex items-center justify-center p-4 sm:p-6 py-8 sm:py-12 transition-colors duration-300 ${
+            theme === "light"
+                ? "bg-slate-100 text-slate-900"
+                : theme === "eyeprotect"
+                ? "bg-[#f3ede3] text-[#1c1917]"
+                : "bg-slate-950 text-white"
+        }`}>
+            <div className={`max-w-xl w-full p-5 sm:p-8 rounded-2xl border shadow-2xl transition-colors ${
+                theme === "light"
+                    ? "bg-white border-slate-200 shadow-slate-200/50 text-slate-900"
+                    : theme === "eyeprotect"
+                    ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917]"
+                    : "bg-[#111] border-white/10 text-white"
+            }`}>
 
-                <button
-                    onClick={() => router.push(isRealisticMode ? "/" : "/features")}
-                    className="group flex items-center gap-2 text-white/50 hover:text-white mb-6 transition-colors"
-                >
-                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-sm font-medium">Back</span>
-                </button>
+                <div className="flex items-center justify-between gap-4 mb-6">
+                    <button
+                        onClick={() => router.push(isRealisticMode ? "/" : "/features")}
+                        className={`group flex items-center gap-2 font-medium text-sm transition-colors ${
+                            isLight ? "text-slate-600 hover:text-slate-900" : "text-white/50 hover:text-white"
+                        }`}
+                    >
+                        <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                        <span className="text-sm font-medium">Back</span>
+                    </button>
+                    <Link
+                        href="/labs"
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
+                            theme === "eyeprotect"
+                                ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                : isLight
+                                ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                        }`}
+                    >
+                        ← Back to Labs
+                    </Link>
+                </div>
+
 
                 <h2 className="text-3xl font-bold mb-2">Upload Resume</h2>
-                <p className="text-white/50 mb-8">
+                <p className={`mb-8 text-sm ${isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/50"}`}>
                     Upload your resume so the AI can tailor the interview questions to your experience.
                 </p>
 
@@ -233,33 +265,43 @@ export default function SetupPage() {
                     </div>
                 )}
 
-                <div className="mb-6 flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                <div className={`mb-6 flex items-center justify-between gap-4 rounded-xl border px-4 py-3 ${
+                    theme === "light"
+                        ? "bg-slate-50 border-slate-200 text-slate-900"
+                        : theme === "eyeprotect"
+                        ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917]"
+                        : "bg-white/5 border-white/10 text-white"
+                }`}>
                     <div>
-                        <p className="text-sm font-semibold text-white/90">Company clone mode</p>
-                        <p className="text-xs text-white/45 mt-0.5">Match interview style to the target company bank.</p>
+                        <p className="text-sm font-semibold">Company clone mode</p>
+                        <p className={`text-xs mt-0.5 ${isLight ? "text-slate-500" : "text-white/45"}`}>Match interview style to the target company bank.</p>
                     </div>
                     <button
                         type="button"
                         onClick={() => setCompanyCloneMode((v) => !v)}
-                        className={`relative h-8 w-14 rounded-full transition-colors ${companyCloneMode ? "bg-indigo-600" : "bg-white/15"}`}
+                        className={`relative h-8 w-14 rounded-full transition-colors cursor-pointer ${
+                            companyCloneMode
+                                ? (theme === "eyeprotect" ? "bg-[#0b5f58]" : "bg-indigo-600")
+                                : (isLight ? "bg-slate-300" : "bg-white/15")
+                        }`}
                         aria-pressed={companyCloneMode}
                     >
                         <span
                             className={`absolute top-1 left-1 h-6 w-6 rounded-full bg-white transition-transform ${companyCloneMode ? "translate-x-6" : "translate-x-0"}`}
                         />
                     </button>
-                    <span className="text-xs font-bold uppercase tracking-wide text-white/60 w-10 text-right">
+                    <span className={`text-xs font-bold uppercase tracking-wide w-10 text-right ${isLight ? "text-slate-600" : "text-white/60"}`}>
                         {companyCloneMode ? "On" : "Off"}
                     </span>
                 </div>
 
                 {resumeCvName && (
                     <div 
-                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors"
+                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors font-medium"
                         style={{
-                            backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : '#e0e7ff',
-                            borderColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.2)' : '#c7d2fe',
-                            color: theme === 'dark' ? '#c7d2fe' : '#312e81'
+                            backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : theme === 'eyeprotect' ? '#f5efe6' : '#e0e7ff',
+                            borderColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.2)' : theme === 'eyeprotect' ? '#8c8578' : '#c7d2fe',
+                            color: theme === 'dark' ? '#c7d2fe' : theme === 'eyeprotect' ? '#1c1917' : '#312e81'
                         }}
                     >
                         Saved Resume / CV detected from your account: <span className="font-semibold">{resumeCvName}</span>
@@ -267,22 +309,42 @@ export default function SetupPage() {
                 )}
 
                 <div className="mb-6">
-                    <label className="text-sm font-semibold text-white/80 flex items-center gap-2 mb-2"><Globe className="w-4 h-4 text-white/60"/> Portfolio Website URL</label>
-                    <input type="url" value={portfolioUrl} onChange={(e) => setPortfolioUrl(e.target.value)} placeholder="https://your-website.com" className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 transition-colors" />
+                    <label className={`text-sm font-semibold flex items-center gap-2 mb-2 ${isLight ? "text-slate-800" : "text-white/80"}`}>
+                        <Globe className={`w-4 h-4 ${isLight ? "text-slate-500" : "text-white/60"}`}/> Portfolio Website URL
+                    </label>
+                    <input
+                        type="url"
+                        value={portfolioUrl}
+                        onChange={(e) => setPortfolioUrl(e.target.value)}
+                        placeholder="https://your-website.com"
+                        className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none transition-colors ${
+                            theme === "light"
+                                ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 shadow-sm"
+                                : theme === "eyeprotect"
+                                ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
+                                : "bg-white/5 border-white/10 text-white placeholder:text-white/40 focus:border-indigo-500"
+                        }`}
+                    />
                 </div>
                 
                 {!hasAnyInput ? (
                     <>
                         <div className="flex items-center gap-4 my-6 opacity-40">
-                            <div className="h-px bg-white flex-1"></div>
-                            <span className="text-xs uppercase font-bold tracking-widest">OR Add Files</span>
-                            <div className="h-px bg-white flex-1"></div>
+                            <div className={`h-px flex-1 ${isLight ? "bg-slate-300" : "bg-white"}`}></div>
+                            <span className={`text-xs uppercase font-bold tracking-widest ${isLight ? "text-slate-700" : "text-white"}`}>OR Add Files</span>
+                            <div className={`h-px flex-1 ${isLight ? "bg-slate-300" : "bg-white"}`}></div>
                         </div>
 
                         <div
                             onDrop={handleDrop}
                             onDragOver={(e) => e.preventDefault()}
-                            className="border-2 border-dashed border-white/20 rounded-xl p-10 flex flex-col items-center justify-center bg-white/5 cursor-pointer hover:bg-white/10 transition-colors relative"
+                            className={`border-2 border-dashed rounded-xl p-10 flex flex-col items-center justify-center cursor-pointer transition-colors relative ${
+                                theme === "light"
+                                    ? "border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-600"
+                                    : theme === "eyeprotect"
+                                    ? "border-[#8c8578] bg-[#f5efe6] hover:bg-[#e8dcc8] hover:border-teal-700"
+                                    : "border-white/20 bg-white/5 hover:bg-white/10"
+                            }`}
                         >
                             <input
                                 type="file"
@@ -293,31 +355,34 @@ export default function SetupPage() {
                             />
                             {files.length > 0 ? (
                                 <div className="flex flex-col items-center text-center">
-                                    <FileText className="w-12 h-12 text-indigo-400 mb-4" />
+                                    <FileText className="w-12 h-12 text-indigo-500 mb-4" />
                                     <p className="font-medium text-lg">{files.length} item(s) selected</p>
-                                    <p className="text-sm text-white/50 mt-1">Ready for parsing</p>
+                                    <p className={`text-sm mt-1 ${isLight ? "text-slate-500" : "text-white/50"}`}>Ready for parsing</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col items-center text-center">
-                                    <UploadCloud className="w-12 h-12 text-white/40 mb-4" />
+                                    <UploadCloud className={`w-12 h-12 mb-4 ${isLight ? "text-slate-400" : "text-white/40"}`} />
                                     <p className="font-medium text-lg mb-1">Click or drag and drop</p>
-                                    <p className="text-sm text-white/40">Accepts ZIP, folders, PDF, TXT</p>
+                                    <p className={`text-sm ${isLight ? "text-slate-500" : "text-white/40"}`}>Accepts ZIP, folders, PDF, TXT</p>
                                 </div>
                             )}
                         </div>
                     </>
                 ) : (
                     <div 
-                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors"
+                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors font-medium"
                         style={{
                             backgroundColor: theme === 'dark' 
                                 ? (hasAccountPortfolio ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)')
+                                : theme === 'eyeprotect' ? '#f5efe6'
                                 : (hasAccountPortfolio ? '#d1fae5' : '#e0e7ff'),
                             borderColor: theme === 'dark'
                                 ? (hasAccountPortfolio ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)')
+                                : theme === 'eyeprotect' ? '#8c8578'
                                 : (hasAccountPortfolio ? '#a7f3d0' : '#c7d2fe'),
                             color: theme === 'dark'
                                 ? (hasAccountPortfolio ? '#a7f3d0' : '#c7d2fe')
+                                : theme === 'eyeprotect' ? '#1c1917'
                                 : (hasAccountPortfolio ? '#064e3b' : '#312e81')
                         }}
                     >
@@ -371,14 +436,24 @@ export default function SetupPage() {
                 {!isRealisticMode && (
                     <>
                         <div className="mt-6">
-                            <label className="text-white/80 font-semibold mb-3 block">Select Interview Difficulty</label>
+                            <label className={`font-semibold mb-3 block text-sm ${isLight ? "text-slate-800" : "text-white/80"}`}>Select Interview Difficulty</label>
                             <div className="grid grid-cols-3 gap-2 sm:gap-3">
                                 {["basic", "intermediate", "advanced"].map((lvl) => (
                                     <button
                                         key={lvl}
                                         type="button"
                                         onClick={() => setLevel(lvl)}
-                                        className={`py-3 px-1 rounded-xl border capitalize font-semibold transition-all text-xs sm:text-base truncate cursor-pointer ${level === lvl ? "bg-indigo-600 border-indigo-500 text-white shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
+                                        className={`py-3 px-1 rounded-xl border capitalize font-semibold transition-all text-xs sm:text-base truncate cursor-pointer ${
+                                            level === lvl
+                                                ? (theme === "eyeprotect"
+                                                    ? "bg-[#0b5f58] border-[#084842] text-white shadow-lg font-bold"
+                                                    : "bg-indigo-600 border-indigo-500 text-white shadow-lg font-bold")
+                                                : (theme === "light"
+                                                    ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
+                                                    : theme === "eyeprotect"
+                                                    ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                    : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white")
+                                        }`}
                                     >
                                         {lvl}
                                     </button>
@@ -387,7 +462,9 @@ export default function SetupPage() {
                         </div>
 
                         <div className="mt-8">
-                            <label className="text-white/80 font-semibold mb-3 flex items-center gap-2"><Cpu className="w-4 h-4"/> Select AI Provider</label>
+                            <label className={`font-semibold mb-3 flex items-center gap-2 text-sm ${isLight ? "text-slate-800" : "text-white/80"}`}>
+                                <Cpu className={`w-4 h-4 ${isLight ? "text-indigo-600" : "text-indigo-400"}`}/> Select AI Provider
+                            </label>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                 {[
                                     { id: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
@@ -397,30 +474,54 @@ export default function SetupPage() {
                                         key={prov.id}
                                         type="button"
                                         onClick={() => setProvider(prov.id)}
-                                        className={`p-4 rounded-xl border text-left transition-all ${provider === prov.id ? "bg-indigo-600/20 border-indigo-500 shadow-lg" : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white"}`}
+                                        className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                                            provider === prov.id
+                                                ? (theme === "eyeprotect"
+                                                    ? "bg-[#0b5f58]/20 border-[#0b5f58] shadow-lg"
+                                                    : isLight
+                                                    ? "bg-indigo-50 border-indigo-600 shadow-lg"
+                                                    : "bg-indigo-600/20 border-indigo-500 shadow-lg")
+                                                : (theme === "light"
+                                                    ? "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100 shadow-sm"
+                                                    : theme === "eyeprotect"
+                                                    ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                    : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white")
+                                        }`}
                                     >
-                                        <span className={`block font-bold mb-1 ${provider === prov.id ? "text-indigo-300" : ""}`}>{prov.label}</span>
-                                        <span className="text-xs opacity-70 leading-relaxed block">{prov.desc}</span>
+                                        <span className={`block font-bold mb-1 ${
+                                            provider === prov.id
+                                                ? (theme === "eyeprotect" ? "text-[#0b5f58]" : isLight ? "text-indigo-700" : "text-indigo-300")
+                                                : (isLight ? "text-slate-900" : "text-white")
+                                        }`}>{prov.label}</span>
+                                        <span className={`text-xs leading-relaxed block ${isLight ? "text-slate-600" : "opacity-70"}`}>{prov.desc}</span>
                                     </button>
                                 ))}
                             </div>
                             <div className="mt-4">
-                                <label className="text-white/70 text-sm font-medium mb-2 block">Interview language / voice locale</label>
+                                <label className={`text-sm font-medium mb-2 block ${isLight ? "text-slate-700 font-semibold" : "text-white/70"}`}>
+                                    Interview language / voice locale
+                                </label>
                                 <select
                                     value={voiceLanguage}
                                     onChange={(e) => setVoiceLanguage(e.target.value)}
-                                    className="w-full rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-sm"
+                                    className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none transition cursor-pointer font-medium ${
+                                        theme === "light"
+                                            ? "bg-white border-slate-300 text-slate-900 focus:border-indigo-600 shadow-sm"
+                                            : theme === "eyeprotect"
+                                            ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] focus:border-teal-700"
+                                            : "bg-slate-900 border-white/20 text-white focus:border-indigo-500"
+                                    }`}
                                 >
-                                    <option value="en-IN">English (India)</option>
-                                    <option value="en-US">English (US)</option>
-                                    <option value="hi-IN">Hindi (हिन्दी)</option>
-                                    <option value="ta-IN">Tamil</option>
-                                    <option value="te-IN">Telugu</option>
-                                    <option value="kn-IN">Kannada</option>
-                                    <option value="mr-IN">Marathi</option>
-                                    <option value="bn-IN">Bengali</option>
+                                    <option value="en-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>English (India)</option>
+                                    <option value="en-US" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>English (US)</option>
+                                    <option value="hi-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Hindi (हिन्दी)</option>
+                                    <option value="ta-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Tamil</option>
+                                    <option value="te-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Telugu</option>
+                                    <option value="kn-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Kannada</option>
+                                    <option value="mr-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Marathi</option>
+                                    <option value="bn-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Bengali</option>
                                 </select>
-                                <p className="text-[11px] text-white/40 mt-1">
+                                <p className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-white/40"}`}>
                                     With Sarvam selected, interview replies use Sarvam TTS when configured; mic recognition uses this locale. Chat falls back to Gemini if Sarvam is unavailable.
                                 </p>
                             </div>

@@ -1,4 +1,29 @@
-"use client";
+let activeAudio: HTMLAudioElement | null = null;
+
+/**
+ * Stop and cancel all active interview speech synthesis and audio playback.
+ */
+export function stopSpeechInterviewText(): void {
+    if (typeof window !== "undefined") {
+        if ("speechSynthesis" in window) {
+            try {
+                window.speechSynthesis.cancel();
+            } catch {
+                /* ignore */
+            }
+        }
+        if (activeAudio) {
+            try {
+                activeAudio.pause();
+                activeAudio.currentTime = 0;
+                activeAudio.src = "";
+            } catch {
+                /* ignore */
+            }
+            activeAudio = null;
+        }
+    }
+}
 
 /**
  * Speak interview replies via Sarvam TTS (when provider=sarvam) or browser speechSynthesis.
@@ -13,6 +38,9 @@ export async function speakInterviewText(
         onEnd?: () => void;
     } = {}
 ): Promise<void> {
+    // Ensure any previously playing speech is immediately halted
+    stopSpeechInterviewText();
+
     const clean = text
         .replace(/\[MODE:(CHAT|CODE|DRAW)\]/gi, "")
         .replace(/\[TERMINATE\]/gi, "")
@@ -36,17 +64,21 @@ export async function speakInterviewText(
                     const mime = data.mimeType || "audio/wav";
                     const src = `data:${mime};base64,${data.audioBase64}`;
                     const audio = new Audio(src);
+                    activeAudio = audio;
                     opts.onStart?.();
                     await new Promise<void>((resolve) => {
                         audio.onended = () => {
+                            activeAudio = null;
                             opts.onEnd?.();
                             resolve();
                         };
                         audio.onerror = () => {
+                            activeAudio = null;
                             opts.onEnd?.();
                             resolve();
                         };
                         void audio.play().catch(() => {
+                            activeAudio = null;
                             opts.onEnd?.();
                             resolve();
                         });
@@ -60,7 +92,6 @@ export async function speakInterviewText(
     }
 
     if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.lang = voiceLanguage;
 

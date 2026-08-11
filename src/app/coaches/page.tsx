@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, CalendarPlus, Loader2, Star, Users, Video, X } from "lucide-react";
+import { Calendar, CalendarPlus, Loader2, Star, Users, Moon, Sun, Eye, Video, X } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import NotificationBell from "@/components/NotificationBell";
 import { getStorageItem } from "@/utils/storage";
@@ -61,6 +61,25 @@ export default function CoachesPage() {
     const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
     const [cancelling, setCancelling] = useState<string | null>(null);
     const [loggedIn, setLoggedIn] = useState(false);
+
+    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
+    useEffect(() => {
+        const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
+        if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            setTheme(savedTheme);
+        }
+    }, []);
+
+    const isLight = theme === "light" || theme === "eyeprotect";
+
+    const cycleTheme = () => {
+        const next = theme === "dark" ? "light" : theme === "light" ? "eyeprotect" : "dark";
+        setTheme(next);
+        localStorage.setItem("prointerview_theme", next);
+        document.documentElement.classList.remove("theme-dark", "theme-light", "theme-eyeprotect");
+        document.documentElement.classList.add(`theme-${next}`);
+    };
 
     const loadMyBookings = useCallback(async () => {
         try {
@@ -216,24 +235,52 @@ export default function CoachesPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 text-white">
-            <div className="mx-auto max-w-4xl px-4 py-8">
-                <div className="mb-6 flex items-center justify-between">
+        <div className={`min-h-screen transition-colors duration-300 ${
+            theme === "light"
+                ? "bg-slate-100 text-slate-900"
+                : theme === "eyeprotect"
+                ? "bg-[#f3ede3] text-[#1c1917]"
+                : "bg-slate-950 text-white"
+        }`}>
+            <div className="max-w-4xl mx-auto px-4 py-8">
+                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
                     <div>
-                        <p className="flex items-center gap-2 text-xs uppercase tracking-widest text-pink-300/80">
-                            <Users className="h-4 w-4" /> Coach marketplace
+                        <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-pink-700 font-bold" : "text-pink-300/80"}`}>
+                            <Users className="w-4 h-4" /> Coach marketplace
                         </p>
                         <h1 className="mt-1 text-2xl font-semibold">Human coaches after AI warm-up</h1>
-                        <p className="mt-1 text-sm text-white/45">
+                        <p className={`mt-1 text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
                             {paymentsConfigured
                                 ? "Pay with Razorpay · get an instant Jitsi video room"
                                 : "Book a session · instant Jitsi video room (payments optional when Razorpay is configured)"}
                         </p>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
+                        <button
+                            onClick={cycleTheme}
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                isLight
+                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                            }`}
+                            title={`Current Theme: ${theme}. Click to switch.`}
+                        >
+                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
+                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
+                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
+                        </button>
                         <NotificationBell />
-                        <Link href="/labs" className="text-sm text-white/60 hover:text-white">
-                            ← Labs
+                        <Link
+                            href="/labs"
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
+                                theme === "eyeprotect"
+                                    ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                    : isLight
+                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                    : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                            }`}
+                        >
+                            ← Back to Labs
                         </Link>
                     </div>
                 </div>
@@ -241,12 +288,14 @@ export default function CoachesPage() {
                 <LabAuthBanner feature="coach booking" />
 
                 {booking?.success && (
-                    <div className="mb-4 rounded-xl border border-pink-400/30 bg-pink-500/10 p-4 text-sm space-y-2">
+                    <div className={`mb-4 rounded-xl border p-4 text-sm space-y-2 ${
+                        isLight ? "bg-pink-50 border-pink-200 text-pink-900" : "border-pink-400/30 bg-pink-500/10 text-white"
+                    }`}>
                         <p>{booking.message}</p>
                         <div className="flex flex-wrap gap-2">
                             {booking.meetLink && (
                                 <a
-                                    className="inline-flex items-center gap-2 rounded-lg bg-pink-500/90 px-3 py-2 text-xs font-medium"
+                                    className="inline-flex items-center gap-2 rounded-lg bg-pink-500/90 px-3 py-2 text-xs font-medium text-white"
                                     href={booking.meetLink}
                                     target="_blank"
                                     rel="noreferrer"
@@ -266,7 +315,7 @@ export default function CoachesPage() {
                             )}
                         </div>
                         {booking.bookingId && (
-                            <p className="text-xs text-white/40">Booking ID: {booking.bookingId}</p>
+                            <p className="text-xs opacity-70">Booking ID: {booking.bookingId}</p>
                         )}
                     </div>
                 )}
@@ -322,15 +371,24 @@ export default function CoachesPage() {
 
                 <div className="space-y-3">
                     {coaches.map((c) => (
-                        <div key={c.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                        <div
+                            key={c.id}
+                            className={`rounded-2xl border p-5 transition ${
+                                theme === "light"
+                                    ? "bg-white border-slate-200 shadow-sm"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5] border-[#8c8578]"
+                                    : "bg-white/5 border-white/10"
+                            }`}
+                        >
                             <div className="flex flex-wrap justify-between gap-3">
-                                <div className="min-w-0 flex-1">
-                                    <h2 className="font-medium">{c.name}</h2>
-                                    <p className="text-sm text-white/60">{c.headline}</p>
-                                    <p className="mt-2 text-sm text-white/70">{c.bio}</p>
-                                    <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-white/50">
+                                <div>
+                                    <h2 className="font-semibold text-lg">{c.name}</h2>
+                                    <p className={`text-sm ${isLight ? "text-slate-500 font-medium" : "text-white/60"}`}>{c.headline}</p>
+                                    <p className={`text-sm mt-2 ${isLight ? "text-slate-700" : "text-white/70"}`}>{c.bio}</p>
+                                    <div className={`flex items-center gap-3 mt-3 text-xs ${isLight ? "text-slate-600 font-semibold" : "text-white/50"}`}>
                                         <span className="inline-flex items-center gap-1">
-                                            <Star className="h-3 w-3 text-amber-300" /> {c.rating}
+                                            <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" /> {c.rating}
                                         </span>
                                         <span>
                                             ₹{c.rateInr}/session · ~${c.rateUsd}
@@ -349,16 +407,20 @@ export default function CoachesPage() {
                                                 type="button"
                                                 disabled={busy === c.id || soldOut}
                                                 onClick={() => void book(c, slot)}
-                                                className="flex items-center gap-1 rounded-lg bg-pink-500/90 px-3 py-1.5 text-xs disabled:opacity-50"
+                                                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
+                                                    theme === "eyeprotect"
+                                                        ? "bg-[#0b5f58] hover:bg-[#084842] text-white disabled:opacity-50"
+                                                        : "bg-pink-600 hover:bg-pink-500 text-white disabled:opacity-50"
+                                                }`}
                                             >
                                                 {busy === c.id ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                                 ) : (
-                                                    <Calendar className="h-3 w-3" />
+                                                    <Calendar className="w-3.5 h-3.5" />
                                                 )}
                                                 {slot}
                                                 {remaining !== undefined && (
-                                                    <span className="text-white/70">
+                                                    <span className="opacity-80">
                                                         {soldOut ? "· full" : `· ${remaining} left`}
                                                     </span>
                                                 )}
