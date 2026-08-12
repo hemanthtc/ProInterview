@@ -31,6 +31,7 @@ export interface ISyntheticFile extends Document {
     rowCount: number;
     sizeBytes: number;
     timestamp: string;
+    s3Key?: string;
     createdAt: Date;
     modifiedAt: Date;
 }
@@ -70,6 +71,7 @@ const SyntheticFileSchema = new Schema<ISyntheticFile>(
         rowCount: { type: Number, default: 0 },
         sizeBytes: { type: Number, default: 0 },
         timestamp: { type: String, default: "" },
+        s3Key: { type: String, default: "" },
         modifiedAt: { type: Date, default: Date.now },
     },
     {

@@ -3,6 +3,8 @@ import {
     PutObjectCommand,
     DeleteObjectCommand,
     HeadBucketCommand,
+    GetObjectCommand,
+    CopyObjectCommand,
     type PutObjectCommandInput,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -32,14 +34,8 @@ let cachedClient: S3Client | null = null;
 
 export function getS3Client(): S3Client {
     if (cachedClient) return cachedClient;
-    const region = getS3Region();
-    const accessKeyId = env("AWS_ACCESS_KEY_ID");
-    const secretAccessKey = env("AWS_SECRET_ACCESS_KEY");
     cachedClient = new S3Client({
-        region,
-        ...(accessKeyId && secretAccessKey
-            ? { credentials: { accessKeyId, secretAccessKey } }
-            : {}),
+        region: "ap-south-1",
     });
     return cachedClient;
 }
@@ -105,6 +101,39 @@ export async function createPresignedUploadUrl(opts: {
         publicUrl: publicObjectUrl(opts.key),
         expiresIn,
     };
+}
+
+export async function copyObject(sourceKey: string, destKey: string): Promise<void> {
+    const bucket = getS3Bucket();
+    await getS3Client().send(new CopyObjectCommand({
+        Bucket: bucket,
+        CopySource: encodeURIComponent(`${bucket}/${sourceKey}`),
+        Key: destKey,
+    }));
+}
+
+export async function uploadJSON(key: string, data: any): Promise<void> {
+    const bucket = getS3Bucket();
+    const bodyStr = JSON.stringify(data);
+    await getS3Client().send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: bodyStr,
+        ContentType: "application/json",
+    }));
+}
+
+export async function getJSON<T>(key: string): Promise<T> {
+    const bucket = getS3Bucket();
+    const response = await getS3Client().send(new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+    }));
+    const bodyStr = await response.Body?.transformToString();
+    if (!bodyStr) {
+        throw new Error(`Empty response from S3 for key ${key}`);
+    }
+    return JSON.parse(bodyStr) as T;
 }
 
 export async function deleteObject(key: string): Promise<void> {

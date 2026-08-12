@@ -4,6 +4,7 @@ import User from "@/models/User";
 import SyntheticFile, { ISyntheticFile } from "@/models/SyntheticFile";
 import SyntheticFolder, { ISyntheticFolder } from "@/models/SyntheticFolder";
 import { NextResponse } from "next/server";
+import { getJSON, isS3Configured } from "@/utils/s3";
 
 export async function requireSession(): Promise<
     { session: SessionPayload; error?: undefined } | { session?: undefined; error: NextResponse }
@@ -98,6 +99,19 @@ function estimateSize(file: {
     } catch {
         return 0;
     }
+}
+
+export async function hydrateFilePayload(file: any) {
+    if (file && file.s3Key && isS3Configured()) {
+        try {
+            const s3Payload = await getJSON<{ data: any[]; textContent: string }>(file.s3Key);
+            file.data = s3Payload.data;
+            file.textContent = s3Payload.textContent;
+        } catch (err) {
+            console.error(`Failed to hydrate S3 payload for file ${file._id}:`, err);
+        }
+    }
+    return file;
 }
 
 export function serializeFile(doc: any, currentUserId: string) {

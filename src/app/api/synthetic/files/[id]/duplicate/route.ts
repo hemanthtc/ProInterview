@@ -6,7 +6,9 @@ import {
     getOwnerName,
     serializeFile,
     SyntheticFile,
+    hydrateFilePayload,
 } from "@/lib/syntheticAccess";
+import { copyObject, uploadJSON, isS3Configured } from "@/utils/s3";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -25,15 +27,18 @@ export async function POST(req: NextRequest, ctx: Ctx) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
 
+        // Load S3 payload of source into memory first
+        await hydrateFilePayload(source);
+
         const body = await req.json().catch(() => ({}));
         const userId = auth.session.identifier;
         const ownerName = await getOwnerName(userId);
         const now = new Date();
 
-        const copy = await SyntheticFile.create({
+        const copyPayload = {
             userId,
             ownerName,
-            visibility: "private",
+            visibility: "private" as const,
             folderId: body?.folderId !== undefined ? body.folderId : (source.folderId || null),
             title: `${source.title || source.filename} (Copy)`,
             filename: String(source.filename || "file").replace(/(\.[^.]+)?$/, "_copy$1"),
@@ -60,9 +65,34 @@ export async function POST(req: NextRequest, ctx: Ctx) {
             timestamp: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
             createdAt: now,
             modifiedAt: now,
-        });
+        };
 
-        return NextResponse.json(serializeFile(copy, userId), { status: 201 });
+        const copy = await SyntheticFile.create(copyPayload);
+
+        if (isS3Configured()) {
+            const copyId = String(copy._id);
+            const copyS3Key = `synthetic/${userId}/${copyId}.json`;
+
+            if (source.s3Key) {
+                // Internal S3 duplication
+                await copyObject(source.s3Key, copyS3Key);
+            } else {
+                // Upload MongoDB payload to S3
+                const s3Payload = {
+                    data: copyPayload.data,
+                    textContent: copyPayload.textContent
+                };
+                await uploadJSON(copyS3Key, s3Payload);
+            }
+
+            copy.s3Key = copyS3Key;
+            copy.data = [];
+            copy.textContent = "";
+            await copy.save();
+        }
+
+        const responseObj = await hydrateFilePayload(copy);
+        return NextResponse.json(serializeFile(responseObj, userId), { status: 201 });
     } catch (error: any) {
         return NextResponse.json(
             { error: error?.message || "Failed to duplicate file" },

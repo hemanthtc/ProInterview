@@ -8,7 +8,9 @@ import {
     serializeFile,
     getOwnerName,
     SyntheticFile,
+    hydrateFilePayload,
 } from "@/lib/syntheticAccess";
+import { getJSON, uploadJSON, deleteObject, isS3Configured } from "@/utils/s3";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -26,6 +28,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
         if (!canReadFile(file as any, auth.session.identifier)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
+        await hydrateFilePayload(file);
         return NextResponse.json(serializeFile(file, auth.session.identifier));
     } catch (error: any) {
         return NextResponse.json(
@@ -70,11 +73,26 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
             ownerName
         );
 
+        if (isS3Configured()) {
+            const s3Key = existing.s3Key || `synthetic/${auth.session.identifier}/${id}.json`;
+            const s3Payload = {
+                data: Array.isArray(payload.data) ? payload.data : [],
+                textContent: typeof payload.textContent === "string" ? payload.textContent : ""
+            };
+            await uploadJSON(s3Key, s3Payload);
+
+            payload.s3Key = s3Key;
+            payload.data = [];
+            payload.textContent = "";
+        }
+
         existing.set(payload);
         existing.userId = auth.session.identifier;
         existing.modifiedAt = new Date();
         await existing.save();
-        return NextResponse.json(serializeFile(existing, auth.session.identifier));
+
+        const responseObj = await hydrateFilePayload(existing);
+        return NextResponse.json(serializeFile(responseObj, auth.session.identifier));
     } catch (error: any) {
         return NextResponse.json(
             { error: error?.message || "Failed to update file" },
@@ -97,6 +115,13 @@ export async function DELETE(_req: NextRequest, ctx: Ctx) {
         if (!canWriteFile(existing, auth.session.identifier)) {
             return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
+
+        if (existing.s3Key && isS3Configured()) {
+            await deleteObject(existing.s3Key).catch((err) => {
+                console.error(`Failed to delete S3 object for key ${existing.s3Key}:`, err);
+            });
+        }
+
         await existing.deleteOne();
         return NextResponse.json({ ok: true });
     } catch (error: any) {

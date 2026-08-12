@@ -6,7 +6,9 @@ import {
     buildFilePayload,
     serializeFile,
     SyntheticFile,
+    hydrateFilePayload,
 } from "@/lib/syntheticAccess";
+import { uploadJSON, isS3Configured } from "@/utils/s3";
 
 export async function GET(req: NextRequest) {
     const auth = await requireSession();
@@ -45,8 +47,28 @@ export async function POST(req: NextRequest) {
         const userId = auth.session.identifier;
         const ownerName = await getOwnerName(userId);
         const payload = buildFilePayload(body || {}, userId, ownerName);
+        
         const created = await SyntheticFile.create(payload);
-        return NextResponse.json(serializeFile(created, userId), { status: 201 });
+
+        if (isS3Configured()) {
+            const fileId = String(created._id);
+            const s3Key = `synthetic/${userId}/${fileId}.json`;
+            const s3Payload = {
+                data: Array.isArray(created.data) ? created.data : [],
+                textContent: typeof created.textContent === "string" ? created.textContent : ""
+            };
+            // Upload actual content to S3
+            await uploadJSON(s3Key, s3Payload);
+
+            // Clear MongoDB values and set the S3 key reference
+            created.s3Key = s3Key;
+            created.data = [];
+            created.textContent = "";
+            await created.save();
+        }
+
+        const responseObj = await hydrateFilePayload(created);
+        return NextResponse.json(serializeFile(responseObj, userId), { status: 201 });
     } catch (error: any) {
         return NextResponse.json(
             { error: error?.message || "Failed to create file" },
