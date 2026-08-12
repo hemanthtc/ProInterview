@@ -8,6 +8,13 @@ export async function POST(req: NextRequest) {
     const auth = await requireSession();
     if (auth.error) return auth.error;
 
+    if (auth.session.role !== "admin") {
+        return NextResponse.json(
+            { error: "Forbidden. Admin access required." },
+            { status: 403 }
+        );
+    }
+
     if (!isS3Configured()) {
         return NextResponse.json(
             { error: "AWS S3 is not configured in environment variables." },
