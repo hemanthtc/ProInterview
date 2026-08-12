@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB, requireSession, SyntheticFile } from "@/lib/syntheticAccess";
-import { uploadJSON, isS3Configured } from "@/utils/s3";
+import { uploadJSON, uploadBuffer, isS3Configured } from "@/utils/s3";
+import ProfileData from "@/models/ProfileData";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     try {
         await connectDB();
         
-        // Find all files that do not have an s3Key set yet
+        // 1. Migrate Synthetic Files
         const files = await SyntheticFile.find({
             $or: [
                 { s3Key: { $exists: false } },
@@ -64,11 +65,62 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // 2. Migrate Profile Photos (Base64 to S3)
+        const profiles = await ProfileData.find({
+            profilePhoto: { $exists: true, $ne: "" },
+            $or: [
+                { profilePhotoKey: { $exists: false } },
+                { profilePhotoKey: "" },
+                { profilePhotoKey: null }
+            ]
+        });
+
+        let profileMigratedCount = 0;
+        let profileErrorCount = 0;
+
+        for (const profile of profiles) {
+            try {
+                const photoData = profile.profilePhoto;
+                if (photoData && (photoData.startsWith("data:") || photoData.includes(";base64,"))) {
+                    const match = photoData.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+                    const mimeType = match ? match[1] : "image/png";
+                    const extension = mimeType.split("/")[1] || "png";
+                    const cleanBase64 = photoData.replace(/^data:image\/[a-zA-Z+]+;base64,/, "");
+                    const buffer = Buffer.from(cleanBase64, "base64");
+
+                    const s3Key = `profile-photos/${profile.identifier}/avatar.${extension}`;
+                    
+                    const result = await uploadBuffer({
+                        key: s3Key,
+                        body: buffer,
+                        contentType: mimeType
+                    });
+
+                    profile.profilePhotoKey = s3Key;
+                    profile.profilePhotoUrl = result.url;
+                    profile.profilePhoto = result.url; // Use S3 URL instead of Base64
+                    await profile.save();
+                    
+                    profileMigratedCount++;
+                }
+            } catch (err: any) {
+                profileErrorCount++;
+                errors.push(`Profile ${profile.identifier}: ${err.message || err}`);
+            }
+        }
+
         return NextResponse.json({
             ok: true,
-            totalFound: files.length,
-            migratedCount,
-            errorCount,
+            syntheticFiles: {
+                totalFound: files.length,
+                migratedCount,
+                errorCount
+            },
+            profilePhotos: {
+                totalFound: profiles.length,
+                migratedCount: profileMigratedCount,
+                errorCount: profileErrorCount
+            },
             errors
         });
     } catch (error: any) {
