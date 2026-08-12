@@ -31,8 +31,6 @@ frontend:
         - echo "EMAIL_PASS=${EMAIL_PASS}" >> .env.production
         - echo "S3_BUCKET=${S3_BUCKET}" >> .env.production
         - echo "AWS_REGION=${AWS_REGION}" >> .env.production
-        - echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> .env.production
-        - echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> .env.production
     build:
       commands:
         - npm run build
