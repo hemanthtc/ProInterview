@@ -21,21 +21,27 @@ export function isS3Configured(): boolean {
 }
 
 export function getS3Bucket(): string {
-    const bucket = env("S3_BUCKET") || env("AWS_S3_BUCKET");
-    if (!bucket) throw new Error("S3_BUCKET (or AWS_S3_BUCKET) is not configured");
+    const bucket = env("S3_BUCKET");
+    if (!bucket) throw new Error("S3_BUCKET is not configured");
     return bucket;
 }
 
 export function getS3Region(): string {
-    return env("AWS_REGION") || env("S3_REGION") || "ap-south-1";
+    return env("S3_REGION") || "ap-south-1";
 }
 
 let cachedClient: S3Client | null = null;
 
 export function getS3Client(): S3Client {
     if (cachedClient) return cachedClient;
+    const region = getS3Region();
+    const accessKeyId = env("S3_ACCESS_KEY_ID");
+    const secretAccessKey = env("S3_SECRET_ACCESS_KEY");
     cachedClient = new S3Client({
-        region: "ap-south-1",
+        region,
+        ...(accessKeyId && secretAccessKey
+            ? { credentials: { accessKeyId, secretAccessKey } }
+            : {}),
     });
     return cachedClient;
 }
