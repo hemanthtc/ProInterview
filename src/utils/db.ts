@@ -53,8 +53,8 @@ async function resolveSrvConnectionString(srvUri: string): Promise<string> {
         }
 
         const slashSplit = hostAndRest.split("/");
-        let hostPort = slashSplit[0];
-        let dbAndOptions = slashSplit.slice(1).join("/");
+        const hostPort = slashSplit[0];
+        const dbAndOptions = slashSplit.slice(1).join("/");
         
         const questionSplit = dbAndOptions.split("?");
         const database = questionSplit[0] || "";

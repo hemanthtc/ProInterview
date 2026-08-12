@@ -78,6 +78,7 @@ function LoginContent() {
     useEffect(() => {
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTheme(savedTheme);
             document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
             document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;

@@ -12,6 +12,7 @@ async function extractTextFromFile(file: File): Promise<string> {
 
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
         try {
+            // @ts-expect-error pdf-parse does not have default type definitions
             const pdfParseModule = await import("pdf-parse");
             const pdfParse = pdfParseModule.default ?? pdfParseModule;
             const arrayBuffer = await file.arrayBuffer();

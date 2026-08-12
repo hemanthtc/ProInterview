@@ -808,29 +808,31 @@ function FeaturesContent() {
         if (storedRoadmaps) {
             try {
                 const parsed = JSON.parse(storedRoadmaps) as SavedRoadmap[];
-                setSavedRoadmaps(parsed);
+                Promise.resolve().then(() => {
+                    setSavedRoadmaps(parsed);
 
-                if (parsed.length > 0) {
-                    const activeId = getStorageItem("activeRoadmapId");
-                    const activeRoad = parsed.find(r => r.id === activeId) || parsed[0];
-                    setActiveRoadmapId(activeRoad.id);
-                    setStorageItem("activeRoadmapId", activeRoad.id);
+                    if (parsed.length > 0) {
+                        const activeId = getStorageItem("activeRoadmapId");
+                        const activeRoad = parsed.find(r => r.id === activeId) || parsed[0];
+                        setActiveRoadmapId(activeRoad.id);
+                        setStorageItem("activeRoadmapId", activeRoad.id);
 
-                    // Populate inputs and results from the active roadmap
-                    setRoadmapCourse(activeRoad.course);
-                    setRoadmapCompany(activeRoad.company);
-                    setRoadmapLocation(activeRoad.location);
-                    setRoadmapAdditional(activeRoad.additionalInfo);
-                    setRoadmapResult(activeRoad.roadmapData);
-                    setRoadmapTasksChecked(activeRoad.tasksChecked || {});
-                }
+                        // Populate inputs and results from the active roadmap
+                        setRoadmapCourse(activeRoad.course);
+                        setRoadmapCompany(activeRoad.company);
+                        setRoadmapLocation(activeRoad.location);
+                        setRoadmapAdditional(activeRoad.additionalInfo);
+                        setRoadmapResult(activeRoad.roadmapData);
+                        setRoadmapTasksChecked(activeRoad.tasksChecked || {});
+                    }
+                });
             } catch (e) {
                 console.error("Failed to parse saved roadmaps database", e);
             }
         }
     }, []);
 
-    const createNewDefaultResume = (currentList: SavedResume[]) => {
+    function createNewDefaultResume(currentList: SavedResume[]) {
         const defaultName = getStorageItem("userName") || "";
         const defaultEmail = getStorageItem("userIdentifier") || "";
         const storedAdditionalEmail = getStorageItem("userAdditionalEmail") || "";
@@ -877,7 +879,7 @@ function FeaturesContent() {
         setResAccentColor("indigo");
         setResFontSize(1.0);
         setSelectedTemplateId(newRes.templateId);
-    };
+    }
 
     const handleCreateNewResume = () => {
         const title = prompt("Enter a name/profile for your new resume:", `My Resume (${new Date().toLocaleDateString()})`);
@@ -1054,7 +1056,7 @@ function FeaturesContent() {
         });
     };
 
-    const updateActiveResume = (updates: Partial<SavedResume>) => {
+    function updateActiveResume(updates: Partial<SavedResume>) {
         if (!activeResumeId) return;
 
         const updatedList = savedResumes.map(r => {
@@ -1070,7 +1072,7 @@ function FeaturesContent() {
 
         setSavedResumes(updatedList);
         setStorageItem("savedResumesDatabase", JSON.stringify(updatedList));
-    };
+    }
 
     const toggleMode = () => {
         const newMode = !isRealisticMode;
@@ -2646,7 +2648,7 @@ function FeaturesContent() {
                                                         </div>
                                                     ) : (
                                                         <p className="text-xs text-white/40 italic font-medium py-6 text-center">
-                                                            This question was not graded. Write code and click 'Run AI Code Grade' during the test to get feedback.
+                                                            This question was not graded. Write code and click &apos;Run AI Code Grade&apos; during the test to get feedback.
                                                         </p>
                                                     )}
                                                 </div>
@@ -3038,7 +3040,7 @@ function FeaturesContent() {
                                             />
 
                                             <div className="flex justify-between items-center pt-2">
-                                                <span className="text-[9px] text-white/30 font-semibold font-sans">Press 'Tab' for 4 spaces</span>
+                                                <span className="text-[9px] text-white/30 font-semibold font-sans">Press &apos;Tab&apos; for 4 spaces</span>
                                                 <button
                                                     type="button"
                                                     disabled={mockTestCodingLoading[currentCoding.id]}

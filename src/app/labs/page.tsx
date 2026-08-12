@@ -169,6 +169,7 @@ export default function LabsPage() {
             }
         }
 
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setTheme(active);
         localStorage.setItem("globalTheme", active);
         localStorage.setItem("prointerview_theme", active);

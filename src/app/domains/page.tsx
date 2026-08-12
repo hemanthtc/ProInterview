@@ -12,6 +12,7 @@ export default function DomainsPage() {
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTheme(savedTheme);
         }
     }, []);

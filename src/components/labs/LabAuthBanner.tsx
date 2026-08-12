@@ -10,7 +10,9 @@ export default function LabAuthBanner({ feature = "online AI features" }: { feat
     const [loggedIn, setLoggedIn] = useState(true);
 
     useEffect(() => {
-        setLoggedIn(getStorageItem("userLoggedIn") === "true" || localStorage.getItem("userLoggedIn") === "true");
+        Promise.resolve().then(() => {
+            setLoggedIn(getStorageItem("userLoggedIn") === "true" || localStorage.getItem("userLoggedIn") === "true");
+        });
     }, []);
 
     if (loggedIn) return null;

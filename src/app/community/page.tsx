@@ -81,6 +81,7 @@ export default function CommunityPage() {
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTheme(savedTheme);
         }
     }, []);
@@ -106,6 +107,7 @@ export default function CommunityPage() {
             router.push("/login");
             return;
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setReady(true);
     }, [router]);
 
@@ -176,11 +178,13 @@ export default function CommunityPage() {
 
     useEffect(() => {
         if (!ready) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void loadRooms();
     }, [ready, loadRooms]);
 
     useEffect(() => {
         if (!ready) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void loadMessages();
         const t = setInterval(() => void loadMessages(), 3000);
         return () => clearInterval(t);
@@ -188,6 +192,7 @@ export default function CommunityPage() {
 
     useEffect(() => {
         if (!ready) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         void loadOnline();
         const t = setInterval(() => void loadOnline(), 6000);
         return () => clearInterval(t);

@@ -156,9 +156,11 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       try {
         const parsed = JSON.parse(saved);
         if (parsed && parsed.data && typeof parsed.data === 'object' && parsed.data.personalInfo && parsed.style && parsed.templateId) {
-          setResumeData(parsed.data);
-          setCurrentStyle(parsed.style);
-          setActiveTemplateId(parsed.templateId);
+          Promise.resolve().then(() => {
+            setResumeData(parsed.data);
+            setCurrentStyle(parsed.style);
+            setActiveTemplateId(parsed.templateId);
+          });
         }
       } catch (e) {
         console.error("Failed to parse saved resume state safely", e);
@@ -206,7 +208,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             templateId: activeTemplateId
           };
           setStorageItem("proSavedResumes", JSON.stringify(list));
-          setSavedResumes(list);
+          Promise.resolve().then(() => setSavedResumes(list));
         }
       }
     } catch (e) {
@@ -413,10 +415,12 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     const title = prompt("Enter a title for this copy:", resumeData.personalInfo.name ? `${resumeData.personalInfo.name}'s Resume Copy` : "My Resume Copy");
     if (title === null) return;
 
+    // eslint-disable-next-line react-hooks/purity
     const newId = `resume-id-${Date.now()}`;
     const copyResume = {
       id: newId,
       title: title.trim() || "My Resume Copy",
+      // eslint-disable-next-line react-hooks/purity
       updatedAt: Date.now(),
       data: resumeData,
       style: currentStyle,

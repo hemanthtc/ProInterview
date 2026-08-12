@@ -27,12 +27,15 @@ export default function Home() {
             return;
         }
 
-        setIsLoggedIn(loggedIn);
-        setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
-        
         const savedTheme = localStorage.getItem("globalTheme") as any;
+        Promise.resolve().then(() => {
+            setIsLoggedIn(loggedIn);
+            setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
+            if (savedTheme) {
+                setTheme(savedTheme);
+            }
+        });
         if (savedTheme) {
-            setTheme(savedTheme);
             document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
             document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
         }
@@ -484,7 +487,7 @@ export default function Home() {
                         <div className="mt-8 p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md mx-auto relative backdrop-blur-sm z-20">
                             <h3 className="text-xl font-bold text-indigo-300 mb-2">You Have a Paused Interview</h3>
                             <p className="text-sm text-white/60 mb-4">
-                                Paused on {new Date(pausedSession.savedAt || Date.now()).toLocaleString()}
+                                Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
                             </p>
                             <div className="flex gap-3">
                                 <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">

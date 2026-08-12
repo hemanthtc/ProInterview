@@ -62,7 +62,7 @@ function StarCoachInner() {
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
-            setTheme(savedTheme);
+            Promise.resolve().then(() => setTheme(savedTheme));
         }
     }, []);
 
@@ -112,7 +112,7 @@ function StarCoachInner() {
                 .webkitSpeechRecognition;
         if (!SpeechRecognitionCtor) return;
 
-        setMicAvailable(true);
+        Promise.resolve().then(() => setMicAvailable(true));
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const recognition = new (SpeechRecognitionCtor as any)();
         recognition.continuous = true;
@@ -153,9 +153,11 @@ function StarCoachInner() {
     }, []);
 
     useEffect(() => {
-        setHistory(loadStarHistory());
-        setCompany(localStorage.getItem("targetCompany") || "");
-        setRole(localStorage.getItem("preferredRoles") || "");
+        Promise.resolve().then(() => {
+            setHistory(loadStarHistory());
+            setCompany(localStorage.getItem("targetCompany") || "");
+            setRole(localStorage.getItem("preferredRoles") || "");
+        });
 
         const q = searchParams.get("question");
         const w = searchParams.get("weakSpot");
@@ -197,8 +199,10 @@ function StarCoachInner() {
     useEffect(() => {
         if (!timerRunning) return;
         if (timerSec <= 0) {
-            setTimerRunning(false);
-            setInfo("Time's up — score your story now.");
+            Promise.resolve().then(() => {
+                setTimerRunning(false);
+                setInfo("Time's up — score your story now.");
+            });
             stopListening();
             return;
         }

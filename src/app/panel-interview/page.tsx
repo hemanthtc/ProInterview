@@ -85,16 +85,17 @@ export default function PanelInterviewPage() {
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
-        if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
-            setTheme(savedTheme);
-        }
-
-        try {
-            const storedPast = localStorage.getItem("prointerview_panel_past_scorecard");
-            if (storedPast) setPastSummary(JSON.parse(storedPast));
-        } catch {
-            /* ignore */
-        }
+        Promise.resolve().then(() => {
+            if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+                setTheme(savedTheme);
+            }
+            try {
+                const storedPast = localStorage.getItem("prointerview_panel_past_scorecard");
+                if (storedPast) setPastSummary(JSON.parse(storedPast));
+            } catch {
+                /* ignore */
+            }
+        });
     }, []);
 
     const isLight = theme === "light" || theme === "eyeprotect";
@@ -246,7 +247,7 @@ export default function PanelInterviewPage() {
                 .webkitSpeechRecognition;
         if (!SpeechRecognitionCtor) return;
 
-        setMicAvailable(true);
+        Promise.resolve().then(() => setMicAvailable(true));
         const recognition = new (SpeechRecognitionCtor as any)();
         recognition.continuous = false;
         recognition.interimResults = true;

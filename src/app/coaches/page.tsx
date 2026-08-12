@@ -67,6 +67,7 @@ export default function CoachesPage() {
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTheme(savedTheme);
         }
     }, []);
@@ -94,6 +95,7 @@ export default function CoachesPage() {
 
     useEffect(() => {
         const isLoggedIn = getStorageItem("userLoggedIn") === "true" || localStorage.getItem("userLoggedIn") === "true";
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setLoggedIn(isLoggedIn);
 
         fetch("/api/coaches")

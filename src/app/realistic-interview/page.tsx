@@ -1619,7 +1619,7 @@ export default function RealisticInterviewRoom() {
                                                 </div>
                                                 <div className="mt-8 text-center px-4">
                                                     <h3 className="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">AI Voice Synthesizer</h3>
-                                                    <p className="text-white/40 text-[10px] mt-1.5 leading-relaxed max-w-xs">SVG talking head active (API-saver). Click "D-ID Presenter" at the top-right to start video stream.</p>
+                                                    <p className="text-white/40 text-[10px] mt-1.5 leading-relaxed max-w-xs">SVG talking head active (API-saver). Click &quot;D-ID Presenter&quot; at the top-right to start video stream.</p>
                                                 </div>
                                             </div>
                                          ) : (

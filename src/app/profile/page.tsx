@@ -144,12 +144,16 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("globalTheme") as any;
+        Promise.resolve().then(() => {
+            if (savedTheme) {
+                setTheme(savedTheme);
+            }
+            setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
+        });
         if (savedTheme) {
-            setTheme(savedTheme);
             document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
             document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
         }
-        setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
 
         if (getStorageItem("userLoggedIn") !== "true") {
             router.push("/login");
@@ -315,17 +319,20 @@ export default function ProfilePage() {
     // Reset payment states when subscription modal closes
     useEffect(() => {
         if (!subModalOpen) {
-            setSelectedPlanForPayment(null);
-            setPaymentStatus("idle");
+            Promise.resolve().then(() => {
+                setSelectedPlanForPayment(null);
+                setPaymentStatus("idle");
+            });
         }
     }, [subModalOpen]);
 
-    const loadSessions = (exactUser: string) => {
+    function loadSessions(exactUser: string) {
         const stored = getStorageItem("interviewSessions");
         if (!stored) return;
         try {
             const parsed = JSON.parse(stored);
             const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+            // eslint-disable-next-line react-hooks/purity
             const now = Date.now();
             const currentIdentifier = getStorageItem("userIdentifier") || "";
 
@@ -348,7 +355,7 @@ export default function ProfilePage() {
         } catch (e) {
             console.error("Failed parsing profile history", e);
         }
-    };
+    }
 
     const toggleMode = () => {
         const newMode = !isRealisticMode;

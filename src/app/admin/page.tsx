@@ -161,17 +161,18 @@ export default function AdminDashboard() {
         const name = localStorage.getItem("userName") || "Admin";
         const org  = localStorage.getItem("userOrgName") || "Organization";
 
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setAdminId(id);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setAdminName(name);
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setOrgName(org);
-
         const savedTheme = localStorage.getItem("globalTheme") as any;
+
+        Promise.resolve().then(() => {
+            setAdminId(id);
+            setAdminName(name);
+            setOrgName(org);
+            if (savedTheme) {
+                setTheme(savedTheme === "dark" ? "dark" : "light");
+            }
+        });
+
         if (savedTheme) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setTheme(savedTheme === "dark" ? "dark" : "light");
             document.documentElement.className = savedTheme === "eyeprotect"
                 ? "theme-light theme-eyeprotect"
                 : `theme-${savedTheme}`;

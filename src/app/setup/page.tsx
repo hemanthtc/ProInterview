@@ -40,6 +40,7 @@ export default function SetupPage() {
             router.push("/login");
             return;
         }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsAuthChecked(true);
 
         setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");

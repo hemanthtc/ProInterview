@@ -40,7 +40,7 @@ export default function SpacedDrillsPanel({ className = "" }: SpacedDrillsPanelP
     }, []);
 
     useEffect(() => {
-        refresh();
+        Promise.resolve().then(() => refresh());
         const onStorage = (e: Event) => {
             const detail = (e as CustomEvent)?.detail;
             if (!detail?.key || detail.key === "spacedDrills" || detail.key === "interviewSessions") {

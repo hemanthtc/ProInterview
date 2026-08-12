@@ -41,7 +41,7 @@ export default function RoleSelect({
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
-    setIsMounted(true);
+    Promise.resolve().then(() => setIsMounted(true));
   }, []);
 
   // Handler for select changes

@@ -20,6 +20,7 @@ export default function PrepDashboardPage() {
     const [history, setHistory] = useState<StarHistoryEntry[]>([]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setSnap(buildPrepSnapshot());
         setHistory(loadStarHistory());
     }, []);

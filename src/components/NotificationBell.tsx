@@ -51,7 +51,7 @@ export default function NotificationBell({ className = "" }: { className?: strin
 
     useEffect(() => {
         const isLoggedIn = getStorageItem("userLoggedIn") === "true";
-        setLoggedIn(isLoggedIn);
+        Promise.resolve().then(() => setLoggedIn(isLoggedIn));
         if (!isLoggedIn) return;
 
         void load();

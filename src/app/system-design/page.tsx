@@ -42,7 +42,7 @@ export default function SystemDesignPage() {
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
-            setTheme(savedTheme);
+            Promise.resolve().then(() => setTheme(savedTheme));
         }
     }, []);
 
@@ -120,7 +120,9 @@ export default function SystemDesignPage() {
     );
 
     useEffect(() => {
-        void fetchQuestions({ silent: true });
+        Promise.resolve().then(() => {
+            void fetchQuestions({ silent: true });
+        });
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 

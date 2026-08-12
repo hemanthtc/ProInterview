@@ -84,6 +84,7 @@ export default function NegotiatePanel({
     // Auto-collapse inputs when conversation begins
     useEffect(() => {
         if (history.length > 0) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setShowInputs(false);
         }
     }, [history.length]);
@@ -329,14 +330,14 @@ export default function NegotiatePanel({
                                     onClick={() => void send("How should I open the salary negotiation for this offer?")}
                                     className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-emerald-300 transition-all"
                                 >
-                                    💡 "How should I open negotiation?"
+                                    💡 &quot;How should I open negotiation?&quot;
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => void send("What counter-offer number should I target based on my details?")}
                                     className="text-xs bg-white/5 hover:bg-white/10 border border-white/10 px-3 py-1.5 rounded-lg text-indigo-300 transition-all"
                                 >
-                                    🎯 "What counter-offer should I send?"
+                                    🎯 &quot;What counter-offer should I send?&quot;
                                 </button>
                             </div>
                         </div>
@@ -391,7 +392,7 @@ export default function NegotiatePanel({
                                         </button>
                                     </div>
                                     <p className="italic leading-relaxed text-emerald-100/90 font-mono bg-black/30 p-2.5 rounded-lg border border-emerald-500/20">
-                                        "{turn.suggestedScript}"
+                                        &quot;{turn.suggestedScript}&quot;
                                     </p>
                                 </div>
                             )}

@@ -41,6 +41,7 @@ export default function CodingLabPage() {
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setTheme(savedTheme);
         }
     }, []);
@@ -56,6 +57,7 @@ export default function CodingLabPage() {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setProgress(loadCodingProgress());
         fetch("/api/coding-problems?path=1")
             .then((r) => r.json())

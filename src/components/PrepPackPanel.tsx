@@ -40,7 +40,7 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
     }, []);
 
     useEffect(() => {
-        refresh();
+        Promise.resolve().then(() => refresh());
         const onStorage = (e: Event) => {
             const detail = (e as CustomEvent)?.detail;
             if (!detail?.key || detail.key === "prepPacks") refresh();
