@@ -87,7 +87,12 @@ export default function AtsMatchPage() {
             const formData = new FormData();
             formData.append("file", file);
             const res = await fetch("/api/upload", { method: "POST", body: formData });
-            const data = await res.json();
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch {
+                throw new Error(`Server returned status ${res.status}. Could not parse file output.`);
+            }
             if (!res.ok) throw new Error(data.error || "Failed to parse resume");
             const text = String(data.text || "").trim();
             if (!text || text.length < 40) {
@@ -182,7 +187,12 @@ export default function AtsMatchPage() {
             const formData = new FormData();
             formData.append("file", file);
             const res = await fetch("/api/upload", { method: "POST", body: formData });
-            const data = await res.json();
+            let data: any = {};
+            try {
+                data = await res.json();
+            } catch {
+                throw new Error(`Server returned status ${res.status}. Could not parse job description file.`);
+            }
             if (!res.ok) throw new Error(data.error || "Failed to parse job description file");
             const text = String(data.text || "").trim();
             if (!text || text.length < 10) {

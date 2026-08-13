@@ -16,19 +16,28 @@ async function extractTextFromFile(file: File): Promise<string> {
             const apiKey = process.env.GEMINI_API_KEY;
             if (apiKey && apiKey !== "dummy") {
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-                const arrayBuffer = await file.arrayBuffer();
-                const base64Data = Buffer.from(arrayBuffer).toString("base64");
-                const result = await model.generateContent([
-                    {
-                        inlineData: {
-                            data: base64Data,
-                            mimeType: file.type || "image/png"
-                        }
-                    },
-                    "Extract and transcribe all text from this job description / document screenshot verbatim. Return only the extracted text without conversational wrapper."
-                ]);
-                const text = result.response.text() || "";
+                const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
+                let text = "";
+                for (const modelName of modelsToTry) {
+                    try {
+                        const model = genAI.getGenerativeModel({ model: modelName });
+                        const arrayBuffer = await file.arrayBuffer();
+                        const base64Data = Buffer.from(arrayBuffer).toString("base64");
+                        const result = await model.generateContent([
+                            {
+                                inlineData: {
+                                    data: base64Data,
+                                    mimeType: file.type || "image/png"
+                                }
+                            },
+                            "Extract and transcribe all text from this job description / document screenshot verbatim. Return only the extracted text without conversational wrapper."
+                        ]);
+                        text = result.response.text() || "";
+                        if (text.trim()) break;
+                    } catch (mErr) {
+                        console.warn(`OCR model ${modelName} failed for ${file.name}:`, mErr);
+                    }
+                }
                 if (text.trim()) {
                     return `--- [Image OCR: ${file.name}] ---\n${text.trim()}\n`;
                 }
@@ -36,6 +45,7 @@ async function extractTextFromFile(file: File): Promise<string> {
         } catch (e) {
             console.error("Image OCR text extraction failed for " + file.name + ":", e);
         }
+        return `--- [Image File: ${file.name}] ---\n[Image uploaded: ${file.name}]\n`;
     }
 
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
