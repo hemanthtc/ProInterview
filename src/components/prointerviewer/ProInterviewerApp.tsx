@@ -8,7 +8,7 @@ import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
 import { getStorageItem, setStorageItem } from '../../utils/storage';
 import { 
-  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2
+  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2, Globe
 } from 'lucide-react';
 
 interface ProInterviewerAppProps {
@@ -133,7 +133,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     return () => observer.disconnect();
   }, [isManualZoom]);
   const [showAIModal, setShowAIModal] = useState<boolean>(false);
-  const [aiModalStep, setAiModalStep] = useState<'choice' | 'upload' | 'notes'>('choice');
+  const [aiModalStep, setAiModalStep] = useState<'choice' | 'upload' | 'notes' | 'portfolio_input'>('choice');
   const [resumeUploadFile, setResumeUploadFile] = useState<File | null>(null);
   const [savedResumes, setSavedResumes] = useState<any[]>([]);
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
@@ -148,41 +148,131 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const [aiNotesSkills, setAiNotesSkills] = useState<string>('');
   const [aiNotesLanguages, setAiNotesLanguages] = useState<string>('');
   const [aiNotesCertifications, setAiNotesCertifications] = useState<string>('');
+  const [aiSourceMode, setAiSourceMode] = useState<'resume' | 'portfolio' | 'both'>('resume');
+  const [showVerifyAlertModal, setShowVerifyAlertModal] = useState<boolean>(false);
+  const [hasPortfolioUrl, setHasPortfolioUrl] = useState<boolean>(false);
+
+  // Prefetched account details states
+  const [isUsingAccountResume, setIsUsingAccountResume] = useState<boolean>(false);
+  const [accountResumeName, setAccountResumeName] = useState<string>('');
+  const [accountResumeText, setAccountResumeText] = useState<string>('');
+  const [portfolioInputUrl, setPortfolioInputUrl] = useState<string>('');
+  const [showOfflineAlert, setShowOfflineAlert] = useState<boolean>(false);
+  const [s3ErrorMsg, setS3ErrorMsg] = useState<string>('');
+
+  const syncResumesList = async (list: any[]) => {
+    const isGuest = getStorageItem("userLoggedIn") === "guest";
+    if (isGuest) return true;
+
+    try {
+      const res = await fetch("/api/resumes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(list)
+      });
+      if (res.ok) {
+        setS3ErrorMsg("");
+        return true;
+      } else {
+        const data = await res.json();
+        console.warn("Failed to sync resumes to S3:", data.error);
+        setS3ErrorMsg(data.error || "AWS S3 is offline or not accessible.");
+        setShowOfflineAlert(true);
+        return false;
+      }
+    } catch (err) {
+      console.error("Failed to sync resumes to S3:", err);
+      setS3ErrorMsg("Failed to connect to the storage server.");
+      setShowOfflineAlert(true);
+      return false;
+    }
+  };
+
+  const loadResumesList = async () => {
+    let localList: any[] = [];
+    const storedResumes = getStorageItem("proSavedResumes");
+    if (storedResumes) {
+      try { localList = JSON.parse(storedResumes); } catch (e) {}
+    }
+
+    const isGuest = getStorageItem("userLoggedIn") === "guest";
+    if (isGuest) {
+      setSavedResumes(localList);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/resumes");
+      if (res.ok) {
+        const s3List = await res.json();
+        // Merge lists by item.id, keeping the latest updatedAt timestamp
+        const merged = new Map<string, any>();
+        s3List.forEach((item: any) => merged.set(item.id, item));
+        localList.forEach((item: any) => {
+          const existing = merged.get(item.id);
+          if (!existing || (item.updatedAt && item.updatedAt > (existing.updatedAt || 0))) {
+            merged.set(item.id, item);
+          }
+        });
+        const finalList = Array.from(merged.values());
+
+        // Save merged list to S3 if there are any changes (unsynced local edits)
+        if (finalList.length !== s3List.length || JSON.stringify(finalList) !== JSON.stringify(s3List)) {
+          await fetch("/api/resumes", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(finalList)
+          });
+        }
+
+        setSavedResumes(finalList);
+        setStorageItem("proSavedResumes", JSON.stringify(finalList));
+      } else {
+        console.warn("Resumes S3 API returned non-OK status. Using local storage.");
+        setSavedResumes(localList);
+        setS3ErrorMsg("AWS S3 is offline or not accessible.");
+        setShowOfflineAlert(true);
+      }
+    } catch (err) {
+      console.error("Failed to fetch resumes from S3 on load:", err);
+      setSavedResumes(localList);
+      setS3ErrorMsg("Failed to connect to the storage server.");
+      setShowOfflineAlert(true);
+    }
+  };
 
   // Load saved state from localStorage on mount (with security schema validation)
   useEffect(() => {
-    const saved = getStorageItem("proResumeState");
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed && parsed.data && typeof parsed.data === 'object' && parsed.data.personalInfo && parsed.style && parsed.templateId) {
-          Promise.resolve().then(() => {
+    Promise.resolve().then(() => {
+      const saved = getStorageItem("proResumeState");
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.data && typeof parsed.data === 'object' && parsed.data.personalInfo && parsed.style && parsed.templateId) {
             setResumeData(parsed.data);
             setCurrentStyle(parsed.style);
             setActiveTemplateId(parsed.templateId);
-          });
+          }
+        } catch (e) {
+          console.error("Failed to parse saved resume state safely", e);
         }
-      } catch (e) {
-        console.error("Failed to parse saved resume state safely", e);
       }
-    }
 
-    // Load Saved Resumes
-    const storedResumes = getStorageItem("proSavedResumes");
-    if (storedResumes) {
-      try {
-        setSavedResumes(JSON.parse(storedResumes));
-      } catch (e) {
-        console.error("Failed to parse proSavedResumes", e);
+      loadResumesList();
+
+      const activeId = getStorageItem("proActiveResumeId");
+      if (activeId) {
+        setActiveResumeId(activeId);
       }
-    }
-    const activeId = getStorageItem("proActiveResumeId");
-    if (activeId) {
-      setActiveResumeId(activeId);
-    }
+
+      const savedPortfolio = getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || "";
+      if (savedPortfolio && savedPortfolio.trim()) {
+        setHasPortfolioUrl(true);
+      }
+    });
   }, []);
 
-  // Save changes to localStorage on any data or style update
+  // Save changes to localStorage and sync to S3 on any data or style update
   useEffect(() => {
     try {
       const stateToSave = {
@@ -208,7 +298,10 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             templateId: activeTemplateId
           };
           setStorageItem("proSavedResumes", JSON.stringify(list));
-          Promise.resolve().then(() => setSavedResumes(list));
+          Promise.resolve().then(() => {
+            setSavedResumes(list);
+            syncResumesList(list);
+          });
         }
       }
     } catch (e) {
@@ -333,6 +426,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     const list = [...savedResumes, newResume];
     setSavedResumes(list);
     setStorageItem("proSavedResumes", JSON.stringify(list));
+    syncResumesList(list);
 
     setResumeData(initialResumeData);
     setCurrentStyle(TEMPLATES[0].style);
@@ -386,6 +480,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
     setSavedResumes(list);
     setStorageItem("proSavedResumes", JSON.stringify(list));
+    syncResumesList(list);
     triggerToast(`Renamed resume to "${newTitle.trim()}"`);
   };
 
@@ -401,6 +496,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         const list = savedResumes.filter(r => r.id !== id);
         setSavedResumes(list);
         setStorageItem("proSavedResumes", JSON.stringify(list));
+        syncResumesList(list);
 
         if (activeResumeId === id) {
           setActiveResumeId(null);
@@ -430,6 +526,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     const list = [...savedResumes, copyResume];
     setSavedResumes(list);
     setStorageItem("proSavedResumes", JSON.stringify(list));
+    syncResumesList(list);
 
     setActiveResumeId(newId);
     setStorageItem("proActiveResumeId", newId);
@@ -448,7 +545,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   };
 
   // AI Autofill: opens the interactive modal and auto-imports account profile
-  const handleAIAutofill = () => {
+  const handleAIAutofill = async () => {
     // Auto-import profile details from account
     const storedName = getStorageItem("userName") || "";
     const storedEmail = getStorageItem("userIdentifier") || "";
@@ -456,17 +553,75 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     const storedPhoto = getStorageItem("userProfilePhoto") || "";
     const storedLinkedin = getStorageItem("userLinkedin") || "";
     const storedGithub = getStorageItem("userGithub") || "";
-    const storedPortfolio = getStorageItem("userPortfolio") || "";
+    const storedPortfolio = getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || "";
+
+    let fetchedName = storedName;
+    let fetchedPhone = storedPhone;
+    let fetchedPhoto = storedPhoto;
+    let fetchedLinkedin = storedLinkedin;
+    let fetchedGithub = storedGithub;
+    let fetchedPortfolio = storedPortfolio;
+    let fetchedResumeText = "";
+    let fetchedResumeName = "";
+
+    // Fetch latest user profile details from backend
+    if (storedEmail) {
+      try {
+        setIsAILoading(true);
+        const res = await fetch(`/api/auth/profile?identifier=${encodeURIComponent(storedEmail)}&accountType=user`);
+        const result = await res.json();
+        if (result.success && result.user) {
+          const u = result.user;
+          fetchedName = u.displayName || storedName;
+          fetchedPhone = u.phone || storedPhone;
+          fetchedPhoto = u.profilePhoto || u.profilePhotoUrl || storedPhoto;
+          fetchedLinkedin = u.linkedin || storedLinkedin;
+          fetchedGithub = u.github || storedGithub;
+          fetchedPortfolio = u.portfolioUrl || storedPortfolio;
+          fetchedResumeText = u.resumeCvText || "";
+          fetchedResumeName = u.resumeCvName || "";
+
+          // Update local storage to keep it in sync
+          if (u.displayName) setStorageItem("userName", u.displayName);
+          if (u.phone) setStorageItem("userPhone", u.phone);
+          if (u.profilePhoto || u.profilePhotoUrl) setStorageItem("userProfilePhoto", u.profilePhoto || u.profilePhotoUrl);
+          if (u.linkedin) setStorageItem("userLinkedin", u.linkedin);
+          if (u.github) setStorageItem("userGithub", u.github);
+          if (u.portfolioUrl) {
+            setStorageItem("userPortfolio", u.portfolioUrl);
+            setStorageItem("userPortfolioUrl", u.portfolioUrl);
+          }
+          if (u.resumeCvText) {
+            setStorageItem("userResumeCvText", u.resumeCvText);
+            setStorageItem("userResumeCvName", u.resumeCvName || "Account_Resume.pdf");
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch fresh profile details:", err);
+      } finally {
+        setIsAILoading(false);
+      }
+    }
+
+    // Fallbacks to local storage if profile fetch did not return them
+    if (!fetchedResumeText) {
+      fetchedResumeText = getStorageItem("userResumeCvText") || "";
+      fetchedResumeName = getStorageItem("userResumeCvName") || "";
+    }
+
+    setAccountResumeText(fetchedResumeText);
+    setAccountResumeName(fetchedResumeName || "Account_Resume.pdf");
+    setPortfolioInputUrl(fetchedPortfolio);
 
     const updatedPersonal = {
       ...resumeData.personalInfo,
-      name: storedName || resumeData.personalInfo.name,
+      name: fetchedName || resumeData.personalInfo.name,
       email: storedEmail || resumeData.personalInfo.email,
-      phone: storedPhone || resumeData.personalInfo.phone,
-      avatar: storedPhoto || resumeData.personalInfo.avatar,
-      linkedin: storedLinkedin || resumeData.personalInfo.linkedin,
-      github: storedGithub || resumeData.personalInfo.github,
-      website: storedPortfolio || resumeData.personalInfo.website
+      phone: fetchedPhone || resumeData.personalInfo.phone,
+      avatar: fetchedPhoto || resumeData.personalInfo.avatar,
+      linkedin: fetchedLinkedin || resumeData.personalInfo.linkedin,
+      github: fetchedGithub || resumeData.personalInfo.github,
+      website: fetchedPortfolio || resumeData.personalInfo.website
     };
 
     let educationList = [...resumeData.education];
@@ -619,9 +774,10 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       }
 
       const formData = new FormData();
-      formData.append('github', resumeData.personalInfo.github || '');
-      formData.append('linkedin', resumeData.personalInfo.linkedin || '');
-      formData.append('portfolioUrl', resumeData.personalInfo.website || '');
+      formData.append('sourceMode', aiSourceMode);
+      formData.append('github', resumeData.personalInfo.github || getStorageItem("userGithub") || '');
+      formData.append('linkedin', resumeData.personalInfo.linkedin || getStorageItem("userLinkedin") || '');
+      formData.append('portfolioUrl', portfolioInputUrl || resumeData.personalInfo.website || getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || '');
       formData.append('preferredRoles', aiTargetRoles || resumeData.personalInfo.title || 'Software Engineer');
       formData.append('targetCompanies', aiTargetCompanies || 'Top Tech Companies');
       formData.append('userInput', Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '');
@@ -645,7 +801,19 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       } else {
         const updatedData = { ...resumeData };
 
-        if (result.summary) {
+        if (result.personalInfo) {
+          updatedData.personalInfo = {
+            ...updatedData.personalInfo,
+            name: result.personalInfo.name || updatedData.personalInfo.name,
+            email: result.personalInfo.email || updatedData.personalInfo.email,
+            phone: result.personalInfo.phone || updatedData.personalInfo.phone,
+            location: result.personalInfo.location || updatedData.personalInfo.location,
+            linkedin: result.personalInfo.linkedin || updatedData.personalInfo.linkedin,
+            github: result.personalInfo.github || updatedData.personalInfo.github,
+            website: result.personalInfo.website || updatedData.personalInfo.website,
+            summary: result.summary || updatedData.personalInfo.summary
+          };
+        } else if (result.summary) {
           updatedData.personalInfo = { ...updatedData.personalInfo, summary: result.summary };
         }
 
@@ -717,6 +885,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         setResumeData(updatedData);
         setShowAIModal(false);
+        setMobileView('preview');
+        onMobileViewChange?.('preview');
+        setShowVerifyAlertModal(true);
         
         // Reset notes states
         setAiNotesSummary('');
@@ -728,7 +899,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         setAiNotesCertifications('');
         setAiTargetRoles('');
         setAiTargetCompanies('');
-        triggerToast('AI autofill completed successfully!');
+        triggerToast('AI autofill completed! Switched to Preview.');
       }
     } catch (err: any) {
       alert('AI autofill error: ' + (err.message || 'Unknown error'));
@@ -1044,32 +1215,57 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 {aiModalStep === 'choice' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                     <p className="ai-modal-desc">
-                      Choose how you want to autofill your resume details. You can import from an existing resume file or generate details based on your account profile.
+                      Select your desired data source for AI auto-fill. You can generate details from a resume file or analyze your web portfolio page.
                     </p>
                     
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: '0.25rem' }}>
                       <button
                         type="button"
                         onClick={() => {
-                          setAiModalStep('upload');
-                          // Target all sections for extraction when uploading a resume
+                          setAiSourceMode('resume');
                           setMissingSectionsList(["summary", "workExperience", "education", "projects", "skills", "languages", "certifications"]);
+                          if (accountResumeText) {
+                            setIsUsingAccountResume(true);
+                            const textFileName = (accountResumeName || 'Account_Resume.pdf').replace(/\.[^/.]+$/, "") + ".txt";
+                            const file = new File([accountResumeText], textFileName, { type: 'text/plain' });
+                            setResumeUploadFile(file);
+                          } else {
+                            setIsUsingAccountResume(false);
+                            setResumeUploadFile(null);
+                          }
+                          setAiModalStep('upload');
                         }}
                         className="ai-modal-choice-btn-primary"
+                        style={{ textAlign: 'left', padding: '0.85rem 1rem' }}
                       >
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#a78bfa' }}>Upload Existing Resume / CV</span>
-                        <span className="ai-modal-desc" style={{ fontSize: '0.75rem' }}>Select a PDF, DOCX, or text file. AI will extract and structure your work experience, education, and skills.</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                          <FileText size={16} color="#a78bfa" />
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#a78bfa' }}>Resume File</span>
+                        </div>
+                        <span className="ai-modal-desc" style={{ fontSize: '0.75rem', display: 'block', margin: 0 }}>
+                          Upload a PDF, DOCX, or text file. If you already have a resume saved in your account, it will be loaded automatically.
+                        </span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => {
-                          setAiModalStep('notes');
+                          setAiSourceMode('portfolio');
+                          setAiModalStep('portfolio_input');
+                          setMissingSectionsList(["summary", "workExperience", "education", "projects", "skills", "languages", "certifications"]);
                         }}
                         className="ai-modal-choice-btn-secondary"
+                        style={{ textAlign: 'left', padding: '0.85rem 1rem' }}
                       >
-                        <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>Create New from Profile Data</span>
-                        <span className="ai-modal-desc" style={{ fontSize: '0.75rem' }}>No existing resume needed. AI will build your missing sections using your account details and custom notes.</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                          <Globe size={16} color="#38bdf8" />
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#38bdf8' }}>
+                            Web Portfolio {portfolioInputUrl ? '(Detected)' : ''}
+                          </span>
+                        </div>
+                        <span className="ai-modal-desc" style={{ fontSize: '0.75rem', display: 'block', margin: 0 }}>
+                          Provide your portfolio website URL. AI will extract work experience, projects, and skills to generate your resume.
+                        </span>
                       </button>
                     </div>
                   </div>
@@ -1077,34 +1273,84 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
                 {aiModalStep === 'upload' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <p className="ai-modal-desc">
-                      Upload your current resume or CV. Supported formats: <strong>PDF, TXT, DOCX</strong>.
-                    </p>
-                    
-                    <div 
-                      className="ai-modal-upload-box"
-                      onClick={() => document.getElementById('ai-resume-file-input-sidebar')?.click()}
-                    >
-                      <input
-                        type="file"
-                        id="ai-resume-file-input-sidebar"
-                        accept=".pdf,.txt,.doc,.docx"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            setResumeUploadFile(file);
-                          }
-                        }}
-                        style={{ display: 'none' }}
-                      />
-                      <FileText size={32} color="#8b5cf6" style={{ opacity: 0.8 }} />
-                      <span className="ai-modal-upload-text">
-                        {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
-                      </span>
-                      <span className="ai-modal-upload-sub">
-                        {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 2MB'}
-                      </span>
-                    </div>
+                    {isUsingAccountResume ? (
+                      <>
+                        <div style={{
+                          padding: '1rem',
+                          borderRadius: '0.5rem',
+                          background: 'rgba(139, 92, 246, 0.08)',
+                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.6rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Check size={16} color="#a78bfa" />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                              Fetched Resume from Account
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Using saved resume: <strong style={{ color: '#a78bfa' }}>{accountResumeName}</strong>
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsUsingAccountResume(false);
+                              setResumeUploadFile(null);
+                            }}
+                            style={{
+                              alignSelf: 'flex-start',
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ef4444',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              padding: '0.25rem 0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            <span>Use another resume instead</span>
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <p className="ai-modal-desc">
+                          Upload your current resume or CV. Supported formats: <strong>PDF, TXT, DOCX</strong>.
+                        </p>
+                        
+                        <div 
+                          className="ai-modal-upload-box"
+                          onClick={() => document.getElementById('ai-resume-file-input-sidebar')?.click()}
+                        >
+                          <input
+                            type="file"
+                            id="ai-resume-file-input-sidebar"
+                            accept=".pdf,.txt,.doc,.docx"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setResumeUploadFile(file);
+                                setIsUsingAccountResume(false);
+                              }
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <FileText size={32} color="#8b5cf6" style={{ opacity: 0.8 }} />
+                          <span className="ai-modal-upload-text">
+                            {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
+                          </span>
+                          <span className="ai-modal-upload-sub">
+                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 2MB'}
+                          </span>
+                        </div>
+                      </>
+                    )}
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
                       <button
@@ -1128,6 +1374,82 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                           cursor: 'pointer'
                         }}
                       >Next: Preferences</button>
+                    </div>
+                  </div>
+                )}
+
+                {aiModalStep === 'portfolio_input' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <p className="ai-modal-desc">
+                      Enter your portfolio website URL, target role, and target company. AI will crawl and extract the content to generate your resume details.
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+                      <div>
+                        <label className="ai-modal-label">Portfolio Website URL</label>
+                        <input
+                          type="url"
+                          value={portfolioInputUrl}
+                          onChange={(e) => setPortfolioInputUrl(e.target.value)}
+                          placeholder="e.g. https://yourportfolio.com"
+                          className="ai-modal-input"
+                        />
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                        <div>
+                          <label className="ai-modal-label">Target Role</label>
+                          <input
+                            type="text"
+                            value={aiTargetRoles}
+                            onChange={(e) => setAiTargetRoles(e.target.value)}
+                            placeholder="e.g. Frontend Developer"
+                            className="ai-modal-input"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="ai-modal-label">Target Company</label>
+                          <input
+                            type="text"
+                            value={aiTargetCompanies}
+                            onChange={(e) => setAiTargetCompanies(e.target.value)}
+                            placeholder="e.g. Google"
+                            className="ai-modal-input"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAiModalStep('choice')}
+                        className="ai-modal-back-btn"
+                        disabled={isAILoading}
+                      >Back</button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!portfolioInputUrl.trim()) {
+                            alert("Please enter your portfolio URL first.");
+                            return;
+                          }
+                          handleAIGenerate();
+                        }}
+                        disabled={isAILoading}
+                        style={{
+                          padding: '0.5rem 1.25rem', fontSize: '0.8rem', fontWeight: 700,
+                          background: isAILoading ? 'rgba(139, 92, 246, 0.4)' : 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                          border: 'none', borderRadius: '0.5rem', color: '#fff',
+                          cursor: isAILoading ? 'wait' : 'pointer',
+                          display: 'flex', alignItems: 'center', gap: '0.4rem',
+                          boxShadow: '0 0 20px rgba(139, 92, 246, 0.3)'
+                        }}
+                      >
+                        <Sparkles size={14} style={isAILoading ? { animation: 'spin 1s linear infinite' } : {}} />
+                        {isAILoading ? 'Generating...' : 'Generate Resume'}
+                      </button>
                     </div>
                   </div>
                 )}
@@ -2129,6 +2451,157 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     }}
                   >
                     Delete
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* OFFLINE STORAGE NOTIFICATION POPUP */}
+          {showOfflineAlert && (
+            <>
+              <div 
+                className="modal-backdrop no-print"
+                onClick={() => setShowOfflineAlert(false)}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 10002,
+                  background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)'
+                }} 
+              />
+              <div 
+                className="saved-resumes-modal no-print"
+                style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 10003,
+                  maxWidth: '420px',
+                  width: '90%',
+                  boxSizing: 'border-box',
+                  border: '1px solid #f59e0b',
+                  boxShadow: '0 10px 25px -5px rgba(245, 158, 11, 0.3)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{
+                    width: '2.5rem', height: '2.5rem', borderRadius: '50%',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#f59e0b', flexShrink: 0
+                  }}>
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                      Storage Server Offline
+                    </h3>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '1.25rem' }}>
+                  <p style={{ margin: '0 0 0.5rem 0' }}>
+                    <strong>Warning:</strong> {s3ErrorMsg || "Failed to reach the AWS S3 storage server."}
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    Your changes will be temporarily saved <strong>locally</strong> in your browser. 
+                    <span style={{ color: '#ef4444' }}> Note: This local data will be deleted if you log out of your account.</span> Once S3 becomes available again, local resumes will be automatically migrated to S3.
+                  </p>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={() => setShowOfflineAlert(false)}
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 600 }}
+                  >
+                    I Understand
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* AI VERIFICATION ALERT MODAL */}
+          {showVerifyAlertModal && (
+            <>
+              <div 
+                className="modal-backdrop no-print"
+                onClick={() => setShowVerifyAlertModal(false)}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 10000,
+                  background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)'
+                }} 
+              />
+              <div 
+                className="saved-resumes-modal no-print"
+                style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 10001,
+                  maxWidth: '440px',
+                  width: '90%',
+                  boxSizing: 'border-box',
+                  background: 'var(--panel-bg, #0f172a)',
+                  border: '1px solid var(--panel-border, #1e293b)',
+                  borderRadius: '16px',
+                  padding: '1.5rem',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
+                  <div style={{
+                    width: '2.75rem', height: '2.75rem', borderRadius: '50%',
+                    background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#6366f1', flexShrink: 0
+                  }}>
+                    <Sparkles size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                      Verify Extracted Information
+                    </h3>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                      AI Auto-Fill Completed
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.25)',
+                  borderRadius: '10px',
+                  padding: '0.85rem 1rem',
+                  fontSize: '0.82rem',
+                  color: 'var(--text-main)',
+                  lineHeight: 1.5,
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: '0.6rem'
+                }}>
+                  <AlertTriangle size={18} color="#f59e0b" style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <span>
+                    Please verify your information once, as AI can occasionally make small mistakes or formatting errors.
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowVerifyAlertModal(false)}
+                    style={{
+                      padding: '0.55rem 1.25rem', fontSize: '0.82rem', fontWeight: 700,
+                      background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                      color: '#fff', border: 'none', borderRadius: '0.5rem',
+                      cursor: 'pointer', boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)'
+                    }}
+                  >
+                    Got it, Review Resume
                   </button>
                 </div>
               </div>

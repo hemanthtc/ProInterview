@@ -16,6 +16,16 @@ export function rateLimit(
     }
 
     const now = Date.now();
+
+    // Periodic garbage collection to prevent memory leak
+    if (buckets.size > 1000) {
+        for (const [k, b] of buckets.entries()) {
+            b.timestamps = b.timestamps.filter((t) => now - t < windowMs);
+            if (b.timestamps.length === 0) {
+                buckets.delete(k);
+            }
+        }
+    }
     const bucket = buckets.get(key) ?? { timestamps: [] };
     bucket.timestamps = bucket.timestamps.filter((t) => now - t < windowMs);
 

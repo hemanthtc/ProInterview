@@ -134,6 +134,7 @@ The platform provides a suite of extra modules inside [FeaturesPage](file:///d:/
 
 ### A. AI Resume Builder
 Allows candidates to enter professional details (Summary, Skills, Experience, Education, Projects, and Certifications). It binds these states into printable Resume Templates with configurable theme highlights, font sizes, and downloads them.
+Resumes saved inside "My Saved Resumes" are stored dynamically in AWS S3 (prefixed `resumes/[userIdentifier]/saved_resumes.json`) to provide secure cross-device sync. If S3 or the network goes offline, it seamlessly falls back to local storage inside the browser and notifies the user. Upon reconnection, it performs automatic two-way conflict-resolution merging using timestamps (`updatedAt`) and migrates local resumes to the cloud. All routes are authenticated and securely sandboxed against other users' scopes via JWT user session validation backed by MongoDB.
 
 ### B. Job Invitation & Offer Letter Analyser
 * **Endpoint:** [/api/analyze-email](src/app/api/analyze-email/route.ts)
@@ -163,5 +164,15 @@ Allows candidates to enter professional details (Summary, Skills, Experience, Ed
 8. **Shareable Scorecard** — `/api/scorecard` + public `/scorecard/[id]`.
 9. **Spaced Drills** — weak-score topics resurfaced on a schedule.
 10. **Cloud Sync** — `/api/sync-sessions` merges interview history across devices.
+
+---
+
+## 7. Security Hardening & Session Isolation
+
+### A. Sandbox Guest Mode Bubble
+To maintain strict data confidentiality, Guest Mode executes in a client-side local memory sandbox. It bypasses S3 uploads and cloud sync, saving all state strictly within the browser's local sandbox, preventing anonymous traffic from hitting authenticated DB records or cloud stores. API features require email authentication and show an alert redirect.
+
+### B. In-Memory Rate Limiter Resource Protection
+To defend endpoints against Denial of Service (DoS) and burst abuse, all critical registration, login, and matching routes are rate-limited via a sliding-window algorithm. To prevent memory leakage, a periodic garbage collection routine purges expired tracking keys when memory maps exceed 1000 records.
 
 

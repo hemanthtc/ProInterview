@@ -108,7 +108,7 @@ export async function generateWithFallback(
 
     let lastErr: unknown;
     let rateLimitCount = 0;
-    const maxRateLimitRetries = 2;
+    const maxRateLimitRetries = Math.min(5, modelsToTry.length);
 
     for (const modelName of modelsToTry) {
         try {
@@ -123,7 +123,7 @@ export async function generateWithFallback(
             if (isRateLimit) {
                 rateLimitCount++;
                 if (rateLimitCount >= maxRateLimitRetries) {
-                    console.log("[Gemini API] Rate-limited, activating fallback mode.");
+                    console.log("[Gemini API] Rate-limited across models, activating fallback mode.");
                     throw new Error("Gemini API rate limit reached. Utilizing fallback mode.");
                 }
                 await new Promise(r => setTimeout(r, 200));

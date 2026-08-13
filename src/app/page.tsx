@@ -18,9 +18,11 @@ export default function Home() {
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [isHydrated, setIsHydrated] = useState(false);
 
     useEffect(() => {
-        const loggedIn = getStorageItem("userLoggedIn") === "true";
+        setIsHydrated(true);
+        const loggedIn = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest";
         const role = localStorage.getItem("userRole");
         if (loggedIn && role === "admin") {
             router.push("/admin");
@@ -183,6 +185,14 @@ export default function Home() {
         a.click();
         URL.revokeObjectURL(url);
     };
+
+    if (!isHydrated) {
+        return (
+            <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
 
     return (
         <div 

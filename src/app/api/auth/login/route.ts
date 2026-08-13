@@ -82,6 +82,9 @@ export async function POST(req: NextRequest) {
         let resolvedOrgRole: AccountType = "user";
 
         if (loginMode === "user") {
+            if (!identifier.includes("@")) {
+                return NextResponse.json({ error: "Only email logins are supported. Please log in using your email address." }, { status: 400 });
+            }
             account = await User.findOne({ identifier });
             if (!account) {
                 return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
@@ -139,10 +142,6 @@ export async function POST(req: NextRequest) {
             message: "Verification code sent.",
             accountType: resolvedOrgRole
         };
-        if (resolvedOrgRole !== "admin" && resolvedOrgRole !== "employee" && account.type !== "email") {
-            responseData.otpCode = generatedOtp;
-        }
-
         return NextResponse.json(responseData);
     } catch (error: unknown) {
         console.error("Login API error:", error);

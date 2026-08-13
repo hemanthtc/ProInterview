@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { FileSearch, Loader2, Moon, Sun, Eye, FileUp, UserCheck, Trash2, X, Image as ImageIcon } from "lucide-react";
+import { FileSearch, Loader2, Moon, Sun, Eye, FileUp, UserCheck, Trash2, X, Image as ImageIcon, Info } from "lucide-react";
 
 export default function AtsMatchPage() {
     const [resumeText, setResumeText] = useState("");
@@ -95,13 +95,16 @@ export default function AtsMatchPage() {
             }
             if (!res.ok) throw new Error(data.error || "Failed to parse resume");
             const text = String(data.text || "").trim();
-            if (!text || text.length < 40) {
-                throw new Error("Could not extract enough text from file.");
+            if (!text || text.length < 20) {
+                throw new Error(`OCR Extraction Failed: Could not transcribe text from '${file.name}'. Please re-upload a clearer screenshot or document file.`);
             }
             setResumeText(text);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Upload failed");
             setResumeFileName("");
+            setResumeText("");
+            localStorage.removeItem("atsMatch_resumeText");
+            localStorage.removeItem("atsMatch_resumeFileName");
         } finally {
             setParsing(false);
         }
@@ -196,12 +199,15 @@ export default function AtsMatchPage() {
             if (!res.ok) throw new Error(data.error || "Failed to parse job description file");
             const text = String(data.text || "").trim();
             if (!text || text.length < 10) {
-                throw new Error("Could not extract enough text from file or image.");
+                throw new Error(`OCR Extraction Failed: Could not transcribe text from '${file.name}'. Please re-upload a clearer screenshot or document file.`);
             }
             setJobDescription(text);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "JD upload failed");
             setJdFileName("");
+            setJobDescription("");
+            localStorage.removeItem("atsMatch_jobDescription");
+            localStorage.removeItem("atsMatch_jdFileName");
         } finally {
             setParsingJd(false);
         }
@@ -541,19 +547,41 @@ export default function AtsMatchPage() {
                         />
                     </div>
                 </div>
-                <button
-                    suppressHydrationWarning
-                    type="button"
-                    onClick={() => void run()}
-                    disabled={loading || !resumeText || !jobDescription}
-                    className={`mt-3 rounded-xl px-5 py-2.5 text-sm font-bold transition cursor-pointer ${
-                        theme === "eyeprotect"
-                            ? "bg-[#0b5f58] hover:bg-[#084842] text-white disabled:opacity-40"
-                            : "bg-sky-600 hover:bg-sky-500 text-white disabled:opacity-40"
-                    }`}
-                >
-                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Score match"}
-                </button>
+                <div className="mt-3 flex flex-wrap items-center gap-3">
+                    <button
+                        suppressHydrationWarning
+                        type="button"
+                        onClick={() => void run()}
+                        disabled={loading || !resumeText || !jobDescription}
+                        className={`rounded-xl px-5 py-2.5 text-sm font-bold transition cursor-pointer flex items-center gap-2 ${
+                            theme === "eyeprotect"
+                                ? "bg-[#0b5f58] hover:bg-[#084842] text-white disabled:opacity-40"
+                                : "bg-sky-600 hover:bg-sky-500 text-white disabled:opacity-40"
+                        }`}
+                    >
+                        {loading ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                                <span>Processing match…</span>
+                            </>
+                        ) : (
+                            "Score match"
+                        )}
+                    </button>
+
+                    {loading && (
+                        <div className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold animate-pulse border ${
+                            theme === "eyeprotect"
+                                ? "bg-[#0b5f58]/15 border-[#084842]/40 text-[#0b5f58]"
+                                : isLight
+                                ? "bg-sky-50 border-sky-200 text-sky-800 shadow-sm"
+                                : "bg-sky-500/15 border-sky-400/30 text-sky-200"
+                        }`}>
+                            <Info className="w-4 h-4 text-sky-400 shrink-0" />
+                            <span>It takes a few seconds to analyze, please wait…</span>
+                        </div>
+                    )}
+                </div>
                 {error && <p className="text-rose-500 text-sm font-semibold mt-2">{error}</p>}
                 {result && (
                     <div className={`mt-4 rounded-2xl border p-5 space-y-2 text-sm ${

@@ -47,7 +47,21 @@ function FeaturesContent() {
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const isLight = theme === "light" || theme === "eyeprotect";
     const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack">("analysis");
-    const [activeModal, setActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack" | null>(null);
+    const [activeModal, rawSetActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack" | null>(null);
+    const setActiveModal = (modal: typeof activeModal) => {
+        const isGuest = getStorageItem("userLoggedIn") === "guest";
+        if (isGuest && modal !== null && modal !== "prointerviewer" && modal !== "resume") {
+            setConfirmModal({
+                isOpen: true,
+                title: "Authentication Required",
+                message: "Guest mode only supports offline resume editing. Please sign in or register to access mock interviews, AI resume generation, counter-offer negotiations, learning roadmaps, and cloud sync.",
+                type: "alert"
+            });
+            return;
+        }
+        rawSetActiveModal(modal);
+    };
+
     const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
@@ -391,9 +405,8 @@ function FeaturesContent() {
         if (typeof window === "undefined") return;
         const params = new URLSearchParams(window.location.search);
         const toolFromUrl = params.get("tool") as typeof activeTool | null;
-        const modalFromStorage = localStorage.getItem("prointerview_active_modal") as typeof activeTool | null;
 
-        const targetTool = toolFromUrl || modalFromStorage;
+        const targetTool = toolFromUrl;
         const validTools = [
             "analysis", "resume", "email_analyser", "roadmap_generator", "prointerviewer",
             "study_materials", "synthetic_data", "aptitude", "progress", "negotiate", "drills", "prep_pack"
@@ -406,20 +419,36 @@ function FeaturesContent() {
     }, []);
 
     useEffect(() => {
+        const handlePopState = () => {
+            if (typeof window === "undefined") return;
+            const params = new URLSearchParams(window.location.search);
+            const toolFromUrl = params.get("tool") as typeof activeTool | null;
+            setActiveModal(toolFromUrl);
+            if (toolFromUrl) {
+                setActiveTool(toolFromUrl);
+            }
+        };
+        window.addEventListener("popstate", handlePopState);
+        return () => window.removeEventListener("popstate", handlePopState);
+    }, []);
+
+    useEffect(() => {
         if (typeof window === "undefined") return;
+        const params = new URLSearchParams(window.location.search);
+        const currentTool = params.get("tool");
+
         if (activeModal) {
-            localStorage.setItem("prointerview_active_modal", activeModal);
-            localStorage.setItem("prointerview_active_tool", activeTool);
-            const url = new URL(window.location.href);
-            url.searchParams.set("tool", activeModal);
-            window.history.replaceState(null, "", url.toString());
+            if (currentTool !== activeModal) {
+                const url = new URL(window.location.href);
+                url.searchParams.set("tool", activeModal);
+                window.history.pushState({ tool: activeModal }, "", url.toString());
+            }
         } else {
-            localStorage.removeItem("prointerview_active_modal");
-            const url = new URL(window.location.href);
-            url.searchParams.delete("tool");
-            window.history.replaceState(null, "", url.toString());
+            if (currentTool) {
+                window.history.back();
+            }
         }
-    }, [activeModal, activeTool]);
+    }, [activeModal]);
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
@@ -552,14 +581,17 @@ function FeaturesContent() {
 
     useEffect(() => {
         const loggedIn = getStorageItem("userLoggedIn") === "true";
-        setIsLoggedIn(loggedIn);
-        if (!loggedIn) {
+        const isGuest = getStorageItem("userLoggedIn") === "guest";
+        setIsLoggedIn(loggedIn || isGuest);
+        if (!loggedIn && !isGuest) {
             router.push("/login");
             return;
         }
         setIsAuthChecked(true);
 
-        void pullSessionsFromCloud();
+        if (!isGuest) {
+            void pullSessionsFromCloud();
+        }
 
         const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
         setIsRealisticMode(isRealistic);
@@ -1330,6 +1362,16 @@ function FeaturesContent() {
     };
 
     const handleGenerateResumeWithAI = async () => {
+        const isGuest = getStorageItem("userLoggedIn") === "guest";
+        if (isGuest) {
+            setConfirmModal({
+                isOpen: true,
+                title: "Authentication Required",
+                message: "Guest mode only supports offline resume editing. Please sign in or register to autofill your resume with AI.",
+                type: "alert"
+            });
+            return;
+        }
         setGeneratingResume(true);
         try {
             const finalCompany = isRealisticMode
@@ -1375,6 +1417,16 @@ function FeaturesContent() {
     };
 
     const handleAnalyze = async () => {
+        const isGuest = getStorageItem("userLoggedIn") === "guest";
+        if (isGuest) {
+            setConfirmModal({
+                isOpen: true,
+                title: "Authentication Required",
+                message: "Guest mode only supports offline resume editing. Please sign in or register to analyze your portfolio links.",
+                type: "alert"
+            });
+            return;
+        }
         const finalCompany = targetCompanies.length > 0 ? targetCompanies.join(", ") : "Generic Tech Company";
         const finalRoles = preferredRoles.length > 0 ? preferredRoles.join(", ") : "Software Engineer";
 

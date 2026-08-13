@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
         const missingSectionsRaw = formData.get("missingSections") as string || "summary,workExperience";
         const projectFiles = formData.getAll("projectFiles") as File[];
         const resumeFile = formData.get("resumeFile") as File;
+        const sourceMode = (formData.get("sourceMode") as string) || "resume";
         const optimizeAts = formData.get("optimizeAts") as string;
         const targetPages = formData.get("targetPages") as string || "1";
 
@@ -92,8 +93,10 @@ export async function POST(req: NextRequest) {
         for (const file of projectFiles) {
             projectText += await extractTextFromFile(file);
         }
+        let portfolioText = "";
         if (portfolioUrl) {
-            projectText += await fetchUrlText(portfolioUrl);
+            portfolioText = await fetchUrlText(portfolioUrl);
+            projectText += portfolioText;
         }
 
         let parsedInputText = "";
@@ -121,12 +124,28 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY in environment" }, { status: 500 });
         }
 
-        let systemPrompt = `You are an expert resume writer.
+        let systemPrompt = `You are an expert resume writer and recruiter.
 Generate professional resume details for a candidate with the following credentials.
-Generate ONLY the requested sections listed here: ${missingSectionsRaw}. Do not generate keys for any other sections.
+You must always extract and clean the candidate's personal contact details (name, email, phone, location, linkedin, github, website) if they are present in the provided sources.
+Generate ONLY the requested sections listed here: ${missingSectionsRaw}, as well as the 'personalInfo' key. Do not generate keys for any other sections.
 
-${resumeFileText ? `Existing Resume / CV Document (Use this text as the primary source of truth. Translate and clean it into the requested format):
+SOURCE MODE: ${sourceMode.toUpperCase()}
+
+${sourceMode === "both" ? `CRITICAL INSTRUCTIONS FOR BOTH (RESUME + PORTFOLIO) MODE:
+Compare and cross-reference both the candidate's Resume text and Portfolio website text.
+1. Extract all personal details (Phone, Email, LinkedIn, GitHub, Portfolio URL, Location) from whichever document contains them.
+2. Compare projects & work experience across both documents. Include any high-impact projects or skills present on the portfolio that are missing from the resume.
+3. Merge non-overlapping information to construct a complete, 100% comprehensive candidate profile.` : ""}
+
+${sourceMode === "portfolio" ? `CRITICAL INSTRUCTIONS FOR PORTFOLIO MODE:
+Use the candidate's Portfolio Website as the primary source of truth. Extract all personal info, projects, technical skills, links, and experience described on the portfolio.` : ""}
+
+${resumeFileText ? `Uploaded Resume / CV Document:
 ${resumeFileText}
+` : ""}
+
+${portfolioText ? `Portfolio Website Content (${portfolioUrl}):
+${portfolioText}
 ` : ""}
 
 ${parsedResumeDataText ? parsedResumeDataText : ""}
@@ -137,13 +156,22 @@ GitHub Profile: ${github || "Not specified"}
 LinkedIn Profile: ${linkedin || "Not specified"}
 Portfolio Website: ${portfolioUrl || "Not specified"}
 
-${parsedInputText ? `Candidate's Background & Notes (incorporate this to write accurate, highly-tailored resume details):
+${parsedInputText ? `Candidate's Background & Notes:
 ${parsedInputText}
 ` : ""}Additional Code / Projects / Files context:
 ${projectText || "No project files provided."}
 
-Return a valid JSON block matching this schema. ONLY include keys that are in the requested list [${missingSectionsRaw}] (omit any keys not requested):
+Return a valid JSON block matching this schema. ONLY include keys that are in the requested list [${missingSectionsRaw}] as well as the 'personalInfo' key (omit any other keys not requested):
 {
+  "personalInfo": {
+    "name": "Candidate Full Name (extract from source, or fall back to metadata)",
+    "email": "Email address (extract from source)",
+    "phone": "Phone/mobile number (extract from source)",
+    "location": "City, State, or Country (extract from source)",
+    "linkedin": "LinkedIn profile link (extract from source or fall back to metadata)",
+    "github": "GitHub profile link (extract from source or fall back to metadata)",
+    "website": "Portfolio URL / Personal Website (extract from source or fall back to metadata)"
+  },
   "summary": "A professional summary paragraph of 3-4 sentences.",
   "workExperience": [
     {

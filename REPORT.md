@@ -318,6 +318,51 @@ Below is a chronological list of every change made during this session.
 
 ---
 
+### Change 8: S3 Saved Resumes Sync & Offline Fallback
+**Files Modified:**
+- `src/app/api/resumes/route.ts` [NEW] — GET/POST resumes stored in AWS S3 scoped to user identifier.
+- `src/components/prointerviewer/ProInterviewerApp.tsx` — Sync and load-time merge algorithms.
+
+**What:** Implemented cross-device saved resumes synchronization to AWS S3. If S3 is offline or unreachable (returns 503 or throws connection error), it seamlessly falls back to `localStorage` in the browser and displays a beautiful warning notification popup. When S3 comes back online, the mount check merges lists by `updatedAt` timestamp and automatically migrates local changes to the cloud.
+
+---
+
+### Change 9: Phone Demo Mode Deletion
+**Files Modified:**
+- `src/app/api/auth/register/route.ts`
+- `src/app/api/auth/login/route.ts`
+- `src/app/login/page.tsx`
+
+**What:** Completely removed phone number registration and login support. Replaced the auto-OTP generation for numbers and deleted the bypass verification indicator banners. Only valid email-based logins are supported for candidate accounts.
+
+---
+
+### Change 10: Isolated Guest Mode (The Sandbox Bubble)
+**Files Modified:**
+- `src/middleware.ts` — Router session filters.
+- `src/app/features/page.tsx` — LocalStorage-only resume builder and API restriction checks.
+
+**What:** Implemented a secure Guest Mode accessed via the new "Explore as Guest" option on the login screen. It allows guests to use the Resume Builder locally/offline in their browser, but blocks access to sensitive user data, admin portals, and external APIs (AI generator, mock interview, roadmaps, etc.). Attempting to open these online features pops up an authentication warning.
+
+---
+
+### Change 11: Rate Limiter Garbage Collection (Memory Leak Fix)
+**File Modified:**
+- `src/utils/rateLimit.ts`
+
+**What:** Fixed a memory leak in the rate limiter by implementing periodic garbage collection. When the buckets map exceeds 1000 items, it iterates and purges keys with no active timestamps.
+
+---
+
+### Change 12: Hydration Flash Fix
+**Files Modified:**
+- `src/app/page.tsx`
+- `src/app/login/page.tsx`
+
+**What:** Prevented logged-out layouts from flashing for a few seconds during Next.js client-side page hydration. Added `isHydrated` checks that render a clean loading spinner until client-side hydration has successfully verified the session.
+
+---
+
 ## 6. Page-by-Page Breakdown
 
 ### Landing Page (`src/app/page.tsx`)

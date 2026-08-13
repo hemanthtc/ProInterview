@@ -16,7 +16,16 @@ async function extractTextFromFile(file: File): Promise<string> {
             const apiKey = process.env.GEMINI_API_KEY;
             if (apiKey && apiKey !== "dummy") {
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
+                const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+                let mimeType = file.type || "image/png";
+                if (name.endsWith(".jpg") || name.endsWith(".jpeg") || mimeType === "image/jpg") {
+                    mimeType = "image/jpeg";
+                } else if (name.endsWith(".png")) {
+                    mimeType = "image/png";
+                } else if (name.endsWith(".webp")) {
+                    mimeType = "image/webp";
+                }
+
                 let text = "";
                 for (const modelName of modelsToTry) {
                     try {
@@ -27,7 +36,7 @@ async function extractTextFromFile(file: File): Promise<string> {
                             {
                                 inlineData: {
                                     data: base64Data,
-                                    mimeType: file.type || "image/png"
+                                    mimeType
                                 }
                             },
                             "Extract and transcribe all text from this job description / document screenshot verbatim. Return only the extracted text without conversational wrapper."
@@ -45,7 +54,7 @@ async function extractTextFromFile(file: File): Promise<string> {
         } catch (e) {
             console.error("Image OCR text extraction failed for " + file.name + ":", e);
         }
-        return `--- [Image File: ${file.name}] ---\n[Image uploaded: ${file.name}]\n`;
+        return "";
     }
 
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
@@ -204,6 +213,13 @@ export async function POST(req: NextRequest) {
 
         if (portfolioUrl) {
             combinedText += await fetchUrlText(portfolioUrl);
+        }
+
+        if (!combinedText || !combinedText.trim()) {
+            return NextResponse.json(
+                { error: "Image OCR failed: Could not transcribe text from file. Please re-upload a clearer screenshot or document file." },
+                { status: 422 }
+            );
         }
 
         return NextResponse.json({

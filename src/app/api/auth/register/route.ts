@@ -21,6 +21,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Please fill in all registration fields." }, { status: 400 });
         }
 
+        if (type !== "email" || !identifier.includes("@")) {
+            return NextResponse.json({ error: "Registration via phone number is no longer supported. Please register using an email address." }, { status: 400 });
+        }
+
         const rl = rateLimit(`register:${identifier.toLowerCase()}`, { limit: 5, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
@@ -69,11 +73,6 @@ export async function POST(req: NextRequest) {
             success: true,
             message: "Verification code sent.",
         };
-        // Phone demo only — never return email OTP in the API body
-        if (type !== "email") {
-            responseData.otpCode = generatedOtp;
-        }
-
         return NextResponse.json(responseData);
     } catch (error: unknown) {
         console.error("Registration API error:", error);

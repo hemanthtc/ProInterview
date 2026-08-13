@@ -45,7 +45,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | AI | **Google Gemini** (`@google/generative-ai`) · optional **Sarvam AI** |
 | Avatar | **D-ID** (talk + WebRTC stream) |
 | Data | **MongoDB Atlas** (Mongoose for Synthetic Files, Folders, Profiles & Cloud Sessions) · browser `localStorage` for session state |
-| Auth | Google OAuth · email OTP · bcrypt |
+| Auth | Google OAuth · email OTP · bcrypt · Guest Mode sandbox |
 | Payments | **Razorpay** · UPI |
 | Parsing & Export | `pdf-parse` (resumes) · `html2canvas` (PDF export) · `docx` / `marked` · `jszip` (project ZIPs) |
 | Deploy | **AWS Amplify** (`amplify.yml`) |
@@ -199,6 +199,7 @@ ProInterview/
 | `GET` / `POST /api/synthetic/folders` | Manage folder hierarchy in MongoDB Atlas |
 | `POST /api/profile-guidance` | Cross-session coaching |
 | `POST /api/generate-resume` | AI resume content |
+| `GET` / `POST /api/resumes` | Fetch and save user saved resumes list in S3 |
 | `POST /api/analyze-email` | Job invite / offer parsing |
 | `POST /api/generate-roadmap` | Learning roadmap |
 | `POST /api/d-id-talk` / `d-id-stream` | Avatar video & WebRTC |

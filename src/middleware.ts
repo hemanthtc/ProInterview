@@ -22,16 +22,34 @@ export function middleware(req: NextRequest) {
 
     // Check for HttpOnly session cookie, userLoggedIn cookie, or custom auth token header
     const sessionCookie = req.cookies.get("session")?.value;
-    const userLoggedInCookie = req.cookies.get("userLoggedIn")?.value === "true";
+    const userLoggedInValue = req.cookies.get("userLoggedIn")?.value;
     const authHeader = req.headers.get("authorization");
 
-    const isAuthenticated = Boolean(sessionCookie || userLoggedInCookie || authHeader);
+    const isUser = userLoggedInValue === "true";
+    const isGuest = userLoggedInValue === "guest";
+    const isAuthenticated = Boolean(sessionCookie || isUser || isGuest || authHeader);
 
     // If attempting to access a protected feature route without a session, redirect to login
     if (!isAuthenticated) {
         const loginUrl = new URL("/login", req.url);
         loginUrl.searchParams.set("redirect", pathname);
         return NextResponse.redirect(loginUrl);
+    }
+
+    // Securely restrict Guest Mode to a sandbox bubble (block sensitive/online pages)
+    if (isGuest) {
+        const blockedForGuest = [
+            "/admin",
+            "/profile",
+            "/realistic-interview",
+            "/interview",
+            "/setup"
+        ];
+        if (blockedForGuest.some(path => pathname.startsWith(path))) {
+            const loginUrl = new URL("/login", req.url);
+            loginUrl.searchParams.set("redirect", pathname);
+            return NextResponse.redirect(loginUrl);
+        }
     }
 
     return NextResponse.next();
