@@ -31,9 +31,12 @@ export function getStorageItem(key: string): string | null {
     if (key === "userLoggedIn") {
         const fromLocal = localStorage.getItem("userLoggedIn");
         if (fromLocal === "true") return "true";
+        if (fromLocal === "guest") return "guest";
         const fromTemp = tempMemory["userLoggedIn"];
         if (fromTemp === "true") return "true";
+        if (fromTemp === "guest") return "guest";
         if (document.cookie.includes("userLoggedIn=true")) return "true";
+        if (document.cookie.includes("userLoggedIn=guest")) return "guest";
         return null;
     }
     const isLoggedIn = localStorage.getItem("userLoggedIn") === "true" || document.cookie.includes("userLoggedIn=true");
@@ -51,6 +54,10 @@ export function setStorageItem(key: string, value: string): void {
             localStorage.setItem("userLoggedIn", "true");
             tempMemory["userLoggedIn"] = "true";
             document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+        } else if (value === "guest") {
+            localStorage.setItem("userLoggedIn", "guest");
+            tempMemory["userLoggedIn"] = "guest";
+            document.cookie = "userLoggedIn=guest; path=/; max-age=86400; SameSite=Lax";
         } else {
             localStorage.removeItem("userLoggedIn");
             delete tempMemory["userLoggedIn"];

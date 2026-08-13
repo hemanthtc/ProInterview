@@ -175,4 +175,30 @@ To maintain strict data confidentiality, Guest Mode executes in a client-side lo
 ### B. In-Memory Rate Limiter Resource Protection
 To defend endpoints against Denial of Service (DoS) and burst abuse, all critical registration, login, and matching routes are rate-limited via a sliding-window algorithm. To prevent memory leakage, a periodic garbage collection routine purges expired tracking keys when memory maps exceed 1000 records.
 
+---
+
+## 8. S3 Community Chat Architecture & Offline Sync Queue
+
+The platform features a database-free **Community General Chat** and direct messaging system when S3 is active, bypassing MongoDB completely for all chat operations.
+
+### A. AWS S3 Storage Schema
+* **Rooms registry:** Store all public channels and active direct messages in `community/rooms.json` in AWS S3.
+* **Room messages list:** Each room’s chat history is saved as a discrete list inside `community/messages/[roomSlug].json`.
+* **Read receipts:** User read timestamps are tracked inside `community/read_receipts/[roomSlug].json`.
+* **Likes:** Message like states are toggled directly inside the S3 messages JSON array, storing anonymized hashed participant identifiers.
+
+### B. Message Expiry & Pruning Policies
+* **7-Day Retention:** On every write operation, the server filters out messages older than 7 days.
+* **5,000 Messages Cap:** If the message array length exceeds 5,000, the server slices off the oldest 1,000 messages (retaining the 4,000 newest) to optimize S3 read/write payload sizes.
+
+### C. WhatsApp-Style Delivery Ticks
+* **Single Grey Tick:** Message queued locally in `localStorage` due to offline status / network disconnect.
+* **Double Grey Ticks:** Message saved to S3.
+* **Double Blue Ticks:** Message read by at least one other participant (when another user triggers a GET fetch, their read timestamp is updated, turning ticks blue on the sender's screen).
+
+### D. Offline Sync Queue
+* When offline, sending messages queues them in the client's `pending_community_messages` local cache.
+* A background sync interval periodically retries posting queued items to `/api/community/messages`. Once success is returned, the client clears the local state.
+
+
 

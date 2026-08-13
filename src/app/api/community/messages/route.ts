@@ -20,6 +20,14 @@ import {
 } from "@/utils/communityStore";
 import { rateLimit } from "@/utils/rateLimit";
 import User from "@/models/User";
+import {
+    isS3Configured,
+    s3GetRooms,
+    s3GetMessages,
+    s3PostMessage,
+    s3GetReadReceipts,
+    s3UpdateReadReceipt,
+} from "@/utils/s3Community";
 
 function mapMessage(
     m: {
@@ -30,28 +38,64 @@ function mapMessage(
         senderName: string;
         body: string;
         createdAt: Date | string;
+        likes?: string[];
     },
-    viewerId: string
+    viewerId: string,
+    receipts?: Record<string, string>
 ) {
     const senderId = String(m.senderId).toLowerCase();
     const mine = senderId === viewerId.toLowerCase();
+    const createdAtStr = typeof m.createdAt === "string" ? m.createdAt : m.createdAt.toISOString();
+    
+    // Read status: true if any other user's read timestamp is >= message creation time
+    const read = receipts
+        ? Object.entries(receipts).some(([email, lastRead]) => email !== senderId && lastRead >= createdAtStr)
+        : false;
+
     return {
         id: m.id || String(m._id),
         roomSlug: m.roomSlug,
-        // Never leak peer emails — only opaque keys (+ raw id for own messages is unnecessary).
         senderPublicId: presencePublicId(senderId),
         senderName: m.senderName,
         body: m.body,
-        createdAt: m.createdAt,
+        createdAt: createdAtStr,
         mine,
+        delivered: true,
+        read,
+        likes: m.likes || [],
     };
 }
 
 async function assertRoomAccess(roomSlug: string, identifier: string): Promise<
-    | { ok: true; source: "mongo"; roomType: "channel" | "dm" }
-    | { ok: true; source: "memory"; roomType: "channel" | "dm" }
+    | { ok: true; source: "s3" | "mongo" | "memory"; roomType: "channel" | "dm" }
     | { ok: false; status: number; error: string }
 > {
+    const cleanId = identifier.toLowerCase();
+
+    // 1. AWS S3 Access Check
+    if (isS3Configured()) {
+        try {
+            const s3Rooms = await s3GetRooms();
+            const room = s3Rooms.find((r) => r.slug === roomSlug);
+            if (!room) {
+                if (isDefaultChannelSlug(roomSlug)) {
+                    return { ok: true, source: "s3", roomType: "channel" };
+                }
+                return { ok: false, status: 404, error: "Room not found." };
+            }
+            if (room.type === "dm") {
+                const members = (room.members || []).map((m) => m.toLowerCase());
+                if (!members.includes(cleanId)) {
+                    return { ok: false, status: 403, error: "Not a member of this DM." };
+                }
+            }
+            return { ok: true, source: "s3", roomType: room.type };
+        } catch (err) {
+            console.error("S3 assertRoomAccess failed, falling back:", err);
+        }
+    }
+
+    // 2. MongoDB Fallback
     try {
         await connectDB();
         const room = await CommunityRoom.findOne({ slug: roomSlug }).lean();
@@ -63,7 +107,7 @@ async function assertRoomAccess(roomSlug: string, identifier: string): Promise<
         }
         if (room.type === "dm") {
             const members = (room.members || []).map((m) => m.toLowerCase());
-            if (!members.includes(identifier.toLowerCase())) {
+            if (!members.includes(cleanId)) {
                 return { ok: false, status: 403, error: "Not a member of this DM." };
             }
         }
@@ -71,7 +115,6 @@ async function assertRoomAccess(roomSlug: string, identifier: string): Promise<
     } catch {
         memSeedChannels([...DEFAULT_COMMUNITY_CHANNELS]);
         if (!memCanAccessRoom(roomSlug, identifier)) {
-            // Fail closed for DMs / unknown rooms when DB is down.
             if (isDmSlug(roomSlug)) {
                 return {
                     ok: false,
@@ -116,9 +159,7 @@ export async function GET(req: NextRequest) {
                 const user = await User.findOne({ identifier: session.identifier }).lean();
                 if (user?.displayName) displayName = sanitizeDisplayName(user.displayName);
             }
-        } catch {
-            /* ignore */
-        }
+        } catch { /* ignore */ }
 
         memTouchPresence(
             {
@@ -130,6 +171,31 @@ export async function GET(req: NextRequest) {
             presencePublicId(session.identifier)
         );
 
+        // 1. AWS S3 Path
+        if (access.source === "s3") {
+            // Update read receipts presence first
+            await s3UpdateReadReceipt(roomSlug, session.identifier);
+
+            const rawMessages = await s3GetMessages(roomSlug);
+            const receipts = await s3GetReadReceipts(roomSlug);
+
+            let list = rawMessages;
+            if (after) {
+                const afterTime = Date.parse(after);
+                if (!Number.isNaN(afterTime)) {
+                    list = list.filter((m) => Date.parse(m.createdAt) > afterTime);
+                }
+            }
+
+            const messages = list
+                .sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+                .slice(-limit)
+                .map((m) => mapMessage(m, session.identifier, receipts));
+
+            return NextResponse.json({ messages, source: "s3" });
+        }
+
+        // 2. Memory Fallback
         if (access.source === "memory") {
             const messages = memGetMessages(roomSlug, after, limit).map((m) =>
                 mapMessage(m, session.identifier)
@@ -137,6 +203,7 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ messages, source: "memory" });
         }
 
+        // 3. MongoDB Fallback
         const filter: Record<string, unknown> = { roomSlug };
         if (after) {
             const t = new Date(after);
@@ -187,6 +254,41 @@ export async function POST(req: NextRequest) {
 
         let displayName = sanitizeDisplayName(session.identifier.split("@")[0] || "Student");
 
+        // 1. AWS S3 Path
+        if (access.source === "s3") {
+            try {
+                await connectDB();
+                const user = await User.findOne({ identifier: session.identifier }).lean();
+                if (user?.displayName) displayName = sanitizeDisplayName(user.displayName);
+            } catch { /* offline DB / fallback displayPeer */ }
+
+            const msg = await s3PostMessage(roomSlug, {
+                roomSlug,
+                senderId: session.identifier.toLowerCase(),
+                senderName: displayName,
+                body: clean,
+            });
+
+            memTouchPresence(
+                {
+                    identifier: session.identifier,
+                    displayName,
+                    lastSeen: Date.now(),
+                    roomSlug,
+                },
+                presencePublicId(session.identifier)
+            );
+
+            // Fetch receipts to get read/tick states right away
+            const receipts = await s3GetReadReceipts(roomSlug);
+
+            return NextResponse.json({
+                message: mapMessage(msg, session.identifier, receipts),
+                source: "s3",
+            });
+        }
+
+        // 2. MongoDB Path
         if (access.source === "mongo") {
             try {
                 const user = await User.findOne({ identifier: session.identifier }).lean();
@@ -224,17 +326,15 @@ export async function POST(req: NextRequest) {
                     source: "mongo",
                 });
             } catch (err) {
-                // Do not silently write DMs to memory after a mid-request DB failure.
                 if (access.roomType === "dm" || isDmSlug(roomSlug)) {
                     const message = err instanceof Error ? err.message : "Failed to send message";
                     return NextResponse.json({ error: message }, { status: 503 });
                 }
-                // Channels may fall back for local demos.
             }
         }
 
+        // 3. Memory Path
         if (access.roomType === "dm" || isDmSlug(roomSlug)) {
-            // Memory DM only if we already verified membership via memCanAccessRoom.
             if (access.source !== "memory" || !memCanAccessRoom(roomSlug, session.identifier)) {
                 return NextResponse.json(
                     { error: "Direct messages unavailable while the database is down." },

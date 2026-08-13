@@ -16,6 +16,7 @@ import {
 } from "@/utils/communityStore";
 import { rateLimit } from "@/utils/rateLimit";
 import User from "@/models/User";
+import { isS3Configured, s3GetRooms, s3UpsertDm } from "@/utils/s3Community";
 
 async function ensureDefaultRooms() {
     for (const ch of DEFAULT_COMMUNITY_CHANNELS) {
@@ -59,13 +60,32 @@ export async function GET() {
             return NextResponse.json({ error: "Sign in to view community rooms." }, { status: 401 });
         }
 
+        const me = session.identifier.toLowerCase();
+
+        // 1. AWS S3 Storage Check
+        if (isS3Configured()) {
+            try {
+                const s3Rooms = await s3GetRooms();
+                const filtered = s3Rooms.filter(
+                    (r) => r.type === "channel" || r.members.includes(me)
+                );
+                return NextResponse.json({
+                    rooms: filtered.map((r) => publicRoom(r)),
+                    source: "s3",
+                });
+            } catch (err) {
+                console.error("Failed to load rooms from S3, falling back to memory:", err);
+            }
+        }
+
+        // 2. MongoDB Fallback
         try {
             await connectDB();
             await ensureDefaultRooms();
             const query = {
                 $or: [
                     { type: "channel" as const },
-                    { type: "dm" as const, members: session.identifier.toLowerCase() },
+                    { type: "dm" as const, members: me },
                 ],
             };
 
@@ -128,6 +148,29 @@ export async function POST(req: NextRequest) {
 
         const slug = dmSlug(me, peer);
 
+        // 1. AWS S3 Storage Check
+        if (isS3Configured()) {
+            try {
+                let displayPeer = sanitizeDisplayName(peer.split("@")[0] || "Student");
+                try {
+                    await connectDB();
+                    const peerUser = await User.findOne({ identifier: peer }).lean();
+                    if (peerUser?.displayName) {
+                        displayPeer = sanitizeDisplayName(peerUser.displayName);
+                    }
+                } catch { /* offline DB / fallback displayPeer */ }
+
+                const room = await s3UpsertDm(slug, `DM · ${displayPeer}`, [me, peer], me);
+                return NextResponse.json({
+                    room: publicRoom(room),
+                    source: "s3",
+                });
+            } catch (err) {
+                console.error("Failed to upsert DM to S3, falling back to memory:", err);
+            }
+        }
+
+        // 2. MongoDB Fallback
         try {
             await connectDB();
             const peerUser = await User.findOne({ identifier: peer }).lean();

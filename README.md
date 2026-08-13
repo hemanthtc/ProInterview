@@ -33,6 +33,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | **Shareable Scorecard** | Public link + Print/PDF interview report |
 | **Spaced Drills** | Weak-spot drills with Practice now |
 | **Cloud Session Sync** | Interview history, prep packs, and synthetic datasets synced to Mongo across devices |
+| **Community General Chat** | S3-backed messaging & direct messages with week retention, 5000-msg cap, WhatsApp ticks, offline queue, and heart likes |
 
 ---
 
@@ -44,7 +45,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | Styling | **Tailwind CSS v4** · **Framer Motion** · **Lucide React** |
 | AI | **Google Gemini** (`@google/generative-ai`) · optional **Sarvam AI** |
 | Avatar | **D-ID** (talk + WebRTC stream) |
-| Data | **MongoDB Atlas** (Mongoose for Synthetic Files, Folders, Profiles & Cloud Sessions) · browser `localStorage` for session state |
+| Data | **MongoDB Atlas** (Mongoose for Synthetic Files, Folders, Profiles & Cloud Sessions) · **AWS S3** (Community Chat, Resumes, Profile Photos, Uploads) · browser `localStorage` |
 | Auth | Google OAuth · email OTP · bcrypt · Guest Mode sandbox |
 | Payments | **Razorpay** · UPI |
 | Parsing & Export | `pdf-parse` (resumes) · `html2canvas` (PDF export) · `docx` / `marked` · `jszip` (project ZIPs) |
@@ -183,6 +184,7 @@ ProInterview/
 | `/features` | Resume builder, synthetic data generator, email analyser, roadmaps |
 | `/profile` | Profile, history, payments |
 | `/admin` | Admin dashboard |
+| `/community` | Real-time channels & Direct Messages chat |
 
 ### APIs (selection)
 
@@ -200,6 +202,9 @@ ProInterview/
 | `POST /api/profile-guidance` | Cross-session coaching |
 | `POST /api/generate-resume` | AI resume content |
 | `GET` / `POST /api/resumes` | Fetch and save user saved resumes list in S3 |
+| `GET` / `POST /api/community/messages` | Load and send S3 general chat messages |
+| `GET` / `POST /api/community/rooms` | Load and create S3 direct message rooms |
+| `POST /api/community/messages/like` | Toggle message heart reaction state |
 | `POST /api/analyze-email` | Job invite / offer parsing |
 | `POST /api/generate-roadmap` | Learning roadmap |
 | `POST /api/d-id-talk` / `d-id-stream` | Avatar video & WebRTC |

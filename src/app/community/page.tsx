@@ -14,6 +14,9 @@ import {
     Sun,
     Moon,
     Eye,
+    Check,
+    CheckCheck,
+    Heart,
 } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
 
@@ -33,6 +36,10 @@ type ChatMessage = {
     body: string;
     createdAt: string;
     mine?: boolean;
+    isPending?: boolean;
+    delivered?: boolean;
+    read?: boolean;
+    likes?: string[];
 };
 
 type OnlineUser = {
@@ -70,19 +77,33 @@ export default function CommunityPage() {
     const [loadingRooms, setLoadingRooms] = useState(true);
     const [sending, setSending] = useState(false);
     const [error, setError] = useState("");
-    const [source, setSource] = useState<"mongo" | "memory" | "">("");
+    const [source, setSource] = useState<"mongo" | "memory" | "s3" | "">("");
     const [mobileShowSidebar, setMobileShowSidebar] = useState(true);
     const bottomRef = useRef<HTMLDivElement>(null);
     const lastStampRef = useRef<string>("");
     const authDeadRef = useRef(false);
 
+    const [pendingQueue, setPendingQueue] = useState<ChatMessage[]>([]);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
         if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setTheme(savedTheme);
+            Promise.resolve().then(() => {
+                setTheme(savedTheme);
+            });
+        }
+    }, []);
+
+    // Load offline pending messages queue from local storage on mount
+    useEffect(() => {
+        const stored = localStorage.getItem("pending_community_messages");
+        if (stored) {
+            try {
+                Promise.resolve().then(() => {
+                    setPendingQueue(JSON.parse(stored));
+                });
+            } catch { /* ignore */ }
         }
     }, []);
 
@@ -101,14 +122,35 @@ export default function CommunityPage() {
         [rooms, activeSlug]
     );
 
+    // Combine online + local pending queue messages for visual display
+    const activeMessages = useMemo(() => {
+        const onlineMsgs = messages.filter((m) => m.roomSlug === activeSlug);
+        const offlineMsgs = pendingQueue.filter((m) => m.roomSlug === activeSlug);
+        
+        const combined = [...onlineMsgs];
+        for (const off of offlineMsgs) {
+            // Avoid duplicates in case it was uploaded but loadMessages hasn't finished loading yet
+            const exists = combined.some(
+                (m) =>
+                    m.body === off.body &&
+                    Math.abs(Date.parse(m.createdAt) - Date.parse(off.createdAt)) < 15000
+            );
+            if (!exists) {
+                combined.push(off);
+            }
+        }
+        return combined.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
+    }, [messages, pendingQueue, activeSlug]);
+
     useEffect(() => {
         const loggedIn = getStorageItem("userLoggedIn") === "true";
         if (!loggedIn) {
             router.push("/login");
             return;
         }
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setReady(true);
+        Promise.resolve().then(() => {
+            setReady(true);
+        });
     }, [router]);
 
     /** Redirect to login on 401 and stop all further polling. */
@@ -176,39 +218,110 @@ export default function CommunityPage() {
         }
     }, [handleAuthExpired]);
 
+    // Push local offline queue messages to server
+    const syncOfflineQueue = useCallback(async () => {
+        const pending = localStorage.getItem("pending_community_messages");
+        if (!pending) return;
+        try {
+            const list: ChatMessage[] = JSON.parse(pending);
+            if (!list.length) return;
+
+            // Process sequentially
+            for (const m of list) {
+                try {
+                    const res = await fetch("/api/community/messages", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ roomSlug: m.roomSlug, body: m.body }),
+                    });
+                    if (res.ok) {
+                        // Success: remove from local queue state and storage
+                        setPendingQueue((prev) => {
+                            const next = prev.filter((item) => item.id !== m.id);
+                            localStorage.setItem("pending_community_messages", JSON.stringify(next));
+                            return next;
+                        });
+                    } else {
+                        break; // Stop sync on server rejection (e.g. rate limit / auth)
+                    }
+                } catch {
+                    break; // Network unreachable, retry on next cycle
+                }
+            }
+            await loadMessages();
+        } catch { /* ignore */ }
+    }, [loadMessages]);
+
     useEffect(() => {
         if (!ready) return;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        void loadRooms();
+        Promise.resolve().then(() => {
+            void loadRooms();
+        });
     }, [ready, loadRooms]);
 
     useEffect(() => {
         if (!ready) return;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        void loadMessages();
-        const t = setInterval(() => void loadMessages(), 3000);
+        Promise.resolve().then(() => {
+            void loadMessages();
+        });
+        const t = setInterval(() => {
+            Promise.resolve().then(() => {
+                void loadMessages();
+            });
+        }, 3000);
         return () => clearInterval(t);
     }, [ready, activeSlug, loadMessages]);
 
     useEffect(() => {
         if (!ready) return;
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        void loadOnline();
-        const t = setInterval(() => void loadOnline(), 6000);
+        Promise.resolve().then(() => {
+            void loadOnline();
+        });
+        const t = setInterval(() => {
+            Promise.resolve().then(() => {
+                void loadOnline();
+            });
+        }, 6000);
         return () => clearInterval(t);
     }, [ready, loadOnline]);
 
     useEffect(() => {
+        if (!ready) return;
+        const t = setInterval(() => void syncOfflineQueue(), 5000);
+        return () => clearInterval(t);
+    }, [ready, syncOfflineQueue]);
+
+    useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages.length]);
+    }, [activeMessages.length]);
 
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = draft.trim();
-        if (!text || sending) return;
+        if (!text) return;
 
-        setSending(true);
+        const tempId = `pending_${Date.now()}`;
+        const newMsg: ChatMessage = {
+            id: tempId,
+            roomSlug: activeSlug,
+            senderPublicId: mePublicId,
+            senderName: getStorageItem("userName") || "Me",
+            body: text,
+            createdAt: new Date().toISOString(),
+            mine: true,
+            isPending: true,
+            likes: [],
+        };
+
+        // Queue locally for instant render (Single Grey Tick indicator)
+        setPendingQueue((prev) => {
+            const next = [...prev, newMsg];
+            localStorage.setItem("pending_community_messages", JSON.stringify(next));
+            return next;
+        });
+        setDraft("");
         setError("");
+
         try {
             const res = await fetch("/api/community/messages", {
                 method: "POST",
@@ -220,15 +333,50 @@ export default function CommunityPage() {
                 return;
             }
             if (!res.ok) {
-                const d = await res.json().catch(() => ({}));
-                throw new Error(d.error || "Failed to send");
+                throw new Error("Server rejected message");
             }
-            setDraft("");
+            // Success: remove from local pending queue
+            setPendingQueue((prev) => {
+                const next = prev.filter((m) => m.id !== tempId);
+                localStorage.setItem("pending_community_messages", JSON.stringify(next));
+                return next;
+            });
             await loadMessages();
-        } catch (err: any) {
-            setError(err.message || "Sending failed");
-        } finally {
-            setSending(false);
+        } catch {
+            // Keep in queue for background sync once connectivity is restored
+        }
+    };
+
+    const toggleLike = async (m: ChatMessage) => {
+        if (m.isPending) return;
+        try {
+            // Optimistic UI update
+            setMessages((prev) =>
+                prev.map((msg) => {
+                    if (msg.id !== m.id) return msg;
+                    const likes = msg.likes || [];
+                    const idx = likes.indexOf(mePublicId);
+                    const nextLikes = [...likes];
+                    if (idx >= 0) {
+                        nextLikes.splice(idx, 1);
+                    } else {
+                        nextLikes.push(mePublicId);
+                    }
+                    return { ...msg, likes: nextLikes };
+                })
+            );
+
+            const res = await fetch("/api/community/messages/like", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ roomSlug: activeSlug, messageId: m.id }),
+            });
+            if (!res.ok) {
+                // Revert on error
+                await loadMessages();
+            }
+        } catch {
+            await loadMessages();
         }
     };
 
@@ -303,7 +451,7 @@ export default function CommunityPage() {
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
                             isLight
                                 ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
-                                : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                               : "bg-white/10 text-white border-white/20 hover:bg-white/20"
                         }`}
                         title={`Current Theme: ${theme}. Click to switch.`}
                     >
@@ -311,11 +459,11 @@ export default function CommunityPage() {
                         {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                         {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                     </button>
-                    {source === "memory" && (
+                    {(source === "memory" || source === "s3") && (
                         <span className={`hidden sm:inline text-[10px] rounded-full border px-2 py-0.5 ${
                             isLight ? "border-amber-500/40 bg-amber-50 text-amber-800 font-semibold" : "border-amber-400/30 text-amber-200/80"
                         }`}>
-                            Live demo mode
+                            {source === "s3" ? "S3 Server Store" : "Live demo mode"}
                         </span>
                     )}
                     <button
@@ -428,13 +576,13 @@ export default function CommunityPage() {
                     )}
 
                     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-                        {messages.length === 0 && (
+                        {activeMessages.length === 0 && (
                             <div className={`h-full min-h-[200px] flex flex-col items-center justify-center text-center text-sm gap-2 ${isLight ? "text-slate-400" : "text-white/40"}`}>
                                 <Users className="w-8 h-8 opacity-40" />
                                 <p>No messages yet — be the first to say hi.</p>
                             </div>
                         )}
-                        {messages.map((m) => {
+                        {activeMessages.map((m) => {
                             const mine = Boolean(m.mine) || m.senderPublicId === mePublicId;
                             return (
                                 <div key={m.id} className={`flex gap-3 ${mine ? "justify-end" : "justify-start"}`}>
@@ -460,8 +608,37 @@ export default function CommunityPage() {
                                             <div className={`text-[10px] font-bold mb-0.5 ${isLight ? "text-indigo-700" : "text-indigo-300/90"}`}>{m.senderName}</div>
                                         )}
                                         <p className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</p>
-                                        <div className={`text-[10px] mt-1 ${mine ? (isLight ? "text-white/80" : "text-white/60") : (isLight ? "text-slate-500" : "text-white/35")}`}>
-                                            {formatTime(m.createdAt)}
+                                        
+                                        <div className="flex items-center justify-between gap-4 mt-1.5 text-[10px]">
+                                            <div className={`flex items-center gap-1.5 select-none ${mine ? (isLight ? "text-white/80" : "text-white/60") : (isLight ? "text-slate-500" : "text-white/35")}`}>
+                                                <span>{formatTime(m.createdAt)}</span>
+                                                {mine && (
+                                                    <span>
+                                                        {m.isPending ? (
+                                                            <Check className="w-3.5 h-3.5 inline opacity-70" />
+                                                        ) : m.read ? (
+                                                            <CheckCheck className="w-3.5 h-3.5 inline text-sky-400" />
+                                                        ) : (
+                                                            <CheckCheck className="w-3.5 h-3.5 inline opacity-70" />
+                                                        )}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => void toggleLike(m)}
+                                                disabled={Boolean(m.isPending)}
+                                                className={`flex items-center gap-1 transition px-1 py-0.5 rounded hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer ${
+                                                    (m.likes || []).includes(mePublicId)
+                                                        ? "text-rose-500 font-semibold"
+                                                        : mine
+                                                        ? (isLight ? "text-white/80 hover:text-white" : "text-white/60 hover:text-white")
+                                                        : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/35 hover:text-white/70")
+                                                }`}
+                                            >
+                                                <Heart className={`w-3.5 h-3.5 ${ (m.likes || []).includes(mePublicId) ? "fill-rose-500 text-rose-500" : "" }`} />
+                                                { (m.likes || []).length > 0 && <span>{(m.likes || []).length}</span> }
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -522,28 +699,24 @@ export default function CommunityPage() {
                                     <button
                                         key={u.publicId}
                                         type="button"
-                                        disabled={isMe}
                                         onClick={() => void openDm(u)}
-                                        title={isMe ? "You" : `Message ${u.displayName}`}
-                                        className={`w-full text-left rounded-lg px-2 py-2 flex items-center gap-2 transition ${
-                                            isMe ? "opacity-70 cursor-default" : isLight ? "hover:bg-slate-200/60" : "hover:bg-white/5"
+                                        disabled={isMe}
+                                        className={`w-full text-left rounded-lg px-2 py-1.5 text-xs flex items-center gap-2 transition ${
+                                            isMe
+                                                ? (isLight ? "text-slate-400 bg-slate-100" : "text-white/30 bg-white/5")
+                                                : (isLight ? "text-slate-700 hover:bg-slate-200/50 hover:text-slate-900 cursor-pointer" : "text-white/70 hover:bg-white/5 hover:text-white cursor-pointer")
                                         }`}
                                     >
-                                        <span className="relative shrink-0">
-                                            <span className={`w-7 h-7 rounded-full border flex items-center justify-center text-[10px] font-bold ${
-                                                isLight ? "bg-emerald-100 border-emerald-300 text-emerald-800" : "bg-emerald-500/20 border-emerald-400/20 text-emerald-100"
+                                        <div className="relative shrink-0">
+                                            <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[8px] font-bold ${
+                                                isLight ? "bg-slate-200 text-slate-700" : "bg-white/10 text-white/80"
                                             }`}>
                                                 {initials(u.displayName)}
-                                            </span>
-                                            <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500" />
-                                        </span>
-                                        <span className="min-w-0">
-                                            <span className={`block text-xs font-semibold truncate ${isLight ? "text-slate-800" : "text-white"}`}>
-                                                {u.displayName}
-                                                {isMe ? " (you)" : ""}
-                                            </span>
-                                            {!isMe && <span className={`block text-[10px] ${isLight ? "text-slate-500" : "text-white/35"}`}>Click to DM</span>}
-                                        </span>
+                                            </div>
+                                            <span className="absolute bottom-0 right-0 w-1.5 h-1.5 bg-emerald-500 rounded-full border border-white" />
+                                        </div>
+                                        <span className="truncate flex-1">{u.displayName}</span>
+                                        {isMe && <span className="text-[9px] opacity-50 pr-1">(You)</span>}
                                     </button>
                                 );
                             })}
