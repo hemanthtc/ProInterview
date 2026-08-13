@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { getStorageItem } from "@/utils/storage";
 import {
     Briefcase,
     ExternalLink,
@@ -51,6 +53,7 @@ type Step = "intake" | "results";
 const QUICK_LOCATIONS = ["Bangalore", "Hyderabad", "Pune", "Remote India"];
 
 export default function JobsPage() {
+    const router = useRouter();
     const [step, setStep] = useState<Step>("intake");
     const [jobs, setJobs] = useState<MatchedJob[]>([]);
     const [profile, setProfile] = useState<ResumeProfile | null>(null);
@@ -66,6 +69,12 @@ export default function JobsPage() {
     const [usedFallback, setUsedFallback] = useState(false);
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
+    useEffect(() => {
+        if (getStorageItem("userLoggedIn") !== "true") {
+            router.push("/login?redirect=/jobs");
+        }
+    }, [router]);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
@@ -184,14 +193,46 @@ export default function JobsPage() {
                 ? "bg-[#f3ede3] text-[#1c1917]"
                 : "bg-slate-950 text-white"
         }`}>
-            <div className="max-w-4xl mx-auto px-4 py-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div>
-                        <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-emerald-700 font-bold" : "text-emerald-300/80"}`}>
-                            <Briefcase className="w-4 h-4" /> Job board
+            <div className="max-w-4xl mx-auto px-2 sm:px-4 py-4">
+                <div className="mb-4 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <p className={`text-[11px] sm:text-xs uppercase tracking-widest flex items-center gap-1.5 font-bold ${isLight ? "text-emerald-700" : "text-emerald-300/80"}`}>
+                            <Briefcase className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> Job board
                         </p>
-                        <h1 className="text-2xl font-semibold mt-1">Open job roles</h1>
-                        <p className={`text-sm mt-1 ${
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                            <button
+                                onClick={cycleTheme}
+                                className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                    isLight
+                                        ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                                }`}
+                                title={`Current Theme: ${theme}. Click to switch.`}
+                            >
+                                {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
+                                {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
+                                {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
+                            </button>
+
+                            <Link
+                                href="/labs"
+                                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm whitespace-nowrap ${
+                                    theme === "eyeprotect"
+                                        ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                        : isLight
+                                        ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                        : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                                }`}
+                            >
+                                <span className="hidden sm:inline">← Back to Labs</span>
+                                <span className="sm:hidden">← Labs</span>
+                            </Link>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">Open job roles</h1>
+                        <p className={`text-xs sm:text-sm mt-1 ${
                             theme === "light"
                                 ? "text-slate-600 font-medium"
                                 : theme === "eyeprotect"
@@ -206,40 +247,12 @@ export default function JobsPage() {
                             </p>
                         )}
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={cycleTheme}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                                isLight
-                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
-                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-                            }`}
-                            title={`Current Theme: ${theme}. Click to switch.`}
-                        >
-                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
-                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
-                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
-                        </button>
-
-                        <Link
-                            href="/labs"
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
-                                theme === "eyeprotect"
-                                    ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
-                                    : isLight
-                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
-                                    : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
-                            }`}
-                        >
-                            ← Back to Labs
-                        </Link>
-                    </div>
                 </div>
 
                 {step === "intake" && (
                     <form
                         onSubmit={findMatchingJobs}
-                        className={`rounded-2xl border p-5 space-y-5 ${
+                        className={`rounded-2xl border px-3.5 sm:px-5 py-3.5 space-y-4 ${
                             theme === "light"
                                 ? "bg-white border-slate-200 shadow-sm"
                                 : theme === "eyeprotect"
@@ -248,12 +261,12 @@ export default function JobsPage() {
                         }`}
                     >
                         <div>
-                            <p className={`text-xs uppercase tracking-widest flex items-center gap-2 mb-2 font-bold ${
+                            <p className={`text-xs uppercase tracking-widest flex items-center gap-2 mb-1.5 font-bold ${
                                 isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/40"
                             }`}>
                                 <FileUp className="w-3.5 h-3.5" /> Resume
                             </p>
-                            <label className={`block rounded-xl border border-dashed px-4 py-6 text-center cursor-pointer transition ${
+                            <label className={`block rounded-xl border border-dashed px-3 sm:px-4 py-3 sm:py-4 text-center cursor-pointer transition ${
                                 theme === "light"
                                     ? "border-slate-300 bg-slate-50 hover:border-emerald-600"
                                     : theme === "eyeprotect"
@@ -275,7 +288,7 @@ export default function JobsPage() {
                                         <p className="text-sm font-medium">
                                             {resumeFileName || "Upload resume (PDF / TXT)"}
                                         </p>
-                                        <p className={`text-xs mt-1 font-medium ${
+                                        <p className={`text-xs mt-0.5 font-medium ${
                                             theme === "light"
                                                 ? "text-slate-500"
                                                 : theme === "eyeprotect"
@@ -290,9 +303,9 @@ export default function JobsPage() {
                             <textarea
                                 value={resumeText}
                                 onChange={(e) => setResumeText(e.target.value)}
-                                rows={8}
+                                rows={12}
                                 placeholder="Paste your resume text here…"
-                                className={`mt-3 w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                className={`mt-2.5 w-full min-h-[260px] sm:min-h-[300px] rounded-xl border px-3 py-2.5 text-sm focus:outline-none transition ${
                                     theme === "light"
                                         ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 shadow-sm"
                                         : theme === "eyeprotect"

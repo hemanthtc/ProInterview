@@ -329,47 +329,68 @@ export default function PanelInterviewPage() {
                 : "bg-slate-950 text-white"
         }`}>
             <div className="max-w-4xl mx-auto px-4 py-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div>
-                        <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-indigo-600 font-bold" : "text-indigo-300/80"}`}>
-                            <Users className="w-4 h-4" /> Panel interview
+                {/* Header Container */}
+                <div className="mb-6 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                        <p className={`text-[11px] sm:text-xs uppercase tracking-widest flex items-center gap-1.5 whitespace-nowrap ${isLight ? "text-indigo-600 font-bold" : "text-indigo-300/80"}`}>
+                            <Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> Panel interview
                         </p>
-                        <h1 className="mt-1 text-2xl font-semibold">Multi-interviewer round</h1>
+                        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0 ml-auto">
+                            <button
+                                onClick={cycleTheme}
+                                className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                    isLight
+                                        ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                                }`}
+                                title={`Current Theme: ${theme}. Click to switch.`}
+                            >
+                                {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
+                                {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
+                                {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={closeInterview}
+                                className="inline-flex items-center gap-1 text-xs font-bold text-rose-500 hover:text-rose-600 border border-rose-500/20 bg-rose-500/10 px-2.5 sm:px-3 py-1.5 rounded-full transition cursor-pointer"
+                            >
+                                <XCircle className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Close Interview</span><span className="sm:hidden">Close</span>
+                            </button>
+                            <Link
+                                href="/labs"
+                                onClick={teardownAudioAndMic}
+                                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm whitespace-nowrap ${
+                                    theme === "eyeprotect"
+                                        ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                        : isLight
+                                        ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                        : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                                }`}
+                            >
+                                <span className="hidden sm:inline">← Back to Labs</span>
+                                <span className="sm:hidden">← Labs</span>
+                            </Link>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2.5">
-                        <button
-                            onClick={cycleTheme}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                                isLight
-                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
-                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-                            }`}
-                            title={`Current Theme: ${theme}. Click to switch.`}
-                        >
-                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
-                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
-                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
-                        </button>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight leading-tight">Multi-interviewer round</h1>
                         <button
                             type="button"
-                            onClick={closeInterview}
-                            className="inline-flex items-center gap-1 text-xs font-bold text-rose-500 hover:text-rose-600 border border-rose-500/20 bg-rose-500/10 px-3 py-1.5 rounded-full transition cursor-pointer"
-                        >
-                            <XCircle className="w-3.5 h-3.5" /> Close Interview
-                        </button>
-                        <Link
-                            href="/labs"
-                            onClick={teardownAudioAndMic}
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
-                                theme === "eyeprotect"
-                                    ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
-                                    : isLight
-                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
-                                    : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                            onClick={() => setMuted(!muted)}
+                            title={muted ? "Unmute panelist voices" : "Mute panelist voices"}
+                            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold cursor-pointer transition ${
+                                isLight
+                                    ? (muted ? "border-slate-300 bg-slate-200/80 text-slate-700" : "border-indigo-300 bg-indigo-100 text-indigo-800 shadow-sm")
+                                    : (muted ? "border-white/10 text-white/50 bg-white/5" : "border-indigo-400/30 bg-indigo-500/20 text-indigo-200")
                             }`}
                         >
-                            ← Back to Labs
-                        </Link>
+                            {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5 text-indigo-400" />}
+                            {muted ? "Muted" : "Voice on"}
+                            {isSpeaking && (
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping ml-0.5" />
+                            )}
+                        </button>
                     </div>
                 </div>
 
@@ -391,53 +412,114 @@ export default function PanelInterviewPage() {
                     </div>
                 )}
 
-                <div className="mb-4 flex items-center justify-end gap-2">
-                    {isSpeaking && (
-                        <span className={`inline-flex items-center gap-1 text-[11px] font-bold ${
-                            isLight ? (theme === "eyeprotect" ? "text-teal-800" : "text-indigo-700") : "text-indigo-300/80"
-                        }`}>
-                            <Volume2 className="w-3.5 h-3.5 animate-pulse" /> Speaking…
-                        </span>
-                    )}
-                    <button
-                        type="button"
-                        onClick={() => setMuted(!muted)}
-                        title={muted ? "Unmute panelist voices" : "Mute panelist voices"}
-                        className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold cursor-pointer transition ${
-                            isLight
-                                ? (muted ? "border-slate-300 bg-slate-100 text-slate-600" : "border-indigo-300 bg-indigo-100 text-indigo-800 shadow-sm")
-                                : (muted ? "border-white/10 text-white/50" : "border-indigo-400/30 bg-indigo-500/15 text-indigo-100")
-                        }`}
-                    >
-                        {muted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                        {muted ? "Muted" : "Voice on"}
-                    </button>
-                </div>
-
                 <LabAuthBanner feature="panel interviews" />
 
-                <div className="mb-6 flex flex-wrap gap-2">
-                    {panelists.map((p) => (
-                        <button
-                            key={p.id}
-                            type="button"
-                            onClick={() => setActiveId(p.id)}
-                            className={`rounded-full px-3 py-1.5 text-xs border transition cursor-pointer ${
-                                activeId === p.id
-                                    ? (theme === "eyeprotect"
-                                        ? "bg-[#0b5f58] border-[#0b5f58] text-white font-bold shadow-md scale-105"
-                                        : isLight
-                                        ? "bg-indigo-600 border-indigo-600 text-white font-bold shadow-md scale-105"
-                                        : "bg-indigo-500/40 border-indigo-400 text-white font-bold shadow-[0_0_12px_rgba(99,102,241,0.3)] scale-105")
-                                    : (isLight
-                                        ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
-                                        : "border-white/10 text-white/50 hover:text-white")
-                            }`}
-                        >
-                            {p.name} · {p.role}
-                        </button>
-                    ))}
-                </div>
+                {/* 3D Overlapping Card Stack — Agents Hide Behind Each Other Like a Scrollable Deck */}
+                {(() => {
+                    if (!panelists.length) return null;
+                    const activeIndex = panelists.findIndex((p) => p.id === activeId);
+                    const activeIdx = activeIndex >= 0 ? activeIndex : 0;
+                    const ordered = [
+                        panelists[activeIdx],
+                        panelists[(activeIdx + 1) % panelists.length],
+                        panelists[(activeIdx + 2) % panelists.length],
+                    ].filter(Boolean);
+
+                    const cycleNextAgent = () => {
+                        const nextIdx = (activeIdx + 1) % panelists.length;
+                        if (panelists[nextIdx]) setActiveId(panelists[nextIdx].id);
+                    };
+
+                    const cyclePrevAgent = () => {
+                        const prevIdx = (activeIdx - 1 + panelists.length) % panelists.length;
+                        if (panelists[prevIdx]) setActiveId(panelists[prevIdx].id);
+                    };
+
+                    return (
+                        <div className="mb-4 flex items-center justify-center gap-1 sm:gap-2 py-1 select-none">
+                            <button
+                                type="button"
+                                onClick={cyclePrevAgent}
+                                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition cursor-pointer flex items-center justify-center text-xs font-bold shrink-0 ${
+                                    isLight ? "bg-white border-slate-300 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-slate-900 border-white/10 text-white/70 hover:text-white"
+                                }`}
+                                title="Previous agent card"
+                            >
+                                ‹
+                            </button>
+
+                            <div className="relative flex items-center justify-center min-h-[42px] px-1 overflow-visible">
+                                <div className="flex items-center justify-center">
+                                    {ordered.map((p, index) => {
+                                        const isFront = index === 0;
+                                        const zIndex = isFront ? 30 : index === 1 ? 20 : 10;
+                                        const scale = isFront ? "scale-100" : index === 1 ? "scale-95" : "scale-90";
+                                        const opacity = isFront ? "opacity-100" : index === 1 ? "opacity-75 hover:opacity-100" : "opacity-45 hover:opacity-90";
+                                        const offsetMargin = index === 0 ? "" : "-ml-6 sm:-ml-10";
+                                        const offsetTranslate = index === 0 ? "translate-x-0" : index === 1 ? "translate-x-1 sm:translate-x-2" : "translate-x-2 sm:translate-x-4";
+
+                                        return (
+                                            <button
+                                                key={p.id}
+                                                type="button"
+                                                onClick={() => setActiveId(p.id)}
+                                                style={{ zIndex }}
+                                                className={`relative transition-all duration-300 transform ${scale} ${opacity} ${offsetMargin} ${offsetTranslate} rounded-xl text-xs cursor-pointer shrink-0 border backdrop-blur-md shadow-lg ${
+                                                    isFront
+                                                        ? (theme === "eyeprotect"
+                                                            ? "bg-[#0b5f58] border-[#084842] text-white shadow-teal-950/30 ring-1 ring-[#0b5f58]/40 px-3 sm:px-4 py-1.5 font-bold"
+                                                            : isLight
+                                                            ? "bg-indigo-600 border-indigo-700 text-white shadow-indigo-500/25 ring-1 ring-indigo-400/40 px-3 sm:px-4 py-1.5 font-bold"
+                                                            : "bg-indigo-600/95 border-indigo-400 text-white shadow-[0_0_20px_rgba(99,102,241,0.35)] ring-1 ring-indigo-500/50 px-3 sm:px-4 py-1.5 font-bold")
+                                                        : (theme === "eyeprotect"
+                                                            ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] px-2.5 sm:px-3 py-1 font-medium"
+                                                            : isLight
+                                                            ? "bg-white border-slate-300 text-slate-700 shadow-sm px-2.5 sm:px-3 py-1 font-medium"
+                                                            : "bg-slate-900/90 border-white/20 text-white/70 px-2.5 sm:px-3 py-1 font-medium")
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                                    {isFront ? (
+                                                        <span className="relative flex h-2 w-2">
+                                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+                                                        </span>
+                                                    ) : (
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-400/60" />
+                                                    )}
+                                                    <span className={isFront ? "font-bold text-xs" : "font-medium text-[11px]"}>
+                                                        {p.name}
+                                                    </span>
+                                                    <span className={`text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded ${
+                                                        isFront ? "bg-black/25 opacity-90 font-semibold" : "opacity-60 hidden sm:inline"
+                                                    }`}>
+                                                        {p.role}
+                                                    </span>
+                                                    {isFront && isSpeaking && (
+                                                        <span className="text-[9px] text-emerald-300 font-bold animate-pulse hidden sm:inline">
+                                                            Asking…
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <button
+                                type="button"
+                                onClick={cycleNextAgent}
+                                className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full border transition cursor-pointer flex items-center justify-center text-xs font-bold shrink-0 ${
+                                    isLight ? "bg-white border-slate-300 text-slate-700 hover:bg-slate-100 shadow-sm" : "bg-slate-900 border-white/10 text-white/70 hover:text-white"
+                                }`}
+                                title="Next agent card"
+                            >
+                                ›
+                            </button>
+                        </div>
+                    );
+                })()}
 
                 {/* Fixed-Height Scrollable Chat Container */}
                 <div className={`rounded-2xl border h-[460px] max-h-[60vh] overflow-y-auto scroll-smooth p-4 space-y-3 pr-2 ${

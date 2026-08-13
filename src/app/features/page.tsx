@@ -3386,7 +3386,7 @@ function FeaturesContent() {
                 </div>
             ) : (
 
-                <main className={`flex-1 flex flex-col items-center justify-center relative ${activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : "px-6 py-12 overflow-hidden"}`}>
+                <main className={`flex-1 flex flex-col items-center justify-center relative ${activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : activeModal ? "px-2 sm:px-4 py-4 w-full max-w-full" : "px-6 py-12 overflow-hidden"}`}>
                     {activeModal === null && (
                         <div className="w-full max-w-4xl mb-6">
                             <LabsBanner isLight={isLight} />
@@ -3592,7 +3592,7 @@ function FeaturesContent() {
                             </div>
                         </div>
                     ) : (
-                        <div className={`w-full ${activeModal === "resume" || activeModal === "roadmap_generator" || activeModal === "aptitude" || activeModal === "progress" || (activeModal === "analysis" && !showInterviewCustomizer) ? "max-w-7xl" : "max-w-4xl"} bg-[#111] p-8 md:p-10 rounded-2xl border ${activeModal === "analysis" ? "border-indigo-500/20" :
+                        <div className={`w-full ${activeModal === "resume" || activeModal === "roadmap_generator" || activeModal === "aptitude" || activeModal === "progress" || (activeModal === "analysis" && !showInterviewCustomizer) ? "max-w-7xl" : "max-w-4xl"} bg-[#111] ${activeModal === "email_analyser" ? "p-3 sm:p-5" : "p-4 sm:p-6 md:p-8"} rounded-2xl border ${activeModal === "analysis" ? "border-indigo-500/20" :
                             activeModal === "resume" ? "border-purple-500/20" :
                                 activeModal === "email_analyser" ? "border-teal-500/20" :
                                     activeModal === "aptitude" ? "border-pink-500/20" :
@@ -3609,41 +3609,41 @@ function FeaturesContent() {
                             <button
                                 type="button"
                                 onClick={() => setActiveModal(null)}
-                                className="absolute top-6 right-6 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full transition-colors border border-white/10 cursor-pointer z-50"
+                                className="absolute top-4 right-4 text-white/40 hover:text-white bg-white/5 hover:bg-white/10 p-1.5 rounded-full transition-colors border border-white/10 cursor-pointer z-50"
                                 title="Back to option list"
                             >
-                                <X className="w-5 h-5" />
+                                <X className="w-4 h-4" />
                             </button>
 
-                            <div className="space-y-6">
+                            <div className="space-y-4">
                                 {activeModal === "analysis" && (
                                     <>
                                         {!showInterviewCustomizer ? (
-                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 text-left">
+                                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 text-left">
                                                 {/* Left Box (Box 1): Configuration & Inputs */}
-                                                <div className="lg:col-span-6 space-y-4">
-                                                    <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 px-4 py-3 text-xs text-indigo-200">
+                                                <div className="lg:col-span-6 space-y-3">
+                                                    <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-3 py-2 text-[11px] text-indigo-200 leading-relaxed">
                                                         Upload your portfolio details below and run the pre-interview analysis. Standard credentials from your profile are pulled automatically.
                                                     </div>
 
                                                     <div>
-                                                        <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5 mb-1.5"><Github className="w-3.5 h-3.5 text-white/60" /> GitHub Profile URL</label>
-                                                        <input type="url" value={github || ""} onChange={(e) => { setGithub(e.target.value); setStorageItem("userGithub", e.target.value); }} placeholder="https://github.com/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
+                                                        <label className="text-[11px] font-semibold text-white/80 flex items-center gap-1 mb-1"><Github className="w-3 h-3 text-white/60" /> GitHub Profile URL</label>
+                                                        <input type="url" value={github || ""} onChange={(e) => { setGithub(e.target.value); setStorageItem("userGithub", e.target.value); }} placeholder="https://github.com/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
                                                     </div>
 
                                                     <div>
-                                                        <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5 mb-1.5"><Linkedin className="w-3.5 h-3.5 text-white/60" /> LinkedIn Profile URL</label>
-                                                        <input type="url" value={linkedin || ""} onChange={(e) => { setLinkedin(e.target.value); setStorageItem("userLinkedin", e.target.value); }} placeholder="https://linkedin.com/in/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
+                                                        <label className="text-[11px] font-semibold text-white/80 flex items-center gap-1 mb-1"><Linkedin className="w-3 h-3 text-white/60" /> LinkedIn Profile URL</label>
+                                                        <input type="url" value={linkedin || ""} onChange={(e) => { setStorageItem("userLinkedin", e.target.value); }} placeholder="https://linkedin.com/in/username" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
                                                     </div>
 
                                                     <div>
-                                                        <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5 mb-1.5"><Globe className="w-3.5 h-3.5 text-white/60" /> Portfolio Website URL</label>
-                                                        <input type="url" value={portfolioUrl || ""} onChange={(e) => { setPortfolioUrl(e.target.value); setStorageItem("userPortfolio", e.target.value); }} placeholder="https://myportfolio.com" className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
+                                                        <label className="text-[11px] font-semibold text-white/80 flex items-center gap-1 mb-1"><Globe className="w-3 h-3 text-white/60" /> Portfolio Website URL</label>
+                                                        <input type="url" value={portfolioUrl || ""} onChange={(e) => { setPortfolioUrl(e.target.value); setStorageItem("userPortfolio", e.target.value); }} placeholder="https://myportfolio.com" className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 transition-colors text-white" />
                                                     </div>
 
                                                     <div>
-                                                        <label className="text-xs font-semibold text-white/80 flex items-center gap-1.5 mb-1.5"><Briefcase className="w-3.5 h-3.5 text-white/60" /> Upload Project Code / Files (PDF, ZIP, Text)</label>
-                                                        <div className="border border-dashed border-white/10 rounded-xl p-6 flex flex-col items-center justify-center hover:border-indigo-500/50 transition-colors relative bg-black/20 cursor-pointer">
+                                                        <label className="text-[11px] font-semibold text-white/80 flex items-center gap-1 mb-1"><Briefcase className="w-3 h-3 text-white/60" /> Upload Project Code / Files (PDF, ZIP, Text)</label>
+                                                        <div className="border border-dashed border-white/10 rounded-xl p-4 flex flex-col items-center justify-center hover:border-indigo-500/50 transition-colors relative bg-black/20 cursor-pointer">
                                                             <input
                                                                 type="file"
                                                                 multiple
@@ -3654,17 +3654,17 @@ function FeaturesContent() {
                                                                 }}
                                                                 className="absolute inset-0 opacity-0 cursor-pointer"
                                                             />
-                                                            <UploadCloud className="w-8 h-8 text-white/40 mb-2" />
-                                                            <span className="text-xs text-white/60 font-medium">Click or drag files here to upload</span>
+                                                            <UploadCloud className="w-6 h-6 text-white/40 mb-1" />
+                                                            <span className="text-[11px] text-white/60 font-medium">Click or drag files here to upload</span>
                                                         </div>
 
                                                         {projectFiles.length > 0 && (
-                                                            <div className="mt-2.5 flex flex-wrap gap-1.5">
+                                                            <div className="mt-2 flex flex-wrap gap-1">
                                                                 {projectFiles.map((file, idx) => (
-                                                                    <div key={idx} className="flex items-center gap-1.5 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md text-[10px] font-semibold">
+                                                                    <div key={idx} className="flex items-center gap-1 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-md text-[9px] font-semibold">
                                                                         <span>{file.name}</span>
                                                                         <button type="button" onClick={() => setProjectFiles(projectFiles.filter((_, i) => i !== idx))} className="text-indigo-400 hover:text-white transition-colors">
-                                                                            <X className="w-3 h-3" />
+                                                                            <X className="w-2.5 h-2.5" />
                                                                         </button>
                                                                     </div>
                                                                 ))}
@@ -3672,7 +3672,7 @@ function FeaturesContent() {
                                                         )}
                                                     </div>
 
-                                                    <div className="pt-1 z-50 relative">
+                                                    <div className="pt-0.5 z-50 relative">
                                                         <RoleSelect
                                                             theme={theme}
                                                             options={[
@@ -3689,7 +3689,7 @@ function FeaturesContent() {
                                                         />
                                                     </div>
 
-                                                    <div className="pt-1 z-40 relative">
+                                                    <div className="pt-0.5 z-40 relative">
                                                         <CompanySelect
                                                             theme={theme}
                                                             options={[
@@ -3708,12 +3708,12 @@ function FeaturesContent() {
                                                         />
                                                     </div>
 
-                                                    <div className="pt-2">
+                                                    <div className="pt-1.5">
                                                         <button
                                                             type="button"
                                                             onClick={handlePreInterviewAnalysis}
                                                             disabled={preAnalyzing || loading || preferredRoles.length === 0 || targetCompanies.length === 0}
-                                                            className="w-full py-3 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs"
+                                                            className="w-full py-2.5 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 hover:from-indigo-500/30 hover:to-purple-500/30 text-indigo-300 border border-indigo-500/30 rounded-xl font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed text-xs"
                                                         >
                                                             {preAnalyzing ? (
                                                                 <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing Portfolio...</>

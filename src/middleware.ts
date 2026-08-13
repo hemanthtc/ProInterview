@@ -4,9 +4,6 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_PATHS = [
     "/",
     "/login",
-    "/labs",
-    "/coding-lab",
-    "/community",
 ];
 
 export function middleware(req: NextRequest) {
@@ -23,11 +20,12 @@ export function middleware(req: NextRequest) {
         return NextResponse.next();
     }
 
-    // Check for HttpOnly session cookie or custom auth token header
+    // Check for HttpOnly session cookie, userLoggedIn cookie, or custom auth token header
     const sessionCookie = req.cookies.get("session")?.value;
+    const userLoggedInCookie = req.cookies.get("userLoggedIn")?.value === "true";
     const authHeader = req.headers.get("authorization");
 
-    const isAuthenticated = Boolean(sessionCookie || authHeader);
+    const isAuthenticated = Boolean(sessionCookie || userLoggedInCookie || authHeader);
 
     // If attempting to access a protected feature route without a session, redirect to login
     if (!isAuthenticated) {

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Bell, Check, CheckCheck, Loader2 } from "lucide-react";
+import { Bell, Check, CheckCheck, Loader2, Trash2 } from "lucide-react";
 import { getStorageItem } from "@/utils/storage";
 
 interface NotificationItem {
@@ -29,13 +29,39 @@ function timeAgo(iso: string): string {
 }
 
 /** Bell icon with unread badge + dropdown, polling GET /api/notifications every 60s while logged in. */
-export default function NotificationBell({ className = "" }: { className?: string }) {
+export default function NotificationBell({ className = "", theme }: { className?: string; theme?: "dark" | "light" | "eyeprotect" }) {
     const [loggedIn, setLoggedIn] = useState(false);
     const [open, setOpen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [items, setItems] = useState<NotificationItem[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [themeMode, setThemeMode] = useState<"dark" | "light" | "eyeprotect">("dark");
     const containerRef = useRef<HTMLDivElement>(null);
+
+    const activeTheme = theme || themeMode;
+
+    useEffect(() => {
+        const updateTheme = () => {
+            const saved = (localStorage.getItem("globalTheme") || localStorage.getItem("prointerview_theme")) as any;
+            if (saved && ["dark", "light", "eyeprotect"].includes(saved)) {
+                setThemeMode(saved);
+            } else if (typeof document !== "undefined") {
+                if (document.documentElement.classList.contains("theme-eyeprotect")) {
+                    setThemeMode("eyeprotect");
+                } else if (document.documentElement.classList.contains("theme-light")) {
+                    setThemeMode("light");
+                } else {
+                    setThemeMode("dark");
+                }
+            }
+        };
+        updateTheme();
+        const observer = new MutationObserver(updateTheme);
+        if (typeof document !== "undefined") {
+            observer.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
+        }
+        return () => observer.disconnect();
+    }, []);
 
     const load = useCallback(async () => {
         try {
@@ -101,7 +127,61 @@ export default function NotificationBell({ className = "" }: { className?: strin
         }
     };
 
+    const clearAll = async () => {
+        setLoading(true);
+        setItems([]);
+        setUnreadCount(0);
+        try {
+            await fetch("/api/notifications", {
+                method: "DELETE",
+            });
+        } catch {
+            /* best-effort */
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (!loggedIn) return null;
+
+    const isEyeProtect = activeTheme === "eyeprotect";
+    const isLight = activeTheme === "light";
+
+    const buttonClass = isEyeProtect
+        ? "bg-[#fffcf5] border border-[#8c8578] text-[#1c1917] hover:bg-stone-200/50 shadow-sm"
+        : isLight
+        ? "bg-white border border-slate-300 text-slate-800 hover:bg-slate-50 shadow-sm"
+        : "bg-white/5 border border-white/10 text-white/80 hover:text-white";
+
+    const dropdownClass = isEyeProtect
+        ? "bg-[#f3ede3] text-[#1c1917] border border-[#0b5f58]/30 shadow-2xl shadow-stone-900/20"
+        : isLight
+        ? "bg-white text-slate-900 border border-slate-200 shadow-2xl shadow-slate-900/10"
+        : "bg-[#111] text-white border border-white/10 shadow-2xl shadow-black/50";
+
+    const headerBorderClass = isEyeProtect
+        ? "border-b border-[#0b5f58]/20 text-[#1c1917]"
+        : isLight
+        ? "border-b border-slate-200 text-slate-900"
+        : "border-b border-white/10 text-white";
+
+    const itemBorderClass = isEyeProtect
+        ? "border-b border-stone-300/40"
+        : isLight
+        ? "border-b border-slate-100"
+        : "border-b border-white/5";
+
+    const titleClass = isEyeProtect
+        ? "text-[#1c1917]"
+        : isLight
+        ? "text-slate-900"
+        : "text-white";
+
+    const bodyClass = isEyeProtect
+        ? "text-stone-600"
+        : isLight
+        ? "text-slate-600"
+        : "text-white/50";
 
     return (
         <div ref={containerRef} className={`relative ${className}`}>
@@ -111,7 +191,7 @@ export default function NotificationBell({ className = "" }: { className?: strin
                     setOpen((v) => !v);
                     if (!open) void load();
                 }}
-                className="relative p-2 sm:p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                className={`relative p-2 sm:p-2.5 rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer ${buttonClass}`}
                 title="Notifications"
             >
                 <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
@@ -123,44 +203,58 @@ export default function NotificationBell({ className = "" }: { className?: strin
             </button>
 
             {open && (
-                <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-[#111] border border-white/10 rounded-2xl shadow-2xl shadow-black/50 z-50 overflow-hidden">
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                        <span className="text-sm font-bold text-white">Notifications</span>
-                        {unreadCount > 0 && (
-                            <button
-                                type="button"
-                                onClick={() => void markAllRead()}
-                                disabled={loading}
-                                className="flex items-center gap-1 text-[11px] font-semibold text-indigo-300 hover:text-indigo-200 disabled:opacity-50"
-                            >
-                                {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCheck className="w-3 h-3" />}
-                                Mark all read
-                            </button>
-                        )}
+                <div className={`absolute right-0 mt-2 w-80 max-w-[90vw] rounded-2xl z-50 overflow-hidden ${dropdownClass}`}>
+                    <div className={`flex items-center justify-between px-4 py-3 ${headerBorderClass}`}>
+                        <span className="text-sm font-bold">Notifications</span>
+                        <div className="flex items-center gap-2.5">
+                            {unreadCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => void markAllRead()}
+                                    disabled={loading}
+                                    className="flex items-center gap-1 text-[11px] font-semibold text-indigo-500 hover:text-indigo-600 disabled:opacity-50 cursor-pointer"
+                                >
+                                    {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <CheckCheck className="w-3 h-3" />}
+                                    Read all
+                                </button>
+                            )}
+                            {items.length > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={() => void clearAll()}
+                                    disabled={loading}
+                                    className="flex items-center gap-1 text-[11px] font-semibold text-rose-500 hover:text-rose-600 disabled:opacity-50 cursor-pointer"
+                                    title="Clear all notifications"
+                                >
+                                    <Trash2 className="w-3 h-3" />
+                                    Clear
+                                </button>
+                            )}
+                        </div>
                     </div>
 
                     <div className="max-h-96 overflow-y-auto">
                         {items.length === 0 ? (
-                            <div className="px-4 py-8 text-center text-xs text-white/40">
+                            <div className={`px-4 py-8 text-center text-xs ${bodyClass}`}>
                                 You&apos;re all caught up.
                             </div>
                         ) : (
                             items.map((n) => {
                                 const content = (
                                     <div
-                                        className={`px-4 py-3 border-b border-white/5 flex items-start gap-2.5 transition-colors ${
-                                            n.read ? "opacity-60" : "bg-indigo-500/[0.04]"
-                                        } hover:bg-white/[0.03]`}
+                                        className={`px-4 py-3 ${itemBorderClass} flex items-start gap-2.5 transition-colors ${
+                                            n.read ? "opacity-60" : "bg-indigo-500/[0.06]"
+                                        }`}
                                     >
                                         <span
                                             className={`mt-1.5 w-1.5 h-1.5 rounded-full shrink-0 ${
-                                                n.read ? "bg-white/20" : "bg-indigo-400"
+                                                n.read ? (isEyeProtect || isLight ? "bg-stone-400" : "bg-white/20") : "bg-indigo-500"
                                             }`}
                                         />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-white leading-snug">{n.title}</p>
-                                            <p className="text-[11px] text-white/50 leading-snug mt-0.5 line-clamp-2">{n.body}</p>
-                                            <p className="text-[10px] text-white/30 mt-1">{timeAgo(n.createdAt)}</p>
+                                            <p className={`text-xs font-bold leading-snug ${titleClass}`}>{n.title}</p>
+                                            <p className={`text-[11px] leading-snug mt-0.5 line-clamp-2 ${bodyClass}`}>{n.body}</p>
+                                            <p className={`text-[10px] mt-1 ${bodyClass}`}>{timeAgo(n.createdAt)}</p>
                                         </div>
                                         {!n.read && (
                                             <button
@@ -170,7 +264,7 @@ export default function NotificationBell({ className = "" }: { className?: strin
                                                     e.stopPropagation();
                                                     void markRead(n._id);
                                                 }}
-                                                className="shrink-0 p-1 rounded hover:bg-white/10 text-white/40 hover:text-white"
+                                                className="shrink-0 p-1 rounded hover:bg-stone-500/10 text-stone-500 hover:text-stone-800"
                                                 title="Mark read"
                                             >
                                                 <Check className="w-3.5 h-3.5" />

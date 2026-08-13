@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
+import { getStorageItem } from "@/utils/storage";
 import {
     Briefcase,
     Code2,
@@ -153,7 +155,14 @@ const BADGE_CLASS: Record<Badge, string> = {
 };
 
 export default function LabsPage() {
+    const router = useRouter();
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
+    useEffect(() => {
+        if (getStorageItem("userLoggedIn") !== "true") {
+            router.push("/login?redirect=/labs");
+        }
+    }, [router]);
 
     useEffect(() => {
         const savedTheme = (localStorage.getItem("globalTheme") || localStorage.getItem("prointerview_theme")) as "dark" | "light" | "eyeprotect" | null;
@@ -209,49 +218,55 @@ export default function LabsPage() {
                 ? "bg-[#f3ede3] text-[#1c1917]"
                 : "bg-[#050816] text-white"
         }`}>
-            <div className="max-w-5xl mx-auto px-4 py-10">
-                <div className="flex flex-wrap items-start justify-between gap-4 mb-8">
-                    <div>
-                        <p className={`text-xs uppercase tracking-widest ${isLight ? "text-slate-500 font-semibold" : "text-white/40"}`}>ProInterview Labs</p>
-                        <h1 className="text-3xl font-semibold mt-1">Practice surfaces</h1>
-                        <p className={`mt-2 max-w-2xl text-sm ${isLight ? "text-slate-600" : "text-white/50"}`}>
-                            Panel loops, design grading, STAR retakes, jobs, coding progression, coaches, and a unified prep dashboard.
+            <div className="max-w-5xl mx-auto px-4 pt-3 pb-6 sm:pt-4 sm:pb-8">
+                {/* Header Container */}
+                <div className="mb-4 space-y-1.5">
+                    <div className="flex items-center justify-between gap-3">
+                        <p className={`text-[11px] sm:text-xs uppercase tracking-widest font-bold ${isLight ? "text-indigo-600" : "text-indigo-300/80"}`}>
+                            ProInterview Labs
                         </p>
-                        <div className="mt-3 flex flex-wrap gap-3 text-sm">
-                            <Link href="/prep" className="font-bold text-indigo-400 hover:underline">
-                                Open prep dashboard →
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                            <button
+                                onClick={cycleTheme}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                    isLight
+                                        ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                                }`}
+                                title={`Current Theme: ${theme}. Click to switch.`}
+                            >
+                                {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
+                                {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
+                                {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Protect</span></>}
+                            </button>
+
+                            <Link
+                                href="/"
+                                className={`flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full text-xs font-bold border transition whitespace-nowrap ${
+                                    isLight
+                                        ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-sm"
+                                        : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30"
+                                }`}
+                            >
+                                Home →
                             </Link>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
-                        <button
-                            onClick={cycleTheme}
-                            className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                                isLight
-                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
-                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-                            }`}
-                            title={`Current Theme: ${theme}. Click to switch.`}
-                        >
-                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> Dark</>}
-                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> Light</>}
-                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> Eye Protect</>}
-                        </button>
-
-                        <Link
-                            href="/"
-                            className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold border transition ${
-                                isLight
-                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-sm"
-                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-                            }`}
-                        >
-                            Home →
-                        </Link>
+                    <div>
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">Practice surfaces</h1>
+                        <p className={`mt-1 max-w-2xl text-xs sm:text-sm ${isLight ? "text-slate-600" : "text-white/50"}`}>
+                            Panel loops, design grading, STAR retakes, jobs, coding progression, coaches, and a unified prep dashboard.
+                        </p>
+                        <div className="mt-1.5">
+                            <Link href="/prep" className="inline-flex items-center gap-1 font-bold text-xs sm:text-sm text-indigo-500 hover:text-indigo-400 hover:underline">
+                                Open prep dashboard →
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
+                {/* Labs Cards Grid */}
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {ITEMS.map((item) => {
                         const Icon = item.icon;

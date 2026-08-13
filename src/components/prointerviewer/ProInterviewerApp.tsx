@@ -2062,6 +2062,78 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               </div>
             </>
           )}
+
+          {/* CONFIRMATION DIALOG MODAL */}
+          {confirmDialog.isOpen && (
+            <>
+              <div 
+                className="modal-backdrop no-print"
+                onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 10000,
+                  background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)'
+                }} 
+              />
+              <div 
+                className="saved-resumes-modal no-print"
+                style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 10001,
+                  maxWidth: '420px',
+                  width: '90%',
+                  boxSizing: 'border-box'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
+                  <div style={{
+                    width: '2.5rem', height: '2.5rem', borderRadius: '50%',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    color: '#ef4444', flexShrink: 0
+                  }}>
+                    <AlertTriangle size={20} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
+                      {confirmDialog.title}
+                    </h3>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                      {confirmDialog.message}
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+                    style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', fontWeight: 600 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const onConf = confirmDialog.onConfirm;
+                      setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                      if (onConf) onConf();
+                    }}
+                    style={{
+                      padding: '0.45rem 0.9rem', fontSize: '0.8rem', fontWeight: 700,
+                      background: '#ef4444', color: '#fff', border: 'none', borderRadius: '0.5rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
           {/* ATS AI OPTIMIZER MODAL */}
           {showAtsOptimizeModal && (
             <>

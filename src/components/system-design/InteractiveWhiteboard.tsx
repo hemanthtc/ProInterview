@@ -311,6 +311,13 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
         onFreehandChange?.(false);
     }
 
+    function deleteSelectedShape() {
+        if (!selectedId) return;
+        onShapesChange(shapes.filter((s) => s.id !== selectedId));
+        setSelectedId(null);
+        setEditingId(null);
+    }
+
     function clearAll() {
         onShapesChange([]);
         setSelectedId(null);
@@ -474,37 +481,47 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 </div>
                 <button
                     type="button"
-                    onClick={deleteSelected}
                     disabled={!selectedId}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer disabled:opacity-40 ${
+                    onClick={deleteSelectedShape}
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
                         theme === "eyeprotect"
                             ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917] hover:bg-[#f5ebd9] shadow-sm"
                             : isLight
-                            ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
-                            : "border-white/10 text-white/60 hover:text-white"
+                            ? "border-slate-300 bg-white text-slate-800 hover:bg-slate-100 shadow-sm"
+                            : "border-white/15 bg-white/10 text-white hover:bg-white/20"
                     }`}
+                    title={selectedId ? "Delete selected shape" : "Select a shape on board to delete"}
                 >
-                    Delete shape
+                    <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                    <span>Delete shape</span>
                 </button>
                 <button
                     type="button"
                     onClick={clearAll}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-medium transition cursor-pointer ${
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
                         theme === "eyeprotect"
                             ? "border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100 shadow-sm"
                             : isLight
                             ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm"
-                            : "border-white/10 text-rose-200/80 hover:text-rose-100"
+                            : "border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
                     }`}
                 >
-                    <Trash2 className="h-3.5 w-3.5" /> Clear board
+                    <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                    <span>Clear board</span>
                 </button>
                 <button
                     type="button"
                     onClick={exportPng}
-                    className="inline-flex items-center gap-1 rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-2.5 py-1.5 text-xs text-cyan-100"
+                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer shadow-sm ${
+                        theme === "eyeprotect"
+                            ? "border-[#0b5f58] bg-[#0b5f58] text-white hover:bg-[#084842]"
+                            : isLight
+                            ? "border-cyan-600 bg-cyan-600 text-white hover:bg-cyan-700"
+                            : "border-cyan-400/40 bg-cyan-500/25 text-cyan-100 hover:bg-cyan-500/35"
+                    }`}
                 >
-                    <Download className="h-3.5 w-3.5" /> Export PNG
+                    <Download className="h-3.5 w-3.5 shrink-0" />
+                    <span>Export PNG</span>
                 </button>
             </div>
 
@@ -562,7 +579,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] min-h-[280px] aspect-[4/3] sm:aspect-[900/560] sm:min-h-0`}
+                className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] min-h-[440px] sm:min-h-[520px] lg:min-h-[560px] aspect-[4/3] sm:aspect-[900/560]`}
             >
                 <canvas
                     ref={canvasRef}

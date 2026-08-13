@@ -11,14 +11,16 @@ import type { AccountType, AuthFlowType } from "@/types/auth";
 /**
  * Finds an account document across the correct collection based on accountType.
  */
-async function findAccountByType(identifier: string, accountType: string) {
+async function findAccountByType(rawIdentifier: string, accountType: string) {
+    const id = rawIdentifier.trim();
+    const filter = { $or: [{ identifier: id }, { identifier: id.toLowerCase() }] };
     switch (accountType) {
         case "admin":
-            return { account: await OrgAdmin.findOne({ identifier }), isOrganization: true, orgRole: "admin" as AccountType };
+            return { account: await OrgAdmin.findOne(filter), isOrganization: true, orgRole: "admin" as AccountType };
         case "employee":
-            return { account: await OrgEmployee.findOne({ identifier }), isOrganization: true, orgRole: "employee" as AccountType };
+            return { account: await OrgEmployee.findOne(filter), isOrganization: true, orgRole: "employee" as AccountType };
         default:
-            return { account: await User.findOne({ identifier }), isOrganization: false, orgRole: "user" as AccountType };
+            return { account: await User.findOne(filter), isOrganization: false, orgRole: "user" as AccountType };
     }
 }
 

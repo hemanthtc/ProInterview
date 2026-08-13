@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
         const query: Record<string, unknown> = { userIdentifier: session.identifier };
         if (unreadOnly) query.read = false;
 
-        const items = await Notification.find(query).sort({ createdAt: -1 }).limit(50).lean();
+        const items = await Notification.find(query).sort({ createdAt: -1 }).limit(25).lean();
         const unreadCount = await Notification.countDocuments({
             userIdentifier: session.identifier,
             read: false,
@@ -62,6 +62,28 @@ export async function PATCH(req: NextRequest) {
     } catch (error: unknown) {
         console.error("notifications PATCH error:", error);
         const message = error instanceof Error ? error.message : "Failed to update notifications";
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
+}
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
+        await connectDB();
+        const id = req.nextUrl.searchParams.get("id");
+        if (id) {
+            await Notification.deleteOne({ _id: id, userIdentifier: session.identifier });
+        } else {
+            await Notification.deleteMany({ userIdentifier: session.identifier });
+        }
+        return NextResponse.json({ success: true });
+    } catch (error: unknown) {
+        console.error("notifications DELETE error:", error);
+        const message = error instanceof Error ? error.message : "Failed to clear notifications";
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { CheckCircle2, Code2, Loader2, Moon, Sun, Eye } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
@@ -35,6 +35,14 @@ export default function CodingLabPage() {
     const [loading, setLoading] = useState(false);
     const [progress, setProgress] = useState<CodingProgress>({ solvedIds: [], bestScores: {} });
     const [error, setError] = useState("");
+    const codeRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (codeRef.current) {
+            codeRef.current.style.height = "auto";
+            codeRef.current.style.height = `${Math.max(320, codeRef.current.scrollHeight)}px`;
+        }
+    }, [code]);
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
@@ -113,45 +121,54 @@ export default function CodingLabPage() {
                 : "bg-slate-950 text-white"
         }`}>
             <div className="max-w-6xl mx-auto px-4 py-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div>
-                        <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-amber-700 font-bold" : "text-amber-300/80"}`}>
-                            <Code2 className="w-4 h-4" /> Coding lab
+                <div className="mb-5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <p className={`text-[11px] sm:text-xs uppercase tracking-widest flex items-center gap-1.5 font-bold ${isLight ? "text-amber-700" : "text-amber-300/80"}`}>
+                            <Code2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> Coding lab
                         </p>
-                        <h1 className="mt-1 text-2xl font-semibold">Progressive problems + hidden tests</h1>
-                        <p className={`mt-1 text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
-                            {progress.solvedIds.length} unlocked · progress saved on this device
-                        </p>
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                            <button
+                                onClick={cycleTheme}
+                                className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                    isLight
+                                        ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                                }`}
+                                title={`Current Theme: ${theme}. Click to switch.`}
+                            >
+                                {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
+                                {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
+                                {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
+                            </button>
+
+                            <Link
+                                href="/labs"
+                                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm whitespace-nowrap ${
+                                    theme === "eyeprotect"
+                                        ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                        : isLight
+                                        ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                        : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                                }`}
+                            >
+                                <span className="hidden sm:inline">← Back to Labs</span>
+                                <span className="sm:hidden">← Labs</span>
+                            </Link>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <button
-                            onClick={cycleTheme}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                                isLight
-                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
-                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-                            }`}
-                            title={`Current Theme: ${theme}. Click to switch.`}
-                        >
-                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
-                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
-                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
-                        </button>
-                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
-                            Prep dashboard
-                        </Link>
-                        <Link
-                            href="/labs"
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
-                                theme === "eyeprotect"
-                                    ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
-                                    : isLight
-                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
-                                    : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
-                            }`}
-                        >
-                            ← Back to Labs
-                        </Link>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">Progressive problems + hidden tests</h1>
+                            <p className={`text-xs sm:text-sm mt-1 ${isLight ? "text-slate-600 font-medium" : "text-white/45"}`}>
+                                {progress.solvedIds.length} unlocked · progress saved on this device
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
+                                Prep dashboard →
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
@@ -227,9 +244,10 @@ export default function CodingLabPage() {
                                     </button>
                                 </div>
                                 <textarea
+                                    ref={codeRef}
                                     value={code}
                                     onChange={(e) => setCode(e.target.value)}
-                                    className={`w-full min-h-[320px] font-mono text-sm rounded-xl border p-4 focus:outline-none transition ${
+                                    className={`w-full min-h-[320px] font-mono text-sm rounded-xl border p-4 focus:outline-none transition overflow-hidden ${
                                         isLight
                                             ? "bg-slate-900 text-amber-300 border-slate-700 shadow-inner"
                                             : "bg-black/60 text-amber-200 border-white/10"

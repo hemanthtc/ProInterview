@@ -76,6 +76,23 @@ function StarCoachInner() {
         document.documentElement.classList.add(`theme-${next}`);
     };
 
+    const questionRef = useRef<HTMLTextAreaElement>(null);
+    const storyRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (questionRef.current) {
+            questionRef.current.style.height = "auto";
+            questionRef.current.style.height = `${Math.max(52, questionRef.current.scrollHeight)}px`;
+        }
+    }, [question]);
+
+    useEffect(() => {
+        if (storyRef.current) {
+            storyRef.current.style.height = "auto";
+            storyRef.current.style.height = `${Math.max(180, storyRef.current.scrollHeight)}px`;
+        }
+    }, [story]);
+
     const recognitionRef = useRef<SpeechRecognitionInstance>(null);
     const isListeningRef = useRef(isListening);
     useEffect(() => {
@@ -336,46 +353,55 @@ function StarCoachInner() {
                 : "bg-slate-950 text-white"
         }`}>
             <div className="max-w-3xl mx-auto px-4 py-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div>
-                        <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-violet-700 font-bold" : "text-violet-300/80"}`}>
-                            <Target className="w-4 h-4" /> STAR coach
+                <div className="mb-5 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                        <p className={`text-[11px] sm:text-xs uppercase tracking-widest flex items-center gap-1.5 font-bold ${isLight ? "text-violet-700" : "text-violet-300/80"}`}>
+                            <Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /> STAR coach
                         </p>
-                        <h1 className="mt-1 text-2xl font-semibold">Behavioral drills with retakes</h1>
-                        <p className={`mt-1 text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
-                            {[role, company].filter(Boolean).join(" · ") ||
-                                "Type your own question or generate one — Situation → Task → Action → Result."}
-                        </p>
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                            <button
+                                onClick={cycleTheme}
+                                className={`flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                                    isLight
+                                        ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
+                                        : "bg-white/10 text-white border-white/20 hover:bg-white/20"
+                                }`}
+                                title={`Current Theme: ${theme}. Click to switch.`}
+                            >
+                                {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
+                                {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
+                                {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
+                            </button>
+
+                            <Link
+                                href="/labs"
+                                className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm whitespace-nowrap ${
+                                    theme === "eyeprotect"
+                                        ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
+                                        : isLight
+                                        ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
+                                        : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
+                                }`}
+                            >
+                                <span className="hidden sm:inline">← Back to Labs</span>
+                                <span className="sm:hidden">← Labs</span>
+                            </Link>
+                        </div>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                        <button
-                            onClick={cycleTheme}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
-                                isLight
-                                    ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
-                                    : "bg-white/10 text-white border-white/20 hover:bg-white/20"
-                            }`}
-                            title={`Current Theme: ${theme}. Click to switch.`}
-                        >
-                            {theme === "dark" && <><Moon className="w-3.5 h-3.5 text-indigo-400" /> <span className="hidden sm:inline">Dark</span></>}
-                            {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
-                            {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
-                        </button>
-                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
-                            Prep dashboard
-                        </Link>
-                        <Link
-                            href="/labs"
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
-                                theme === "eyeprotect"
-                                    ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
-                                    : isLight
-                                    ? "bg-indigo-600 text-white border-indigo-600 hover:bg-indigo-700 shadow-indigo-500/20"
-                                    : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
-                            }`}
-                        >
-                            ← Back to Labs
-                        </Link>
+
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">Behavioral drills with retakes</h1>
+                            <p className={`text-xs sm:text-sm mt-1 ${isLight ? "text-slate-600 font-medium" : "text-white/45"}`}>
+                                {[role, company].filter(Boolean).join(" · ") ||
+                                    "Type your own question or generate one — Situation → Task → Action → Result."}
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
+                                Prep dashboard →
+                            </Link>
+                        </div>
                     </div>
                 </div>
 
@@ -470,6 +496,7 @@ function StarCoachInner() {
                         </div>
 
                         <textarea
+                            ref={questionRef}
                             value={question}
                             onChange={(e) => {
                                 setQuestion(e.target.value);
@@ -477,7 +504,7 @@ function StarCoachInner() {
                                 setQuestionHint("");
                             }}
                             rows={2}
-                            className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                            className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition overflow-hidden ${
                                 theme === "light"
                                     ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 shadow-sm"
                                     : theme === "eyeprotect"
@@ -547,9 +574,10 @@ function StarCoachInner() {
                             </div>
                         </div>
                         <textarea
+                            ref={storyRef}
                             value={story}
                             onChange={(e) => setStory(e.target.value)}
-                            className={`min-h-[180px] w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                            className={`min-h-[180px] w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition overflow-hidden ${
                                 theme === "light"
                                     ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-indigo-600 shadow-sm"
                                     : theme === "eyeprotect"

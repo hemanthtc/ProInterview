@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
 import { getVerifiedSession } from "@/utils/auth";
@@ -9,6 +10,33 @@ const MAX_FILES = 5;
 
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
+
+    if (name.match(/\.(png|jpg|jpeg|webp)$/i) || file.type.startsWith("image/")) {
+        try {
+            const apiKey = process.env.GEMINI_API_KEY;
+            if (apiKey && apiKey !== "dummy") {
+                const genAI = new GoogleGenerativeAI(apiKey);
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                const arrayBuffer = await file.arrayBuffer();
+                const base64Data = Buffer.from(arrayBuffer).toString("base64");
+                const result = await model.generateContent([
+                    {
+                        inlineData: {
+                            data: base64Data,
+                            mimeType: file.type || "image/png"
+                        }
+                    },
+                    "Extract and transcribe all text from this job description / document screenshot verbatim. Return only the extracted text without conversational wrapper."
+                ]);
+                const text = result.response.text() || "";
+                if (text.trim()) {
+                    return `--- [Image OCR: ${file.name}] ---\n${text.trim()}\n`;
+                }
+            }
+        } catch (e) {
+            console.error("Image OCR text extraction failed for " + file.name + ":", e);
+        }
+    }
 
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
         try {
@@ -23,6 +51,26 @@ async function extractTextFromFile(file: File): Promise<string> {
         } catch (e) {
             console.error("PDF extraction failed for " + file.name + ":", e);
             return "";
+        }
+    }
+
+    if (name.endsWith(".docx") || file.type.includes("wordprocessingml") || name.endsWith(".doc")) {
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            const docXml = await zip.file("word/document.xml")?.async("string");
+            if (docXml) {
+                const cleanText = docXml
+                    .replace(/<w:p[^>]*>/g, "\n")
+                    .replace(/<w:tab[^>]*>/g, "\t")
+                    .replace(/<[^>]+>/g, " ")
+                    .replace(/[ \t]+/g, " ")
+                    .replace(/\n\s*\n/g, "\n")
+                    .trim();
+                return `--- [File: ${file.name}] ---\n${cleanText}\n`;
+            }
+        } catch (e) {
+            console.error("DOCX extraction failed for " + file.name + ":", e);
         }
     }
 

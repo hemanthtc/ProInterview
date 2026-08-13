@@ -26,19 +26,21 @@ export async function hashOtp(otp: string): Promise<string> {
 export async function verifyOtp(plainOtp: string, stored: string | undefined | null): Promise<boolean> {
     if (!stored || !plainOtp) return false;
 
+    const trimmed = plainOtp.trim();
+
     // Legacy plaintext OTP (pre-hashing deploy) — compare in constant time when possible
     if (!stored.startsWith("$2")) {
         try {
-            const a = Buffer.from(stored);
-            const b = Buffer.from(plainOtp);
+            const a = Buffer.from(stored.trim());
+            const b = Buffer.from(trimmed);
             if (a.length !== b.length) return false;
             return crypto.timingSafeEqual(a, b);
         } catch {
-            return stored === plainOtp;
+            return stored.trim() === trimmed;
         }
     }
 
-    return bcryptjs.compare(plainOtp, stored);
+    return bcryptjs.compare(trimmed, stored);
 }
 
 export function otpExpiry(ttlMs: number = OTP_TTL_MS): Date {

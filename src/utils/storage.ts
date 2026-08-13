@@ -28,9 +28,17 @@ export function getScopedKey(key: string): string {
 
 export function getStorageItem(key: string): string | null {
     if (typeof window === "undefined") return null;
-    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true";
+    if (key === "userLoggedIn") {
+        const fromLocal = localStorage.getItem("userLoggedIn");
+        if (fromLocal === "true") return "true";
+        const fromTemp = tempMemory["userLoggedIn"];
+        if (fromTemp === "true") return "true";
+        if (document.cookie.includes("userLoggedIn=true")) return "true";
+        return null;
+    }
+    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true" || document.cookie.includes("userLoggedIn=true");
     if (isLoggedIn) {
-        return localStorage.getItem(getScopedKey(key));
+        return localStorage.getItem(getScopedKey(key)) || tempMemory[getScopedKey(key)] || null;
     } else {
         return tempMemory[getScopedKey(key)] || null;
     }
@@ -38,7 +46,20 @@ export function getStorageItem(key: string): string | null {
 
 export function setStorageItem(key: string, value: string): void {
     if (typeof window === "undefined") return;
-    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true";
+    if (key === "userLoggedIn") {
+        if (value === "true") {
+            localStorage.setItem("userLoggedIn", "true");
+            tempMemory["userLoggedIn"] = "true";
+            document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+        } else {
+            localStorage.removeItem("userLoggedIn");
+            delete tempMemory["userLoggedIn"];
+            document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
+        emitStorageChange(key);
+        return;
+    }
+    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true" || document.cookie.includes("userLoggedIn=true");
     if (isLoggedIn) {
         localStorage.setItem(getScopedKey(key), value);
     } else {
@@ -49,7 +70,14 @@ export function setStorageItem(key: string, value: string): void {
 
 export function removeStorageItem(key: string): void {
     if (typeof window === "undefined") return;
-    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true";
+    if (key === "userLoggedIn") {
+        localStorage.removeItem("userLoggedIn");
+        delete tempMemory["userLoggedIn"];
+        document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        emitStorageChange(key);
+        return;
+    }
+    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true" || document.cookie.includes("userLoggedIn=true");
     if (isLoggedIn) {
         localStorage.removeItem(getScopedKey(key));
     } else {

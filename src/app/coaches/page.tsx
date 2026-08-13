@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Calendar, CalendarPlus, Loader2, Star, Users, Moon, Sun, Eye, Video, X } from "lucide-react";
+import { Calendar, CalendarPlus, Loader2, Star, Users, Moon, Sun, Eye, Video, X, ChevronDown } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import NotificationBell from "@/components/NotificationBell";
 import { getStorageItem } from "@/utils/storage";
@@ -61,6 +61,7 @@ export default function CoachesPage() {
     const [myBookings, setMyBookings] = useState<MyBooking[]>([]);
     const [cancelling, setCancelling] = useState<string | null>(null);
     const [loggedIn, setLoggedIn] = useState(false);
+    const [bookingsExpanded, setBookingsExpanded] = useState(true);
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
@@ -115,6 +116,14 @@ export default function CoachesPage() {
         }
     }, [loadMyBookings]);
 
+    useEffect(() => {
+        if (!loggedIn) return;
+        const interval = setInterval(() => {
+            void loadMyBookings();
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [loggedIn, loadMyBookings]);
+
     async function book(coach: Coach, slot: string) {
         setBusy(coach.id);
         setError("");
@@ -132,6 +141,23 @@ export default function CoachesPage() {
                 }
                 const order = await orderRes.json();
 
+                if (order.bookingId) {
+                    setLoggedIn(true);
+                    setBookingsExpanded(true);
+                    const pendingItem: MyBooking = {
+                        bookingId: order.bookingId,
+                        coachName: coach.name,
+                        slot: slot,
+                        status: "pending",
+                        meetLink: "",
+                        createdAt: new Date().toISOString(),
+                    };
+                    setMyBookings((prev) => [
+                        pendingItem,
+                        ...prev.filter((b) => b.bookingId !== order.bookingId),
+                    ]);
+                }
+
                 if (!order.paymentsConfigured || !order.orderId) {
                     const confirmRes = await fetch("/api/coaches", {
                         method: "POST",
@@ -147,7 +173,24 @@ export default function CoachesPage() {
                         const { message } = await readApiError(confirmRes);
                         throw new Error(message);
                     }
-                    setBooking(await confirmRes.json());
+                    const result = await confirmRes.json();
+                    setBooking(result);
+                    if (result.success || result.bookingId) {
+                        setLoggedIn(true);
+                        setBookingsExpanded(true);
+                        setMyBookings((prev) => [
+                            {
+                                bookingId: result.bookingId || order.bookingId || `b-${Date.now()}`,
+                                coachName: result.coach || coach.name,
+                                slot: result.slot || slot,
+                                status: result.status || (result.paid || result.meetLink ? "confirmed" : "pending"),
+                                meetLink: result.meetLink || "",
+                                googleCalendarLink: result.googleCalendarLink,
+                                createdAt: new Date().toISOString(),
+                            },
+                            ...prev.filter((b) => b.bookingId !== (result.bookingId || order.bookingId)),
+                        ]);
+                    }
                     void loadMyBookings();
                     return;
                 }
@@ -181,7 +224,24 @@ export default function CoachesPage() {
                                     const { message } = await readApiError(confirmRes);
                                     throw new Error(message);
                                 }
-                                setBooking(await confirmRes.json());
+                                const result = await confirmRes.json();
+                                setBooking(result);
+                                if (result.success || result.bookingId) {
+                                    setLoggedIn(true);
+                                    setBookingsExpanded(true);
+                                    setMyBookings((prev) => [
+                                        {
+                                            bookingId: result.bookingId || order.bookingId || `b-${Date.now()}`,
+                                            coachName: result.coach || coach.name,
+                                            slot: result.slot || slot,
+                                            status: result.status || (result.paid || result.meetLink ? "confirmed" : "pending"),
+                                            meetLink: result.meetLink || "",
+                                            googleCalendarLink: result.googleCalendarLink,
+                                            createdAt: new Date().toISOString(),
+                                        },
+                                        ...prev.filter((b) => b.bookingId !== (result.bookingId || order.bookingId)),
+                                    ]);
+                                }
                                 void loadMyBookings();
                                 resolve();
                             } catch (e) {
@@ -205,7 +265,24 @@ export default function CoachesPage() {
                     const { message } = await readApiError(res);
                     throw new Error(message);
                 }
-                setBooking(await res.json());
+                const result = await res.json();
+                setBooking(result);
+                if (result.success || result.bookingId) {
+                    setLoggedIn(true);
+                    setBookingsExpanded(true);
+                    setMyBookings((prev) => [
+                        {
+                            bookingId: result.bookingId || `b-${Date.now()}`,
+                            coachName: result.coach || coach.name,
+                            slot: result.slot || slot,
+                            status: result.status || (result.paid || result.meetLink ? "confirmed" : "pending"),
+                            meetLink: result.meetLink || "",
+                            googleCalendarLink: result.googleCalendarLink,
+                            createdAt: new Date().toISOString(),
+                        },
+                        ...prev.filter((b) => b.bookingId !== result.bookingId),
+                    ]);
+                }
                 void loadMyBookings();
             }
         } catch (e: unknown) {
@@ -245,22 +322,22 @@ export default function CoachesPage() {
                 : "bg-slate-950 text-white"
         }`}>
             <div className="max-w-4xl mx-auto px-4 py-8">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div>
+                <div className="flex justify-between items-start gap-4 mb-6">
+                    <div className="flex-1 min-w-0">
                         <p className={`text-xs uppercase tracking-widest flex items-center gap-2 ${isLight ? "text-pink-700 font-bold" : "text-pink-300/80"}`}>
                             <Users className="w-4 h-4" /> Coach marketplace
                         </p>
-                        <h1 className="mt-1 text-2xl font-semibold">Human coaches after AI warm-up</h1>
-                        <p className={`mt-1 text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
+                        <h1 className="mt-1 text-xl sm:text-2xl font-semibold">Human coaches after AI warm-up</h1>
+                        <p className={`mt-1 text-xs sm:text-sm ${isLight ? "text-slate-600" : "text-white/45"}`}>
                             {paymentsConfigured
                                 ? "Pay with Razorpay · get an instant Jitsi video room"
                                 : "Book a session · instant Jitsi video room (payments optional when Razorpay is configured)"}
                         </p>
                     </div>
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto pt-1">
                         <button
                             onClick={cycleTheme}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
+                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-semibold border transition cursor-pointer ${
                                 isLight
                                     ? "bg-white text-slate-800 border-slate-300 hover:bg-slate-50 shadow-sm"
                                     : "bg-white/10 text-white border-white/20 hover:bg-white/20"
@@ -271,10 +348,10 @@ export default function CoachesPage() {
                             {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                             {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                         </button>
-                        <NotificationBell />
+                        <NotificationBell theme={theme} />
                         <Link
                             href="/labs"
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm ${
+                            className={`inline-flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs font-bold border transition shadow-sm whitespace-nowrap ${
                                 theme === "eyeprotect"
                                     ? "bg-[#0b5f58] text-[#fffcf5] border-[#084842] hover:bg-[#084842]"
                                     : isLight
@@ -282,7 +359,8 @@ export default function CoachesPage() {
                                     : "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-500/30 shadow-[0_0_12px_rgba(99,102,241,0.2)]"
                             }`}
                         >
-                            ← Back to Labs
+                            <span className="hidden sm:inline">← Back to Labs</span>
+                            <span className="sm:hidden">← Labs</span>
                         </Link>
                     </div>
                 </div>
@@ -324,50 +402,108 @@ export default function CoachesPage() {
                 {error && <p className="mb-3 text-sm text-rose-300">{error}</p>}
 
                 {loggedIn && myBookings.some((b) => b.status !== "cancelled") && (
-                    <div className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-4">
-                        <h2 className="mb-3 text-sm font-medium text-white/80">Your bookings</h2>
-                        <div className="space-y-2">
-                            {myBookings
-                                .filter((b) => b.status !== "cancelled")
-                                .map((b) => (
-                                    <div
-                                        key={b.bookingId}
-                                        className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-white/5 px-3 py-2 text-sm"
-                                    >
-                                        <div className="min-w-0">
-                                            <p className="font-medium">{b.coachName}</p>
-                                            <p className="text-xs text-white/50">
-                                                {b.slot} · <span className="capitalize">{b.status}</span>
-                                            </p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {b.status === "confirmed" && (
-                                                <a
-                                                    href={b.meetLink}
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                    className="rounded-lg bg-pink-500/80 px-2.5 py-1 text-xs"
-                                                >
-                                                    Join
-                                                </a>
-                                            )}
-                                            <button
-                                                type="button"
-                                                disabled={cancelling === b.bookingId}
-                                                onClick={() => void cancelBooking(b.bookingId)}
-                                                className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-2.5 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-50"
-                                            >
-                                                {cancelling === b.bookingId ? (
-                                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                                ) : (
-                                                    <X className="h-3 w-3" />
+                    <div className={`mb-6 rounded-2xl border p-4 sm:p-5 transition ${
+                        theme === "light"
+                            ? "bg-white border-slate-200 shadow-sm text-slate-900"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917]"
+                            : "bg-white/5 border-white/10 text-white"
+                    }`}>
+                        <button
+                            type="button"
+                            onClick={() => setBookingsExpanded((prev) => !prev)}
+                            className="w-full flex items-center justify-between text-left cursor-pointer group"
+                        >
+                            <div className="flex items-center gap-2">
+                                <h2 className={`text-sm font-bold ${
+                                    theme === "eyeprotect"
+                                        ? "text-[#1c1917]"
+                                        : isLight
+                                        ? "text-slate-900"
+                                        : "text-white/90"
+                                }`}>Your bookings</h2>
+                                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-pink-500/15 text-pink-600 dark:text-pink-400">
+                                    {myBookings.filter((b) => b.status !== "cancelled").length}
+                                </span>
+                            </div>
+                            <div className="flex items-center gap-1 text-xs font-semibold opacity-70 group-hover:opacity-100 transition-opacity">
+                                <span>{bookingsExpanded ? "Collapse" : "Expand"}</span>
+                                <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${bookingsExpanded ? "rotate-180" : ""}`} />
+                            </div>
+                        </button>
+
+                        {bookingsExpanded && (
+                            <div className="space-y-2.5 mt-3 pt-3 border-t border-black/5 dark:border-white/10">
+                                {myBookings
+                                    .filter((b) => b.status !== "cancelled")
+                                    .map((b) => (
+                                        <div
+                                            key={b.bookingId}
+                                            className={`flex flex-wrap items-center justify-between gap-3 rounded-xl p-3.5 text-sm border transition ${
+                                                theme === "eyeprotect"
+                                                    ? "bg-[#f3ede3] border-[#8c8578]/40 text-[#1c1917]"
+                                                    : isLight
+                                                    ? "bg-slate-50 border-slate-200 text-slate-900"
+                                                    : "bg-white/5 border-white/10 text-white"
+                                            }`}
+                                        >
+                                            <div className="min-w-0">
+                                                <p className={`font-semibold ${
+                                                    theme === "eyeprotect"
+                                                        ? "text-[#1c1917]"
+                                                        : isLight
+                                                        ? "text-slate-900"
+                                                        : "text-white"
+                                                }`}>{b.coachName}</p>
+                                                <p className={`text-xs mt-0.5 ${
+                                                    theme === "eyeprotect"
+                                                        ? "text-[#57534e] font-semibold"
+                                                        : isLight
+                                                        ? "text-slate-600 font-medium"
+                                                        : "text-white/50"
+                                                }`}>
+                                                    {b.slot} · <span className="capitalize font-bold">{b.status}</span>
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {b.status === "confirmed" && (
+                                                    <a
+                                                        href={b.meetLink}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        className={`rounded-lg px-3 py-1.5 text-xs font-bold transition shadow-sm ${
+                                                            theme === "eyeprotect"
+                                                                ? "bg-[#0b5f58] text-white hover:bg-[#084842]"
+                                                                : "bg-pink-600 text-white hover:bg-pink-500"
+                                                        }`}
+                                                    >
+                                                        Join
+                                                    </a>
                                                 )}
-                                                Cancel
-                                            </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={cancelling === b.bookingId}
+                                                    onClick={() => void cancelBooking(b.bookingId)}
+                                                    className={`inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold border transition cursor-pointer ${
+                                                        theme === "eyeprotect"
+                                                            ? "bg-rose-100/90 text-rose-900 border-rose-300 hover:bg-rose-200 disabled:opacity-50"
+                                                            : isLight
+                                                            ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100 disabled:opacity-50"
+                                                            : "bg-white/10 text-rose-200 border-white/10 hover:bg-rose-500/20 disabled:opacity-50"
+                                                    }`}
+                                                >
+                                                    {cancelling === b.bookingId ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <X className="h-3 w-3" />
+                                                    )}
+                                                    Cancel
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                        </div>
+                                    ))}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -399,7 +535,7 @@ export default function CoachesPage() {
                                         <span>{c.companies.join(" · ")}</span>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-2">
+                                <div className="flex flex-wrap sm:flex-col gap-2 mt-3 sm:mt-0">
                                     {c.slots.map((slot) => {
                                         const remaining = c.slotInventory?.[slot];
                                         const soldOut = remaining !== undefined && remaining <= 0;
@@ -409,7 +545,7 @@ export default function CoachesPage() {
                                                 type="button"
                                                 disabled={busy === c.id || soldOut}
                                                 onClick={() => void book(c, slot)}
-                                                className={`flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-xs font-bold transition cursor-pointer ${
+                                                className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition cursor-pointer shrink-0 ${
                                                     theme === "eyeprotect"
                                                         ? "bg-[#0b5f58] hover:bg-[#084842] text-white disabled:opacity-50"
                                                         : "bg-pink-600 hover:bg-pink-500 text-white disabled:opacity-50"
