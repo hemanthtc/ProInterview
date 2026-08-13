@@ -174,43 +174,43 @@ function StarCoachInner() {
             setHistory(loadStarHistory());
             setCompany(localStorage.getItem("targetCompany") || "");
             setRole(localStorage.getItem("preferredRoles") || "");
-        });
 
-        const q = searchParams.get("question");
-        const w = searchParams.get("weakSpot");
-        const s = searchParams.get("story");
-        if (q) {
-            setQuestion(q);
-            setQuestionSource("custom");
-            setInfo("Loaded practice prompt from Film Room / Prep dashboard.");
-        }
-        if (w) setWeakSpot(w);
-        if (s) setStory(s);
+            const q = searchParams.get("question");
+            const w = searchParams.get("weakSpot");
+            const s = searchParams.get("story");
+            if (q) {
+                setQuestion(q);
+                setQuestionSource("custom");
+                setInfo("Loaded practice prompt from Film Room / Prep dashboard.");
+            }
+            if (w) setWeakSpot(w);
+            if (s) setStory(s);
 
-        try {
-            if (!q) {
-                const keys = Object.keys(localStorage).filter((k) => k.startsWith("filmRoom_"));
-                if (keys.length) {
-                    const raw = localStorage.getItem(keys.sort().reverse()[0] || "");
-                    if (raw) {
-                        const data = JSON.parse(raw);
-                        const gap = (data.annotations || []).find(
-                            (a: { kind?: string; text?: string; label?: string }) => a.kind === "gap"
-                        );
-                        if (gap?.text || gap?.label) setWeakSpot(String(gap.text || gap.label).slice(0, 180));
-                        if (data.retakePrompts?.[0]) {
-                            setQuestion(data.retakePrompts[0]);
-                            setQuestionSource("custom");
-                        } else if (data.practiceFocus?.[0]) {
-                            setQuestion(String(data.practiceFocus[0]));
-                            setQuestionSource("custom");
+            try {
+                if (!q) {
+                    const keys = Object.keys(localStorage).filter((k) => k.startsWith("filmRoom_"));
+                    if (keys.length) {
+                        const raw = localStorage.getItem(keys.sort().reverse()[0] || "");
+                        if (raw) {
+                            const data = JSON.parse(raw);
+                            const gap = (data.annotations || []).find(
+                                (a: { kind?: string; text?: string; label?: string }) => a.kind === "gap"
+                            );
+                            if (gap?.text || gap?.label) setWeakSpot(String(gap.text || gap.label).slice(0, 180));
+                            if (data.retakePrompts?.[0]) {
+                                setQuestion(data.retakePrompts[0]);
+                                setQuestionSource("custom");
+                            } else if (data.practiceFocus?.[0]) {
+                                setQuestion(String(data.practiceFocus[0]));
+                                setQuestionSource("custom");
+                            }
                         }
                     }
                 }
+            } catch {
+                /* ignore */
             }
-        } catch {
-            /* ignore */
-        }
+        });
     }, [searchParams]);
 
     useEffect(() => {

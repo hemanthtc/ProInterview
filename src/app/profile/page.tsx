@@ -143,166 +143,164 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem("globalTheme") as any;
         Promise.resolve().then(() => {
+            const savedTheme = localStorage.getItem("globalTheme") as any;
             if (savedTheme) {
                 setTheme(savedTheme);
+                document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+                document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
             }
             setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
-        });
-        if (savedTheme) {
-            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-        }
 
-        if (getStorageItem("userLoggedIn") !== "true") {
-            router.push("/login");
-            return;
-        }
+            if (getStorageItem("userLoggedIn") !== "true") {
+                router.push("/login");
+                return;
+            }
 
-        const exactUser = getStorageItem("userName") || "Guest";
-        const identifier = getStorageItem("userIdentifier") || "";
-        setUserName(exactUser);
-        setEditNameValue(exactUser);
-        setUserIdentifier(identifier);
+            const exactUser = getStorageItem("userName") || "Guest";
+            const identifier = getStorageItem("userIdentifier") || "";
+            setUserName(exactUser);
+            setEditNameValue(exactUser);
+            setUserIdentifier(identifier);
 
-        const storedPhoto = getStorageItem("userProfilePhoto") || "";
-        setProfilePhoto(storedPhoto);
+            const storedPhoto = getStorageItem("userProfilePhoto") || "";
+            setProfilePhoto(storedPhoto);
 
-        const storedAdditionalEmail = getStorageItem("userAdditionalEmail") || "";
-        setAdditionalEmail(storedAdditionalEmail);
-        setEditAdditionalEmailValue(storedAdditionalEmail);
+            const storedAdditionalEmail = getStorageItem("userAdditionalEmail") || "";
+            setAdditionalEmail(storedAdditionalEmail);
+            setEditAdditionalEmailValue(storedAdditionalEmail);
 
-        const storedPlan = getStorageItem("userSubscriptionPlan") || "Free Tier";
-        setSubscriptionPlan(storedPlan);
+            const storedPlan = getStorageItem("userSubscriptionPlan") || "Free Tier";
+            setSubscriptionPlan(storedPlan);
 
-        const storedGithub = getStorageItem("userGithub") || "";
-        const storedLinkedin = getStorageItem("userLinkedin") || "";
-        const storedPortfolio = getStorageItem("userPortfolio") || "";
-        setGithub(storedGithub);
-        setLinkedin(storedLinkedin);
-        setPortfolioUrl(storedPortfolio);
-        setEditGithubValue(storedGithub);
-        setEditLinkedinValue(storedLinkedin);
-        setEditPortfolioValue(storedPortfolio);
+            const storedGithub = getStorageItem("userGithub") || "";
+            const storedLinkedin = getStorageItem("userLinkedin") || "";
+            const storedPortfolio = getStorageItem("userPortfolio") || "";
+            setGithub(storedGithub);
+            setLinkedin(storedLinkedin);
+            setPortfolioUrl(storedPortfolio);
+            setEditGithubValue(storedGithub);
+            setEditLinkedinValue(storedLinkedin);
+            setEditPortfolioValue(storedPortfolio);
 
-        const storedResumeCvName = getStorageItem("userResumeCvName") || "";
-        const storedResumeCvText = getStorageItem("userResumeCvText") || "";
-        setResumeCvName(storedResumeCvName);
-        setResumeCvText(storedResumeCvText);
+            const storedResumeCvName = getStorageItem("userResumeCvName") || "";
+            const storedResumeCvText = getStorageItem("userResumeCvText") || "";
+            setResumeCvName(storedResumeCvName);
+            setResumeCvText(storedResumeCvText);
 
-        const storedPhone = getStorageItem("userPhone") || "";
-        setPhone(storedPhone);
-        setEditPhoneValue(storedPhone);
+            const storedPhone = getStorageItem("userPhone") || "";
+            setPhone(storedPhone);
+            setEditPhoneValue(storedPhone);
 
-        try {
-            const storedEdu = JSON.parse(getStorageItem("userEducationData") || "{}");
-            setEdu10thInstitution(storedEdu.tenth?.institution || "");
-            setEdu10thBoard(storedEdu.tenth?.board || "");
-            setEdu10thMarks(storedEdu.tenth?.marks || "");
-            setEdu12thInstitution(storedEdu.twelfth?.institution || "");
-            setEdu12thBoard(storedEdu.twelfth?.board || "");
-            setEdu12thMarks(storedEdu.twelfth?.marks || "");
-            setEduUGInstitution(storedEdu.ug?.institution || "");
-            setEduUGCourse(storedEdu.ug?.course || "");
-            setEduUGMarks(storedEdu.ug?.marks || "");
-            setEduPGInstitution(storedEdu.pg?.institution || "");
-            setEduPGCourse(storedEdu.pg?.course || "");
-            setEduPGMarks(storedEdu.pg?.marks || "");
-        } catch { /* ignore */ }
-
-        // Fetch user document from cloud database on load
-        const fetchCloudProfile = async (id: string) => {
             try {
-                const res = await fetch(`/api/auth/profile?identifier=${encodeURIComponent(id)}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    if (data.success && data.user) {
-                        const u = data.user;
-                        setUserName(u.displayName);
-                        setEditNameValue(u.displayName);
-                        setStorageItem("userName", u.displayName);
+                const storedEdu = JSON.parse(getStorageItem("userEducationData") || "{}");
+                setEdu10thInstitution(storedEdu.tenth?.institution || "");
+                setEdu10thBoard(storedEdu.tenth?.board || "");
+                setEdu10thMarks(storedEdu.tenth?.marks || "");
+                setEdu12thInstitution(storedEdu.twelfth?.institution || "");
+                setEdu12thBoard(storedEdu.twelfth?.board || "");
+                setEdu12thMarks(storedEdu.twelfth?.marks || "");
+                setEduUGInstitution(storedEdu.ug?.institution || "");
+                setEduUGCourse(storedEdu.ug?.course || "");
+                setEduUGMarks(storedEdu.ug?.marks || "");
+                setEduPGInstitution(storedEdu.pg?.institution || "");
+                setEduPGCourse(storedEdu.pg?.course || "");
+                setEduPGMarks(storedEdu.pg?.marks || "");
+            } catch { /* ignore */ }
 
-                        if (u.profilePhotoUrl || u.profilePhoto) {
-                            const photo = u.profilePhotoUrl || u.profilePhoto;
-                            setProfilePhoto(photo);
-                            setStorageItem("userProfilePhoto", photo);
-                        }
-                        if (u.additionalEmail) {
-                            setAdditionalEmail(u.additionalEmail);
-                            setEditAdditionalEmailValue(u.additionalEmail);
-                            setStorageItem("userAdditionalEmail", u.additionalEmail);
-                        }
-                        if (u.subscriptionPlan) {
-                            setSubscriptionPlan(u.subscriptionPlan);
-                            setStorageItem("userSubscriptionPlan", u.subscriptionPlan);
-                        }
-                        if (u.github) {
-                            setGithub(u.github);
-                            setEditGithubValue(u.github);
-                            setStorageItem("userGithub", u.github);
-                        }
-                        if (u.linkedin) {
-                            setLinkedin(u.linkedin);
-                            setEditLinkedinValue(u.linkedin);
-                            setStorageItem("userLinkedin", u.linkedin);
-                        }
-                        if (u.portfolioUrl) {
-                            setPortfolioUrl(u.portfolioUrl);
-                            setEditPortfolioValue(u.portfolioUrl);
-                            setStorageItem("userPortfolio", u.portfolioUrl);
-                        }
-                        if (u.resumeCvName) {
-                            setResumeCvName(u.resumeCvName);
-                            setStorageItem("userResumeCvName", u.resumeCvName);
-                        }
-                        if (u.resumeCvText) {
-                            setResumeCvText(u.resumeCvText);
-                            setStorageItem("userResumeCvText", u.resumeCvText);
-                        }
-                        if (u.phone) {
-                            setPhone(u.phone);
-                            setEditPhoneValue(u.phone);
-                            setStorageItem("userPhone", u.phone);
-                        }
-                        if (u.educationData) {
-                            setStorageItem("userEducationData", JSON.stringify(u.educationData));
-                            setEdu10thInstitution(u.educationData.tenth?.institution || "");
-                            setEdu10thBoard(u.educationData.tenth?.board || "");
-                            setEdu10thMarks(u.educationData.tenth?.marks || "");
-                            setEdu12thInstitution(u.educationData.twelfth?.institution || "");
-                            setEdu12thBoard(u.educationData.twelfth?.board || "");
-                            setEdu12thMarks(u.educationData.twelfth?.marks || "");
-                            setEduUGInstitution(u.educationData.ug?.institution || "");
-                            setEduUGCourse(u.educationData.ug?.course || "");
-                            setEduUGMarks(u.educationData.ug?.marks || "");
-                            setEduPGInstitution(u.educationData.pg?.institution || "");
-                            setEduPGCourse(u.educationData.pg?.course || "");
-                            setEduPGMarks(u.educationData.pg?.marks || "");
-                        }
-                        if (u.createdAt) {
-                            setMemberSince(new Date(u.createdAt).toLocaleDateString());
+            // Fetch user document from cloud database on load
+            const fetchCloudProfile = async (id: string) => {
+                try {
+                    const res = await fetch(`/api/auth/profile?identifier=${encodeURIComponent(id)}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.success && data.user) {
+                            const u = data.user;
+                            setUserName(u.displayName);
+                            setEditNameValue(u.displayName);
+                            setStorageItem("userName", u.displayName);
+
+                            if (u.profilePhotoUrl || u.profilePhoto) {
+                                const photo = u.profilePhotoUrl || u.profilePhoto;
+                                setProfilePhoto(photo);
+                                setStorageItem("userProfilePhoto", photo);
+                            }
+                            if (u.additionalEmail) {
+                                setAdditionalEmail(u.additionalEmail);
+                                setEditAdditionalEmailValue(u.additionalEmail);
+                                setStorageItem("userAdditionalEmail", u.additionalEmail);
+                            }
+                            if (u.subscriptionPlan) {
+                                setSubscriptionPlan(u.subscriptionPlan);
+                                setStorageItem("userSubscriptionPlan", u.subscriptionPlan);
+                            }
+                            if (u.github) {
+                                setGithub(u.github);
+                                setEditGithubValue(u.github);
+                                setStorageItem("userGithub", u.github);
+                            }
+                            if (u.linkedin) {
+                                setLinkedin(u.linkedin);
+                                setEditLinkedinValue(u.linkedin);
+                                setStorageItem("userLinkedin", u.linkedin);
+                            }
+                            if (u.portfolioUrl) {
+                                setPortfolioUrl(u.portfolioUrl);
+                                setEditPortfolioValue(u.portfolioUrl);
+                                setStorageItem("userPortfolio", u.portfolioUrl);
+                            }
+                            if (u.resumeCvName) {
+                                setResumeCvName(u.resumeCvName);
+                                setStorageItem("userResumeCvName", u.resumeCvName);
+                            }
+                            if (u.resumeCvText) {
+                                setResumeCvText(u.resumeCvText);
+                                setStorageItem("userResumeCvText", u.resumeCvText);
+                            }
+                            if (u.phone) {
+                                setPhone(u.phone);
+                                setEditPhoneValue(u.phone);
+                                setStorageItem("userPhone", u.phone);
+                            }
+                            if (u.educationData) {
+                                setStorageItem("userEducationData", JSON.stringify(u.educationData));
+                                setEdu10thInstitution(u.educationData.tenth?.institution || "");
+                                setEdu10thBoard(u.educationData.tenth?.board || "");
+                                setEdu10thMarks(u.educationData.tenth?.marks || "");
+                                setEdu12thInstitution(u.educationData.twelfth?.institution || "");
+                                setEdu12thBoard(u.educationData.twelfth?.board || "");
+                                setEdu12thMarks(u.educationData.twelfth?.marks || "");
+                                setEduUGInstitution(u.educationData.ug?.institution || "");
+                                setEduUGCourse(u.educationData.ug?.course || "");
+                                setEduUGMarks(u.educationData.ug?.marks || "");
+                                setEduPGInstitution(u.educationData.pg?.institution || "");
+                                setEduPGCourse(u.educationData.pg?.course || "");
+                                setEduPGMarks(u.educationData.pg?.marks || "");
+                            }
+                            if (u.createdAt) {
+                                setMemberSince(new Date(u.createdAt).toLocaleDateString());
+                            }
                         }
                     }
+                } catch (err) {
+                    console.warn("Could not sync profile with Cloud database, offline or connection error:", err);
                 }
-            } catch (err) {
-                console.warn("Could not sync profile with Cloud database, offline or connection error:", err);
-            }
-        };
+            };
 
-        if (identifier) {
-            fetchCloudProfile(identifier);
-        }
-
-        if (!memberSince) setMemberSince(new Date().toLocaleDateString());
-
-        const hydrateSessions = async () => {
             if (identifier) {
-                await pullSessionsFromCloud();
+                fetchCloudProfile(identifier);
             }
-            loadSessions(exactUser);
-        };
-        void hydrateSessions();
+
+            if (!memberSince) setMemberSince(new Date().toLocaleDateString());
+
+            const hydrateSessions = async () => {
+                if (identifier) {
+                    await pullSessionsFromCloud();
+                }
+                loadSessions(exactUser);
+            };
+            void hydrateSessions();
+        });
     }, [router]);
 
     // Dynamically load Razorpay script on mount

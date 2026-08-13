@@ -21,47 +21,45 @@ export default function Home() {
     const [isHydrated, setIsHydrated] = useState(false);
 
     useEffect(() => {
-        setIsHydrated(true);
-        const loggedIn = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest";
-        const role = localStorage.getItem("userRole");
-        if (loggedIn && role === "admin") {
-            router.push("/admin");
-            return;
-        }
-
-        const savedTheme = localStorage.getItem("globalTheme") as any;
         Promise.resolve().then(() => {
+            setIsHydrated(true);
+            const loggedIn = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest";
+            const role = localStorage.getItem("userRole");
+            if (loggedIn && role === "admin") {
+                router.push("/admin");
+                return;
+            }
+
+            const savedTheme = localStorage.getItem("globalTheme") as any;
             setIsLoggedIn(loggedIn);
             setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
             if (savedTheme) {
                 setTheme(savedTheme);
+                document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+                document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
+            }
+
+            const stored = getStorageItem("interviewSessions");
+            if (stored) {
+                try {
+                    const sessions = JSON.parse(stored);
+                    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+                    const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
+                    setPastSessions(recentSessions);
+                } catch (e) {
+                    console.error("Failed to parse sessions", e);
+                }
+            }
+
+            const storedPaused = getStorageItem("pausedInterviewSession");
+            if (storedPaused) {
+                try {
+                    setPausedSession(JSON.parse(storedPaused));
+                } catch (e) {
+                    console.error(e);
+                }
             }
         });
-        if (savedTheme) {
-            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-        }
-        
-        const stored = getStorageItem("interviewSessions");
-        if (stored) {
-            try {
-                const sessions = JSON.parse(stored);
-                const oneHourAgo = Date.now() - 60 * 60 * 1000;
-                const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
-                setPastSessions(recentSessions);
-            } catch (e) {
-                console.error("Failed to parse sessions", e);
-            }
-        }
-
-        const storedPaused = getStorageItem("pausedInterviewSession");
-        if (storedPaused) {
-            try {
-                setPausedSession(JSON.parse(storedPaused));
-            } catch (e) {
-                console.error(e);
-            }
-        }
 
         // Dynamic scrollspy active indicators
         const handleHashChange = () => {

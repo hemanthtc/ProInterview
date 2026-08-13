@@ -413,8 +413,10 @@ function FeaturesContent() {
         ];
 
         if (targetTool && validTools.includes(targetTool)) {
-            setActiveTool(targetTool);
-            setActiveModal(targetTool);
+            Promise.resolve().then(() => {
+                setActiveTool(targetTool);
+                setActiveModal(targetTool);
+            });
         }
     }, []);
 
@@ -423,10 +425,12 @@ function FeaturesContent() {
             if (typeof window === "undefined") return;
             const params = new URLSearchParams(window.location.search);
             const toolFromUrl = params.get("tool") as typeof activeTool | null;
-            setActiveModal(toolFromUrl);
-            if (toolFromUrl) {
-                setActiveTool(toolFromUrl);
-            }
+            Promise.resolve().then(() => {
+                setActiveModal(toolFromUrl);
+                if (toolFromUrl) {
+                    setActiveTool(toolFromUrl);
+                }
+            });
         };
         window.addEventListener("popstate", handlePopState);
         return () => window.removeEventListener("popstate", handlePopState);
@@ -580,60 +584,62 @@ function FeaturesContent() {
     };
 
     useEffect(() => {
-        const loggedIn = getStorageItem("userLoggedIn") === "true";
-        const isGuest = getStorageItem("userLoggedIn") === "guest";
-        setIsLoggedIn(loggedIn || isGuest);
-        if (!loggedIn && !isGuest) {
-            router.push("/login");
-            return;
-        }
-        setIsAuthChecked(true);
-
-        if (!isGuest) {
-            void pullSessionsFromCloud();
-        }
-
-        const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
-        setIsRealisticMode(isRealistic);
-        syncAccountDetailsFromStorage();
-
-        const savedTheme = localStorage.getItem("globalTheme") as any;
-        if (savedTheme) {
-            setTheme(savedTheme);
-            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-        }
-
-        const stored = getStorageItem("interviewSessions");
-        if (stored) {
-            try {
-                const sessions = JSON.parse(stored);
-                const oneHourAgo = Date.now() - 60 * 60 * 1000;
-                const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
-                setPastSessions(recentSessions);
-            } catch (e) {
-                console.error("Failed to parse sessions", e);
+        Promise.resolve().then(() => {
+            const loggedIn = getStorageItem("userLoggedIn") === "true";
+            const isGuest = getStorageItem("userLoggedIn") === "guest";
+            setIsLoggedIn(loggedIn || isGuest);
+            if (!loggedIn && !isGuest) {
+                router.push("/login");
+                return;
             }
-        }
+            setIsAuthChecked(true);
 
-        const storedPaused = getStorageItem("pausedInterviewSession");
-        if (storedPaused) {
-            try {
-                setPausedSession(JSON.parse(storedPaused));
-            } catch (e) {
-                console.error(e);
+            if (!isGuest) {
+                void pullSessionsFromCloud();
             }
-        }
 
-        // Auto-open analysis tool if redirected from Home page
-        const searchParams = new URLSearchParams(window.location.search);
-        const tool = searchParams.get("tool");
-        if (tool === "analysis") {
-            setActiveModal("analysis");
-            setActiveTool("analysis");
-            setShowAnalysis(false);
-            setShowResume(false);
-        }
+            const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
+            setIsRealisticMode(isRealistic);
+            syncAccountDetailsFromStorage();
+
+            const savedTheme = localStorage.getItem("globalTheme") as any;
+            if (savedTheme) {
+                setTheme(savedTheme);
+                document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+                document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
+            }
+
+            const stored = getStorageItem("interviewSessions");
+            if (stored) {
+                try {
+                    const sessions = JSON.parse(stored);
+                    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+                    const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
+                    setPastSessions(recentSessions);
+                } catch (e) {
+                    console.error("Failed to parse sessions", e);
+                }
+            }
+
+            const storedPaused = getStorageItem("pausedInterviewSession");
+            if (storedPaused) {
+                try {
+                    setPausedSession(JSON.parse(storedPaused));
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            // Auto-open analysis tool if redirected from Home page
+            const searchParams = new URLSearchParams(window.location.search);
+            const tool = searchParams.get("tool");
+            if (tool === "analysis") {
+                setActiveModal("analysis");
+                setActiveTool("analysis");
+                setShowAnalysis(false);
+                setShowResume(false);
+            }
+        });
     }, []);
 
     // Global countdown timer for Aptitude Quiz Simulator
@@ -791,47 +797,51 @@ function FeaturesContent() {
 
     useEffect(() => {
         if (activeModal === "resume") {
-            syncResumeBuilderFromProfile(false);
+            Promise.resolve().then(() => {
+                syncResumeBuilderFromProfile(false);
+            });
         }
     }, [activeModal]);
 
     // Load resumes from local storage database
     useEffect(() => {
-        const storedResumes = getStorageItem("savedResumesDatabase");
-        if (storedResumes) {
-            try {
-                const parsed = JSON.parse(storedResumes) as SavedResume[];
-                setSavedResumes(parsed);
+        Promise.resolve().then(() => {
+            const storedResumes = getStorageItem("savedResumesDatabase");
+            if (storedResumes) {
+                try {
+                    const parsed = JSON.parse(storedResumes) as SavedResume[];
+                    setSavedResumes(parsed);
 
-                if (parsed.length > 0) {
-                    const activeId = getStorageItem("activeResumeId") || parsed[0].id;
-                    setActiveResumeId(activeId);
+                    if (parsed.length > 0) {
+                        const activeId = getStorageItem("activeResumeId") || parsed[0].id;
+                        setActiveResumeId(activeId);
 
-                    const activeRes = parsed.find(r => r.id === activeId) || parsed[0];
-                    setResName(activeRes.name);
-                    setResEmail(activeRes.email);
-                    setResPhone(activeRes.phone);
-                    setResSummary(activeRes.summary);
-                    setResSkills(activeRes.skills);
-                    setResExperience(activeRes.experience);
-                    setResEducation(activeRes.education);
-                    setResProjects(activeRes.projects || "");
-                    setResInternships(activeRes.internships || "");
-                    setResCertifications(activeRes.certifications || "");
-                    setResAwards(activeRes.awards || "");
-                    setResAccentColor(activeRes.accentColor || "indigo");
-                    setResFontSize(activeRes.fontSize || 1.0);
-                    setSelectedTemplateId(activeRes.templateId || "modern");
-                } else {
+                        const activeRes = parsed.find(r => r.id === activeId) || parsed[0];
+                        setResName(activeRes.name);
+                        setResEmail(activeRes.email);
+                        setResPhone(activeRes.phone);
+                        setResSummary(activeRes.summary);
+                        setResSkills(activeRes.skills);
+                        setResExperience(activeRes.experience);
+                        setResEducation(activeRes.education);
+                        setResProjects(activeRes.projects || "");
+                        setResInternships(activeRes.internships || "");
+                        setResCertifications(activeRes.certifications || "");
+                        setResAwards(activeRes.awards || "");
+                        setResAccentColor(activeRes.accentColor || "indigo");
+                        setResFontSize(activeRes.fontSize || 1.0);
+                        setSelectedTemplateId(activeRes.templateId || "modern");
+                    } else {
+                        createNewDefaultResume([]);
+                    }
+                } catch (e) {
+                    console.error("Failed to parse saved resumes database", e);
                     createNewDefaultResume([]);
                 }
-            } catch (e) {
-                console.error("Failed to parse saved resumes database", e);
+            } else {
                 createNewDefaultResume([]);
             }
-        } else {
-            createNewDefaultResume([]);
-        }
+        });
     }, []);
 
     // Load roadmaps from local storage database
@@ -1812,7 +1822,7 @@ function FeaturesContent() {
             return;
         }
 
-        const useMockFallbackRoadmap = () => {
+        const generateMockFallbackRoadmap = () => {
             const mockData = {
                 overview: `A comprehensive preparation path custom-tailored for a ${roadmapCourse || "Software Engineer"} role at ${roadmapCompany || "Generic Company"} (${roadmapLocation || "Remote"}).`,
                 timeline: [
@@ -1908,11 +1918,11 @@ function FeaturesContent() {
                     return;
                 }
                 console.warn("Roadmap API returned error, using mock fallback:", data.error);
-                useMockFallbackRoadmap();
+                generateMockFallbackRoadmap();
             }
         } catch (err) {
             console.error("Roadmap API connection failed, using mock fallback:", err);
-            useMockFallbackRoadmap();
+            generateMockFallbackRoadmap();
         } finally {
             setIsGeneratingRoadmap(false);
         }

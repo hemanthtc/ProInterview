@@ -77,10 +77,14 @@ export default function NotificationBell({ className = "", theme }: { className?
 
     useEffect(() => {
         const isLoggedIn = getStorageItem("userLoggedIn") === "true";
-        Promise.resolve().then(() => setLoggedIn(isLoggedIn));
+        Promise.resolve().then(() => {
+            setLoggedIn(isLoggedIn);
+            if (isLoggedIn) {
+                void load();
+            }
+        });
         if (!isLoggedIn) return;
 
-        void load();
         const interval = setInterval(load, POLL_MS);
         return () => clearInterval(interval);
     }, [load]);
