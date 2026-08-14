@@ -145,3 +145,22 @@ export async function s3LikeMessage(roomSlug: string, messageId: string, userPub
         return false;
     }
 }
+
+export async function s3DeleteMessages(roomSlug: string, messageIds: string[], senderId: string): Promise<boolean> {
+    const key = `community/messages/${roomSlug}.json`;
+    try {
+        const messages = await s3GetMessages(roomSlug);
+        const nextMessages = messages.filter(m => {
+            const isTarget = messageIds.includes(m.id);
+            const isOwner = m.senderId.toLowerCase() === senderId.toLowerCase();
+            return !(isTarget && isOwner);
+        });
+        if (messages.length === nextMessages.length) return false;
+
+        await uploadJSON(key, nextMessages);
+        return true;
+    } catch (e) {
+        console.error("Failed to delete messages in S3", e);
+        return false;
+    }
+}

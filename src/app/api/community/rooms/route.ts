@@ -71,6 +71,7 @@ export async function GET() {
                 );
                 return NextResponse.json({
                     rooms: filtered.map((r) => publicRoom(r)),
+                    mePublicId: presencePublicId(session.identifier),
                     source: "s3",
                 });
             } catch (err) {
@@ -95,6 +96,7 @@ export async function GET() {
 
             return NextResponse.json({
                 rooms: rooms.map((r) => publicRoom(r)),
+                mePublicId: presencePublicId(session.identifier),
                 source: "mongo",
             });
         } catch {
@@ -102,6 +104,7 @@ export async function GET() {
             const rooms = memListRooms(session.identifier);
             return NextResponse.json({
                 rooms: rooms.map((r) => publicRoom(r)),
+                mePublicId: presencePublicId(session.identifier),
                 source: "memory",
             });
         }

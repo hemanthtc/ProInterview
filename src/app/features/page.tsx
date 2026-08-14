@@ -42,6 +42,7 @@ function FeaturesContent() {
     const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
     const [pastSessions, setPastSessions] = useState<any[]>([]);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isGuest, setIsGuest] = useState(false);
     const [pausedSession, setPausedSession] = useState<PausedInterviewSession | null>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
@@ -586,9 +587,10 @@ function FeaturesContent() {
     useEffect(() => {
         Promise.resolve().then(() => {
             const loggedIn = getStorageItem("userLoggedIn") === "true";
-            const isGuest = getStorageItem("userLoggedIn") === "guest";
-            setIsLoggedIn(loggedIn || isGuest);
-            if (!loggedIn && !isGuest) {
+            const guest = getStorageItem("userLoggedIn") === "guest";
+            setIsLoggedIn(loggedIn);
+            setIsGuest(guest);
+            if (!loggedIn && !guest) {
                 router.push("/login");
                 return;
             }
@@ -3283,6 +3285,27 @@ function FeaturesContent() {
                                     <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
                                     My Profile
                                 </Link>
+                            ) : isGuest ? (
+                                <div className="relative group shrink-0 ml-2">
+                                    <button className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 px-5 py-2 rounded-full transition-all font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)] cursor-pointer">
+                                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                                        Guest Mode
+                                    </button>
+                                    <div className="absolute right-0 mt-2 w-72 p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left">
+                                        <p className="text-xs font-bold text-white mb-1 flex items-center gap-1">
+                                            💡 Exploring as Guest
+                                        </p>
+                                        <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                                            You are in Guest Mode. To save your progress, use AI resume editing, unlock realistic mock interviews, and access cloud storage, please create an account.
+                                        </p>
+                                        <Link 
+                                            href="/login" 
+                                            className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
+                                        >
+                                            Sign In or Register
+                                        </Link>
+                                    </div>
+                                </div>
                             ) : (
                                 <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
                             )}
@@ -3400,6 +3423,23 @@ function FeaturesContent() {
                                         <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
                                         My Profile
                                     </Link>
+                                ) : isGuest ? (
+                                    <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+                                        <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 px-6 py-3 rounded-full font-bold w-full justify-center">
+                                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                                            Guest Mode
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 text-center px-2">
+                                            Sign in to save your interview progress, access mock interviews, AI resume generation, and cloud storage.
+                                        </p>
+                                        <Link 
+                                            href="/login"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                            className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2.5 rounded-xl w-full text-center mt-1"
+                                        >
+                                            Sign In or Register
+                                        </Link>
+                                    </div>
                                 ) : (
                                     <Link
                                         href="/login"

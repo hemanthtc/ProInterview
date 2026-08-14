@@ -17,6 +17,9 @@ import {
     Check,
     CheckCheck,
     Heart,
+    Trash2,
+    Image,
+    Paperclip,
 } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
 
@@ -85,6 +88,34 @@ export default function CommunityPage() {
 
     const [pendingQueue, setPendingQueue] = useState<ChatMessage[]>([]);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+
+    // Deletion states
+    const [selectedMessageIds, setSelectedMessageIds] = useState<string[]>([]);
+    const [hoveredDeleteMsgId, setHoveredDeleteMsgId] = useState<string | null>(null);
+
+    // Image viewer state
+    const [expandedImageUrl, setExpandedImageUrl] = useState<string | null>(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Touch events state
+    const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+
+    const handleTouchStart = (msg: ChatMessage) => {
+        const mine = Boolean(msg.mine) || msg.senderPublicId === mePublicId;
+        if (!mine || msg.isPending) return;
+        if (longPressTimer.current) clearTimeout(longPressTimer.current);
+        longPressTimer.current = setTimeout(() => {
+            setSelectedMessageIds([msg.id]);
+        }, 800);
+    };
+
+    const handleTouchEnd = () => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+    };
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
@@ -298,8 +329,9 @@ export default function CommunityPage() {
     const sendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
         const text = draft.trim();
-        if (!text) return;
+        if (!text || sending) return;
 
+        setSending(true);
         const tempId = `pending_${Date.now()}`;
         const newMsg: ChatMessage = {
             id: tempId,
@@ -344,7 +376,135 @@ export default function CommunityPage() {
             await loadMessages();
         } catch {
             // Keep in queue for background sync once connectivity is restored
+        } finally {
+            setSending(false);
         }
+    };
+
+    const sendMessageDirectly = async (text: string) => {
+        const tempId = `pending_${Date.now()}`;
+        const newMsg: ChatMessage = {
+            id: tempId,
+            roomSlug: activeSlug,
+            senderPublicId: mePublicId,
+            senderName: getStorageItem("userName") || "Me",
+            body: text,
+            createdAt: new Date().toISOString(),
+            mine: true,
+            isPending: true,
+            likes: [],
+        };
+        setPendingQueue((prev) => [...prev, newMsg]);
+        try {
+            const res = await fetch("/api/community/messages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ roomSlug: activeSlug, body: text }),
+            });
+            if (res.ok) {
+                setPendingQueue((prev) => prev.filter((m) => m.id !== tempId));
+                await loadMessages();
+            }
+        } catch { /* ignore */ }
+    };
+
+    const deleteMessages = async (ids: string[]) => {
+        if (ids.length === 0) return;
+        try {
+            const res = await fetch("/api/community/messages", {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ roomSlug: activeSlug, messageIds: ids }),
+            });
+            if (res.status === 401) {
+                handleAuthExpired();
+                return;
+            }
+            if (res.ok) {
+                setSelectedMessageIds([]);
+                await loadMessages();
+            } else {
+                const data = await res.json();
+                setError(data.error || "Failed to delete messages.");
+            }
+        } catch {
+            setError("Failed to delete messages.");
+        }
+    };
+
+    const handleSelectAll = () => {
+        const myRoomMsgIds = activeMessages
+            .filter((m) => !m.isPending && (Boolean(m.mine) || m.senderPublicId === mePublicId))
+            .map((m) => m.id);
+        
+        if (selectedMessageIds.length === myRoomMsgIds.length) {
+            setSelectedMessageIds([]);
+        } else {
+            setSelectedMessageIds(myRoomMsgIds);
+        }
+    };
+
+    const handleImageUpload = async (file: File) => {
+        if (!file || uploadingImage) return;
+        setUploadingImage(true);
+        setError("");
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to upload image.");
+            if (data.url) {
+                await sendMessageDirectly(data.url);
+            }
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to upload image.");
+        } finally {
+            setUploadingImage(false);
+        }
+    };
+
+    const renderMessageBody = (body: string) => {
+        const urlRegex = /(https?:\/\/[^\s]+)/gi;
+        const parts = body.split(urlRegex);
+        
+        return parts.map((part, index) => {
+            if (part.match(urlRegex)) {
+                const isImage = part.match(/\.(jpeg|jpg|gif|png|webp)/i) || part.startsWith("data:image/");
+                if (isImage) {
+                    return (
+                        <div key={index} className="mt-2">
+                            <img
+                                src={part}
+                                alt="Shared"
+                                className="max-w-xs max-h-48 rounded-lg cursor-pointer border border-white/10 hover:opacity-90 transition-opacity"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedImageUrl(part);
+                                }}
+                            />
+                        </div>
+                    );
+                } else {
+                    return (
+                        <a
+                            key={index}
+                            href={part}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sky-400 hover:underline break-all"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {part}
+                        </a>
+                    );
+                }
+            }
+            return <span key={index}>{part}</span>;
+        });
     };
 
     const toggleLike = async (m: ChatMessage) => {
@@ -490,7 +650,10 @@ export default function CommunityPage() {
                 </div>
             </header>
 
-            <div className="flex-1 min-h-0 grid md:grid-cols-[240px_1fr_200px]">
+                <div 
+                    className="flex-1 min-h-0 grid md:grid-cols-[240px_1fr_200px]"
+                    onClick={() => setHoveredDeleteMsgId(null)}
+                >
                 {/* Rooms */}
                 <aside
                     className={`${
@@ -571,8 +734,55 @@ export default function CommunityPage() {
                             : "bg-gradient-to-b from-slate-950 to-[#0a0a12] text-white"
                     }`}
                 >
-                    {activeRoom?.description && (
-                        <div className={`px-4 py-2 border-b text-xs ${isLight ? "border-slate-200 text-slate-500 bg-slate-50/50" : "border-white/5 text-white/45"}`}>{activeRoom.description}</div>
+                    {(activeRoom?.description || selectedMessageIds.length > 0) && (
+                        <div className={`px-4 py-2 border-b text-xs ${isLight ? "border-slate-200 text-slate-500 bg-slate-50/50" : "border-white/5 text-white/45"}`}>
+                            {selectedMessageIds.length > 0 ? (
+                                <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            type="button"
+                                            onClick={handleSelectAll}
+                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                                                isLight 
+                                                    ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100" 
+                                                    : "border-indigo-500/30 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
+                                            }`}
+                                        >
+                                            {selectedMessageIds.length === activeMessages.filter(m => !m.isPending && (Boolean(m.mine) || m.senderPublicId === mePublicId)).length
+                                                ? "Deselect All"
+                                                : "Select All"}
+                                        </button>
+                                        <span className="font-semibold text-rose-500">{selectedMessageIds.length} message(s) selected for deletion</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => void deleteMessages(selectedMessageIds)}
+                                            className="p-1.5 rounded-lg transition text-rose-500 hover:bg-rose-500/10 cursor-pointer"
+                                            title="Delete Selected Messages"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setSelectedMessageIds([])}
+                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                                                isLight ? "border-slate-300 text-slate-600 bg-white hover:bg-slate-50" : "border-white/10 text-white/70 bg-white/5 hover:bg-white/10"
+                                            }`}
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-between gap-3 w-full">
+                                    <span className="truncate">{activeRoom.description}</span>
+                                    <span className="md:hidden flex items-center gap-1 font-semibold shrink-0 text-emerald-500">
+                                        <Circle className="w-1.5 h-1.5 fill-emerald-500 text-emerald-500" /> {online.length} Online
+                                    </span>
+                                </div>
+                            )}
+                        </div>
                     )}
 
                     <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
@@ -585,7 +795,58 @@ export default function CommunityPage() {
                         {activeMessages.map((m) => {
                             const mine = Boolean(m.mine) || m.senderPublicId === mePublicId;
                             return (
-                                <div key={m.id} className={`flex gap-3 ${mine ? "justify-end" : "justify-start"}`}>
+                                <div 
+                                    key={m.id} 
+                                    className={`flex gap-3 relative group ${mine ? "justify-end" : "justify-start"}`}
+                                    onContextMenu={(e) => {
+                                        if (mine && !m.isPending) {
+                                            e.preventDefault();
+                                            setHoveredDeleteMsgId(m.id);
+                                        }
+                                    }}
+                                    onDoubleClick={() => {
+                                        if (mine && !m.isPending) {
+                                            setHoveredDeleteMsgId(m.id);
+                                        }
+                                    }}
+                                    onTouchStart={() => handleTouchStart(m)}
+                                    onTouchEnd={handleTouchEnd}
+                                    onTouchMove={handleTouchEnd}
+                                >
+                                    {selectedMessageIds.length > 0 && mine && (
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedMessageIds.includes(m.id)}
+                                            onChange={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedMessageIds(prev => 
+                                                    prev.includes(m.id) 
+                                                        ? prev.filter(id => id !== m.id)
+                                                        : [...prev, m.id]
+                                                );
+                                            }}
+                                            className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 self-center shrink-0 mr-1.5 cursor-pointer"
+                                        />
+                                    )}
+
+                                    {hoveredDeleteMsgId === m.id && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setSelectedMessageIds([m.id]);
+                                                setHoveredDeleteMsgId(null);
+                                            }}
+                                            className={`shrink-0 flex items-center justify-center p-1.5 rounded-lg border transition-colors shadow-sm cursor-pointer self-center ${
+                                                isLight
+                                                    ? "bg-white border-slate-300 text-rose-500 hover:bg-rose-50 shadow-sm"
+                                                    : "bg-white/5 border-white/10 text-rose-400 hover:bg-rose-500/10"
+                                            }`}
+                                            title="Delete message"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+
                                     {!mine && (
                                         <div className={`w-8 h-8 rounded-full border flex items-center justify-center text-[10px] font-bold shrink-0 ${
                                             isLight ? "bg-indigo-100 border-indigo-300 text-indigo-800" : "bg-indigo-500/30 border-indigo-400/20 text-indigo-100"
@@ -607,7 +868,7 @@ export default function CommunityPage() {
                                         {!mine && (
                                             <div className={`text-[10px] font-bold mb-0.5 ${isLight ? "text-indigo-700" : "text-indigo-300/90"}`}>{m.senderName}</div>
                                         )}
-                                        <p className="whitespace-pre-wrap break-words leading-relaxed">{m.body}</p>
+                                        <div className="whitespace-pre-wrap break-words leading-relaxed">{renderMessageBody(m.body)}</div>
                                         
                                         <div className="flex items-center justify-between gap-4 mt-1.5 text-[10px]">
                                             <div className={`flex items-center gap-1.5 select-none ${mine ? (isLight ? "text-white/80" : "text-white/60") : (isLight ? "text-slate-500" : "text-white/35")}`}>
@@ -636,7 +897,7 @@ export default function CommunityPage() {
                                                         : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/35 hover:text-white/70")
                                                 }`}
                                             >
-                                                <Heart className={`w-3.5 h-3.5 ${ (m.likes || []).includes(mePublicId) ? "fill-rose-500 text-rose-500" : "" }`} />
+                                                <Heart className="w-3.5 h-3.5" fill={(m.likes || []).includes(mePublicId) ? "currentColor" : "none"} />
                                                 { (m.likes || []).length > 0 && <span>{(m.likes || []).length}</span> }
                                             </button>
                                         </div>
@@ -650,6 +911,33 @@ export default function CommunityPage() {
                     <form onSubmit={(e) => void sendMessage(e)} className={`shrink-0 border-t p-3 ${isLight ? "border-slate-200 bg-slate-50" : "border-white/10 bg-black/30"}`}>
                         {error && <p className="text-rose-500 text-xs mb-2 px-1 font-semibold">{error}</p>}
                         <div className="flex gap-2">
+                            <input
+                                type="file"
+                                accept="image/*"
+                                ref={fileInputRef}
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) void handleImageUpload(file);
+                                }}
+                                className="hidden"
+                            />
+                            <button
+                                type="button"
+                                disabled={uploadingImage}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={`rounded-xl px-3 py-2.5 border transition cursor-pointer flex items-center justify-center shrink-0 ${
+                                    isLight
+                                        ? "bg-white border-slate-300 text-slate-600 hover:bg-slate-50 shadow-sm"
+                                        : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
+                                }`}
+                                title="Attach Image"
+                            >
+                                {uploadingImage ? (
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                    <Paperclip className="w-4 h-4" />
+                                )}
+                            </button>
                             <input
                                 value={draft}
                                 onChange={(e) => setDraft(e.target.value)}
@@ -724,6 +1012,29 @@ export default function CommunityPage() {
                     </div>
                 </aside>
             </div>
+
+            {/* Fullscreen expanded image modal (WhatsApp Lightbox) */}
+            {expandedImageUrl && (
+                <div 
+                    className="fixed inset-0 z-[10000] bg-black/90 flex flex-col items-center justify-center p-4 cursor-pointer animate-fade-in"
+                    onClick={() => setExpandedImageUrl(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[85vh] w-full flex items-center justify-center">
+                        <img 
+                            src={expandedImageUrl} 
+                            alt="Expanded preview" 
+                            className="max-w-full max-h-full rounded-lg object-contain shadow-2xl" 
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setExpandedImageUrl(null)}
+                            className="absolute top-4 right-4 bg-white/10 hover:bg-white/20 text-white rounded-full p-2 text-xs font-bold border border-white/10 shadow transition"
+                        >
+                            ✕ Close
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

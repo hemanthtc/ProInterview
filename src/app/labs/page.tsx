@@ -21,6 +21,7 @@ import {
     Sun,
     Moon,
     Eye,
+    Loader2,
 } from "lucide-react";
 
 type Badge = "New" | "Beta" | "Sign-in" | "Public";
@@ -157,10 +158,13 @@ const BADGE_CLASS: Record<Badge, string> = {
 export default function LabsPage() {
     const router = useRouter();
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     useEffect(() => {
         if (getStorageItem("userLoggedIn") !== "true") {
             router.push("/login?redirect=/labs");
+        } else {
+            setIsCheckingAuth(false);
         }
     }, [router]);
 
@@ -209,6 +213,20 @@ export default function LabsPage() {
             document.documentElement.style.colorScheme = next;
         }
     };
+
+    if (isCheckingAuth) {
+        return (
+            <div className={`min-h-screen flex items-center justify-center transition-colors duration-300 ${
+                theme === "light"
+                    ? "bg-slate-100 text-slate-900"
+                    : theme === "eyeprotect"
+                    ? "bg-[#f3ede3] text-[#1c1917]"
+                    : "bg-[#050816] text-white"
+            }`}>
+                <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+            </div>
+        );
+    }
 
     return (
         <div className={`min-h-screen transition-colors duration-300 ${

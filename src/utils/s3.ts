@@ -9,7 +9,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export type S3Prefix = "resumes" | "profile-photos" | "synthetic" | "uploads" | "scorecards";
+export type S3Prefix = "resumes" | "profile-photos" | "resume_builder_resumes" | "profile_details" | "synthetic" | "uploads" | "scorecards";
 
 function env(name: string): string | undefined {
     const v = process.env[name]?.replace(/^["']|["']$/g, "").trim();

@@ -11,6 +11,8 @@ import {
 const ALLOWED_PREFIXES: S3Prefix[] = [
     "resumes",
     "profile-photos",
+    "resume_builder_resumes",
+    "profile_details",
     "synthetic",
     "uploads",
     "scorecards",

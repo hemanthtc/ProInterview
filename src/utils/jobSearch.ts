@@ -688,5 +688,9 @@ export function webSearchUrls(profile: ResumeProfile, location: string): { label
             label: "LinkedIn Jobs search",
             url: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(profile.roles[0] || "software engineer")}&location=${encodeURIComponent(location || "")}`,
         },
+        {
+            label: "RemoteOK search",
+            url: `https://remoteok.com/remote-jobs?q=${encodeURIComponent(`${profile.roles[0] || "software engineer"} ${location || ""}`.trim())}`
+        }
     ];
 }

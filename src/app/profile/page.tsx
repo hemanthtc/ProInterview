@@ -820,7 +820,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
         try {
             const file = dataUrlToFile(base64String, "profile-photo.png");
-            const s3 = await uploadFileToS3(file, "profile-photos");
+            const s3 = await uploadFileToS3(file, "profile_details");
             if (s3) {
                 setProfilePhoto(s3.publicUrl);
                 setStorageItem("userProfilePhoto", s3.publicUrl);

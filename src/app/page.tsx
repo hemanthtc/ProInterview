@@ -13,6 +13,7 @@ export default function Home() {
     const router = useRouter();
     const [pastSessions, setPastSessions] = useState<any[]>([]);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
+    const [isGuest, setIsGuest] = useState(false);
     const [pausedSession, setPausedSession] = useState<any>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
@@ -23,7 +24,8 @@ export default function Home() {
     useEffect(() => {
         Promise.resolve().then(() => {
             setIsHydrated(true);
-            const loggedIn = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest";
+            const loggedIn = getStorageItem("userLoggedIn") === "true";
+            const guest = getStorageItem("userLoggedIn") === "guest";
             const role = localStorage.getItem("userRole");
             if (loggedIn && role === "admin") {
                 router.push("/admin");
@@ -32,6 +34,7 @@ export default function Home() {
 
             const savedTheme = localStorage.getItem("globalTheme") as any;
             setIsLoggedIn(loggedIn);
+            setIsGuest(guest);
             setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
             if (savedTheme) {
                 setTheme(savedTheme);
@@ -289,6 +292,27 @@ export default function Home() {
                             <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[9px] sm:text-[10px]">US</div>
                             My Profile
                         </Link>
+                    ) : isGuest ? (
+                        <div className="relative group shrink-0 ml-1 sm:ml-2">
+                            <button className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition-all font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)] cursor-pointer">
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                                Guest Mode
+                            </button>
+                            <div className="absolute right-0 mt-2 w-72 p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left">
+                                <p className="text-xs font-bold text-white mb-1 flex items-center gap-1">
+                                    💡 Exploring as Guest
+                                </p>
+                                <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                                    You are in Guest Mode. To save your progress, use AI resume editing, unlock realistic mock interviews, and access cloud storage, please create an account.
+                                </p>
+                                <Link 
+                                    href="/login" 
+                                    className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
+                                >
+                                    Sign In or Register
+                                </Link>
+                            </div>
+                        </div>
                     ) : (
                         <Link href="/login" className="bg-white/10 hover:bg-white/20 px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-white transition-colors font-bold ml-1 sm:ml-2">Log in</Link>
                     )}
@@ -433,6 +457,23 @@ export default function Home() {
                                 <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
                                 My Profile
                             </Link>
+                        ) : isGuest ? (
+                            <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+                                <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 px-6 py-3 rounded-full font-bold w-full justify-center">
+                                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                                    Guest Mode
+                                </div>
+                                <p className="text-[10px] text-slate-400 text-center px-2">
+                                    Sign in to save your interview progress, access mock interviews, AI resume generation, and cloud storage.
+                                </p>
+                                <Link 
+                                    href="/login"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2.5 rounded-xl w-full text-center mt-1"
+                                >
+                                    Sign In or Register
+                                </Link>
+                            </div>
                         ) : (
                             <Link 
                                 href="/login" 

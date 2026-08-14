@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { UploadCloud, FileText, Loader2, Globe, Cpu, ArrowLeft } from "lucide-react";
+import { UploadCloud, FileText, Loader2, Globe, Cpu, ArrowLeft, Sparkles } from "lucide-react";
 import CompanySelect from "../../components/CompanySelect";
 import RoleSelect from "../../components/RoleSelect";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
@@ -529,6 +529,36 @@ export default function SetupPage() {
                         </div>
                     </>
                 )}
+
+                {/* Pre-Interview Scanning Information Box */}
+                <div className={`mt-6 p-4 rounded-xl border space-y-2.5 text-xs leading-relaxed ${
+                    theme === "light"
+                        ? "bg-slate-50 border-slate-200 text-slate-700 shadow-sm"
+                        : theme === "eyeprotect"
+                        ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917]"
+                        : "bg-white/5 border-white/10 text-white/80"
+                }`}>
+                    <h3 className="font-bold flex items-center gap-1.5 text-indigo-400">
+                        <Sparkles className="w-3.5 h-3.5" /> Pre-Interview Analysis Info
+                    </h3>
+                    <p>
+                        Before starting, the AI will scan and align your custom interview parameters:
+                    </p>
+                    <ul className="list-disc pl-4 space-y-1">
+                        <li>
+                            <span className="font-semibold text-indigo-300">Resume & Portfolio Scan</span>: Analyzes your uploaded Resume/CV and Portfolio URL for key metrics.
+                        </li>
+                        <li>
+                            <span className="font-semibold text-indigo-300">Role & Company Fit</span>: Focuses questions on preferred roles (<span className="italic">{preferredRoles.length > 0 ? preferredRoles.join(", ") : "Not selected yet"}</span>) and target companies (<span className="italic">{targetCompanies.length > 0 ? targetCompanies.join(", ") : "Not selected yet"}</span>).
+                        </li>
+                        <li>
+                            <span className="font-semibold text-indigo-300">Company Clone Mode</span>: {companyCloneMode ? "Enabled — simulates target company's exact interview styling & quality expectations." : "Disabled — standard mock technical interview."}
+                        </li>
+                        <li>
+                            <span className="font-semibold text-indigo-300">Locale & Language</span>: Runs speech recognition & voice synthesis matching <span className="font-bold">{voiceLanguage}</span>.
+                        </li>
+                    </ul>
+                </div>
 
                 {error && <p className="text-red-400 mt-4 text-sm font-semibold">{error}</p>}
 

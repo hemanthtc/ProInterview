@@ -4,7 +4,7 @@ import { isS3Configured, getJSON, uploadJSON, pingS3 } from "@/utils/s3";
 
 function getS3ResumesKey(userIdentifier: string): string {
     const safeUser = userIdentifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
-    return `resumes/${safeUser}/saved_resumes.json`;
+    return `resume_builder_resumes/${safeUser}/saved_resumes.json`;
 }
 
 export async function GET(req: NextRequest) {

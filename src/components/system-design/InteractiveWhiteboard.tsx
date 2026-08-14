@@ -579,7 +579,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] min-h-[440px] sm:min-h-[520px] lg:min-h-[560px] aspect-[4/3] sm:aspect-[900/560]`}
+                className={`relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] min-h-[440px] sm:min-h-[520px] lg:min-h-[560px] aspect-[4/3] sm:aspect-[900/560] touch-none`}
             >
                 <canvas
                     ref={canvasRef}
@@ -616,11 +616,11 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                                 top: shape.y,
                                 width: shape.w,
                                 height: shape.h,
-                            }}
-                            className={`absolute select-none ${
-                                tool === "select" ? "cursor-move" : "pointer-events-none"
-                            } ${selectedId === shape.id ? "ring-2 ring-cyan-400/80 ring-offset-1 ring-offset-slate-950" : ""}`}
-                        >
+                             }}
+                             className={`absolute select-none touch-none ${
+                                 tool === "select" ? "cursor-move" : "pointer-events-none"
+                             } ${selectedId === shape.id ? "ring-2 ring-cyan-400/80 ring-offset-1 ring-offset-slate-950" : ""}`}
+                         >
                             <ShapeVisual shape={shape} />
                             {editingId === shape.id && (
                                 <input

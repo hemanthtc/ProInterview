@@ -17,6 +17,7 @@ import {
     memPostMessage,
     memSeedChannels,
     memTouchPresence,
+    memDeleteMessages,
 } from "@/utils/communityStore";
 import { rateLimit } from "@/utils/rateLimit";
 import User from "@/models/User";
@@ -27,6 +28,7 @@ import {
     s3PostMessage,
     s3GetReadReceipts,
     s3UpdateReadReceipt,
+    s3DeleteMessages,
 } from "@/utils/s3Community";
 
 function mapMessage(
@@ -366,6 +368,57 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Failed to send message";
+        return NextResponse.json({ error: message }, { status: 500 });
+    }
+}
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Sign in to delete messages." }, { status: 401 });
+        }
+
+        const { roomSlug, messageId, messageIds } = await req.json();
+        const ids = Array.isArray(messageIds) ? messageIds : messageId ? [messageId] : [];
+        if (!roomSlug || ids.length === 0) {
+            return NextResponse.json({ error: "roomSlug and messageId(s) are required" }, { status: 400 });
+        }
+
+        const senderId = session.identifier.toLowerCase();
+
+        // 1. AWS S3 Check
+        if (isS3Configured()) {
+            const success = await s3DeleteMessages(roomSlug, ids, senderId);
+            if (success) {
+                return NextResponse.json({ success: true });
+            }
+            return NextResponse.json({ error: "Messages not found or you are not the author." }, { status: 403 });
+        }
+
+        // 2. MongoDB Fallback
+        try {
+            await connectDB();
+            const res = await CommunityMessage.deleteMany({
+                _id: { $in: ids },
+                senderId: senderId,
+            });
+            if (res.deletedCount && res.deletedCount > 0) {
+                return NextResponse.json({ success: true });
+            }
+        } catch (err) {
+            // fallback to memory
+        }
+
+        // 3. Memory store fallback
+        const success = memDeleteMessages(ids, senderId);
+        if (success) {
+            return NextResponse.json({ success: true });
+        }
+
+        return NextResponse.json({ error: "Messages not found or you are not the author." }, { status: 403 });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : "Failed to delete message";
         return NextResponse.json({ error: message }, { status: 500 });
     }
 }
