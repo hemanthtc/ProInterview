@@ -775,11 +775,11 @@ export default function CommunityPage() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between gap-3 w-full">
-                                    <span className="truncate">{activeRoom.description}</span>
-                                    <span className="md:hidden flex items-center gap-1 font-semibold shrink-0 text-emerald-500">
-                                        <Circle className="w-1.5 h-1.5 fill-emerald-500 text-emerald-500" /> {online.length} Online
-                                    </span>
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 sm:gap-3 w-full">
+                                    <div className="flex items-center gap-1.5 font-bold text-emerald-500 shrink-0">
+                                        <Circle className="w-2 h-2 fill-emerald-500 text-emerald-500 animate-pulse" /> {online.length} Online
+                                    </div>
+                                    <span className="truncate opacity-80 text-[11px] sm:text-xs">{activeRoom.description}</span>
                                 </div>
                             )}
                         </div>

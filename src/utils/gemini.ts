@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const memory = new Map<string, { at: number; value: string }>();
 
-export function getGeminiModel(model = "gemini-2.0-flash") {
+export function getGeminiModel(model = "gemini-flash-latest") {
     const key = process.env.GEMINI_API_KEY;
     if (!key) throw new Error("GEMINI_API_KEY is not configured");
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
@@ -94,17 +94,27 @@ export async function generateWithFallback(
     if (!key) throw new Error("GEMINI_API_KEY is not configured");
 
     const genAI = new GoogleGenerativeAI(key);
-    const primaryModel = options.model || "gemini-2.0-flash";
+    const primaryModel = options.model || "gemini-flash-latest";
     const detectedKeyModels = await fetchKeySupportedModels(key);
     const modelsToTry = Array.from(new Set([
         primaryModel,
-        "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
+        "gemini-flash-latest",
+        "gemini-flash-lite-latest",
+        "gemini-2.5-flash-lite",
         "gemini-2.5-flash",
+        "gemini-3.5-flash-lite",
+        "gemini-3.5-flash",
         ...detectedKeyModels,
         ...ADVANCED_CANDIDATE_MODELS,
-    ]));
+    ].filter(m => 
+        m !== "gemini-2.0-flash" && 
+        m !== "gemini-1.5-flash" && 
+        m !== "gemini-1.5-pro" && 
+        m !== "gemini-1.5-flash-latest" &&
+        m !== "gemini-2.0-flash-lite" &&
+        m !== "gemini-2.0-pro-exp-02-05" &&
+        m !== "gemini-2.0-flash-thinking-exp-01-21"
+    )));
 
     let lastErr: unknown;
     let rateLimitCount = 0;

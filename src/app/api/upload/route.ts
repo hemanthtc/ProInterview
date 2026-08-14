@@ -16,7 +16,7 @@ async function extractTextFromFile(file: File): Promise<string> {
             const apiKey = process.env.GEMINI_API_KEY;
             if (apiKey && apiKey !== "dummy") {
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+                const modelsToTry = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"];
                 let mimeType = file.type || "image/png";
                 if (name.endsWith(".jpg") || name.endsWith(".jpeg") || mimeType === "image/jpg") {
                     mimeType = "image/jpeg";
