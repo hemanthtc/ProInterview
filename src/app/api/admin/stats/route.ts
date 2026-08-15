@@ -79,6 +79,16 @@ export async function GET(req: NextRequest) {
             .sort({ createdAt: -1 })
             .select("displayName identifier createdAt type");
 
+        // ── All verified users ────────────────────────────────────────────────
+        const allUsers = await User.find({ isVerified: true, isOrganization: { $ne: true } as any })
+            .sort({ createdAt: -1 })
+            .select("displayName identifier subscriptionPlan createdAt");
+
+        // ── Monthly signups users ─────────────────────────────────────────────
+        const monthlyUsers = await User.find({ isVerified: true, isOrganization: { $ne: true } as any, createdAt: { $gte: lastMonth } })
+            .sort({ createdAt: -1 })
+            .select("displayName identifier subscriptionPlan createdAt");
+
         // ── Employees under this admin ────────────────────────────────────────
         const employees = await OrgEmployee.find({ adminId })
             .select("identifier displayName department isVerified isOnline lastActive createdAt organizationName")
@@ -112,6 +122,8 @@ export async function GET(req: NextRequest) {
             employees,
             admins,
             funnel,
+            allUsers,
+            monthlyUsers,
         });
     } catch (error: any) {
         console.error("Admin stats error:", error);

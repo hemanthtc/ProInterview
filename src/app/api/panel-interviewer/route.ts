@@ -47,6 +47,7 @@ export async function POST(req: NextRequest) {
             role = "Software Engineer",
             activePanelistId,
             level = "intermediate",
+            companyClone,
         } = body;
 
         const rl = rateLimit(`panel:${session.identifier}`, { limit: 40, windowMs: 15 * 60 * 1000 });
@@ -165,12 +166,39 @@ Return JSON:
             .map((h) => `${h.panelist || h.role}: ${h.content}`)
             .join("\n");
 
+        let mappedType = "off-campus";
+        if (companyClone === false) {
+            if (level === "basic") mappedType = "internship";
+            else mappedType = "on-campus";
+        } else {
+            if (level === "basic") mappedType = "internship";
+            else if (level === "intermediate") mappedType = "off-campus";
+            else mappedType = "experienced";
+        }
+
+        const recruitmentModeBlock = `
+ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
+- Panelist style based on this type:
+  * INTERNSHIP: Calibrate questions to candidate's baseline programming skills, learning agility, basic code syntax, and university/college projects.
+  * ON-CAMPUS: Focus on Computer Science core theoretical foundations (Object-Oriented Programming (OOP) concepts, Database Management Systems (DBMS Normalization, ACID), Operating Systems (Concurrency, deadlocks, virtual memory), Computer Networks (TCP/UDP, HTTP, DNS), basic Data Structures & Algorithms, and college projects).
+  * OFF-CAMPUS: Focus on practical application building, systems integration, code quality, unit/integration testing patterns, API design, and logical scaling.
+  * EXPERIENCED: Focus on advanced system designs, scalability, performance bottlenecks, distributed architectural trade-offs, Sprint delivery shifts, mentorship, and extensive previous work history.
+`;
+
         const prompt = `You are running a real-time PANEL interview at ${company} for ${role} (${level}).
 Current interviewer: ${panelist.name} (${panelist.role}).
 Personality & Style: ${panelist.style}.
 Other panelists: ${PANELISTS.filter((p) => p.id !== panelist.id).map((p) => `${p.name} (${p.role})`).join(", ")}.
 
 Question number: ${assistantTurns + 1} of ${totalQuestionLimit}.
+${recruitmentModeBlock}
+
+INTERVIEW ORCHESTRATION FLOW:
+1. Scan & Analyze Resume and Portfolio Context: First, scan the candidate's resume and portfolio, identifying candidate information specifically: Education Background, Preferred Role, Target Company (if specified), Skills, and Projects.
+2. Build Candidate Profile: Ground all questions strictly in their actual resume details, skills, and projects. NEVER ask generic template questions or creative hypotheticals that do not align with their profile.
+3. Establish Interview Type Calibrations: Tailor difficulty and depth to the active type: ${mappedType}.
+4. Question Plan: Formulate a clear direction for checking the candidate's core and practical suitability.
+5. Adaptive Loop: Ask ONE question at a time, wait for the candidate's answer, and dynamically adapt.
 
 Candidate Resume:
 ${(resume || "").slice(0, 3000) || "Not provided"}
@@ -185,8 +213,11 @@ ${isSkip ? "NOTE: Candidate skipped or stated 'I don't know'. Acknowledge polite
 
 Instructions:
 - Fully adopt the persona and questioning style of ${panelist.name} (${panelist.role}).
+- Align your question style to the active recruitment pattern: ${mappedType}.
 - Ask ONE dynamic, high-quality question tailored to the candidate's resume, target role (${role}), and recent answer. Do NOT use generic template questions. Do NOT repeat previous questions.
 - Do NOT answer your own question. Do NOT simulate candidate responses.
+- STICK TO NATURAL CONVERSATIONAL PHRASING. Phrase your questions smoothly like a real human.
+- STRICTLY NO MARKDOWN SYMBOLS: You MUST NOT output any markdown elements in your spoken text. This means no asterisks at all (no bolding, italics, or list bullets), no hashes, and no backticks. Make it sound like a real person talking.
 - Keep reply under 90 words.
 
 Return JSON:

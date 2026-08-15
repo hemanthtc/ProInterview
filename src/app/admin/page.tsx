@@ -24,6 +24,8 @@ interface StatsData {
     employees: { identifier: string; displayName: string; department: string; isVerified: boolean; isOnline?: boolean; lastActive?: string; createdAt: string; organizationName: string }[];
     admins?: { identifier: string; displayName: string; organizationName: string; isVerified: boolean; isOnline?: boolean; lastActive?: string; createdAt: string }[];
     funnel?: { signups: number; mocks: number; starDrills: number; coachBookings: number };
+    allUsers?: { displayName: string; identifier: string; subscriptionPlan: string; createdAt: string }[];
+    monthlyUsers?: { displayName: string; identifier: string; subscriptionPlan: string; createdAt: string }[];
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -59,9 +61,12 @@ function formatDate(dateStr: string) {
 }
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
-function StatCard({ icon, label, value, sub, color }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; color: string }) {
+function StatCard({ icon, label, value, sub, color, onClick }: { icon: React.ReactNode; label: string; value: string | number; sub?: string; color: string; onClick?: () => void }) {
     return (
-        <div className={`relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/8 group`}>
+        <div 
+            onClick={onClick}
+            className={`relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-sm transition-all hover:border-white/20 hover:bg-white/8 group ${onClick ? "cursor-pointer select-none active:scale-[0.98]" : ""}`}
+        >
             <div className={`absolute top-0 right-0 w-24 h-24 ${color} opacity-10 blur-2xl rounded-full -translate-y-6 translate-x-6 group-hover:opacity-20 transition-opacity`} />
             <div className="flex items-start justify-between">
                 <div>
@@ -98,6 +103,11 @@ export default function AdminDashboard() {
     const [addError, setAddError] = useState("");
     const [addSuccess, setAddSuccess] = useState("");
     const [showAddPassword, setShowAddPassword] = useState(false);
+
+    // User detailed breakdown modal
+    const [showUserModal, setShowUserModal] = useState(false);
+    const [userModalTitle, setUserModalTitle] = useState("");
+    const [userModalData, setUserModalData] = useState<{ displayName: string; identifier: string; subscriptionPlan: string; createdAt: string }[]>([]);
 
     // Add Admin modal (root admin actions)
     const [showAddAdminModal, setShowAddAdminModal] = useState(false);
@@ -507,6 +517,13 @@ export default function AdminDashboard() {
                                     value={stats.totalUsers}
                                     sub={`+${stats.signupsToday} today`}
                                     color="bg-indigo-500"
+                                    onClick={() => {
+                                        if (stats.allUsers) {
+                                            setUserModalTitle("All Registered Users");
+                                            setUserModalData(stats.allUsers);
+                                            setShowUserModal(true);
+                                        }
+                                    }}
                                 />
                                 <StatCard
                                     icon={<TrendingUp className="w-5 h-5" />}
@@ -514,6 +531,13 @@ export default function AdminDashboard() {
                                     value={stats.signupsMonthly}
                                     sub={`${stats.signupsWeekly} this week`}
                                     color="bg-emerald-500"
+                                    onClick={() => {
+                                        if (stats.monthlyUsers) {
+                                            setUserModalTitle("Monthly Signup Details (Past 30 Days)");
+                                            setUserModalData(stats.monthlyUsers);
+                                            setShowUserModal(true);
+                                        }
+                                    }}
                                 />
                                 <StatCard
                                     icon={<Briefcase className="w-5 h-5" />}
@@ -1443,6 +1467,67 @@ export default function AdminDashboard() {
                                                 )}
                                                 Delete
                                             </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* ── User Detail Breakdown Modal ── */}
+            {showUserModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setShowUserModal(false)} />
+                    <div className={`relative w-full max-w-2xl rounded-2xl border ${isDark ? "border-white/10 bg-[#0f0f1f]" : "border-slate-200 bg-white"} p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]`}>
+                        <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
+                            <div>
+                                <h3 className="font-bold text-lg">{userModalTitle}</h3>
+                                <p className={`text-xs mt-0.5 ${isDark ? "text-white/40" : "text-slate-500"}`}>
+                                    Total: {userModalData.length} records found
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowUserModal(false)}
+                                className={`p-1.5 rounded-lg ${isDark ? "hover:bg-white/8 text-white/60" : "hover:bg-slate-100 text-slate-500"}`}
+                            >
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+                            {userModalData.length === 0 ? (
+                                <div className="text-center py-10 opacity-40 text-sm">
+                                    No records available.
+                                </div>
+                            ) : (
+                                userModalData.map((user, idx) => (
+                                    <div
+                                        key={user.identifier + idx}
+                                        className={`flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl border ${
+                                            isDark ? "border-white/5 bg-white/3" : "border-slate-100 bg-slate-50"
+                                        }`}
+                                    >
+                                        <div className="space-y-1">
+                                            <p className="font-semibold text-sm">{user.displayName || "No Name"}</p>
+                                            <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs opacity-60">
+                                                <span>{user.identifier}</span>
+                                                <span>•</span>
+                                                <span>Registered: {formatDate(user.createdAt)}</span>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold ring-1 ${
+                                                String(user.subscriptionPlan || "").toLowerCase().includes("elite")
+                                                    ? "bg-purple-500/10 text-purple-400 ring-purple-500/30"
+                                                    : String(user.subscriptionPlan || "").toLowerCase().includes("pro")
+                                                    ? "bg-indigo-500/10 text-indigo-400 ring-indigo-500/30"
+                                                    : String(user.subscriptionPlan || "").toLowerCase().includes("enterprise")
+                                                    ? "bg-amber-500/10 text-amber-400 ring-amber-500/30"
+                                                    : "bg-slate-500/10 text-slate-400 ring-slate-500/30"
+                                            }`}>
+                                                {user.subscriptionPlan || "Free Tier"}
+                                            </span>
                                         </div>
                                     </div>
                                 ))

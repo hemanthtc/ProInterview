@@ -39,9 +39,73 @@ Stay in character but still drive a useful mock interview. Do not claim private 
 `;
 }
 
-export function buildCandidateProfileInfo(resume?: string, github?: string, linkedin?: string, portfolioUrl?: string): string {
+export async function fetchGithubPublicRepos(githubUrl?: string): Promise<string> {
+    if (!githubUrl) return "";
+    try {
+        let url = githubUrl.trim();
+        if (!url.startsWith("http")) url = "https://" + url;
+        const parsedUrl = new URL(url);
+        if (!parsedUrl.hostname.includes("github.com")) return "";
+        
+        const pathParts = parsedUrl.pathname.split("/").filter(Boolean);
+        if (pathParts.length < 1) return "";
+        const username = pathParts[0];
+
+        // Ensure username is not a reserved path
+        if (["features", "setup", "login", "labs", "coaches", "jobs", "pricing", "organizations", "terms", "privacy", "blog", "about", "contact", "support"].includes(username.toLowerCase())) {
+            return "";
+        }
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=6`, {
+            headers: {
+                "User-Agent": "ProInterview-AI-Agent"
+            },
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        
+        if (!res.ok) return "";
+        const repos = await res.json();
+        if (!Array.isArray(repos) || repos.length === 0) return "";
+        
+        let reposText = `\nPublic GitHub Repositories for candidate (${username}):\n`;
+        for (const repo of repos) {
+            reposText += `- Repo Name: ${repo.name}\n`;
+            if (repo.description) reposText += `  Description: ${repo.description}\n`;
+            reposText += `  Primary Language: ${repo.language || "Not specified"}\n`;
+            reposText += `  Stars: ${repo.stargazers_count} | Fork count: ${repo.forks_count}\n`;
+            reposText += `  URL: ${repo.html_url}\n\n`;
+        }
+        return reposText;
+    } catch {
+        return "";
+    }
+}
+
+export async function buildCandidateProfileInfo(
+    resume?: string,
+    github?: string,
+    linkedin?: string,
+    portfolioUrl?: string,
+    portfolioRating?: string,
+    portfolioFeedback?: string
+): Promise<string> {
     const hasResume = Boolean(resume && resume.trim().length > 0);
     const hasPortfolio = Boolean(github || linkedin || portfolioUrl);
+    const githubReposText = github ? await fetchGithubPublicRepos(github) : "";
+
+    let portfolioAnalysisBlock = "";
+    if (portfolioRating || portfolioFeedback) {
+        portfolioAnalysisBlock = `\n--- PRE-INTERVIEW PORTFOLIO EVALUATION REPORT ---
+Pre-Interview Analysis Score: ${portfolioRating || "N/A"}/100
+Evaluation Strengths & Study Recommendations:
+${portfolioFeedback || "No detailed report generated."}
+-------------------------------------------------
+You MUST strictly base your technical questions, weaknesses probing, and behavioral scenarios on the specific strengths, weaknesses, and study recommendations highlighted in this Pre-Interview Report.
+`;
+    }
 
     if (hasResume && hasPortfolio) {
         return `You are conducting a technical interview based on BOTH the candidate's Resume and their Portfolio materials.
@@ -54,28 +118,51 @@ Here are the Candidate's Portfolio details:
 - GitHub: ${github || "Not provided"}
 - LinkedIn: ${linkedin || "Not provided"}
 - Portfolio URL: ${portfolioUrl || "Not provided"}
-
-You MUST evaluate, discuss, and ask highly relevant questions about the experiences, projects, and tech stacks listed in BOTH their resume and their portfolio links throughout the interview. Make sure to reference details from both sources.`;
+${githubReposText ? `\nScanned GitHub Public Repositories Metadata:\n${githubReposText}` : ""}
+${portfolioAnalysisBlock}
+You MUST evaluate, discuss, and ask highly relevant questions about the experiences, projects, tech stacks, and the specific portfolio strengths/weaknesses listed in the resume, portfolio, and evaluation report throughout the interview.`;
     } else if (hasResume) {
         return `You are conducting a technical interview based on the candidate's Resume.
 Here is the Candidate's Resume Text:
 ---
 ${resume}
----`;
+---
+${portfolioAnalysisBlock}`;
     } else if (hasPortfolio) {
         return `You are conducting a technical interview based on the candidate's Portfolio.
 Here are the Candidate's Portfolio details:
 - GitHub: ${github || "Not provided"}
 - LinkedIn: ${linkedin || "Not provided"}
-- Portfolio URL: ${portfolioUrl || "Not provided"}`;
+- Portfolio URL: ${portfolioUrl || "Not provided"}
+${githubReposText ? `\nScanned GitHub Public Repositories Metadata:\n${githubReposText}` : ""}
+${portfolioAnalysisBlock}`;
     } else {
-        return `You are conducting a general technical interview. No resume or portfolio was provided.`;
+        return `You are conducting a general technical interview. No resume or portfolio was provided. ${portfolioAnalysisBlock}`;
     }
 }
 
-export function buildRealisticProfileSection(resume?: string, github?: string, linkedin?: string, portfolioUrl?: string): string {
+export async function buildRealisticProfileSection(
+    resume?: string,
+    github?: string,
+    linkedin?: string,
+    portfolioUrl?: string,
+    portfolioRating?: string,
+    portfolioFeedback?: string
+): Promise<string> {
     const hasResume = Boolean(resume && resume.trim().length > 0);
     const hasPortfolio = Boolean(github || linkedin || portfolioUrl);
+    const githubReposText = github ? await fetchGithubPublicRepos(github) : "";
+
+    let portfolioAnalysisBlock = "";
+    if (portfolioRating || portfolioFeedback) {
+        portfolioAnalysisBlock = `\n--- PRE-INTERVIEW PORTFOLIO EVALUATION REPORT ---
+Pre-Interview Analysis Score: ${portfolioRating || "N/A"}/100
+Evaluation Strengths & Study Recommendations:
+${portfolioFeedback || "No detailed report generated."}
+-------------------------------------------------
+You MUST strictly base your technical questions, weaknesses probing, and behavioral scenarios on the specific strengths, weaknesses, and study recommendations highlighted in this Pre-Interview Report.
+`;
+    }
 
     if (hasResume && hasPortfolio) {
         return `CANDIDATE'S PROFILE DETAILS (RESUME & PORTFOLIO):
@@ -87,18 +174,23 @@ ${resume}
 GitHub: ${github || "Not provided"}
 LinkedIn: ${linkedin || "Not provided"}
 Portfolio URL: ${portfolioUrl || "Not provided"}
+${githubReposText ? `\nScanned GitHub Public Repositories Metadata:\n${githubReposText}` : ""}
+${portfolioAnalysisBlock}
 `;
     } else if (hasResume) {
         return `CANDIDATE'S RESUME:
-${resume}`;
+${resume}
+${portfolioAnalysisBlock}`;
     } else if (hasPortfolio) {
         return `CANDIDATE'S PORTFOLIO:
 GitHub: ${github || "Not provided"}
 LinkedIn: ${linkedin || "Not provided"}
 Portfolio URL: ${portfolioUrl || "Not provided"}
+${githubReposText ? `\nScanned GitHub Public Repositories Metadata:\n${githubReposText}` : ""}
+${portfolioAnalysisBlock}
 `;
     } else {
-        return `No resume or portfolio was provided. Ask standard interview questions.`;
+        return `No resume or portfolio was provided. Ask standard interview questions. ${portfolioAnalysisBlock}`;
     }
 }
 

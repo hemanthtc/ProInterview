@@ -172,6 +172,7 @@ export default function PanelInterviewPage() {
                     role: localStorage.getItem("preferredRoles") || "Software Engineer",
                     activePanelistId: activeId,
                     sessionId: localStorage.getItem("userIdentifier") || "anon",
+                    companyClone: localStorage.getItem("companyCloneMode") !== "false",
                 }),
             });
             const data = await res.json();

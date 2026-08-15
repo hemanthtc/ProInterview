@@ -19,7 +19,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 export async function POST(req: NextRequest) {
     try {
         const {
-            history = [], resume, github, linkedin, portfolioUrl, message, attachment, type, provider,
+            history = [], resume, github, linkedin, portfolioUrl, portfolioRating, portfolioFeedback, message, attachment, provider,
             company, roles, level, hrIntel, companyClone, domainPackId, voiceLanguage,
         } = await req.json();
 
@@ -61,34 +61,68 @@ export async function POST(req: NextRequest) {
             : "";
         const hrPersonaBlock = buildHrPersonaBlock(hrIntel);
 
-        const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
-- You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.
-- Basic difficulty: Focus on core syntax, fundamental data structures, simple functions, and entry-level programming concepts.
-- Intermediate difficulty: Focus on object-oriented/functional paradigms, design patterns, framework concepts, API usage, unit testing, and medium-complexity logical problem solving.
-- Advanced difficulty: Focus on complex system architecture, high scalability, concurrency, distributed systems, deep algorithmic optimization, security, memory management, and trade-off analysis under high pressure.`;
 
-        const typeInstruction = "Ask one highly relevant technical question at a time focusing strictly on coding, architecture, logic, and technical depth. Heavily favor practical tasks like writing code or drawing circuits.";
-        const candidateProfileInfo = buildCandidateProfileInfo(resume, github, linkedin, portfolioUrl);
+
+        let mappedType = "off-campus";
+        if (companyClone === false) {
+            if (safeLevel === "basic") mappedType = "internship";
+            else mappedType = "on-campus";
+        } else {
+            if (safeLevel === "basic") mappedType = "internship";
+            else if (safeLevel === "intermediate") mappedType = "off-campus";
+            else mappedType = "experienced";
+        }
+
+        const recruitmentModeBlock = `
+ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
+- Adopt the following specific focus based on this mapped type:
+  * INTERNSHIP: Calibrate questions to candidate's baseline programming skills, learning agility, basic code syntax, and university/college projects.
+  * ON-CAMPUS: Focus on Computer Science core theoretical foundations (Object-Oriented Programming (OOP) concepts, Database Management Systems (DBMS Normalization, ACID), Operating Systems (Concurrency, deadlocks, virtual memory), Computer Networks (TCP/UDP, HTTP, DNS), basic Data Structures & Algorithms, and college projects).
+  * OFF-CAMPUS: Focus on practical application building, systems integration, code quality, unit/integration testing patterns, API design, and logical scaling.
+  * EXPERIENCED: Focus on advanced system designs, scalability, performance bottlenecks, distributed architectural trade-offs, Sprint delivery shifts, mentorship, and extensive previous work history.
+`;
+
+        const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
+- You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.`;
+
+        const candidateProfileInfo = await buildCandidateProfileInfo(resume, github, linkedin, portfolioUrl, portfolioRating, portfolioFeedback);
 
         const systemPrompt = `You are a professional online technical interviewer dynamically evaluating a candidate applying for: ${safeRoles} at ${safeCompany}.
-Your tone, technical expectations, and questions must strictly align with the documented technical hiring standards and engineering culture of the target companies: ${safeCompany}.
+
+ACTIVE PARAMETERS:
+- Target Role: ${safeRoles}
+- Target Company: ${safeCompany}
+- Difficulty Level: ${safeLevel.toUpperCase()}
+- Interview Type: ${mappedType.toUpperCase()}
+
 ${difficultyInstruction}
-Be conversational. ${typeInstruction}
+${recruitmentModeBlock}
+
+INTERVIEW ORCHESTRATION FLOW:
+1. Scan & Analyze Resume and Portfolio Context: First, scan the candidate's resume and portfolio, identifying candidate information specifically: Education Background, Preferred Role, Target Company (if specified), Skills, and Projects.
+2. Build Candidate Profile: Ground all questions strictly in their actual resume details, skills, and projects. NEVER ask generic template questions or creative hypotheticals that do not align with their profile.
+3. Establish Interview Type Calibrations: Tailor difficulty and depth to the active type: ${mappedType}.
+4. Question Plan: Formulate a clear direction for checking the candidate's core and practical suitability.
+5. Adaptive Loop: Ask ONE question at a time, wait for the candidate's answer, and dynamically adapt.
+
+CRITICAL RULES FOR RESPONSES:
+0. ASK ONLY ONE QUESTION AT A TIME. After you ask a single question, STOP and wait for the candidate's answer. NEVER ask multiple questions in the same response.
+1. STICK TO NATURAL CONVERSATIONAL PHRASING. Phrase your questions smoothly like a real human (e.g. "Tell me about your last project" or "How did you design the database structure for that application?").
+2. STRICTLY NO MARKDOWN SYMBOLS: You MUST NOT output any markdown elements in your spoken text. This means:
+   - NO ASTERISKS at all (do NOT use ** or * for bolding, italics, or list bullets).
+   - NO HASHES (do NOT use # for headers).
+   - NO BACKTICKS in conversational parts (do NOT write code blocks in plain speech).
+   - All conversational responses must be plain, clean, unformatted sentences.
+3. WHEN YOU ASK FOR COMPOSING CODE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CODE] ".
+4. WHEN YOU ASK FOR DRAWING A CIRCUIT OR DIAGRAM, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:DRAW] ".
+5. OTHERWISE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CHAT] ".
+6. If you decide to terminate the interview, prepend "[TERMINATE] ".
+7. DO NOT say "Welcome" or "Hello" unless the conversation history is completely empty.
+
 ${companyCloneBlock}
 ${domainBlock}
 ${languageBlock}
 ${hrPersonaBlock}
-
-CRITICAL RULES FOR ASKING QUESTIONS:
-0. ASK ONLY ONE QUESTION AT A TIME. After you ask a single question, STOP and wait for the candidate's answer. NEVER ask multiple questions in the same response.
-1. NEVER ASK REPETITIVE QUESTIONS. Do not dwell on the same topic for too long. If they answer correctly or incorrectly, provide brief feedback and immediately move on to a brand new topic or practical task. Do not exaggerate or overly compliment.
-2. ASK PRACTICAL QUESTIONS. You MUST ask the user to write real code, design algorithms, or draw circuits/diagrams instead of just random theory BS.
-3. WHEN YOU ASK FOR COMPOSING CODE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CODE] ".
-4. WHEN YOU ASK FOR DRAWING A CIRCUIT OR DIAGRAM, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:DRAW] ".
-5. OTHERWISE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CHAT] ".
-6. If you decide to terminate the interview (because you have asked enough questions, or the candidate is behaving terribly), prepend "[TERMINATE] ".
-7. DO NOT say "Welcome" or "Hello" unless the conversation history is completely empty. If the candidate says "I am back" or resumes the chat, DO NOT welcome them again, just jump straight into the next question.
-
 ${candidateProfileInfo}`;
 
         if (useSarvam && getSarvamKey()) {

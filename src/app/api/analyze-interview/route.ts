@@ -27,20 +27,41 @@ export async function POST(req: NextRequest) {
         }
         const genAI = new GoogleGenerativeAI(API_KEY);
 
-        const { messages, snapshots } = await req.json();
+        const { messages, snapshots, company, roles, level, companyClone } = await req.json();
 
         // Convert messages to transcript format
         transcript = messages.map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
 
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.0 } });
 
+        let mappedType = "off-campus";
+        if (companyClone === false) {
+            if (level === "basic") mappedType = "internship";
+            else mappedType = "on-campus";
+        } else {
+            if (level === "basic") mappedType = "internship";
+            else if (level === "intermediate") mappedType = "off-campus";
+            else mappedType = "experienced";
+        }
+
+        const recruitmentModeBlock = `
+EVALUATION CONTEXT: ${mappedType.toUpperCase()} PLACEMENT RECRUITMENT DRIVE (Target Role: ${roles || "Software Engineer"} at ${company || "a tech company"}, Level: ${level || "intermediate"})
+- Rubric Calibration:
+  * INTERNSHIP: Grade based on basic programming concepts, code syntax correctness, learning potential, agility, and college projects.
+  * ON-CAMPUS: Grade based on Computer Science core theoretical foundations: OOP concepts, Database Management (Normalization normal forms, ACID, keys), Operating System principles (concurrency, threads vs processes, paging), Networks, and standard Data Structures & Algorithms. Acknowledge academic correctness and foundational logic.
+  * OFF-CAMPUS: Grade based on practical application building, systems integration, code quality, unit/integration testing, API structures, and logical scaling.
+  * EXPERIENCED: Grade based on advanced system design, horizontal scaling, security, distributed system failure recovery, Sprint prioritization, and work history.
+`;
+
         const systemPrompt = `You are a highly analytical, strict, and precise technical interviewer evaluating a candidate's performance.
 
 Transcript:
 ${transcript}
 
+${recruitmentModeBlock}
+
 Assess their performance fairly and realistically across these vectors:
-- Technical accuracy: Are their answers correct? 
+- Technical accuracy: Are their answers correct according to the active recruitment style?
 - Clarity of explanation: Do they communicate complex topics well?
 - Behavior & Professionalism: Evaluate their demeanor. If camera snapshots are provided, consider their eye contact, posture, and facial expressions during the interview.
 

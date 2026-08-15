@@ -34,6 +34,49 @@ export default function SetupPage() {
     const hasManualFiles = files.length > 0;
     const hasAnyInput = hasManualFiles || hasAccountPortfolio || hasAccountResume || portfolioUrl.trim().length > 0;
 
+    const extractAndSyncLinks = (text: string) => {
+        if (!text || !text.trim()) return;
+
+        // GitHub URL regex (only if userGithub is currently empty)
+        const currentGithub = getStorageItem("userGithub") || "";
+        if (!currentGithub.trim()) {
+            const githubRegex = /https?:\/\/(?:www\.)?github\.com\/[a-zA-Z0-9_.-]+/i;
+            const githubMatch = text.match(githubRegex);
+            if (githubMatch) {
+                const detected = githubMatch[0].trim();
+                setStorageItem("userGithub", detected);
+            }
+        }
+
+        // LinkedIn URL regex (only if userLinkedin is currently empty)
+        const currentLinkedin = getStorageItem("userLinkedin") || "";
+        if (!currentLinkedin.trim()) {
+            const linkedinRegex = /https?:\/\/(?:www\.)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[a-zA-Z0-9_.-]+/i;
+            const linkedinMatch = text.match(linkedinRegex);
+            if (linkedinMatch) {
+                const detected = linkedinMatch[0].trim();
+                setStorageItem("userLinkedin", detected);
+            }
+        }
+
+        // Portfolio URL regex (only if portfolioUrl state is currently empty)
+        if (!portfolioUrl.trim()) {
+            const urlRegex = /https?:\/\/[^\s$.?#].[^\s]*/gi;
+            const matches = text.match(urlRegex);
+            if (matches) {
+                const portfolioMatch = matches.find(url => {
+                    const u = url.toLowerCase();
+                    return !u.includes("github.com") && !u.includes("linkedin.com") && !u.match(/\.(png|jpg|jpeg|gif|pdf|zip|txt)$/i);
+                });
+                if (portfolioMatch) {
+                    const detected = portfolioMatch.trim();
+                    setPortfolioUrl(detected);
+                    setStorageItem("userPortfolio", detected);
+                }
+            }
+        }
+    };
+
     useEffect(() => {
         const isLoggedIn = getStorageItem("userLoggedIn") === "true";
         if (!isLoggedIn) {
@@ -65,14 +108,59 @@ export default function SetupPage() {
         setPreferredRoles([]);
         setCompanyCloneMode(getStorageItem("companyCloneMode") !== "false");
 
+        const fetchUserProfile = async () => {
+            try {
+                const res = await fetch("/api/auth/profile");
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success && data.user) {
+                        const u = data.user;
+                        const hasAccountRes = Boolean(u.resumeCvText && u.resumeCvText.trim() && u.resumeCvName && u.resumeCvName.trim());
+
+                        setStorageItem("userPortfolio", u.portfolioUrl || "");
+                        setStorageItem("userResumeCvName", u.resumeCvName || "");
+                        setStorageItem("userResumeCvText", u.resumeCvText || "");
+                        setStorageItem("userGithub", u.github || "");
+                        setStorageItem("userLinkedin", u.linkedin || "");
+                        
+                        setPortfolioUrl(u.portfolioUrl || "");
+                        setResumeCvName(u.resumeCvName || "");
+                        setResumeCvText(u.resumeCvText || "");
+                        setHasAccountPortfolio(Boolean(u.portfolioUrl && u.portfolioUrl.trim()));
+                        setHasAccountResume(hasAccountRes);
+
+                        if (u.resumeCvText) {
+                            extractAndSyncLinks(u.resumeCvText);
+                        }
+
+                        if (!hasAccountRes) {
+                            removeStorageItem("resumeText");
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Failed to fetch fresh user profile:", err);
+            }
+        };
+
+        fetchUserProfile();
+
         const syncFromAccountDetails = () => {
             const portfolio = getStorageItem("userPortfolio") || "";
-            const resumeText = getStorageItem("userResumeCvText") || getInterviewResumeText() || "";
+            const accountResumeText = getStorageItem("userResumeCvText") || "";
+            const accountResumeName = getStorageItem("userResumeCvName") || "";
+            
+            const hasActualAccountResume = accountResumeText.trim().length > 0 && accountResumeName.trim().length > 0;
+
             setPortfolioUrl(portfolio);
-            setResumeCvName(getStorageItem("userResumeCvName") || "");
-            setResumeCvText(resumeText);
+            setResumeCvName(hasActualAccountResume ? accountResumeName : "");
+            setResumeCvText(hasActualAccountResume ? accountResumeText : "");
             setHasAccountPortfolio(portfolio.trim().length > 0);
-            setHasAccountResume(resumeText.trim().length > 0);
+            setHasAccountResume(hasActualAccountResume);
+
+            if (!hasActualAccountResume) {
+                removeStorageItem("resumeText");
+            }
         };
 
         syncFromAccountDetails();
@@ -102,12 +190,38 @@ export default function SetupPage() {
         return () => window.removeEventListener("ai-storage-change", handleStorageSync as EventListener);
     }, []);
 
+    const parseManualFiles = async (selectedFiles: File[]) => {
+        setLoading(true);
+        setError("");
+        try {
+            const formData = new FormData();
+            selectedFiles.forEach((f) => formData.append("file", f));
+            
+            const res = await fetch("/api/upload", {
+                method: "POST",
+                body: formData,
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to parse files.");
+            
+            const parsedText = data.text || "";
+            setResumeCvText(parsedText);
+            setStorageItem("resumeText", parsedText);
+            extractAndSyncLinks(parsedText);
+        } catch (err: any) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
         const droppedFiles = Array.from(e.dataTransfer.files);
         if (droppedFiles.length > 0) {
             setFiles(droppedFiles);
             setError("");
+            parseManualFiles(droppedFiles);
         } else {
             setError("Please upload valid files.");
         }
@@ -118,6 +232,7 @@ export default function SetupPage() {
         if (selectedFiles.length > 0) {
             setFiles(selectedFiles);
             setError("");
+            parseManualFiles(selectedFiles);
         }
     };
 
@@ -145,7 +260,7 @@ export default function SetupPage() {
                 extractedText = getInterviewResumeText() || "";
             }
 
-            if (hasManualFiles || hasAccountPortfolio) {
+            if (!extractedText.trim() && files.length > 0) {
                 const formData = new FormData();
                 files.forEach((f) => formData.append("file", f));
                 if (portfolioUrl.trim()) formData.append("portfolioUrl", portfolioUrl.trim());
@@ -161,6 +276,7 @@ export default function SetupPage() {
                 }
 
                 extractedText = data.text || "";
+                setResumeCvText(extractedText);
             }
 
             const github = getStorageItem("userGithub") || "";
@@ -254,6 +370,23 @@ export default function SetupPage() {
                     Upload your resume so the AI can tailor the interview questions to your experience.
                 </p>
 
+                {!hasAccountResume && (
+                    <div className={`mb-6 rounded-xl border px-4 py-3 text-sm transition-all ${
+                        theme === "light"
+                            ? "bg-amber-50 border-amber-200 text-amber-800"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffbeb] border-[#f59e0b]/30 text-[#b45309]"
+                            : "bg-amber-500/10 border-amber-500/25 text-amber-200"
+                    }`}>
+                        <p className={`font-semibold ${theme === "light" ? "text-amber-950" : theme === "eyeprotect" ? "text-[#78350f]" : "text-amber-100"}`}>
+                            Resume is not present, please upload
+                        </p>
+                        <p className={`text-xs mt-1 ${theme === "light" ? "text-amber-800/80" : theme === "eyeprotect" ? "text-[#b45309]/80" : "text-amber-200/70"}`}>
+                            Account resume is not detected. Please upload your resume file to configure the session.
+                        </p>
+                    </div>
+                )}
+
                 {hrPersonaPreview?.name && (
                     <div className="mb-6 rounded-xl border border-teal-500/25 bg-teal-500/10 px-4 py-3 text-sm text-teal-100">
                         <p className="font-semibold text-teal-200">
@@ -328,7 +461,31 @@ export default function SetupPage() {
                     />
                 </div>
                 
-                {!hasAnyInput ? (
+                {hasAccountResume || hasManualFiles ? (
+                    <div 
+                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors font-medium"
+                        style={{
+                            backgroundColor: theme === 'dark' 
+                                ? (hasManualFiles ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)')
+                                : theme === 'eyeprotect' ? '#f5efe6'
+                                : (hasManualFiles ? '#e0e7ff' : '#d1fae5'),
+                            borderColor: theme === 'dark'
+                                ? (hasManualFiles ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)')
+                                : theme === 'eyeprotect' ? '#8c8578'
+                                : (hasManualFiles ? '#c7d2fe' : '#a7f3d0'),
+                            color: theme === 'dark'
+                                ? (hasManualFiles ? '#c7d2fe' : '#a7f3d0')
+                                : theme === 'eyeprotect' ? '#1c1917'
+                                : (hasManualFiles ? '#312e81' : '#064e3b')
+                        }}
+                    >
+                        {hasManualFiles ? (
+                            "New resume file(s) selected. They will be parsed and used for this session."
+                        ) : (
+                            <>Saved Resume / CV detected from your account: <span className="font-semibold">{resumeCvName}</span>. The upload box is not needed unless you want to add more files.</>
+                        )}
+                    </div>
+                ) : (
                     <>
                         <div className="flex items-center gap-4 my-6 opacity-40">
                             <div className={`h-px flex-1 ${isLight ? "bg-slate-300" : "bg-white"}`}></div>
@@ -369,28 +526,6 @@ export default function SetupPage() {
                             )}
                         </div>
                     </>
-                ) : (
-                    <div 
-                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors font-medium"
-                        style={{
-                            backgroundColor: theme === 'dark' 
-                                ? (hasAccountPortfolio ? 'rgba(16, 185, 129, 0.1)' : 'rgba(99, 102, 241, 0.1)')
-                                : theme === 'eyeprotect' ? '#f5efe6'
-                                : (hasAccountPortfolio ? '#d1fae5' : '#e0e7ff'),
-                            borderColor: theme === 'dark'
-                                ? (hasAccountPortfolio ? 'rgba(16, 185, 129, 0.2)' : 'rgba(99, 102, 241, 0.2)')
-                                : theme === 'eyeprotect' ? '#8c8578'
-                                : (hasAccountPortfolio ? '#a7f3d0' : '#c7d2fe'),
-                            color: theme === 'dark'
-                                ? (hasAccountPortfolio ? '#a7f3d0' : '#c7d2fe')
-                                : theme === 'eyeprotect' ? '#1c1917'
-                                : (hasAccountPortfolio ? '#064e3b' : '#312e81')
-                        }}
-                    >
-                        {hasAccountPortfolio
-                            ? "Portfolio link detected from your account. It will be used first during setup."
-                            : "Saved Resume / CV detected from your account. The upload box is not needed unless you want to add more files."}
-                    </div>
                 )}
 
                 <div className="mt-8 z-50 relative">

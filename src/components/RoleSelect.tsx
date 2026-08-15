@@ -38,7 +38,27 @@ export default function RoleSelect({
 }: RoleSelectProps) {
   const [selectedOptions, setSelectedOptions] = useState<MultiValue<OptionType>>(defaultValue);
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [inputValue, setInputValue] = useState<string>("");
   const [isMounted, setIsMounted] = React.useState(false);
+
+  const handleKeyDown: React.KeyboardEventHandler = (event) => {
+    if (!inputValue.trim()) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (selectedOptions.length >= maxLimit) {
+        setErrorMsg(`You have reached the maximum limit of ${maxLimit} roles.`);
+        return;
+      }
+      const newOption: OptionType = {
+        value: inputValue.trim(),
+        label: inputValue.trim(),
+      };
+      const updated = [...selectedOptions, newOption] as MultiValue<OptionType>;
+      setSelectedOptions(updated);
+      onChange(updated.map(opt => opt.value));
+      setInputValue("");
+    }
+  };
 
   React.useEffect(() => {
     Promise.resolve().then(() => setIsMounted(true));
@@ -210,6 +230,9 @@ export default function RoleSelect({
         placeholder={placeholder}
         styles={customStyles}
         formatCreateLabel={(inputValue) => `Add "${inputValue}" as custom role`}
+        inputValue={inputValue}
+        onInputChange={(val) => setInputValue(val)}
+        onKeyDown={handleKeyDown}
       />
 
       {errorMsg && (

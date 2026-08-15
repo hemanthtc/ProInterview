@@ -170,19 +170,33 @@ function LoginContent() {
         if (details) {
             localStorage.setItem("userSubscriptionPlan", details.subscriptionPlan || "Free Tier");
             // Store org-specific fields
-            if (details.organizationName) localStorage.setItem("userOrgName", details.organizationName);
-            if (details.adminId)          localStorage.setItem("userAdminId", details.adminId);
-            if (details.department)       localStorage.setItem("userDepartment", details.department);
+            localStorage.setItem("userOrgName", details.organizationName || "");
+            localStorage.setItem("userAdminId", details.adminId || "");
+            localStorage.setItem("userDepartment", details.department || "");
             // Store individual user profile fields
-            if (details.profilePhoto)  localStorage.setItem("userProfilePhoto", details.profilePhoto);
-            if (details.additionalEmail) localStorage.setItem("userAdditionalEmail", details.additionalEmail);
-            if (details.github)        localStorage.setItem("userGithub", details.github);
-            if (details.linkedin)      localStorage.setItem("userLinkedin", details.linkedin);
-            if (details.portfolioUrl)  localStorage.setItem("userPortfolio", details.portfolioUrl);
-            if (details.resumeCvName)  localStorage.setItem("userResumeCvName", details.resumeCvName);
-            if (details.resumeCvText)  localStorage.setItem("userResumeCvText", details.resumeCvText);
-            if (details.phone)         localStorage.setItem("userPhone", details.phone);
-            if (details.educationData) localStorage.setItem("userEducationData", JSON.stringify(details.educationData));
+            localStorage.setItem("userProfilePhoto", details.profilePhoto || "");
+            localStorage.setItem("userAdditionalEmail", details.additionalEmail || "");
+            localStorage.setItem("userGithub", details.github || "");
+            localStorage.setItem("userLinkedin", details.linkedin || "");
+            localStorage.setItem("userPortfolio", details.portfolioUrl || "");
+            localStorage.setItem("userResumeCvName", details.resumeCvName || "");
+            localStorage.setItem("userResumeCvText", details.resumeCvText || "");
+            localStorage.setItem("userPhone", details.phone || "");
+            localStorage.setItem("userEducationData", details.educationData ? JSON.stringify(details.educationData) : "");
+        } else {
+            // Reset fields if details not present
+            localStorage.setItem("userOrgName", "");
+            localStorage.setItem("userAdminId", "");
+            localStorage.setItem("userDepartment", "");
+            localStorage.setItem("userProfilePhoto", "");
+            localStorage.setItem("userAdditionalEmail", "");
+            localStorage.setItem("userGithub", "");
+            localStorage.setItem("userLinkedin", "");
+            localStorage.setItem("userPortfolio", "");
+            localStorage.setItem("userResumeCvName", "");
+            localStorage.setItem("userResumeCvText", "");
+            localStorage.setItem("userPhone", "");
+            localStorage.setItem("userEducationData", "");
         }
 
         // Keep popup open for 1.8 seconds to allow full success animations to finish

@@ -72,6 +72,42 @@ export default function InterviewRoom() {
     const lastSavedSessionTsRef = useRef<number | null>(null);
     const voiceCoachRef = useRef<VoiceCoachSnapshot | null>(null);
 
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const recordedChunksRef = useRef<Blob[]>([]);
+    const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
+
+    const startSessionRecording = useCallback((stream: MediaStream) => {
+        try {
+            recordedChunksRef.current = [];
+            let options = { mimeType: "video/webm;codecs=vp9,opus" };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: "video/webm;codecs=vp8,opus" };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: "video/webm" };
+            }
+            let rec: MediaRecorder;
+            try {
+                rec = new MediaRecorder(stream, options);
+            } catch {
+                rec = new MediaRecorder(stream);
+            }
+            mediaRecorderRef.current = rec;
+            rec.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                    recordedChunksRef.current.push(e.data);
+                }
+            };
+            rec.onstop = () => {
+                const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+                setRecordedBlobUrl(URL.createObjectURL(blob));
+            };
+            rec.start(1000);
+        } catch (err) {
+            console.error("Instant Recording start failed:", err);
+        }
+    }, []);
+
     // Resizable split-pane logic for practical modes
     const [practicalPanelRatio, setPracticalPanelRatio] = useState(30);
     const isDraggingRef = useRef(false);
@@ -247,6 +283,14 @@ export default function InterviewRoom() {
         stopFaceDetection();
         window.speechSynthesis.cancel();
 
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            try {
+                mediaRecorderRef.current.stop();
+            } catch (err) {
+                console.error("Error stopping session recording:", err);
+            }
+        }
+
         if (recognitionRef.current) {
             try {
                 recognitionRef.current.stop();
@@ -308,7 +352,16 @@ export default function InterviewRoom() {
                     if (isMounted) setVideoActive(false);
                     return;
                 }
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                let stream: MediaStream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                } catch {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    } catch {
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    }
+                }
                 streamRef.current = stream;
                 if (isMounted) {
                     videoElementsRef.current.forEach((node) => {
@@ -318,6 +371,7 @@ export default function InterviewRoom() {
                         }
                     });
                     setVideoActive(true);
+                    startSessionRecording(stream);
                 } else if (!isMounted) {
                     stream.getTracks().forEach(track => track.stop());
                     streamRef.current = null;
@@ -472,6 +526,17 @@ export default function InterviewRoom() {
                 setHrPersonaName(String(activeHrIntel.interviewerName));
             }
             setCompanyCloneName(bank?.name || "");
+            let portfolioRating = "";
+            let portfolioFeedback = "";
+            try {
+                const rawAnalysis = getStorageItem("portfolioAnalysisResult");
+                if (rawAnalysis) {
+                    const parsed = JSON.parse(rawAnalysis);
+                    portfolioRating = parsed.rating?.toString() || "";
+                    portfolioFeedback = parsed.feedback || "";
+                }
+            } catch { /* ignore */ }
+
             const res = await fetch("/api/interviewer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -480,6 +545,8 @@ export default function InterviewRoom() {
                     github,
                     linkedin,
                     portfolioUrl,
+                    portfolioRating,
+                    portfolioFeedback,
                     history,
                     message: nextMessage,
                     attachment,
@@ -793,7 +860,14 @@ export default function InterviewRoom() {
             const res = await fetch("/api/analyze-interview", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ messages: messagesRef.current, snapshots: snapshotsRef.current })
+                body: JSON.stringify({
+                    messages: messagesRef.current,
+                    snapshots: snapshotsRef.current,
+                    company: getStorageItem("targetCompany") || "Generic Tech Company",
+                    roles: getStorageItem("preferredRoles") || "Software Engineer",
+                    level: getStorageItem("interviewLevel") || "intermediate",
+                    companyClone: getStorageItem("companyCloneMode") !== "false",
+                })
             });
             const data = await res.json();
             const tScore = typeof data.technicalRating === "number" ? Math.max(0, Math.min(100, data.technicalRating)) : 0;
@@ -936,6 +1010,7 @@ export default function InterviewRoom() {
                             <div className="mb-4">
                                 <SessionRecorder
                                     title="ProInterview Mock Interview"
+                                    blobUrl={recordedBlobUrl}
                                     transcript={
                                         finalScores.annotatedTranscript ||
                                         messages.map((m) => `${m.role === "user" ? "YOU" : "AI"}: ${m.content}`).join("\n\n")

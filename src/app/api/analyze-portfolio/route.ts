@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
 import { getVerifiedSession } from "@/utils/auth";
+import { fetchGithubPublicRepos } from "@/utils/interviewHelper";
 
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
@@ -105,6 +106,10 @@ export async function POST(req: NextRequest) {
             projectText += await fetchUrlText(portfolioUrl);
         }
 
+        if (github) {
+            projectText += await fetchGithubPublicRepos(github);
+        }
+
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
@@ -129,70 +134,43 @@ export async function POST(req: NextRequest) {
             ? `You must rigorously evaluate this candidate against the technical capability required for the roles: [${preferredRoles || "Software Engineer"}] AND strictly align your quality expectations with the hiring bar of these companies: [${targetCompanies || "Generic Tech Company"}].`
             : `You must strictly evaluate this candidate against the technical capabilities and requirements explicitly expected for these technical roles: [${preferredRoles || "Software Engineer"}].`;
 
-        let systemPrompt = "";
-        
-        if (hasResume) {
-            systemPrompt = `You are a strict, highly deterministic technical recruiter evaluating a candidate's resume/CV.
-You have been provided with:
-Candidate Resume Text:
----
-${resumeText}
+        const systemPrompt = `You are a strict, highly deterministic technical Recruiter/interviewer evaluating a candidate's credentials.
+You have been provided with the following candidate details:
+
+${hasResume ? `[RESUME / CV CONTENT]\n${resumeText}\n---` : "[RESUME / CV CONTENT]\nNot provided\n---"}
+
+[PORTFOLIO CHANNELS]
+- GitHub URL: ${github || "Not provided"}
+- LinkedIn URL: ${linkedin || "Not provided"}
+- Portfolio Website URL: ${portfolioUrl || "Not provided"}
+
+[EXTRACTED PROJECT FILES & WEBSITE CONTENT]
+${projectText ? projectText.substring(0, 8000) : "No extra project files or web content fetched."}
 ---
 
-Your task is to analyze these materials and return a JSON object with:
+Your task is to comprehensively analyze all available data sources above.
+Specifically:
+1. If only one source is provided (e.g., only resume, or only portfolio link, or only files), evaluate that source.
+2. If multiple sources are provided (e.g., resume + GitHub profile repo details + portfolio text), evaluate and cross-reference all of them to get an overall picture of the candidate's skills, coding style, professional experience, and capabilities.
+3. Compare the candidate's overall profile against:
+   - Target Roles: [${preferredRoles || "Software Engineer"}]
+   - Target Companies: [${targetCompanies || "Generic Tech Company"}]
+4. Check if they are applying for senior/complex roles or top-tier companies in realistic mode, and adjust the scoring bar accordingly.
+
+Strict Scoring Rubric:
+- Base score starts at 50 if any valid professional source is provided.
+- Increment points (up to 100) based on target company alignment, high-quality project architecture, CS theory depth, or solid engineering experience.
+- Since you do not have live internet access to scan external websites dynamically, you MUST NOT penalize the candidate if their LinkedIn or Portfolio URL contents are not fully retrieved. The presence of the professional link itself is a positive signal.
+- Only drop the score below 50 if the provided inputs are explicitly junk, blank, or highly unprofessional.
+
+Return a JSON object with:
 1. "rating": A numerical rating STRICTLY between 0 and 100.
-2. "feedback": A brief Markdown-formatted feedback text summarizing key strengths, key improvement areas, and recommended study topics/skills to improve. Use standard markdown headers. Limit the response to 150 words.
-
-${evaluationCriteria}
-
-Strict Rubric:
-- Base score starts at 50 if they have a valid resume.
-- Analyze their resume contents to determine if they meet the specific difficulty/quality constraints of their target roles/companies. Add points for aligned, high-quality projects, technical experiences, and skills (up to 100).
-- Heavily penalize or score lowly if the experience or project tech stack is trivial and they are applying for senior/complex roles or top-tier companies in realistic mode.
-- Only drop the score below 50 if the provided resume contents are explicitly junk, irrelevant, or highly unprofessional.
-
-Formatting Instructions for the "feedback" field:
-Make sure to include these sections:
-### Key Strengths
-- [Brief strength points]
-
-### Skills to Improve & Study Recommendations
-- [Mention specific study resources, technical topics, or system architecture concepts the candidate should read/study to meet the bar for the target role/company]
+2. "feedback": A brief Markdown-formatted feedback text summarizing:
+   - Key Strengths: What makes the candidate strong.
+   - Recommended Areas & Study Topics: Specific topics, patterns, system designs, or resources they should study to meet the hiring bar at [${targetCompanies || "their target company"}].
+   Use standard markdown headers (e.g., ### Key Strengths, ### Study Recommendations). Limit the response to 150 words.
 
 Respond ONLY with a valid JSON block containing the fields "rating" and "feedback". Do not write any markdown code blocks or explanatory text outside of the JSON.`;
-        } else {
-            systemPrompt = `You are a strict, highly deterministic technical recruiter evaluating a candidate's portfolio.
-You have been provided with:
-GitHub URL: ${github || "Not provided"}
-LinkedIn URL: ${linkedin || "Not provided"}
-Portfolio Website URL: ${portfolioUrl || "Not provided"}
-
-Project Documentation / Source Code / Contents: 
-${projectText ? projectText.substring(0, 5000) : "Not provided"}
-
-Your task is to analyze these materials and return a JSON object with:
-1. "rating": A numerical rating STRICTLY between 0 and 100.
-2. "feedback": A brief Markdown-formatted feedback text summarizing key strengths, key improvement areas, and recommended study topics/skills to improve. Use standard markdown headers. Limit the response to 150 words.
-
-${evaluationCriteria}
-
-Strict Rubric:
-- Base score starts at 50 if they provided at least one valid professional link (GitHub, LinkedIn, or Portfolio).
-- Analyze their uploaded code or provided links to determine if they meet the specific difficulty/quality constraints of their target roles/companies. Add points for aligned, high-quality architectures, system design, or clear docs (up to 100).
-- Heavily penalize or score lowly if the submitted code is trivial and they are applying for senior/complex roles or top-tier companies in realistic mode.
-- Since you do not have live internet access, you MUST NOT heavily penalize the candidate if their GitHub or LinkedIn URL contents are not explicitly printed below. The mere presence of professional links should guarantee a baseline score of at least 65.
-- Only drop the score below 50 if the provided materials or files are explicitly junk, irrelevant, or highly unprofessional.
-
-Formatting Instructions for the "feedback" field:
-Make sure to include these sections:
-### Key Strengths
-- [Brief strength points]
-
-### Skills to Improve & Study Recommendations
-- [Mention specific study resources, technical topics, or system architecture concepts the candidate should read/study to meet the bar for the target role/company]
-
-Respond ONLY with a valid JSON block containing the fields "rating" and "feedback". Do not write any markdown code blocks or explanatory text outside of the JSON.`;
-        }
 
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {

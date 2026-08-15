@@ -10,20 +10,24 @@ import { Download, Circle } from "lucide-react";
 export default function SessionRecorder({
     transcript,
     title = "ProInterview Session",
+    blobUrl: externalBlobUrl = null,
 }: {
     transcript: string;
     title?: string;
+    blobUrl?: string | null;
 }) {
     const [recording, setRecording] = useState(false);
-    const [blobUrl, setBlobUrl] = useState<string | null>(null);
+    const [localBlobUrl, setLocalBlobUrl] = useState<string | null>(null);
     const mediaRecorder = useRef<MediaRecorder | null>(null);
     const chunks = useRef<Blob[]>([]);
 
+    const activeBlobUrl = externalBlobUrl || localBlobUrl;
+
     useEffect(() => {
         return () => {
-            if (blobUrl) URL.revokeObjectURL(blobUrl);
+            if (localBlobUrl) URL.revokeObjectURL(localBlobUrl);
         };
-    }, [blobUrl]);
+    }, [localBlobUrl]);
 
     const start = useCallback(async () => {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true }).catch(() =>
@@ -38,7 +42,7 @@ export default function SessionRecorder({
         rec.onstop = () => {
             stream.getTracks().forEach((t) => t.stop());
             const blob = new Blob(chunks.current, { type: "video/webm" });
-            setBlobUrl(URL.createObjectURL(blob));
+            setLocalBlobUrl(URL.createObjectURL(blob));
         };
         rec.start();
         setRecording(true);
@@ -71,17 +75,21 @@ export default function SessionRecorder({
 
     return (
         <div className="rounded-xl border border-white/10 bg-black/30 p-3 flex flex-wrap items-center gap-2 text-sm">
-            {!recording ? (
-                <button type="button" onClick={() => void start()} className="inline-flex items-center gap-1 rounded-lg bg-rose-500/90 px-3 py-1.5">
-                    <Circle className="w-3 h-3 fill-current" /> Record session
-                </button>
-            ) : (
-                <button type="button" onClick={stop} className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-3 py-1.5">
-                    Stop
-                </button>
+            {!externalBlobUrl && (
+                <>
+                    {!recording ? (
+                        <button type="button" onClick={() => void start()} className="inline-flex items-center gap-1 rounded-lg bg-rose-500/90 px-3 py-1.5">
+                            <Circle className="w-3 h-3 fill-current" /> Record session
+                        </button>
+                    ) : (
+                        <button type="button" onClick={stop} className="inline-flex items-center gap-1 rounded-lg bg-white/15 px-3 py-1.5">
+                            Stop
+                        </button>
+                    )}
+                </>
             )}
-            {blobUrl && (
-                <a href={blobUrl} download="prointerview-session.webm" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5">
+            {activeBlobUrl && (
+                <a href={activeBlobUrl} download="prointerview-session.webm" className="inline-flex items-center gap-1 rounded-lg bg-white/10 px-3 py-1.5">
                     <Download className="w-3.5 h-3.5" /> Download WebM
                 </a>
             )}

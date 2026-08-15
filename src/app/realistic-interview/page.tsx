@@ -8,6 +8,7 @@ import { marked } from "marked";
 import DOMPurify from "dompurify";
 import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageItem } from "../../utils/storage";
 import VoiceCoachPanel from "../../components/VoiceCoachPanel";
+import SessionRecorder from "../../components/SessionRecorder";
 import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapshot } from "../../utils/voiceCoach";
 import { syncSessionsToCloud } from "../../utils/cloudSync";
 import { buildSpacedDrills } from "../../utils/spacedDrills";
@@ -60,6 +61,42 @@ export default function RealisticInterviewRoom() {
     const [isAvatarGenerating, setIsAvatarGenerating] = useState(false);
     const [isDidAvailable, setIsDidAvailable] = useState<boolean | null>(null);
     const [avatarType, setAvatarType] = useState<"d-id" | "svg">("svg");
+
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const recordedChunksRef = useRef<Blob[]>([]);
+    const [recordedBlobUrl, setRecordedBlobUrl] = useState<string | null>(null);
+
+    const startSessionRecording = useCallback((stream: MediaStream) => {
+        try {
+            recordedChunksRef.current = [];
+            let options = { mimeType: "video/webm;codecs=vp9,opus" };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: "video/webm;codecs=vp8,opus" };
+            }
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                options = { mimeType: "video/webm" };
+            }
+            let rec: MediaRecorder;
+            try {
+                rec = new MediaRecorder(stream, options);
+            } catch {
+                rec = new MediaRecorder(stream);
+            }
+            mediaRecorderRef.current = rec;
+            rec.ondataavailable = (e) => {
+                if (e.data && e.data.size > 0) {
+                    recordedChunksRef.current.push(e.data);
+                }
+            };
+            rec.onstop = () => {
+                const blob = new Blob(recordedChunksRef.current, { type: "video/webm" });
+                setRecordedBlobUrl(URL.createObjectURL(blob));
+            };
+            rec.start(1000);
+        } catch (err) {
+            console.error("Instant Recording start failed:", err);
+        }
+    }, []);
 
     const closeDIdStream = () => {
         if (peerConnectionRef.current) {
@@ -286,6 +323,14 @@ export default function RealisticInterviewRoom() {
         stopFaceDetection();
         window.speechSynthesis.cancel();
 
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+            try {
+                mediaRecorderRef.current.stop();
+            } catch (err) {
+                console.error("Error stopping session recording:", err);
+            }
+        }
+
         if (recognitionRef.current) {
             try {
                 recognitionRef.current.stop();
@@ -374,7 +419,16 @@ export default function RealisticInterviewRoom() {
                     if (isMounted) setVideoActive(false);
                     return;
                 }
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                let stream: MediaStream;
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+                } catch {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    } catch {
+                        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    }
+                }
                 streamRef.current = stream;
                 if (isMounted) {
                     videoElementsRef.current.forEach((node) => {
@@ -384,6 +438,7 @@ export default function RealisticInterviewRoom() {
                         }
                     });
                     setVideoActive(true);
+                    startSessionRecording(stream);
                 } else if (!isMounted) {
                     stream.getTracks().forEach(track => track.stop());
                     streamRef.current = null;
@@ -809,6 +864,17 @@ export default function RealisticInterviewRoom() {
                 setHrPersonaName(String(activeHrIntel.interviewerName));
             }
             setCompanyCloneName(bank?.name || "");
+            let portfolioRating = "";
+            let portfolioFeedback = "";
+            try {
+                const rawAnalysis = getStorageItem("portfolioAnalysisResult");
+                if (rawAnalysis) {
+                    const parsed = JSON.parse(rawAnalysis);
+                    portfolioRating = parsed.rating?.toString() || "";
+                    portfolioFeedback = parsed.feedback || "";
+                }
+            } catch { /* ignore */ }
+
             const res = await fetch("/api/realistic-interviewer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -817,6 +883,8 @@ export default function RealisticInterviewRoom() {
                     github,
                     linkedin,
                     portfolioUrl,
+                    portfolioRating,
+                    portfolioFeedback,
                     history,
                     message: nextMessage,
                     attachment,
@@ -1129,7 +1197,14 @@ export default function RealisticInterviewRoom() {
             const res = await fetch("/api/analyze-interview", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ messages: messagesRef.current, snapshots: snapshotsRef.current })
+                body: JSON.stringify({
+                    messages: messagesRef.current,
+                    snapshots: snapshotsRef.current,
+                    company: getStorageItem("targetCompany") || "Generic Tech Company",
+                    roles: getStorageItem("preferredRoles") || "Software Engineer",
+                    level: getStorageItem("interviewLevel") || "intermediate",
+                    companyClone: getStorageItem("companyCloneMode") !== "false",
+                })
             });
             const data = await res.json();
             const tScore = typeof data.technicalRating === "number" ? Math.max(0, Math.min(100, data.technicalRating)) : 0;
@@ -1269,6 +1344,16 @@ export default function RealisticInterviewRoom() {
                         </div>
                     ) : finalScores ? (
                         <div className="mb-6">
+                            <div className="mb-4">
+                                <SessionRecorder
+                                    title="ProInterview Mock Interview"
+                                    blobUrl={recordedBlobUrl}
+                                    transcript={
+                                        finalScores.annotatedTranscript ||
+                                        messages.map((m) => `${m.role === "user" ? "YOU" : "AI"}: ${m.content}`).join("\n\n")
+                                    }
+                                />
+                            </div>
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6 text-left">
                                 <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4">Final Evaluation</h3>
                                 {typeof finalScores.portfolio === 'number' && (

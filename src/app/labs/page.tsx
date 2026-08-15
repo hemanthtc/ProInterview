@@ -164,7 +164,9 @@ export default function LabsPage() {
         if (getStorageItem("userLoggedIn") !== "true") {
             router.push("/login?redirect=/labs");
         } else {
-            setIsCheckingAuth(false);
+            Promise.resolve().then(() => {
+                setIsCheckingAuth(false);
+            });
         }
     }, [router]);
 
