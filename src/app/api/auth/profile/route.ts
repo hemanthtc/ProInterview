@@ -7,7 +7,7 @@ import ProfileData from "@/models/ProfileData";
 import mongoose from "mongoose";
 import bcryptjs from "bcryptjs";
 import { getVerifiedSession } from "@/utils/auth";
-import { isS3Configured, getJSON, uploadJSON, deleteObject, pingS3 } from "@/utils/s3";
+import { isS3Configured, getJSON, uploadJSON, deleteObject, pingS3, getS3ProfileKey, getLegacyS3ProfileKey } from "@/utils/s3";
 
 function getModel(accountType: string): mongoose.Model<any> {
     switch (accountType) {
@@ -23,10 +23,6 @@ async function verifyUserAccess(req: NextRequest, targetIdentifier: string) {
     return targetIdentifier.trim().toLowerCase() === session.identifier.trim().toLowerCase();
 }
 
-function getS3ProfileKey(userIdentifier: string): string {
-    const safeUser = userIdentifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
-    return `profile_details/${safeUser}/info.json`;
-}
 
 // Auto-migration helper: reconciles offline MongoDB profile cache into S3 and deletes it from MongoDB
 async function migrateMongoProfileToS3(userIdentifier: string, key: string, s3Profile: any): Promise<any> {
@@ -97,17 +93,28 @@ export async function GET(req: NextRequest) {
                 if (ping.ok) {
                     const key = getS3ProfileKey(identifier);
                     let s3Profile: any = {};
+                    let keyUsed = key;
                     try {
                         s3Profile = await getJSON<any>(key);
                     } catch (err: any) {
                         if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
-                            // Profile JSON does not exist yet in S3
+                            // Try legacy profile key
+                            const legacyKey = getLegacyS3ProfileKey(identifier);
+                            try {
+                                s3Profile = await getJSON<any>(legacyKey);
+                                // Migrate legacy to new key
+                                await uploadJSON(key, s3Profile);
+                                await deleteObject(legacyKey).catch(() => {});
+                                keyUsed = key;
+                            } catch (legacyErr) {
+                                // Profile JSON does not exist yet in S3
+                            }
                         } else {
                             throw err;
                         }
                     }
 
-                    profile = await migrateMongoProfileToS3(identifier, key, s3Profile);
+                    profile = await migrateMongoProfileToS3(identifier, keyUsed, s3Profile);
                 }
             }
 
@@ -212,10 +219,19 @@ export async function POST(req: NextRequest) {
                 if (ping.ok) {
                     const key = getS3ProfileKey(identifier);
                     let s3Profile: any = {};
+                    let isLegacyPresent = false;
+                    const legacyKey = getLegacyS3ProfileKey(identifier);
                     try {
                         s3Profile = await getJSON<any>(key);
                     } catch (err: any) {
-                        if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                        if (err.name === "NoSuchKey" || err.$metadata?.httpStatusCode === 404) {
+                            try {
+                                s3Profile = await getJSON<any>(legacyKey);
+                                isLegacyPresent = true;
+                            } catch (legacyErr) {
+                                // Not present
+                            }
+                        } else {
                             throw err;
                         }
                     }
@@ -242,6 +258,9 @@ export async function POST(req: NextRequest) {
                     };
 
                     await uploadJSON(key, updatedProfile);
+                    if (isLegacyPresent) {
+                        await deleteObject(legacyKey).catch(() => {});
+                    }
 
                     // Ensure temporary Mongo collection remains empty
                     await ProfileData.findOneAndDelete({ identifier });

@@ -26,6 +26,7 @@ import { offCampusMCQs, offCampusCodingQuestions, MCQQuestion, CodingQuestion } 
 import { onCampusMCQs, onCampusCodingQuestions } from "../../data/onCampusMockTestData";
 import { interviewPrepLogic, aptitudeQuestions } from "../../data/aptitudeQuestions";
 import BrandLogo from "../../components/BrandLogo";
+import { triggerSelfHealing } from "../../utils/offlineSync";
 
 import type { SavedResume, SavedRoadmap, PortfolioAnalysisCache, RoadmapData, PausedInterviewSession } from "../../types/features";
 import type { EmailAnalysisResult } from "../../types/analysis";
@@ -407,6 +408,10 @@ function FeaturesContent() {
 
     useEffect(() => {
         if (typeof window === "undefined") return;
+        
+        // Trigger offline self-healing sync
+        void triggerSelfHealing();
+
         const params = new URLSearchParams(window.location.search);
         const toolFromUrl = params.get("tool") as typeof activeTool | null;
 

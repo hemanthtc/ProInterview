@@ -10,7 +10,7 @@ import {
     SyntheticFile,
     hydrateFilePayload,
 } from "@/lib/syntheticAccess";
-import { getJSON, uploadJSON, deleteObject, isS3Configured } from "@/utils/s3";
+import { getJSON, uploadJSON, deleteObject, isS3Configured, pingS3 } from "@/utils/s3";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -73,17 +73,26 @@ export async function PUT(req: NextRequest, ctx: Ctx) {
             ownerName
         );
 
+        let savedInS3 = false;
         if (isS3Configured()) {
-            const s3Key = existing.s3Key || `synthetic/${auth.session.identifier}/${id}.json`;
-            const s3Payload = {
-                data: Array.isArray(payload.data) ? payload.data : [],
-                textContent: typeof payload.textContent === "string" ? payload.textContent : ""
-            };
-            await uploadJSON(s3Key, s3Payload);
+            const ping = await pingS3().catch(() => ({ ok: false }));
+            if (ping.ok) {
+                const s3Key = existing.s3Key || `synthetic/${auth.session.identifier}/${id}.json`;
+                const s3Payload = {
+                    data: Array.isArray(payload.data) ? payload.data : [],
+                    textContent: typeof payload.textContent === "string" ? payload.textContent : ""
+                };
+                await uploadJSON(s3Key, s3Payload);
 
-            payload.s3Key = s3Key;
-            payload.data = [];
-            payload.textContent = "";
+                payload.s3Key = s3Key;
+                payload.data = [];
+                payload.textContent = "";
+                savedInS3 = true;
+            }
+        }
+
+        if (!savedInS3) {
+            payload.s3Key = "";
         }
 
         existing.set(payload);

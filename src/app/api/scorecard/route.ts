@@ -3,6 +3,7 @@ import crypto from "crypto";
 import connectDB from "@/utils/db";
 import Scorecard from "@/models/Scorecard";
 import { getVerifiedSession } from "@/utils/auth";
+import { isS3Configured, getJSON, uploadJSON, pingS3, getS3ScorecardKey } from "@/utils/s3";
 
 function normalizePortfolio(value: unknown): number | string {
     if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -31,6 +32,39 @@ function toHighlights(raw: unknown, summary: string): string[] {
     return [];
 }
 
+// Auto-migration helper: reconciles offline MongoDB scorecard cache into S3 and deletes it from MongoDB
+async function migrateMongoScorecardToS3(shareId: string, key: string, s3Data: any): Promise<any> {
+    try {
+        await connectDB();
+        const doc = await Scorecard.findOne({ shareId }).lean();
+        if (doc) {
+            console.log(`Migrating MongoDB scorecard ${shareId} to S3...`);
+            const payload = {
+                shareId: doc.shareId,
+                ownerIdentifier: doc.ownerIdentifier,
+                candidateName: doc.candidateName,
+                company: doc.company,
+                role: doc.role,
+                finalScore: doc.finalScore,
+                technicalRating: doc.technicalRating,
+                behavioralRating: doc.behavioralRating,
+                communicationRating: doc.communicationRating,
+                portfolioRating: doc.portfolioRating,
+                summary: doc.summary,
+                highlights: doc.highlights || [],
+                createdAt: doc.createdAt,
+            };
+            await uploadJSON(key, payload);
+            await Scorecard.findOneAndDelete({ shareId });
+            console.log("Successfully migrated scorecard to S3 and deleted MongoDB record.");
+            return payload;
+        }
+    } catch (err) {
+        console.error("Failed to migrate MongoDB scorecard to S3:", err);
+    }
+    return s3Data;
+}
+
 export async function POST(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
@@ -44,7 +78,7 @@ export async function POST(req: NextRequest) {
         const shareId = crypto.randomBytes(9).toString("base64url");
         const summary = typeof body.summary === "string" ? body.summary : "";
 
-        const doc = await Scorecard.create({
+        const docPayload = {
             shareId,
             ownerIdentifier: session.identifier,
             candidateName: String(body.candidateName || body.userName || "Candidate").slice(0, 120),
@@ -57,26 +91,29 @@ export async function POST(req: NextRequest) {
             portfolioRating: normalizePortfolio(body.portfolioRating),
             summary,
             highlights: toHighlights(body.highlights, summary),
-        });
+            createdAt: new Date(),
+        };
+
+        let savedInS3 = false;
+        if (isS3Configured()) {
+            const ping = await pingS3();
+            if (ping.ok) {
+                const key = getS3ScorecardKey(shareId);
+                await uploadJSON(key, docPayload);
+                savedInS3 = true;
+            }
+        }
+
+        if (!savedInS3) {
+            // S3 Offline: save in MongoDB scorecard
+            await Scorecard.create(docPayload);
+        }
 
         return NextResponse.json({
             success: true,
-            shareId: doc.shareId,
-            url: `/scorecard/${doc.shareId}`,
-            scorecard: {
-                shareId: doc.shareId,
-                candidateName: doc.candidateName,
-                company: doc.company,
-                role: doc.role,
-                finalScore: doc.finalScore,
-                technicalRating: doc.technicalRating,
-                behavioralRating: doc.behavioralRating,
-                communicationRating: doc.communicationRating,
-                portfolioRating: doc.portfolioRating,
-                summary: doc.summary,
-                highlights: doc.highlights,
-                createdAt: doc.createdAt,
-            },
+            shareId: docPayload.shareId,
+            url: `/scorecard/${docPayload.shareId}`,
+            scorecard: docPayload,
         });
     } catch (error: any) {
         console.error("Scorecard POST error:", error);
@@ -93,24 +130,44 @@ export async function GET(req: NextRequest) {
         }
 
         await connectDB();
-        const doc = await Scorecard.findOne({ shareId: id }).lean();
-        if (!doc) {
-            return NextResponse.json({ error: "Scorecard not found" }, { status: 404 });
+
+        let scorecardData: any = null;
+        if (isS3Configured()) {
+            const ping = await pingS3();
+            if (ping.ok) {
+                const key = getS3ScorecardKey(id);
+                try {
+                    scorecardData = await getJSON<any>(key);
+                } catch (err: any) {
+                    if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                        throw err;
+                    }
+                }
+                scorecardData = await migrateMongoScorecardToS3(id, key, scorecardData);
+            }
+        }
+
+        if (!scorecardData) {
+            const doc = await Scorecard.findOne({ shareId: id }).lean();
+            if (!doc) {
+                return NextResponse.json({ error: "Scorecard not found" }, { status: 404 });
+            }
+            scorecardData = doc;
         }
 
         return NextResponse.json({
-            shareId: doc.shareId,
-            candidateName: doc.candidateName,
-            company: doc.company,
-            role: doc.role,
-            finalScore: doc.finalScore,
-            technicalRating: doc.technicalRating,
-            behavioralRating: doc.behavioralRating,
-            communicationRating: doc.communicationRating,
-            portfolioRating: doc.portfolioRating,
-            summary: doc.summary,
-            highlights: doc.highlights || [],
-            createdAt: doc.createdAt,
+            shareId: scorecardData.shareId,
+            candidateName: scorecardData.candidateName,
+            company: scorecardData.company,
+            role: scorecardData.role,
+            finalScore: scorecardData.finalScore,
+            technicalRating: scorecardData.technicalRating,
+            behavioralRating: scorecardData.behavioralRating,
+            communicationRating: scorecardData.communicationRating,
+            portfolioRating: scorecardData.portfolioRating,
+            summary: scorecardData.summary,
+            highlights: scorecardData.highlights || [],
+            createdAt: scorecardData.createdAt,
         });
     } catch (error: any) {
         console.error("Scorecard GET error:", error);

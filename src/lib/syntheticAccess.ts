@@ -4,7 +4,7 @@ import User from "@/models/User";
 import SyntheticFile, { ISyntheticFile } from "@/models/SyntheticFile";
 import SyntheticFolder, { ISyntheticFolder } from "@/models/SyntheticFolder";
 import { NextResponse } from "next/server";
-import { getJSON, isS3Configured } from "@/utils/s3";
+import { getJSON, isS3Configured, uploadJSON, deleteObject, pingS3 } from "@/utils/s3";
 
 export async function requireSession(): Promise<
     { session: SessionPayload; error?: undefined } | { session?: undefined; error: NextResponse }
@@ -101,14 +101,53 @@ function estimateSize(file: {
     }
 }
 
+export async function migrateMongoFileToS3(file: any): Promise<any> {
+    if (!file || !isS3Configured()) return file;
+    try {
+        const ping = await pingS3().catch(() => ({ ok: false }));
+        if (ping.ok) {
+            const hasLocalContent = (Array.isArray(file.data) && file.data.length > 0) || (typeof file.textContent === "string" && file.textContent.trim().length > 0);
+            if (hasLocalContent) {
+                const fileId = String(file._id || file.id);
+                const s3Key = file.s3Key || `synthetic/${file.userId}/${fileId}.json`;
+                console.log(`Migrating MongoDB sandbox file ${fileId} to S3 key ${s3Key}...`);
+                const s3Payload = {
+                    data: Array.isArray(file.data) ? file.data : [],
+                    textContent: typeof file.textContent === "string" ? file.textContent : ""
+                };
+                await uploadJSON(s3Key, s3Payload);
+                // Clear from MongoDB and update key reference
+                await SyntheticFile.updateOne(
+                    { _id: file._id },
+                    { $set: { s3Key, data: [], textContent: "" } }
+                );
+                file.s3Key = s3Key;
+                file.data = [];
+                file.textContent = "";
+                console.log(`Successfully migrated sandbox file ${fileId} to S3.`);
+            }
+        }
+    } catch (err) {
+        console.error(`Failed to migrate MongoDB sandbox file ${file._id} to S3:`, err);
+    }
+    return file;
+}
+
 export async function hydrateFilePayload(file: any) {
-    if (file && file.s3Key && isS3Configured()) {
-        try {
-            const s3Payload = await getJSON<{ data: any[]; textContent: string }>(file.s3Key);
-            file.data = s3Payload.data;
-            file.textContent = s3Payload.textContent;
-        } catch (err) {
-            console.error(`Failed to hydrate S3 payload for file ${file._id}:`, err);
+    if (!file) return file;
+    if (isS3Configured()) {
+        const ping = await pingS3().catch(() => ({ ok: false }));
+        if (ping.ok) {
+            await migrateMongoFileToS3(file);
+            if (file.s3Key) {
+                try {
+                    const s3Payload = await getJSON<{ data: any[]; textContent: string }>(file.s3Key);
+                    file.data = s3Payload.data;
+                    file.textContent = s3Payload.textContent;
+                } catch (err) {
+                    console.error(`Failed to hydrate S3 payload for file ${file._id}:`, err);
+                }
+            }
         }
     }
     return file;

@@ -8,7 +8,7 @@ import {
     SyntheticFile,
     hydrateFilePayload,
 } from "@/lib/syntheticAccess";
-import { uploadJSON, isS3Configured } from "@/utils/s3";
+import { uploadJSON, isS3Configured, pingS3 } from "@/utils/s3";
 
 export async function GET(req: NextRequest) {
     const auth = await requireSession();
@@ -16,17 +16,20 @@ export async function GET(req: NextRequest) {
 
     try {
         await connectDB();
-        const scope = req.nextUrl.searchParams.get("scope") || "mine";
         const userId = auth.session.identifier;
+        const { searchParams } = new URL(req.url);
+        const parentId = searchParams.get("parentId") || null;
+        const type = searchParams.get("type") || null;
 
-        const query: any =
-            scope === "all"
-                ? { $or: [{ userId }, { visibility: "public" }] }
-                : { userId };
+        const query: any = { userId };
+        if (parentId !== "all") {
+            query.parentId = parentId === "root" || !parentId ? null : parentId;
+        }
+        if (type) {
+            query.contentType = type;
+        }
 
-        const files = await SyntheticFile.find(query)
-            .sort({ modifiedAt: -1 })
-            .lean();
+        const files = await SyntheticFile.find(query).sort({ modifiedAt: -1 });
 
         return NextResponse.json(files.map((f) => serializeFile(f, userId)));
     } catch (error: any) {
@@ -50,20 +53,31 @@ export async function POST(req: NextRequest) {
         
         const created = await SyntheticFile.create(payload);
 
+        let savedInS3 = false;
         if (isS3Configured()) {
-            const fileId = String(created._id);
-            const s3Key = `synthetic/${userId}/${fileId}.json`;
-            const s3Payload = {
-                data: Array.isArray(created.data) ? created.data : [],
-                textContent: typeof created.textContent === "string" ? created.textContent : ""
-            };
-            // Upload actual content to S3
-            await uploadJSON(s3Key, s3Payload);
+            const ping = await pingS3().catch(() => ({ ok: false }));
+            if (ping.ok) {
+                const fileId = String(created._id);
+                const s3Key = `synthetic/${userId}/${fileId}.json`;
+                const s3Payload = {
+                    data: Array.isArray(created.data) ? created.data : [],
+                    textContent: typeof created.textContent === "string" ? created.textContent : ""
+                };
+                // Upload actual content to S3
+                await uploadJSON(s3Key, s3Payload);
 
-            // Clear MongoDB values and set the S3 key reference
-            created.s3Key = s3Key;
-            created.data = [];
-            created.textContent = "";
+                // Clear MongoDB values and set the S3 key reference
+                created.s3Key = s3Key;
+                created.data = [];
+                created.textContent = "";
+                await created.save();
+                savedInS3 = true;
+            }
+        }
+
+        if (!savedInS3) {
+            // S3 Offline: save content locally in MongoDB. Ensure s3Key is empty.
+            created.s3Key = "";
             await created.save();
         }
 

@@ -9,7 +9,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export type S3Prefix = "resumes" | "profile-photos" | "resume_builder_resumes" | "profile_details" | "synthetic" | "uploads" | "scorecards";
+export type S3Prefix = "resumes" | "profile-photos" | "resume_builder_resumes" | "profile_details" | "synthetic" | "uploads" | "scorecards" | "profiles" | "sessions";
 
 function env(name: string): string | undefined {
     const v = process.env[name]?.replace(/^["']|["']$/g, "").trim();
@@ -162,3 +162,40 @@ export async function pingS3(): Promise<{ ok: boolean; bucket: string; region: s
         };
     }
 }
+
+export function getS3ProfileKey(identifier: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `profiles/${safeUser}/profile_data.json`;
+}
+
+export function getLegacyS3ProfileKey(identifier: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `profile_details/${safeUser}/info.json`;
+}
+
+export function getS3ResumesKey(identifier: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `resumes/${safeUser}/saved_resumes.json`;
+}
+
+export function getLegacyS3ResumesKey(identifier: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `resume_builder_resumes/${safeUser}/saved_resumes.json`;
+}
+
+export function getS3SessionsKey(identifier: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `sessions/${safeUser}/session_data.json`;
+}
+
+export function getS3ScorecardKey(shareId: string): string {
+    const safeId = shareId.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `scorecards/${safeId}.json`;
+}
+
+export function getS3SyntheticKey(identifier: string, fileId: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    const safeFile = fileId.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `synthetic/${safeUser}/${safeFile}.json`;
+}
+
