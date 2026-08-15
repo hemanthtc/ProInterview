@@ -27,11 +27,12 @@ async function findAccountByType(rawIdentifier: string, accountType: string) {
 export async function POST(req: NextRequest) {
     try {
         await connectDB();
-        const { identifier, otp, flowType, accountType = "user" } = await req.json() as {
+        const { identifier, otp, flowType, accountType = "user", isPwa } = await req.json() as {
             identifier?: string;
             otp?: string;
             flowType?: AuthFlowType;
             accountType?: AccountType;
+            isPwa?: boolean;
         };
 
         if (!identifier || !otp || !flowType) {
@@ -76,7 +77,7 @@ export async function POST(req: NextRequest) {
                 identifier: account.identifier,
                 role: accountType as AccountType,
                 isOrganization
-            });
+            }, isPwa);
 
             return NextResponse.json({
                 success: true,

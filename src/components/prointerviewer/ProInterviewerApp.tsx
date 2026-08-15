@@ -53,6 +53,21 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     onConfirm: () => void;
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
+  const [promptDialog, setPromptDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    defaultValue: string;
+    onConfirm: ((val: string) => void) | null;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    defaultValue: "",
+    onConfirm: null
+  });
+  const [promptValue, setPromptValue] = useState("");
+
   const zoomRef = useRef(zoom);
   useEffect(() => {
     zoomRef.current = zoom;
@@ -410,31 +425,38 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
   // --- MULTI-RESUME MANAGER FUNCTIONS ---
   const handleCreateBlankResume = () => {
-    const defaultTitle = prompt("Enter a title for the new blank resume:", "New Resume");
-    if (defaultTitle === null) return;
-    
-    const newId = `resume-id-${Date.now()}`;
-    const newResume = {
-      id: newId,
-      title: defaultTitle.trim() || "Untitled Resume",
-      updatedAt: Date.now(),
-      data: initialResumeData,
-      style: TEMPLATES[0].style,
-      templateId: TEMPLATES[0].id
-    };
+    setPromptDialog({
+      isOpen: true,
+      title: "New Resume",
+      message: "Enter a title for the new blank resume:",
+      defaultValue: "New Resume",
+      onConfirm: (val) => {
+        const titleStr = val.trim() || "Untitled Resume";
+        const newId = `resume-id-${Date.now()}`;
+        const newResume = {
+          id: newId,
+          title: titleStr,
+          updatedAt: Date.now(),
+          data: initialResumeData,
+          style: TEMPLATES[0].style,
+          templateId: TEMPLATES[0].id
+        };
 
-    const list = [...savedResumes, newResume];
-    setSavedResumes(list);
-    setStorageItem("proSavedResumes", JSON.stringify(list));
-    syncResumesList(list);
+        const list = [...savedResumes, newResume];
+        setSavedResumes(list);
+        setStorageItem("proSavedResumes", JSON.stringify(list));
+        syncResumesList(list);
 
-    setResumeData(initialResumeData);
-    setCurrentStyle(TEMPLATES[0].style);
-    setActiveTemplateId(TEMPLATES[0].id);
-    setActiveResumeId(newId);
-    setStorageItem("proActiveResumeId", newId);
-    
-    triggerToast(`Created and loaded blank resume: "${newResume.title}"`);
+        setResumeData(initialResumeData);
+        setCurrentStyle(TEMPLATES[0].style);
+        setActiveTemplateId(TEMPLATES[0].id);
+        setActiveResumeId(newId);
+        setStorageItem("proActiveResumeId", newId);
+        
+        triggerToast(`Created and loaded blank resume: "${newResume.title}"`);
+      }
+    });
+    setPromptValue("New Resume");
   };
 
   const handleLoadResume = (id: string) => {
@@ -468,20 +490,29 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     const target = savedResumes.find(r => r.id === id);
     if (!target) return;
     
-    const newTitle = prompt("Rename resume title:", target.title);
-    if (!newTitle) return;
+    setPromptDialog({
+      isOpen: true,
+      title: "Rename Resume",
+      message: "Rename resume title:",
+      defaultValue: target.title,
+      onConfirm: (val) => {
+        const titleStr = val.trim();
+        if (!titleStr) return;
 
-    const list = savedResumes.map(r => {
-      if (r.id === id) {
-        return { ...r, title: newTitle.trim(), updatedAt: Date.now() };
+        const list = savedResumes.map(r => {
+          if (r.id === id) {
+            return { ...r, title: titleStr, updatedAt: Date.now() };
+          }
+          return r;
+        });
+
+        setSavedResumes(list);
+        setStorageItem("proSavedResumes", JSON.stringify(list));
+        syncResumesList(list);
+        triggerToast(`Renamed resume to "${titleStr}"`);
       }
-      return r;
     });
-
-    setSavedResumes(list);
-    setStorageItem("proSavedResumes", JSON.stringify(list));
-    syncResumesList(list);
-    triggerToast(`Renamed resume to "${newTitle.trim()}"`);
+    setPromptValue(target.title);
   };
 
   const handleDeleteResume = (id: string) => {
@@ -508,30 +539,36 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   };
 
   const handleSaveCurrentAsCopy = () => {
-    const title = prompt("Enter a title for this copy:", resumeData.personalInfo.name ? `${resumeData.personalInfo.name}'s Resume Copy` : "My Resume Copy");
-    if (title === null) return;
+    const defaultVal = resumeData.personalInfo.name ? `${resumeData.personalInfo.name}'s Resume Copy` : "My Resume Copy";
+    setPromptDialog({
+      isOpen: true,
+      title: "Save Copy",
+      message: "Enter a title for this copy:",
+      defaultValue: defaultVal,
+      onConfirm: (val) => {
+        const titleStr = val.trim() || "My Resume Copy";
+        const newId = `resume-id-${Date.now()}`;
+        const copyResume = {
+          id: newId,
+          title: titleStr,
+          updatedAt: Date.now(),
+          data: resumeData,
+          style: currentStyle,
+          templateId: activeTemplateId
+        };
 
-    // eslint-disable-next-line react-hooks/purity
-    const newId = `resume-id-${Date.now()}`;
-    const copyResume = {
-      id: newId,
-      title: title.trim() || "My Resume Copy",
-      // eslint-disable-next-line react-hooks/purity
-      updatedAt: Date.now(),
-      data: resumeData,
-      style: currentStyle,
-      templateId: activeTemplateId
-    };
+        const list = [...savedResumes, copyResume];
+        setSavedResumes(list);
+        setStorageItem("proSavedResumes", JSON.stringify(list));
+        syncResumesList(list);
 
-    const list = [...savedResumes, copyResume];
-    setSavedResumes(list);
-    setStorageItem("proSavedResumes", JSON.stringify(list));
-    syncResumesList(list);
-
-    setActiveResumeId(newId);
-    setStorageItem("proActiveResumeId", newId);
-    
-    triggerToast(`Saved current resume as copy: "${copyResume.title}"`);
+        setActiveResumeId(newId);
+        setStorageItem("proActiveResumeId", newId);
+        
+        triggerToast(`Saved current resume as copy: "${copyResume.title}"`);
+      }
+    });
+    setPromptValue(defaultVal);
   };
 
   const handleSave = () => {
@@ -2451,6 +2488,102 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     }}
                   >
                     Delete
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* CUSTOM PROMPT DIALOG MODAL (webapp popup) */}
+          {promptDialog.isOpen && (
+            <>
+              <div 
+                className="modal-backdrop no-print"
+                onClick={() => setPromptDialog(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  position: 'fixed', inset: 0, zIndex: 10002,
+                  background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)'
+                }} 
+              />
+              <div 
+                className="saved-resumes-modal no-print"
+                style={{
+                  position: 'fixed',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: 10003,
+                  maxWidth: '420px',
+                  width: '90%',
+                  boxSizing: 'border-box',
+                  background: '#16161a',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: '1rem',
+                  padding: '1.5rem',
+                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 10px 10px -5px rgba(0, 0, 0, 0.4)'
+                }}
+              >
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <FileText size={18} color="var(--input-focus, #3b82f6)" />
+                    {promptDialog.title}
+                  </h3>
+                  <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.8rem', color: '#94a3b8', lineHeight: 1.4 }}>
+                    {promptDialog.message}
+                  </p>
+                </div>
+
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <input
+                    type="text"
+                    value={promptValue}
+                    onChange={(e) => setPromptValue(e.target.value)}
+                    placeholder="Enter title..."
+                    style={{
+                      width: '100%',
+                      boxSizing: 'border-box',
+                      background: 'rgba(0,0,0,0.2)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '0.5rem',
+                      padding: '0.65rem 0.85rem',
+                      color: '#fff',
+                      fontSize: '0.85rem',
+                      outline: 'none',
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const onConf = promptDialog.onConfirm;
+                        setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                        if (onConf) onConf(promptValue);
+                      }
+                    }}
+                    autoFocus
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setPromptDialog(prev => ({ ...prev, isOpen: false }))}
+                    style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', fontWeight: 600 }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const onConf = promptDialog.onConfirm;
+                      setPromptDialog(prev => ({ ...prev, isOpen: false }));
+                      if (onConf) onConf(promptValue);
+                    }}
+                    style={{
+                      padding: '0.45rem 0.9rem', fontSize: '0.8rem', fontWeight: 700,
+                      background: 'var(--input-focus, #3b82f6)', color: '#fff', border: 'none', borderRadius: '0.5rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Confirm
                   </button>
                 </div>
               </div>

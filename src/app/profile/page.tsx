@@ -86,6 +86,12 @@ export default function ProfilePage() {
     const [resumeCvText, setResumeCvText] = useState("");
     const [resumeCvUploading, setResumeCvUploading] = useState(false);
 
+    // Resume Import from Builder States
+    const [resumeSourceModalOpen, setResumeSourceModalOpen] = useState(false);
+    const [builderResumes, setBuilderResumes] = useState<any[]>([]);
+    const [loadingResumes, setLoadingResumes] = useState(false);
+    const [resumeLoadError, setResumeLoadError] = useState("");
+
     // Contact Info
     const [phone, setPhone] = useState("");
     const [editingPhone, setEditingPhone] = useState(false);
@@ -812,6 +818,120 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         }
     };
 
+    const formatResumeDataToText = (data: any): string => {
+        if (!data) return "";
+        let text = "";
+        
+        // Personal Info
+        const p = data.personalInfo || {};
+        if (p.name) text += `${p.name}\n`;
+        if (p.title) text += `${p.title}\n`;
+        if (p.email || p.phone) text += `${p.email || ""} | ${p.phone || ""}\n`;
+        if (p.github || p.linkedin || p.website) {
+            text += `${p.linkedin || ""} | ${p.github || ""} | ${p.website || ""}\n`;
+        }
+        if (p.summary) text += `\nProfessional Summary:\n${p.summary}\n`;
+        
+        // Experience
+        const exp = data.experience || [];
+        if (exp.length > 0) {
+            text += `\nWork Experience:\n`;
+            exp.forEach((e: any) => {
+                text += `- ${e.position} at ${e.company} (${e.startDate || ""} - ${e.endDate || "Present"})\n`;
+                if (e.description) text += `  ${e.description}\n`;
+            });
+        }
+        
+        // Education
+        const edu = data.education || [];
+        if (edu.length > 0) {
+            text += `\nEducation:\n`;
+            edu.forEach((e: any) => {
+                text += `- ${e.degree || ""} in ${e.fieldOfStudy || ""} from ${e.school || ""} (${e.startDate || ""} - ${e.endDate || ""})\n`;
+                if (e.description) text += `  ${e.description}\n`;
+            });
+        }
+        
+        // Skills
+        const skills = data.skills || [];
+        if (skills.length > 0) {
+            text += `\nSkills:\n`;
+            const skillList = skills.map((s: any) => typeof s === "string" ? s : s.name).filter(Boolean);
+            text += skillList.join(", ") + "\n";
+        }
+        
+        // Projects
+        const projects = data.projects || [];
+        if (projects.length > 0) {
+            text += `\nProjects:\n`;
+            projects.forEach((pr: any) => {
+                text += `- ${pr.name} ${pr.url ? `(${pr.url})` : ""}\n`;
+                if (pr.description) text += `  ${pr.description}\n`;
+            });
+        }
+        
+        return text;
+    };
+
+    const loadBuilderResumes = async () => {
+        setLoadingResumes(true);
+        setResumeLoadError("");
+        try {
+            let localList: any[] = [];
+            const stored = getStorageItem("proSavedResumes");
+            if (stored) {
+                try { localList = JSON.parse(stored); } catch (e) {}
+            }
+
+            const res = await fetch("/api/resumes");
+            if (res.ok) {
+                const s3List = await res.json();
+                setBuilderResumes(s3List || []);
+            } else {
+                setBuilderResumes(localList);
+            }
+        } catch (err: any) {
+            console.error("Failed to load saved resumes:", err);
+            setResumeLoadError(err.message || "Failed to connect to storage.");
+            const stored = getStorageItem("proSavedResumes");
+            if (stored) {
+                try {
+                    setBuilderResumes(JSON.parse(stored));
+                } catch (e) {}
+            }
+        } finally {
+            setLoadingResumes(false);
+        }
+    };
+
+    const handleImportResume = async (resume: any) => {
+        setResumeCvUploading(true);
+        setResumeSourceModalOpen(false);
+        try {
+            const formattedText = formatResumeDataToText(resume.data);
+            const importedName = `[Imported] ${resume.title || "Resume"}`;
+
+            setResumeCvName(importedName);
+            setResumeCvText(formattedText);
+            setStorageItem("userResumeCvName", importedName);
+            setStorageItem("userResumeCvText", formattedText);
+
+            await syncProfileToCloud({
+                resumeCvName: importedName,
+                resumeCvText: formattedText,
+                resumeCvKey: "",
+                resumeCvUrl: ""
+            });
+
+            setToast({ show: true, message: "Resume imported from builder successfully!", type: "success" });
+        } catch (error: any) {
+            console.error("Resume import failed:", error);
+            alert(error.message || "Failed to import resume.");
+        } finally {
+            setResumeCvUploading(false);
+        }
+    };
+
     const handleCropSave = async (base64String: string) => {
         setStorageItem("userProfilePhoto", base64String);
         setProfilePhoto(base64String);
@@ -1100,7 +1220,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => { triggerResumeFileInput(); setPhotoMenuOpen(false); }}
+                                            onClick={() => { setResumeSourceModalOpen(true); setPhotoMenuOpen(false); void loadBuilderResumes(); }}
                                             className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-white/5 rounded-lg flex items-center gap-2 transition-colors text-white/80"
                                         >
                                             <FileText className="w-3.5 h-3.5" /> Upload Resume / CV
@@ -1236,7 +1356,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <div className="flex items-center gap-2 shrink-0">
                                             <button
                                                 type="button"
-                                                onClick={triggerResumeFileInput}
+                                                onClick={() => { setResumeSourceModalOpen(true); void loadBuilderResumes(); }}
                                                 disabled={resumeCvUploading}
                                                 className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/20 disabled:opacity-50"
                                             >
@@ -1254,7 +1374,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                 ) : (
                                     <button
                                         type="button"
-                                        onClick={triggerResumeFileInput}
+                                        onClick={() => { setResumeSourceModalOpen(true); void loadBuilderResumes(); }}
                                         disabled={resumeCvUploading}
                                         className="w-full flex items-center justify-between gap-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/15 rounded-lg px-3 py-3 text-left transition-colors disabled:opacity-50"
                                     >
@@ -2288,6 +2408,99 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                 }}
                 onSave={handleCropSave}
             />
+
+            {/* Resume Source Selection Modal */}
+            <AnimatePresence>
+                {resumeSourceModalOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-[#121215] border border-white/10 rounded-2xl p-6 max-w-md w-full shadow-2xl relative overflow-hidden text-left"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                                    <FileText className="w-5 h-5 text-indigo-400" />
+                                    Choose Resume Source
+                                </h3>
+                                <button
+                                    onClick={() => setResumeSourceModalOpen(false)}
+                                    className="text-white/40 hover:text-white transition-colors"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Option 1: Upload from local device */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setResumeSourceModalOpen(false);
+                                        triggerResumeFileInput();
+                                    }}
+                                    className="w-full flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl transition text-left cursor-pointer group"
+                                >
+                                    <div className="w-10 h-10 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 group-hover:bg-indigo-500/20 transition">
+                                        <Camera className="w-5 h-5" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold text-white">Upload from Device</h4>
+                                        <p className="text-[11px] text-white/50">Select PDF, TXT, DOC, or DOCX from local storage</p>
+                                    </div>
+                                </button>
+
+                                {/* Option 2: Import from Resume Builder */}
+                                <div className="border-t border-white/5 pt-4">
+                                    <h4 className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-2">Import from Resume Builder</h4>
+                                    
+                                    {loadingResumes ? (
+                                        <div className="flex items-center justify-center py-6 gap-2 text-xs text-white/50">
+                                            <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                                            Loading saved resumes...
+                                        </div>
+                                    ) : resumeLoadError ? (
+                                        <p className="text-xs text-red-400 bg-red-400/5 border border-red-500/10 p-3 rounded-lg text-center">{resumeLoadError}</p>
+                                    ) : builderResumes.length === 0 ? (
+                                        <div className="text-center py-4 bg-white/5 border border-white/5 rounded-xl">
+                                            <p className="text-xs text-white/50">No saved resumes found.</p>
+                                            <Link href="/features?tool=prointerviewer" className="inline-block mt-2 text-[11px] text-indigo-400 font-bold hover:underline" onClick={() => setResumeSourceModalOpen(false)}>
+                                                Create a Resume in Resume Builder ↗
+                                            </Link>
+                                        </div>
+                                    ) : (
+                                        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
+                                            {builderResumes.map((resume: any) => (
+                                                <button
+                                                    key={resume.id}
+                                                    type="button"
+                                                    onClick={() => void handleImportResume(resume)}
+                                                    className="w-full text-left px-3 py-2.5 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-xs font-bold transition flex items-center justify-between gap-3 group cursor-pointer"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <p className="text-white/80 group-hover:text-white truncate">{resume.title || resume.data?.personalInfo?.name || "Untitled Resume"}</p>
+                                                        <p className="text-[10px] text-white/40 font-normal">Updated: {new Date(resume.updatedAt).toLocaleDateString()}</p>
+                                                    </div>
+                                                    <span className="text-[10px] bg-indigo-500/10 group-hover:bg-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/25 shrink-0 transition">
+                                                        Import
+                                                    </span>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* Custom Wiped Data Success Toast */}
             <AnimatePresence>

@@ -215,12 +215,16 @@ function LoginContent() {
             setLoading(true);
             setError("");
             try {
+                const isPwa = typeof window !== "undefined" && (
+                    window.matchMedia("(display-mode: standalone)").matches || 
+                    (window.navigator as any).standalone === true
+                );
                 const res = await fetch("/api/auth/google", {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json"
                     },
-                    body: JSON.stringify({ accessToken: tokenResponse.access_token })
+                    body: JSON.stringify({ accessToken: tokenResponse.access_token, isPwa })
                 });
                 if (!res.ok) {
                     const errorData = await res.json().catch(() => ({ error: "Failed backend verification" }));
@@ -401,6 +405,10 @@ function LoginContent() {
 
         try {
             const flowType = otpStep === "otp_verify" ? originalFlowType : "forgot_password";
+            const isPwa = typeof window !== "undefined" && (
+                window.matchMedia("(display-mode: standalone)").matches || 
+                (window.navigator as any).standalone === true
+            );
             const res = await fetch("/api/auth/verify-otp", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -408,7 +416,8 @@ function LoginContent() {
                     identifier: forgotIdentifier,
                     otp: enteredOtp,
                     flowType,
-                    accountType   // pass the account type so the right collection is queried
+                    accountType,   // pass the account type so the right collection is queried
+                    isPwa
                 })
             });
 

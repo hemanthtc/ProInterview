@@ -24,10 +24,11 @@ export interface SessionPayload {
 /**
  * Creates a signed JWT using native Node.js crypto (HMAC-SHA256).
  */
-export function createToken(payload: SessionPayload): string {
+export function createToken(payload: SessionPayload, isPwa?: boolean): string {
     const JWT_SECRET = getJwtSecret();
     const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-    const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 })).toString("base64url");
+    const duration = isPwa ? 365 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+    const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + duration })).toString("base64url");
     const signature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${data}`).digest("base64url");
     return `${header}.${data}.${signature}`;
 }
@@ -63,15 +64,16 @@ export function verifyToken(token: string): SessionPayload | null {
 /**
  * Sets the secure HttpOnly cookie containing the session token.
  */
-export async function setSessionCookie(payload: SessionPayload) {
-    const token = createToken(payload);
+export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean) {
+    const token = createToken(payload, isPwa);
     const cookieStore = await cookies();
+    const durationSec = isPwa ? 365 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
     cookieStore.set("session", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
         sameSite: "lax",
         path: "/",
-        maxAge: 60 * 60 * 24 // 1 day
+        maxAge: durationSec
     });
 }
 

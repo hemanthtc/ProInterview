@@ -5,7 +5,7 @@ import { setSessionCookie } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
-        const { accessToken } = await req.json();
+        const { accessToken, isPwa } = await req.json();
 
         if (!accessToken) {
             return NextResponse.json({ error: "Access token is required" }, { status: 400 });
@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
             identifier: user.identifier,
             role: "user",
             isOrganization: false
-        });
+        }, isPwa);
 
         // Return user credentials to the client
         return NextResponse.json({

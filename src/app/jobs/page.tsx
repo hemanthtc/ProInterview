@@ -103,6 +103,18 @@ export default function JobsPage() {
     const [trackedJobs, setTrackedJobs] = useState<TrackedJob[]>([]);
     const [trackingLoading, setTrackingLoading] = useState(false);
 
+    // ATS match state per job card
+    const [atsMatches, setAtsMatches] = useState<Record<string, {
+        loading: boolean;
+        error?: string;
+        matchPercent?: number;
+        keywordHits?: string[];
+        keywordGaps?: string[];
+        sectionAdvice?: string[];
+        rewrittenBullets?: string[];
+    }>>({});
+    const [expandedAts, setExpandedAts] = useState<Record<string, boolean>>({});
+
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
@@ -345,6 +357,103 @@ export default function JobsPage() {
             });
         } catch (err) {
             console.error("Failed to update job status:", err);
+        }
+    };
+
+    const runAtsMatchForJob = async (job: MatchedJob) => {
+        let activeResume = resumeText;
+        if (!activeResume) {
+            activeResume = localStorage.getItem("userResumeCvText") || "";
+            if (activeResume) {
+                setResumeText(activeResume);
+            }
+        }
+
+        if (!activeResume) {
+            const userIdentifier = localStorage.getItem("userIdentifier");
+            if (userIdentifier) {
+                try {
+                    const userType = localStorage.getItem("userType") || "user";
+                    const res = await fetch(
+                        `/api/auth/profile?identifier=${encodeURIComponent(userIdentifier)}&accountType=${encodeURIComponent(userType)}`
+                    );
+                    const data = await res.json();
+                    if (res.ok && data.user && data.user.resumeCvText) {
+                        activeResume = data.user.resumeCvText;
+                        setResumeText(activeResume);
+                        if (data.user.resumeCvName) {
+                            setResumeFileName(data.user.resumeCvName);
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Auto-fetching resume failed", e);
+                }
+            }
+        }
+
+        if (!activeResume) {
+            setAtsMatches(prev => ({
+                ...prev,
+                [job.id]: {
+                    loading: false,
+                    error: "Please enter or upload your resume first."
+                }
+            }));
+            return;
+        }
+
+        setAtsMatches(prev => ({
+            ...prev,
+            [job.id]: { loading: true }
+        }));
+
+        try {
+            const res = await fetch("/api/ats-match", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    resumeText: activeResume,
+                    jobDescription: job.description,
+                    company: job.company,
+                    role: job.role
+                })
+            });
+            if (!res.ok) {
+                throw new Error("Failed to compute match");
+            }
+            const data = await res.json();
+            setAtsMatches(prev => ({
+                ...prev,
+                [job.id]: {
+                    loading: false,
+                    matchPercent: data.matchPercent,
+                    keywordHits: data.keywordHits,
+                    keywordGaps: data.keywordGaps,
+                    sectionAdvice: data.sectionAdvice,
+                    rewrittenBullets: data.rewrittenBullets
+                }
+            }));
+        } catch (err: any) {
+            setAtsMatches(prev => ({
+                ...prev,
+                [job.id]: {
+                    loading: false,
+                    error: err.message || "Failed to analyze"
+                }
+            }));
+        }
+    };
+
+    const toggleAtsMatch = async (job: MatchedJob) => {
+        if (expandedAts[job.id]) {
+            setExpandedAts(prev => ({ ...prev, [job.id]: false }));
+            return;
+        }
+
+        setExpandedAts(prev => ({ ...prev, [job.id]: true }));
+
+        if (!atsMatches[job.id]) {
+            await runAtsMatchForJob(job);
         }
     };
 
@@ -776,7 +885,7 @@ export default function JobsPage() {
 
                 {/* Section 2: Matched Job Openings */}
                 {step === "results" && (
-                    <div className="space-y-3">
+                    <div className="space-y-3 w-full max-w-full">
                     <div className="flex items-center justify-between">
                         <h2 className="text-base font-bold flex items-center gap-2 flex-wrap">
                             <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" /> Matched job openings ({jobs.length})
@@ -950,7 +1059,7 @@ export default function JobsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid gap-3">
+                        <div className="grid gap-3 w-full max-w-full">
                             {jobs.filter((job) => {
                                 // Experience filter
                                 if (experienceFilter !== "all") {
@@ -1008,7 +1117,7 @@ export default function JobsPage() {
                             }).map((job) => (
                                 <div
                                     key={job.id}
-                                    className={`rounded-2xl border p-4 transition ${
+                                    className={`rounded-2xl border p-4 transition w-full max-w-full overflow-hidden ${
                                         theme === "light"
                                             ? "bg-white border-slate-200 shadow-sm"
                                             : theme === "eyeprotect"
@@ -1016,7 +1125,7 @@ export default function JobsPage() {
                                             : "bg-white/5 border-white/10"
                                     }`}
                                 >
-                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div className="flex flex-wrap items-start justify-between gap-3 w-full">
                                         <div className="min-w-0 flex-1">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <h3 className="font-semibold text-sm">
@@ -1061,18 +1170,110 @@ export default function JobsPage() {
                                                 ))}
                                             </div>
                                         </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => applyWithScorecard(job)}
-                                            className={`inline-flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer shrink-0 ${
-                                                theme === "eyeprotect"
-                                                    ? "bg-[#0b5f58] hover:bg-[#084842] text-white"
-                                                    : "bg-emerald-600 hover:bg-emerald-500 text-white"
-                                            }`}
-                                        >
-                                            Apply <ExternalLink className="w-3 h-3" />
-                                        </button>
+                                        <div className="flex flex-col sm:flex-row gap-2 shrink-0">
+                                            <button
+                                                type="button"
+                                                onClick={() => void toggleAtsMatch(job)}
+                                                className={`inline-flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                                    expandedAts[job.id]
+                                                        ? "bg-indigo-600 text-white"
+                                                        : theme === "eyeprotect"
+                                                        ? "bg-[#e5dfd3] hover:bg-[#d5cebf] text-slate-800"
+                                                        : "bg-white/10 hover:bg-white/20 text-white"
+                                                }`}
+                                            >
+                                                <Sparkles className="w-3 h-3 text-indigo-400" />
+                                                {expandedAts[job.id] ? "Hide ATS" : "ATS Match"}
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => applyWithScorecard(job)}
+                                                className={`inline-flex items-center justify-center gap-1 rounded-xl px-3 py-1.5 text-xs font-bold transition cursor-pointer ${
+                                                    theme === "eyeprotect"
+                                                        ? "bg-[#0b5f58] hover:bg-[#084842] text-white"
+                                                        : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                                                }`}
+                                            >
+                                                Apply <ExternalLink className="w-3 h-3" />
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {expandedAts[job.id] && (
+                                        <div className={`mt-4 p-4 rounded-xl border ${
+                                            isLight ? "border-slate-200 bg-slate-50" : "border-white/5 bg-white/5"
+                                        }`}>
+                                            {atsMatches[job.id]?.loading ? (
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                                                    Evaluating Resume vs Job Description...
+                                                </div>
+                                            ) : atsMatches[job.id]?.error ? (
+                                                <p className="text-red-400 text-xs">{atsMatches[job.id]?.error}</p>
+                                            ) : (
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs font-semibold">ATS Compatibility:</span>
+                                                        <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${
+                                                            (atsMatches[job.id]?.matchPercent || 0) >= 80
+                                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                                : (atsMatches[job.id]?.matchPercent || 0) >= 60
+                                                                ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                                                : "bg-red-500/10 text-red-400 border border-red-500/20"
+                                                        }`}>
+                                                            {atsMatches[job.id]?.matchPercent}% Match
+                                                        </span>
+                                                    </div>
+
+                                                    {atsMatches[job.id]?.sectionAdvice && (atsMatches[job.id]?.sectionAdvice?.length || 0) > 0 && (
+                                                        <div>
+                                                            <h4 className="text-xs font-semibold text-indigo-400 mb-1 flex items-center gap-1">
+                                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                Resume Optimization Tips:
+                                                            </h4>
+                                                            <ul className="list-disc pl-4 space-y-1 text-xs">
+                                                                {atsMatches[job.id]?.sectionAdvice?.map((advice, i) => (
+                                                                    <li key={i}>{advice}</li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    )}
+
+                                                    {atsMatches[job.id]?.keywordGaps && (atsMatches[job.id]?.keywordGaps?.length || 0) > 0 && (
+                                                        <div>
+                                                            <h4 className="text-xs font-semibold text-red-400 mb-1 flex items-center gap-1">
+                                                                <XCircle className="w-3.5 h-3.5" />
+                                                                Missing Keywords (Gaps):
+                                                            </h4>
+                                                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                {atsMatches[job.id]?.keywordGaps?.map((gap, i) => (
+                                                                    <span key={i} className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2 py-0.5 rounded-md font-medium">
+                                                                        {gap}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {atsMatches[job.id]?.keywordHits && (atsMatches[job.id]?.keywordHits?.length || 0) > 0 && (
+                                                        <div>
+                                                            <h4 className="text-xs font-semibold text-emerald-400 mb-1 flex items-center gap-1">
+                                                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                                                Matching Keywords (Hits):
+                                                            </h4>
+                                                            <div className="flex flex-wrap gap-1.5 mt-1">
+                                                                {atsMatches[job.id]?.keywordHits?.map((hit, i) => (
+                                                                    <span key={i} className="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md font-medium">
+                                                                        {hit}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
