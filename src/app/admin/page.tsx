@@ -10,6 +10,28 @@ import {
     Sun, Moon, AlertCircle, CheckCircle2, Clock, Star, PenTool
 } from "lucide-react";
 
+const SYSTEM_FEATURES = [
+    { id: "resume_ai", label: "AI Resume Generation" },
+    { id: "ats_match", label: "ATS Scan & Match" },
+    { id: "synthetic_data", label: "Synthetic Generator (Custom Key)" },
+    { id: "synthetic_data_pro", label: "Synthetic Generator (Pre-configured Key)" },
+    { id: "study_materials", label: "Study Materials 3D Carousel & Notes" },
+    { id: "study_materials_interview", label: "Study Materials PDF-to-Interview Mode" },
+    { id: "prointerviewer", label: "AI Mock Interview Simulator" },
+    { id: "did_avatar", label: "D-ID Video Avatar Streams" },
+    { id: "coding_lab", label: "Coding Lab submissions" },
+    { id: "system_design", label: "System Design Lab shapes & evaluate" },
+    { id: "star_coach", label: "STAR behavioral coach drills" },
+    { id: "coaches", label: "Coach Marketplace slot bookings" },
+    { id: "negotiate", label: "Salary Intel & Negotiation Simulator" },
+    { id: "aptitude", label: "Aptitude Quizzes & Mock Exams" },
+    { id: "roadmap", label: "AI Custom Learning Roadmaps" },
+    { id: "company_research", label: "Company Research Assistant" },
+    { id: "email_portfolio", label: "Email & Portfolio Analyzer" },
+    { id: "domains", label: "Domain Packs (ML, DevOps, Android)" },
+    { id: "community", label: "Community Chat Rooms & DMs" }
+];
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface StatsData {
     totalUsers: number;
@@ -84,7 +106,7 @@ function StatCard({ icon, label, value, sub, color, onClick }: { icon: React.Rea
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account" | "leaderboard" | "ratelimits" | "study_materials">("dashboard");
+    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account" | "leaderboard" | "ratelimits" | "study_materials" | "tier_features">("dashboard");
     const [leaderboard, setLeaderboard] = useState<any[]>([]);
     const [leaderboardMeta, setLeaderboardMeta] = useState<{ organizationName?: string; seatsUsed?: number; planHint?: string }>({});
     const [stats, setStats] = useState<StatsData | null>(null);
@@ -153,6 +175,58 @@ export default function AdminDashboard() {
             })
             .catch(() => {});
     }, [selectedRateLimitTier]);
+
+    // Tier features configuration state
+    const [tierFeatureConfigs, setTierFeatureConfigs] = useState<any[]>([]);
+    const [isEditingTierFeatures, setIsEditingTierFeatures] = useState<boolean>(false);
+    const [tierFeaturesSaving, setTierFeaturesSaving] = useState<boolean>(false);
+    const [tierFeatureMsg, setTierFeatureMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    const fetchTierFeatures = useCallback(() => {
+        fetch("/api/admin/tier-features")
+            .then((r) => r.json())
+            .then((d) => {
+                if (d.configs) {
+                    setTierFeatureConfigs(d.configs);
+                }
+            })
+            .catch(() => {});
+    }, []);
+
+    const handleFeatureToggle = (tier: string, featureId: string, checked: boolean) => {
+        setTierFeatureConfigs((prev) => {
+            return prev.map((config) => {
+                if (config.tier === tier) {
+                    const newFeatures = checked
+                        ? [...config.features, featureId]
+                        : config.features.filter((id: string) => id !== featureId);
+                    return { ...config, features: newFeatures };
+                }
+                return config;
+            });
+        });
+    };
+
+    const handleSaveTierFeatures = async () => {
+        setTierFeaturesSaving(true);
+        setTierFeatureMsg(null);
+        try {
+            const res = await fetch("/api/admin/tier-features", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ configs: tierFeatureConfigs })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to save features.");
+            setTierFeatureMsg({ type: "success", text: "Tier feature customizations updated successfully." });
+            setIsEditingTierFeatures(false);
+            setTimeout(() => setTierFeatureMsg(null), 3000);
+        } catch (err: any) {
+            setTierFeatureMsg({ type: "error", text: err.message });
+        } finally {
+            setTierFeaturesSaving(false);
+        }
+    };
 
     // Unverified users actions modal
     const [showUnverifiedModal, setShowUnverifiedModal] = useState(false);
@@ -398,7 +472,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <nav className="hidden md:flex items-center gap-1">
-                    {(["dashboard", "employees", "leaderboard", "ratelimits", "study_materials", "account"] as const).map(tab => (
+                    {(["dashboard", "employees", "leaderboard", "ratelimits", "tier_features", "study_materials", "account"] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => {
@@ -417,6 +491,8 @@ export default function AdminDashboard() {
                                         .catch(() => setLeaderboard([]));
                                 } else if (tab === "ratelimits") {
                                     fetchRateLimits();
+                                } else if (tab === "tier_features") {
+                                    fetchTierFeatures();
                                 }
                             }}
                             className={`px-4 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${
@@ -425,7 +501,7 @@ export default function AdminDashboard() {
                                     : `${isDark ? "text-white/50 hover:text-white hover:bg-white/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"}`
                             }`}
                         >
-                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : tab === "leaderboard" ? "Team / College" : tab === "ratelimits" ? "Rate Limits" : tab === "study_materials" ? "Study Materials" : "Dashboard"}
+                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : tab === "leaderboard" ? "Team / College" : tab === "ratelimits" ? "Rate Limits" : tab === "tier_features" ? "Tier Features" : tab === "study_materials" ? "Study Materials" : "Dashboard"}
                         </button>
                     ))}
                 </nav>
@@ -446,7 +522,7 @@ export default function AdminDashboard() {
 
             {/* ── Mobile tab bar ── */}
             <div className={`md:hidden flex items-center gap-1 px-4 py-2 border-b ${isDark ? "border-white/8 bg-[#05050f]/90" : "border-slate-200 bg-white/90"} backdrop-blur-xl sticky top-[57px] z-10 overflow-x-auto`}>
-                {(["dashboard", "employees", "leaderboard", "study_materials", "account"] as const).map(tab => (
+                {(["dashboard", "employees", "leaderboard", "tier_features", "study_materials", "account"] as const).map(tab => (
                     <button
                         key={tab}
                         onClick={() => {
@@ -463,6 +539,8 @@ export default function AdminDashboard() {
                                         });
                                     })
                                     .catch(() => setLeaderboard([]));
+                            } else if (tab === "tier_features") {
+                                fetchTierFeatures();
                             }
                         }}
                         className={`flex-1 py-1.5 rounded-lg text-xs font-medium capitalize transition-all ${
@@ -471,7 +549,7 @@ export default function AdminDashboard() {
                                 : `${isDark ? "text-white/40" : "text-slate-400"}`
                         }`}
                     >
-                        {tab === "employees" ? "Employees" : tab === "account" ? "Account" : tab === "leaderboard" ? "Team" : tab === "study_materials" ? "Study" : "Dashboard"}
+                        {tab === "employees" ? "Employees" : tab === "account" ? "Account" : tab === "leaderboard" ? "Team" : tab === "tier_features" ? "Tiers" : tab === "study_materials" ? "Study" : "Dashboard"}
                     </button>
                 ))}
             </div>
@@ -1309,6 +1387,135 @@ export default function AdminDashboard() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* ════════════════════════════════════════════════════════
+                    TIER FEATURES TAB
+                ════════════════════════════════════════════════════════ */}
+                {activeTab === "tier_features" && (
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold">Tier Feature Customization</h2>
+                                <p className={`text-sm mt-1 ${isDark ? "text-white/50" : "text-slate-500"}`}>
+                                    Toggle features on/off for each subscription tier. Changes are saved to the database.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                {!isEditingTierFeatures ? (
+                                    <button
+                                        onClick={() => { setIsEditingTierFeatures(true); fetchTierFeatures(); }}
+                                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-indigo-600/20 text-indigo-400 text-sm font-medium ring-1 ring-indigo-500/30 hover:bg-indigo-600/30 transition-all"
+                                    >
+                                        <PenTool className="w-3.5 h-3.5" /> Edit
+                                    </button>
+                                ) : (
+                                    <>
+                                        <button
+                                            onClick={() => { setIsEditingTierFeatures(false); fetchTierFeatures(); }}
+                                            className={`px-4 py-2 rounded-xl text-sm font-medium border ${isDark ? "border-white/15 text-white/70 hover:bg-white/10" : "border-slate-300 text-slate-700 hover:bg-slate-100"}`}
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            disabled={tierFeaturesSaving}
+                                            onClick={handleSaveTierFeatures}
+                                            className="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white text-sm font-semibold shadow-lg shadow-indigo-500/25 hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50"
+                                        >
+                                            {tierFeaturesSaving ? "Saving..." : "Save Changes"}
+                                        </button>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {tierFeatureMsg && (
+                            <div className={`flex items-center gap-2 p-4 rounded-xl border text-sm ${
+                                tierFeatureMsg.type === "success"
+                                    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                                    : "bg-red-500/10 border-red-500/20 text-red-400"
+                            }`}>
+                                {tierFeatureMsg.type === "success" ? <CheckCircle2 className="w-4 h-4 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 flex-shrink-0" />}
+                                {tierFeatureMsg.text}
+                            </div>
+                        )}
+
+                        {tierFeatureConfigs.length === 0 ? (
+                            <div className={`text-center py-16 rounded-2xl border ${isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200 bg-white"}`}>
+                                <p className="text-sm opacity-50">Loading tier configurations...</p>
+                            </div>
+                        ) : (
+                            <div className={`rounded-2xl border ${isDark ? "border-white/8 bg-white/[0.02]" : "border-slate-200 bg-white"} overflow-hidden`}>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full">
+                                        <thead>
+                                            <tr className={`${isDark ? "bg-white/[0.03] border-b border-white/8" : "bg-slate-50 border-b border-slate-200"}`}>
+                                                <th className={`text-left px-5 py-4 text-xs font-semibold uppercase tracking-wider ${isDark ? "text-white/50" : "text-slate-500"}`}>
+                                                    Feature
+                                                </th>
+                                                {tierFeatureConfigs.map((config: any) => (
+                                                    <th key={config.tier} className="px-5 py-4 text-center">
+                                                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                                                            config.tier === "free"
+                                                                ? "bg-slate-500/20 text-slate-300"
+                                                                : config.tier === "pro"
+                                                                    ? "bg-indigo-500/20 text-indigo-300"
+                                                                    : "bg-purple-500/20 text-purple-300"
+                                                        }`}>
+                                                            {config.tier === "free" && <Zap className="w-3 h-3" />}
+                                                            {config.tier === "pro" && <Crown className="w-3 h-3" />}
+                                                            {config.tier === "elite" && <Star className="w-3 h-3" />}
+                                                            {config.tier}
+                                                        </span>
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {SYSTEM_FEATURES.map((feature, idx) => (
+                                                <tr key={feature.id} className={`${isDark ? "border-b border-white/5 hover:bg-white/[0.02]" : "border-b border-slate-100 hover:bg-slate-50"} transition-colors ${idx % 2 === 0 ? "" : isDark ? "bg-white/[0.01]" : "bg-slate-25"}`}>
+                                                    <td className={`px-5 py-3.5 text-sm font-medium ${isDark ? "text-white/80" : "text-slate-700"}`}>
+                                                        {feature.label}
+                                                    </td>
+                                                    {tierFeatureConfigs.map((config: any) => {
+                                                        const isChecked = config.features?.includes(feature.id);
+                                                        return (
+                                                            <td key={config.tier} className="px-5 py-3.5 text-center">
+                                                                <label className="relative inline-flex items-center cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={isChecked}
+                                                                        disabled={!isEditingTierFeatures}
+                                                                        onChange={(e) => handleFeatureToggle(config.tier, feature.id, e.target.checked)}
+                                                                        className="sr-only peer"
+                                                                    />
+                                                                    <div className={`w-9 h-5 rounded-full transition-all duration-200 ${
+                                                                        isChecked
+                                                                            ? config.tier === "free"
+                                                                                ? "bg-emerald-500"
+                                                                                : config.tier === "pro"
+                                                                                    ? "bg-indigo-500"
+                                                                                    : "bg-purple-500"
+                                                                            : isDark ? "bg-white/10" : "bg-slate-200"
+                                                                    } ${!isEditingTierFeatures ? "opacity-60 cursor-not-allowed" : "cursor-pointer"}`}>
+                                                                        <div className={`w-4 h-4 rounded-full bg-white shadow-md transform transition-transform duration-200 translate-y-0.5 ${isChecked ? "translate-x-[18px]" : "translate-x-0.5"}`} />
+                                                                    </div>
+                                                                </label>
+                                                            </td>
+                                                        );
+                                                    })}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className={`px-5 py-3 text-[11px] ${isDark ? "text-white/30 bg-white/[0.02] border-t border-white/5" : "text-slate-400 bg-slate-50 border-t border-slate-100"}`}>
+                                    Click &quot;Edit&quot; to toggle features, then &quot;Save Changes&quot; to persist to the database. These settings control which features are accessible per subscription tier.
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

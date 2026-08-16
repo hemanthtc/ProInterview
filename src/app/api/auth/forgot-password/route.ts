@@ -38,7 +38,8 @@ export async function POST(req: NextRequest) {
         }
 
         const Model = getModel(accountType);
-        const account = await Model.findOne({ identifier }) as {
+        const lookupFilter = { $or: [{ identifier }, { identifier: identifier.toLowerCase() }] };
+        const account = await Model.findOne(lookupFilter) as {
             isVerified?: boolean;
             type?: string;
             identifier: string;

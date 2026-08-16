@@ -61,11 +61,19 @@ export async function POST(req: NextRequest) {
         );
 
         // Set secure HttpOnly session cookie
-        await setSessionCookie({
-            identifier: user.identifier,
-            role: "user",
-            isOrganization: false
-        }, isPwa);
+        try {
+            await setSessionCookie({
+                identifier: user.identifier,
+                role: "user",
+                isOrganization: false
+            }, isPwa);
+        } catch (cookieErr) {
+            console.error("Failed to set session cookie for Google login:", cookieErr);
+            return NextResponse.json(
+                { error: "Authentication succeeded but session could not be created. Please try again." },
+                { status: 500 }
+            );
+        }
 
         // Return user credentials to the client
         return NextResponse.json({

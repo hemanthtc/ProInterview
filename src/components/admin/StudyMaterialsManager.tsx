@@ -64,6 +64,7 @@ export default function StudyMaterialsManager() {
     const [loadingPages, setLoadingPages] = useState(false);
     const [savingPages, setSavingPages] = useState(false);
     const [uploadingPdf, setUploadingPdf] = useState(false);
+    const [deletingPdf, setDeletingPdf] = useState(false);
 
     // Form modals state
     const [showAddCourse, setShowAddCourse] = useState(false);
@@ -131,6 +132,52 @@ export default function StudyMaterialsManager() {
         } finally {
             setUploadingPdf(false);
             e.target.value = "";
+        }
+    };
+
+    const handleDeletePdf = async () => {
+        if (!selectedCourse || !selectedSubject || !selectedChapter) return;
+        if (!window.confirm("Are you sure you want to delete this PDF document? This will remove the document from S3.")) return;
+
+        setDeletingPdf(true);
+        try {
+            const res = await fetch(`/api/admin/study-materials/upload-pdf?courseId=${selectedCourse.id}&subjectId=${selectedSubject.id}&chapterId=${selectedChapter.id}`, {
+                method: "DELETE",
+            });
+            const data = await res.json();
+            if (res.ok) {
+                showMsg("PDF document deleted successfully from S3.", "success");
+                // Update local catalog to show PDF is inactive
+                const updatedCatalog = JSON.parse(JSON.stringify(catalog)) as Group[];
+                for (const group of updatedCatalog) {
+                    for (const course of group.courses) {
+                        if (course.id === selectedCourse.id) {
+                            const subChapters = course.chapters[selectedSubject.id];
+                            if (subChapters && subChapters.rows) {
+                                subChapters.rows.forEach((r: any) => {
+                                    r.chapters.forEach((ch: any) => {
+                                        if (ch.id === selectedChapter.id) {
+                                            ch.hasPdf = false;
+                                        }
+                                    });
+                                });
+                            }
+                        }
+                    }
+                }
+                setCatalog(updatedCatalog);
+                // Update selected chapter state
+                setSelectedChapter({
+                    ...selectedChapter,
+                    hasPdf: false
+                });
+            } else {
+                showMsg(data.error || "Failed to delete PDF.", "error");
+            }
+        } catch (err) {
+            showMsg("Error deleting PDF file.", "error");
+        } finally {
+            setDeletingPdf(false);
         }
     };
 
@@ -716,6 +763,33 @@ export default function StudyMaterialsManager() {
                                     <div className="flex flex-col items-center justify-center py-20">
                                         <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
                                         <span className="text-xs text-white/30 mt-2 font-medium">Fetching pages content from S3...</span>
+                                    </div>
+                                ) : (selectedChapter.hasPdf && pages.length === 0) ? (
+                                    <div className="flex flex-col items-center justify-center py-16 bg-emerald-500/3 border border-emerald-500/10 border-dashed rounded-xl">
+                                        <FileText className="w-10 h-10 text-emerald-400/50" />
+                                        <span className="text-sm font-semibold text-emerald-300 mt-3">PDF Document Active</span>
+                                        <span className="text-xs text-white/35 mt-1 text-center px-4">PDF has been uploaded successfully. This chapter will render using the PDF inside the 3D Reader.</span>
+                                        <span className="text-[10px] font-mono text-white/25 mt-3 bg-white/3 px-2.5 py-1 rounded select-all border border-white/5">
+                                            study-materials/{selectedCourse?.id}/{selectedSubject?.id}/{selectedChapter.id}/document.pdf
+                                        </span>
+                                        <div className="flex items-center gap-3 mt-4">
+                                            <a 
+                                                href={`/api/study-materials/pdf?course=${selectedCourse?.id}&subject=${selectedSubject?.id}&chapter=${selectedChapter.id}`} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white transition-colors"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" /> View PDF
+                                            </a>
+                                            <button 
+                                                onClick={handleDeletePdf} 
+                                                disabled={deletingPdf}
+                                                className="flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white disabled:opacity-50 transition-colors"
+                                            >
+                                                {deletingPdf ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                                Delete PDF
+                                            </button>
+                                        </div>
                                     </div>
                                 ) : pages.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center py-16 bg-white/3 border border-white/5 border-dashed rounded-xl">

@@ -164,7 +164,9 @@ function LoginContent() {
         document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
         localStorage.setItem("userName", name);
         localStorage.setItem("userIdentifier", identifier);
-        localStorage.setItem("userType", loginMode);
+        // Derive userType from the resolved role to avoid stale loginMode closure
+        const resolvedType = (role === "admin" || role === "employee") ? "organization" : "user";
+        localStorage.setItem("userType", resolvedType);
         localStorage.setItem("userRole", role || "user");
 
         if (details) {
@@ -208,7 +210,7 @@ function LoginContent() {
         } else {
             router.push("/");
         }
-    }, [router, loginMode]);
+    }, [router]);
 
     const googleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {

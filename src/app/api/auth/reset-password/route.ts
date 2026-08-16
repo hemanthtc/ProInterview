@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
         }
 
         const Model = getModel(accountType);
-        const account = await Model.findOne({ identifier }) as {
+        const lookupFilter = { $or: [{ identifier }, { identifier: identifier.toLowerCase() }] };
+        const account = await Model.findOne(lookupFilter) as {
             otpCode?: string;
             otpExpires?: Date;
             password?: string;
@@ -56,13 +57,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No account found for this credential." }, { status: 404 });
         }
 
+        // Check expiry FIRST (same fix as verify-otp)
+        if (!account.otpExpires || new Date() > account.otpExpires) {
+            return NextResponse.json({ error: "Verification code has expired. Please request a new one." }, { status: 400 });
+        }
+
         const otpValid = await verifyOtp(otp, account.otpCode);
         if (!otpValid) {
             return NextResponse.json({ error: "Invalid verification code for password reset." }, { status: 400 });
-        }
-
-        if (!account.otpExpires || new Date() > account.otpExpires) {
-            return NextResponse.json({ error: "Verification code has expired." }, { status: 400 });
         }
 
         account.password = await bcryptjs.hash(newPassword, 10);

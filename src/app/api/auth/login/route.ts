@@ -81,18 +81,20 @@ export async function POST(req: NextRequest) {
         let account: InstanceType<typeof User> | InstanceType<typeof OrgAdmin> | InstanceType<typeof OrgEmployee> | null = null;
         let resolvedOrgRole: AccountType = "user";
 
+        const lookupFilter = { $or: [{ identifier }, { identifier: identifier.toLowerCase() }] };
+
         if (loginMode === "user") {
             if (!identifier.includes("@")) {
                 return NextResponse.json({ error: "Only email logins are supported. Please log in using your email address." }, { status: 400 });
             }
-            account = await User.findOne({ identifier });
+            account = await User.findOne(lookupFilter);
             if (!account) {
                 return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
             }
             resolvedOrgRole = "user";
         } else if (loginMode === "organization") {
             if (orgSubMode === "admin") {
-                account = await OrgAdmin.findOne({ identifier });
+                account = await OrgAdmin.findOne(lookupFilter);
                 if (!account) {
                     return NextResponse.json(
                         { error: "Invalid credentials for organization Administration login." },
@@ -101,7 +103,7 @@ export async function POST(req: NextRequest) {
                 }
                 resolvedOrgRole = "admin";
             } else if (orgSubMode === "employee") {
-                account = await OrgEmployee.findOne({ identifier });
+                account = await OrgEmployee.findOne(lookupFilter);
                 if (!account) {
                     return NextResponse.json(
                         { error: "Invalid credentials for organization Employee login." },

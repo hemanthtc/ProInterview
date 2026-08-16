@@ -111,19 +111,5 @@ export const initialResumeData: ResumeData = {
       link: ""
     }
   ],
-  customSections: [
-    {
-      id: "cust-1",
-      title: "Volunteering",
-      items: [
-        {
-          id: "cust-item-1",
-          title: "Technical Mentor",
-          subtitle: "CoderDojo San Francisco",
-          date: "2020 - Present",
-          description: "Mentor underprivileged middle school children in building web pages and introducing basic programming concepts using Scratch and HTML."
-        }
-      ]
-    }
-  ]
+  customSections: []
 };

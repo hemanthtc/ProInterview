@@ -13,10 +13,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "identifier and accountType are required." }, { status: 400 });
         }
 
+        const lookupFilter = { $or: [{ identifier }, { identifier: identifier.toLowerCase() }] };
+
         if (accountType === "admin") {
-            await OrgAdmin.findOneAndUpdate({ identifier }, { isOnline: false });
+            await OrgAdmin.findOneAndUpdate(lookupFilter, { isOnline: false });
         } else if (accountType === "employee") {
-            await OrgEmployee.findOneAndUpdate({ identifier }, { isOnline: false });
+            await OrgEmployee.findOneAndUpdate(lookupFilter, { isOnline: false });
         }
 
         // Clear secure HttpOnly session cookie

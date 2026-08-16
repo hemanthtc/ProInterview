@@ -89,12 +89,12 @@ const EditableText: React.FC<EditableTextProps> = ({
         className: "no-print edit-pencil-icon opacity-0 group-hover:opacity-100 transition-opacity text-purple-400/70",
         style: {
           position: 'absolute',
-          right: tagName === 'span' ? '-14px' : '4px',
-          top: tagName === 'span' ? '50%' : '8px',
-          transform: tagName === 'span' ? 'translateY(-50%)' : 'none',
+          left: tagName === 'span' ? '-14px' : '-16px',
+          top: '50%',
+          transform: 'translateY(-50%)',
           pointerEvents: 'none',
           display: isFocused ? 'none' : 'inline-flex',
-          marginLeft: '4px',
+          marginRight: '4px',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 10
@@ -110,6 +110,21 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   const activeFont = FONT_FAMILIES.find(f => f.id === style.fontFamilyId) || FONT_FAMILIES[0];
 
   const pageRef = React.useRef<HTMLDivElement>(null);
+  const [activeItemMenuId, setActiveItemMenuId] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && target.closest('.control-toggle-btn')) {
+        return;
+      }
+      setActiveItemMenuId(null);
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, []);
 
   React.useEffect(() => {
     if (!pageRef.current) return;
@@ -727,7 +742,179 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     );
   };
 
+  const renderItemControls = (
+    itemId: string,
+    sectionKey: string,
+    isHidden: boolean,
+    onDelete: () => void,
+    customSectionId?: string
+  ) => {
+    const isMenuOpen = activeItemMenuId === itemId;
+
+    return (
+      <div className="no-print resume-item-controls-wrapper" style={{ position: 'absolute', top: '0px', right: '-32px', zIndex: 30 }}>
+        <button
+          type="button"
+          className="control-toggle-btn"
+          onClick={(e) => {
+            e.stopPropagation();
+            setActiveItemMenuId(isMenuOpen ? null : itemId);
+          }}
+          title="Item Options"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '4px',
+            border: '1px solid rgba(0,0,0,0.1)',
+            background: '#ffffff',
+            borderRadius: '50%',
+            cursor: 'pointer',
+            color: '#6b7280',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+            width: '22px',
+            height: '22px',
+            transition: 'all 0.2s'
+          }}
+        >
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="8" y1="12" x2="16" y2="12" />
+          </svg>
+        </button>
+
+        {isMenuOpen && (
+          <div
+            className="item-vertical-menu"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'absolute',
+              top: '0px',
+              right: '26px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '2px',
+              background: '#ffffff',
+              border: '1px solid rgba(0,0,0,0.15)',
+              borderRadius: '6px',
+              padding: '4px',
+              zIndex: 100,
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+              minWidth: '100px'
+            }}
+          >
+            <button
+              type="button"
+              className="menu-item-btn"
+              onClick={() => {
+                handleToggleItemVisibility(itemId, sectionKey as any, customSectionId);
+                setActiveItemMenuId(null);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 8px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 500,
+                color: '#374151',
+                width: '100%',
+                textAlign: 'left',
+                borderRadius: '4px'
+              }}
+            >
+              {isHidden ? <Eye size={11} style={{ color: '#ef4444' }} /> : <EyeOff size={11} style={{ color: '#10b981' }} />}
+              <span>{isHidden ? "Unhide" : "Hide"}</span>
+            </button>
+            <button
+              type="button"
+              className="menu-item-btn"
+              onClick={() => {
+                handleMoveItem(itemId, sectionKey as any, 'up', customSectionId);
+                setActiveItemMenuId(null);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 8px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 500,
+                color: '#374151',
+                width: '100%',
+                textAlign: 'left',
+                borderRadius: '4px'
+              }}
+            >
+              <ChevronUp size={11} />
+              <span>Move Up</span>
+            </button>
+            <button
+              type="button"
+              className="menu-item-btn"
+              onClick={() => {
+                handleMoveItem(itemId, sectionKey as any, 'down', customSectionId);
+                setActiveItemMenuId(null);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 8px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 500,
+                color: '#374151',
+                width: '100%',
+                textAlign: 'left',
+                borderRadius: '4px'
+              }}
+            >
+              <ChevronDown size={11} />
+              <span>Move Down</span>
+            </button>
+            <button
+              type="button"
+              className="menu-item-btn"
+              onClick={() => {
+                onDelete();
+                setActiveItemMenuId(null);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                padding: '4px 8px',
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 500,
+                color: '#ef4444',
+                width: '100%',
+                textAlign: 'left',
+                borderRadius: '4px'
+              }}
+            >
+              <Trash2 size={11} />
+              <span>Delete</span>
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderExperience = () => {
+    if (!data.workExperience || data.workExperience.length === 0) return null;
     if (style.visibleSections?.experience === false) {
       return (
         <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
@@ -748,44 +935,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         <div className="section-list">
           {data.workExperience.map(exp => (
             <div key={exp.id} className={`resume-item-wrap group ${exp.hidden ? 'resume-item-hidden' : ''}`}>
-              <div className="no-print resume-item-controls">
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleToggleItemVisibility(exp.id, 'workExperience')}
-                  title={exp.hidden ? "Unhide Item" : "Hide Item"}
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                >
-                  {exp.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(exp.id, 'workExperience', 'up')}
-                  title="Move Up"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronUp size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(exp.id, 'workExperience', 'down')}
-                  title="Move Down"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronDown size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleDeleteWorkExp(exp.id)}
-                  title="Delete Item"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
+              {renderItemControls(exp.id, 'workExperience', !!exp.hidden, () => handleDeleteWorkExp(exp.id))}
               <div className="resume-item">
                 <div className="resume-item-top">
                   <EditableText 
@@ -841,6 +991,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderEducation = () => {
+    if (!data.education || data.education.length === 0) return null;
     if (style.visibleSections?.education === false) {
       return (
         <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
@@ -861,44 +1012,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         <div className="section-list">
           {data.education.map(edu => (
             <div key={edu.id} className={`resume-item-wrap group ${edu.hidden ? 'resume-item-hidden' : ''}`}>
-              <div className="no-print resume-item-controls">
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleToggleItemVisibility(edu.id, 'education')}
-                  title={edu.hidden ? "Unhide Item" : "Hide Item"}
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                >
-                  {edu.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(edu.id, 'education', 'up')}
-                  title="Move Up"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronUp size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(edu.id, 'education', 'down')}
-                  title="Move Down"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronDown size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleDeleteEdu(edu.id)}
-                  title="Delete Item"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
+              {renderItemControls(edu.id, 'education', !!edu.hidden, () => handleDeleteEdu(edu.id))}
               <div className="resume-item">
                 <div className="resume-item-top">
                   <span className="resume-item-role">
@@ -961,6 +1075,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderProjects = () => {
+    if (!data.projects || data.projects.length === 0) return null;
     if (style.visibleSections?.projects === false) {
       return (
         <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
@@ -981,44 +1096,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         <div className="section-list">
           {data.projects.map(proj => (
             <div key={proj.id} className={`resume-item-wrap group ${proj.hidden ? 'resume-item-hidden' : ''}`}>
-              <div className="no-print resume-item-controls">
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleToggleItemVisibility(proj.id, 'projects')}
-                  title={proj.hidden ? "Unhide Item" : "Hide Item"}
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                >
-                  {proj.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(proj.id, 'projects', 'up')}
-                  title="Move Up"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronUp size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(proj.id, 'projects', 'down')}
-                  title="Move Down"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronDown size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleDeleteProj(proj.id)}
-                  title="Delete Item"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
+              {renderItemControls(proj.id, 'projects', !!proj.hidden, () => handleDeleteProj(proj.id))}
               <div className="resume-item">
                 <div className="resume-item-top">
                   <EditableText 
@@ -1072,6 +1150,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderSkills = () => {
+    if (!data.skills || data.skills.length === 0) return null;
     if (style.visibleSections?.skills === false) {
       return (
         <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
@@ -1148,6 +1227,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderLanguages = () => {
+    if (!data.languages || data.languages.length === 0) return null;
     if (style.visibleSections?.languages === false) {
       return (
         <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
@@ -1223,6 +1303,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderCertifications = () => {
+    if (!data.certifications || data.certifications.length === 0) return null;
     if (style.visibleSections?.certifications === false) {
       return (
         <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
@@ -1243,44 +1324,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         <div className="section-list">
           {data.certifications.map(cert => (
             <div key={cert.id} className={`resume-item-wrap group ${cert.hidden ? 'resume-item-hidden' : ''}`}>
-              <div className="no-print resume-item-controls">
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleToggleItemVisibility(cert.id, 'certifications')}
-                  title={cert.hidden ? "Unhide Item" : "Hide Item"}
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                >
-                  {cert.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(cert.id, 'certifications', 'up')}
-                  title="Move Up"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronUp size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleMoveItem(cert.id, 'certifications', 'down')}
-                  title="Move Down"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                >
-                  <ChevronDown size={13} />
-                </button>
-                <button
-                  type="button"
-                  className="control-btn"
-                  onClick={() => handleDeleteCert(cert.id)}
-                  title="Delete Item"
-                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
-                >
-                  <Trash2 size={13} />
-                </button>
-              </div>
+              {renderItemControls(cert.id, 'certifications', !!cert.hidden, () => handleDeleteCert(cert.id))}
               <div className="resume-item" style={{ gap: 0 }}>
                 <div className="resume-item-top" style={{ fontWeight: 600 }}>
                   <span>
@@ -1311,7 +1355,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderCustomSections = () => {
-    return data.customSections.map(sect => {
+    return data.customSections.filter(sect => sect.items && sect.items.length > 0).map(sect => {
       return (
         <section key={sect.id} className="resume-section">
           {renderSectionTitle(
@@ -1323,44 +1367,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           <div className="section-list">
             {sect.items.map(item => (
               <div key={item.id} className={`resume-item-wrap group ${item.hidden ? 'resume-item-hidden' : ''}`}>
-                <div className="no-print resume-item-controls">
-                  <button
-                    type="button"
-                    className="control-btn"
-                    onClick={() => handleToggleItemVisibility(item.id, 'customSections', sect.id)}
-                    title={item.hidden ? "Unhide Item" : "Hide Item"}
-                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
-                  >
-                    {item.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
-                  </button>
-                  <button
-                    type="button"
-                    className="control-btn"
-                    onClick={() => handleMoveItem(item.id, 'customSections', 'up', sect.id)}
-                    title="Move Up"
-                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                  >
-                    <ChevronUp size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    className="control-btn"
-                    onClick={() => handleMoveItem(item.id, 'customSections', 'down', sect.id)}
-                    title="Move Down"
-                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
-                  >
-                    <ChevronDown size={13} />
-                  </button>
-                  <button
-                    type="button"
-                    className="control-btn"
-                    onClick={() => handleDeleteCustomItem(sect.id, item.id)}
-                    title="Delete Item"
-                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
+                {renderItemControls(item.id, 'customSections', !!item.hidden, () => handleDeleteCustomItem(sect.id, item.id), sect.id)}
                 <div className="resume-item">
                   <div className="resume-item-top">
                     <EditableText 
@@ -1530,31 +1537,24 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         }
         .resume-item-wrap {
           position: relative;
-          padding-right: 20px;
+          padding-right: 0px;
         }
-        .resume-item-controls {
-          position: absolute;
-          top: 0px;
-          right: -22px;
-          display: flex;
-          flex-direction: column;
-          gap: 1px;
-          align-items: center;
-          background: rgba(255, 255, 255, 0.95);
-          border: 1px solid rgba(0,0,0,0.10);
-          padding: 3px 2px;
-          border-radius: 5px;
-          z-index: 10;
-          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-          opacity: 1;
+        .resume-item-date {
+          position: relative !important;
+          margin-right: 0px !important;
         }
-        .resume-item-controls button {
-          padding: 3px !important;
-          border-radius: 3px !important;
-          transition: background 0.15s ease;
+        .resume-item-link {
+          position: relative !important;
         }
-        .resume-item-controls button:hover {
-          background: rgba(0,0,0,0.06) !important;
+        .control-toggle-btn {
+          z-index: 50 !important;
+        }
+        .control-toggle-btn:hover {
+          background: rgba(0, 0, 0, 0.05) !important;
+          color: var(--primary-color) !important;
+        }
+        .menu-item-btn:hover {
+          background: rgba(0, 0, 0, 0.05) !important;
         }
         .section-controls {
           display: flex;
@@ -1642,15 +1642,11 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           position: relative;
         }
         .section-delete-btn {
-          position: absolute;
-          top: 50%;
-          right: 0;
-          transform: translateY(-50%);
           background: transparent !important;
           border: none !important;
           color: #ef4444 !important;
           cursor: pointer;
-          opacity: 0;
+          opacity: 1;
           transition: all 0.2s ease;
           padding: 2px 6px;
           font-size: 10px;
@@ -1660,11 +1656,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           gap: 2px;
           border-radius: 4px;
         }
-        .section-title-wrap:hover .section-delete-btn {
-          opacity: 0.8;
-        }
         .section-delete-btn:hover {
-          opacity: 1 !important;
           background: rgba(239, 68, 68, 0.1) !important;
         }
 
@@ -1727,7 +1719,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           .resume-item-delete-btn,
           .section-delete-btn,
           .skill-delete-btn,
-          .resume-item-controls,
+          .resume-item-controls-wrapper,
           .resume-item-hidden,
           .skill-visibility-btn {
             display: none !important;

@@ -657,9 +657,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       email: storedEmail || resumeData.personalInfo.email,
       phone: fetchedPhone || resumeData.personalInfo.phone,
       avatar: fetchedPhoto || resumeData.personalInfo.avatar,
-      linkedin: fetchedLinkedin || resumeData.personalInfo.linkedin,
-      github: fetchedGithub || resumeData.personalInfo.github,
-      website: fetchedPortfolio || resumeData.personalInfo.website
+      linkedin: fetchedLinkedin || "",
+      github: fetchedGithub || "",
+      website: fetchedPortfolio || ""
     };
 
     let educationList = [...resumeData.education];
@@ -846,10 +846,10 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             name: result.personalInfo.name || updatedData.personalInfo.name,
             email: result.personalInfo.email || updatedData.personalInfo.email,
             phone: result.personalInfo.phone || updatedData.personalInfo.phone,
-            location: result.personalInfo.location || updatedData.personalInfo.location,
-            linkedin: result.personalInfo.linkedin || updatedData.personalInfo.linkedin,
-            github: result.personalInfo.github || updatedData.personalInfo.github,
-            website: result.personalInfo.website || updatedData.personalInfo.website,
+            location: result.personalInfo.location || "",
+            linkedin: result.personalInfo.linkedin || "",
+            github: result.personalInfo.github || "",
+            website: result.personalInfo.website || "",
             summary: result.summary || updatedData.personalInfo.summary
           };
         } else if (result.summary) {

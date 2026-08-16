@@ -53,13 +53,15 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "No account found for this credential." }, { status: 404 });
         }
 
+        // Check expiry FIRST — avoids confusing UX where correct-but-expired OTP
+        // passes the hash check before failing on the expiry gate
+        if (!account.otpExpires || new Date() > account.otpExpires) {
+            return NextResponse.json({ error: "Verification code has expired. Please request a new one." }, { status: 400 });
+        }
+
         const otpValid = await verifyOtp(otp, account.otpCode);
         if (!otpValid) {
             return NextResponse.json({ error: "Invalid verification code." }, { status: 400 });
-        }
-
-        if (!account.otpExpires || new Date() > account.otpExpires) {
-            return NextResponse.json({ error: "Verification code has expired." }, { status: 400 });
         }
 
         // If login or register flow, verify and clear OTP
@@ -73,11 +75,19 @@ export async function POST(req: NextRequest) {
             }
             await account.save();
 
-            await setSessionCookie({
-                identifier: account.identifier,
-                role: accountType as AccountType,
-                isOrganization
-            }, isPwa);
+            try {
+                await setSessionCookie({
+                    identifier: account.identifier,
+                    role: accountType as AccountType,
+                    isOrganization
+                }, isPwa);
+            } catch (cookieErr) {
+                console.error("Failed to set session cookie:", cookieErr);
+                return NextResponse.json(
+                    { error: "Authentication succeeded but session could not be created. Please try again." },
+                    { status: 500 }
+                );
+            }
 
             return NextResponse.json({
                 success: true,

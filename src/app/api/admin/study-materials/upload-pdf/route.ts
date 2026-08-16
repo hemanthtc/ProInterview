@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedSession } from "@/utils/auth";
-import { isS3Configured, uploadBuffer, getJSON, uploadJSON } from "@/utils/s3";
+import { isS3Configured, uploadBuffer, getJSON, uploadJSON, deleteObject } from "@/utils/s3";
 
 const CATALOG_KEY = "study-materials/index.json";
 
@@ -78,3 +78,76 @@ export async function POST(req: NextRequest) {
         );
     }
 }
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const session = await getVerifiedSession();
+        if (!session || session.role !== "admin") {
+            return NextResponse.json(
+                { error: "Unauthorized access: Please sign in as an Administrator." },
+                { status: 401 }
+            );
+        }
+
+        if (!isS3Configured()) {
+            return NextResponse.json({ error: "S3 is not configured. Cannot delete PDF." }, { status: 503 });
+        }
+
+        const { searchParams } = new URL(req.url);
+        const courseId = searchParams.get("courseId");
+        const subjectId = searchParams.get("subjectId");
+        const chapterId = searchParams.get("chapterId");
+
+        if (!courseId || !subjectId || !chapterId) {
+            return NextResponse.json(
+                { error: "Missing required fields: courseId, subjectId, or chapterId." },
+                { status: 400 }
+            );
+        }
+
+        const key = `study-materials/${courseId}/${subjectId}/${chapterId}/document.pdf`;
+
+        // 1. Delete PDF from S3
+        try {
+            await deleteObject(key);
+        } catch (s3Err: any) {
+            console.warn("PDF file might not exist on S3 or delete failed:", s3Err);
+        }
+
+        // 2. Update catalog index to mark hasPdf: false
+        try {
+            const catalog = await getJSON<any[]>(CATALOG_KEY);
+            let updated = false;
+            for (const group of catalog) {
+                for (const course of group.courses) {
+                    if (course.id === courseId) {
+                        const subChapters = course.chapters[subjectId];
+                        if (subChapters && subChapters.rows) {
+                            subChapters.rows.forEach((r: any) => {
+                                r.chapters.forEach((ch: any) => {
+                                    if (ch.id === chapterId) {
+                                        ch.hasPdf = false;
+                                        updated = true;
+                                    }
+                                });
+                            });
+                        }
+                    }
+                }
+            }
+            if (updated) {
+                await uploadJSON(CATALOG_KEY, catalog);
+            }
+        } catch (e) {
+            console.error("Failed to update S3 catalog index with hasPdf flag:", e);
+        }
+
+        return NextResponse.json({ success: true });
+    } catch (error: any) {
+        return NextResponse.json(
+            { error: error?.message || "Failed to delete S3 PDF file" },
+            { status: 500 }
+        );
+    }
+}
+
