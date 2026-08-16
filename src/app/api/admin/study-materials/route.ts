@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedSession } from "@/utils/auth";
 import { isS3Configured, getJSON, uploadJSON, listS3Objects, deleteObject } from "@/utils/s3";
-import seedCatalog from "@/data/studyMaterialsSeed.json";
+import seedCatalog from "../../../../data/studyMaterialsSeed.json";
 
 const CATALOG_KEY = "study-materials/index.json";
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isS3Configured, getJSON } from "@/utils/s3";
-import seedCatalog from "@/data/studyMaterialsSeed.json";
+import seedCatalog from "../../../data/studyMaterialsSeed.json";
 
 const CATALOG_KEY = "study-materials/index.json";
 
