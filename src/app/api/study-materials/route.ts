@@ -1,11 +1,6 @@
-import { readFileSync } from "node:fs";
-import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
 import { isS3Configured, getJSON } from "@/utils/s3";
-
-const seedCatalog = JSON.parse(
-    readFileSync(path.join(process.cwd(), "src", "data", "studyMaterialsSeed.json"), "utf8")
-) as unknown[];
+import seedCatalog from "@/data/studyMaterialsSeed.json";
 
 const CATALOG_KEY = "study-materials/index.json";
 

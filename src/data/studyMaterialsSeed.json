@@ -1,0 +1,2784 @@
+[
+  {
+    "name": "Engineering",
+    "icon": "⚙️",
+    "courses": [
+      {
+        "id": "cs_engineering",
+        "name": "Computer Science",
+        "icon": "💻",
+        "themeColor": "#10b981",
+        "subjects": [
+          {
+            "id": "dsa",
+            "name": "Data Structures",
+            "color": 440020,
+            "desc": "Stacks, Queues, Trees, Graphs, and Hash Tables"
+          },
+          {
+            "id": "algorithms",
+            "name": "Algorithms",
+            "color": 3900150,
+            "desc": "Sorting, Searching, Dynamic Programming, and Greedy Algorithms"
+          },
+          {
+            "id": "java",
+            "name": "Java Development",
+            "color": 11032055,
+            "desc": "OOP, Multithreading, Streams, JVM, and Spring Boot Framework"
+          },
+          {
+            "id": "python",
+            "name": "Python Science",
+            "color": 1096065,
+            "desc": "Data Analytics, Machine Learning, Automation, and Web Frameworks"
+          }
+        ],
+        "chapters": {
+          "dsa": {
+            "title": "Data Structures Library",
+            "subtitle": "Reference manuals for core storage and layout models",
+            "rows": [
+              {
+                "title": "Linear Data Structures",
+                "chapters": [
+                  {
+                    "id": "arrays",
+                    "title": "Arrays & Vectors",
+                    "desc": "Contiguous memory layout, search algorithms, and amortized sizing.",
+                    "icon": "📊",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "linkedlists",
+                    "title": "Linked Lists",
+                    "desc": "Singly, doubly, and circular chains. Pointer references and node traversal.",
+                    "icon": "🔗",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "stacks_queues",
+                    "title": "Stacks & Queues",
+                    "desc": "LIFO and FIFO implementations. Circular queues, deques, and stack memory simulations.",
+                    "icon": "🥞",
+                    "badge": "Core"
+                  }
+                ]
+              },
+              {
+                "title": "Non-Linear & Hierarchical",
+                "chapters": [
+                  {
+                    "id": "bst",
+                    "title": "Binary Search Trees",
+                    "desc": "Node insertions, deletions, balance algorithms, and Inorder/Preorder/Postorder traversals.",
+                    "icon": "🌳",
+                    "badge": "Advanced"
+                  },
+                  {
+                    "id": "heaps",
+                    "title": "Priority Queues & Heaps",
+                    "desc": "Min-heaps, max-heaps, bubble-up/sift-down methods, and heap-sort indexing.",
+                    "icon": "🏔️",
+                    "badge": "Advanced"
+                  },
+                  {
+                    "id": "graphs",
+                    "title": "Graphs & Networks",
+                    "desc": "Adjacency matrices, lists, BFS/DFS traversal pipelines, and cycle detection.",
+                    "icon": "🕸️",
+                    "badge": "Expert"
+                  }
+                ]
+              }
+            ]
+          },
+          "algorithms": {
+            "title": "Algorithms Archive",
+            "subtitle": "Step-by-step procedural complexity optimization logs",
+            "rows": [
+              {
+                "title": "Searching & Sorting",
+                "chapters": [
+                  {
+                    "id": "quicksort",
+                    "title": "Quick & Merge Sort",
+                    "desc": "Divide-and-conquer methodologies. Pivot indexing and recursion tree balancing.",
+                    "icon": "⚡",
+                    "badge": "O(N log N)"
+                  },
+                  {
+                    "id": "binarysearch",
+                    "title": "Binary Searching",
+                    "desc": "Logarithmic search ranges, boundary matching, and sorting prerequisites.",
+                    "icon": "🔍",
+                    "badge": "O(log N)"
+                  }
+                ]
+              },
+              {
+                "title": "Optimization Paradigms",
+                "chapters": [
+                  {
+                    "id": "dynamicprog",
+                    "title": "Dynamic Programming",
+                    "desc": "Memoization, tabulation, subproblem mapping, and the knapsack optimization matrix.",
+                    "icon": "🧬",
+                    "badge": "Optimization"
+                  },
+                  {
+                    "id": "greedy",
+                    "title": "Greedy Algorithms",
+                    "desc": "Local optimality heuristics. Dijkstra routing and Huffman coding compressors.",
+                    "icon": "💰",
+                    "badge": "Heuristic"
+                  }
+                ]
+              }
+            ]
+          },
+          "java": {
+            "title": "Java Developer Manual",
+            "subtitle": "Enterprise application architectures and virtual machine systems",
+            "rows": [
+              {
+                "title": "Object-Oriented Fundamentals",
+                "chapters": [
+                  {
+                    "id": "java_oops",
+                    "title": "Encapsulation & Interfaces",
+                    "desc": "Abstract specifications, dynamic binding, inheritance safety, and polymorphism limits.",
+                    "icon": "📦",
+                    "badge": "OOPs"
+                  },
+                  {
+                    "id": "java_collections",
+                    "title": "Java Collections Framework",
+                    "desc": "HashMaps, ArrayLists, TreeSets. Time complexities and internal hashing mechanics.",
+                    "icon": "🗂️",
+                    "badge": "APIs"
+                  }
+                ]
+              },
+              {
+                "title": "Advanced JVM & Multi-threading",
+                "chapters": [
+                  {
+                    "id": "java_concurrency",
+                    "title": "Concurrency & Threads",
+                    "desc": "Virtual threads, synchronized locks, Executor services, and thread pools.",
+                    "icon": "🧵",
+                    "badge": "Multithreaded"
+                  },
+                  {
+                    "id": "java_memory",
+                    "title": "JVM Memory Tuning",
+                    "desc": "Heap, stack, garbage collectors (G1, ZGC), and memory leak diagnostics.",
+                    "icon": "⚙️",
+                    "badge": "Performance"
+                  }
+                ]
+              }
+            ]
+          },
+          "python": {
+            "title": "Python Science Core",
+            "subtitle": "Machine learning, numerical arrays, and scientific scripts",
+            "rows": [
+              {
+                "title": "Language Mechanics",
+                "chapters": [
+                  {
+                    "id": "py_generators",
+                    "title": "Generators & Decorators",
+                    "desc": "Iterators, yield mechanics, closure scope bindings, and custom decorator wrappers.",
+                    "icon": "🐍",
+                    "badge": "Language"
+                  },
+                  {
+                    "id": "py_async",
+                    "title": "Asyncio Coroutines",
+                    "desc": "Event loop architectures, async tasks, awaitable structures, and non-blocking I/O.",
+                    "icon": "⏱️",
+                    "badge": "Async"
+                  }
+                ]
+              },
+              {
+                "title": "Scientific Frameworks",
+                "chapters": [
+                  {
+                    "id": "numpy_pandas",
+                    "title": "NumPy & Pandas",
+                    "desc": "Vectorized arrays, dataframe indices, series manipulations, and CSV parsing.",
+                    "icon": "📊",
+                    "badge": "Data"
+                  },
+                  {
+                    "id": "py_ml",
+                    "title": "Scikit-Learn Baselines",
+                    "desc": "Supervised regression, classifications, gradient descents, and model pipelines.",
+                    "icon": "🤖",
+                    "badge": "AI/ML"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "mech_engineering",
+        "name": "Mechanical Engineering",
+        "icon": "🔧",
+        "themeColor": "#ef4444",
+        "subjects": [
+          {
+            "id": "thermo",
+            "name": "Thermodynamics",
+            "color": 15680580,
+            "desc": "Laws of thermodynamics, entropy, enthalpy, and heat engines"
+          },
+          {
+            "id": "fluid_mech",
+            "name": "Fluid Mechanics",
+            "color": 3900150,
+            "desc": "Bernoulli's principle, viscosity, turbulence, and pipe flow"
+          },
+          {
+            "id": "strength",
+            "name": "Strength of Materials",
+            "color": 16096779,
+            "desc": "Stress, strain, bending moments, and material failure theories"
+          },
+          {
+            "id": "machine_design",
+            "name": "Machine Design",
+            "color": 9133302,
+            "desc": "Gears, bearings, shafts, and fatigue analysis"
+          }
+        ],
+        "chapters": {
+          "thermo": {
+            "title": "Thermodynamics Handbook",
+            "subtitle": "Energy, heat transfer, and thermodynamic cycles",
+            "rows": [
+              {
+                "title": "Fundamental Laws",
+                "chapters": [
+                  {
+                    "id": "zeroth_first",
+                    "title": "Zeroth & First Law",
+                    "desc": "Thermal equilibrium, internal energy, work-heat equivalence, and energy conservation.",
+                    "icon": "🌡️",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "second_law",
+                    "title": "Second Law & Entropy",
+                    "desc": "Clausius and Kelvin statements, entropy change calculations, and irreversibility.",
+                    "icon": "♻️",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "third_law",
+                    "title": "Third Law & Absolute Zero",
+                    "desc": "Nernst theorem, entropy at absolute zero, and cryogenic applications.",
+                    "icon": "❄️",
+                    "badge": "Theory"
+                  }
+                ]
+              },
+              {
+                "title": "Thermodynamic Cycles",
+                "chapters": [
+                  {
+                    "id": "carnot",
+                    "title": "Carnot & Rankine Cycles",
+                    "desc": "Ideal efficiency limits, steam power plants, and regenerative heating.",
+                    "icon": "🔄",
+                    "badge": "Cycles"
+                  },
+                  {
+                    "id": "otto_diesel",
+                    "title": "Otto & Diesel Cycles",
+                    "desc": "Internal combustion engine modeling, compression ratios, and thermal efficiency.",
+                    "icon": "🚗",
+                    "badge": "Engines"
+                  }
+                ]
+              }
+            ]
+          },
+          "fluid_mech": {
+            "title": "Fluid Mechanics Reference",
+            "subtitle": "Fluid statics, dynamics, and computational methods",
+            "rows": [
+              {
+                "title": "Core Principles",
+                "chapters": [
+                  {
+                    "id": "fluid_statics",
+                    "title": "Fluid Statics",
+                    "desc": "Hydrostatic pressure, buoyancy, Pascal's law, and manometry.",
+                    "icon": "💧",
+                    "badge": "Fundamentals"
+                  },
+                  {
+                    "id": "fluid_dynamics",
+                    "title": "Fluid Dynamics",
+                    "desc": "Bernoulli equation, Euler equation, continuity, and streamline analysis.",
+                    "icon": "🌊",
+                    "badge": "Dynamics"
+                  }
+                ]
+              },
+              {
+                "title": "Flow Analysis",
+                "chapters": [
+                  {
+                    "id": "pipe_flow",
+                    "title": "Pipe Flow & Losses",
+                    "desc": "Darcy-Weisbach equation, Moody chart, minor losses, and pipe networks.",
+                    "icon": "🔩",
+                    "badge": "Applied"
+                  },
+                  {
+                    "id": "boundary_layer",
+                    "title": "Boundary Layer Theory",
+                    "desc": "Laminar vs turbulent, drag coefficients, and separation phenomena.",
+                    "icon": "📐",
+                    "badge": "Advanced"
+                  }
+                ]
+              }
+            ]
+          },
+          "strength": {
+            "title": "Strength of Materials Manual",
+            "subtitle": "Structural mechanics and material behavior",
+            "rows": [
+              {
+                "title": "Stress & Strain Analysis",
+                "chapters": [
+                  {
+                    "id": "stress_strain",
+                    "title": "Stress-Strain Relations",
+                    "desc": "Hooke's law, elastic moduli, Poisson's ratio, and stress-strain diagrams.",
+                    "icon": "📈",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "bending",
+                    "title": "Bending & Shear",
+                    "desc": "Bending moment diagrams, shear force diagrams, and beam deflection.",
+                    "icon": "🔨",
+                    "badge": "Beams"
+                  }
+                ]
+              },
+              {
+                "title": "Advanced Topics",
+                "chapters": [
+                  {
+                    "id": "torsion",
+                    "title": "Torsion & Columns",
+                    "desc": "Shaft torsion, polar moment of inertia, Euler buckling, and slenderness ratio.",
+                    "icon": "🌀",
+                    "badge": "Advanced"
+                  },
+                  {
+                    "id": "failure_theories",
+                    "title": "Failure Theories",
+                    "desc": "Von Mises, Tresca, maximum stress, and fatigue endurance limits.",
+                    "icon": "⚠️",
+                    "badge": "Design"
+                  }
+                ]
+              }
+            ]
+          },
+          "machine_design": {
+            "title": "Machine Design Compendium",
+            "subtitle": "Component design, selection, and analysis",
+            "rows": [
+              {
+                "title": "Transmission Elements",
+                "chapters": [
+                  {
+                    "id": "gears",
+                    "title": "Gear Design",
+                    "desc": "Spur, helical, bevel gears. Lewis equation, AGMA standards, and gear trains.",
+                    "icon": "⚙️",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "bearings",
+                    "title": "Bearings & Lubrication",
+                    "desc": "Rolling and sliding bearings, bearing life calculations, and lubricant selection.",
+                    "icon": "🔴",
+                    "badge": "Selection"
+                  }
+                ]
+              },
+              {
+                "title": "Structural Components",
+                "chapters": [
+                  {
+                    "id": "shafts",
+                    "title": "Shaft Design",
+                    "desc": "Combined loading, keyways, critical speed, and flexible shaft couplings.",
+                    "icon": "🔧",
+                    "badge": "Design"
+                  },
+                  {
+                    "id": "fasteners",
+                    "title": "Fasteners & Joints",
+                    "desc": "Bolt preload, welded joints, riveted connections, and adhesive bonding.",
+                    "icon": "🔩",
+                    "badge": "Joints"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "ee_engineering",
+        "name": "Electrical Engineering",
+        "icon": "⚡",
+        "themeColor": "#eab308",
+        "subjects": [
+          {
+            "id": "circuits",
+            "name": "Circuit Analysis",
+            "color": 15381256,
+            "desc": "Kirchhoff laws, Thevenin-Norton, and AC/DC circuit design"
+          },
+          {
+            "id": "electromagnetics",
+            "name": "Electromagnetics",
+            "color": 440020,
+            "desc": "Maxwell equations, wave propagation, and antenna theory"
+          },
+          {
+            "id": "power_sys",
+            "name": "Power Systems",
+            "color": 15680580,
+            "desc": "Generation, transmission, distribution, and load flow analysis"
+          },
+          {
+            "id": "signals",
+            "name": "Signals & Systems",
+            "color": 11032055,
+            "desc": "Fourier, Laplace, Z-transforms, and filter design"
+          }
+        ],
+        "chapters": {
+          "circuits": {
+            "title": "Circuit Analysis Library",
+            "subtitle": "Fundamental and advanced electrical circuit analysis",
+            "rows": [
+              {
+                "title": "DC Circuit Analysis",
+                "chapters": [
+                  {
+                    "id": "kirchhoff",
+                    "title": "Kirchhoff's Laws",
+                    "desc": "KVL, KCL, mesh analysis, nodal analysis, and superposition.",
+                    "icon": "🔌",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "network_theorems",
+                    "title": "Network Theorems",
+                    "desc": "Thevenin, Norton, maximum power transfer, and source transformation.",
+                    "icon": "📐",
+                    "badge": "Theorems"
+                  }
+                ]
+              },
+              {
+                "title": "AC Circuit Analysis",
+                "chapters": [
+                  {
+                    "id": "phasors",
+                    "title": "Phasor Analysis",
+                    "desc": "Complex impedance, admittance, resonance, and power factor correction.",
+                    "icon": "🌀",
+                    "badge": "AC"
+                  },
+                  {
+                    "id": "transients",
+                    "title": "Transient Response",
+                    "desc": "RC, RL, RLC circuits. Step response, natural frequency, and damping.",
+                    "icon": "📈",
+                    "badge": "Dynamic"
+                  }
+                ]
+              }
+            ]
+          },
+          "electromagnetics": {
+            "title": "Electromagnetics Handbook",
+            "subtitle": "Fields, waves, and electromagnetic applications",
+            "rows": [
+              {
+                "title": "Electrostatics & Magnetostatics",
+                "chapters": [
+                  {
+                    "id": "electrostatics",
+                    "title": "Electric Fields & Potential",
+                    "desc": "Coulomb law, Gauss law, capacitance, and dielectric materials.",
+                    "icon": "⚡",
+                    "badge": "Fields"
+                  },
+                  {
+                    "id": "magnetostatics",
+                    "title": "Magnetic Fields & Forces",
+                    "desc": "Biot-Savart law, Ampere law, inductance, and magnetic circuits.",
+                    "icon": "🧲",
+                    "badge": "Magnetic"
+                  }
+                ]
+              },
+              {
+                "title": "Electromagnetic Waves",
+                "chapters": [
+                  {
+                    "id": "maxwell",
+                    "title": "Maxwell's Equations",
+                    "desc": "Unified field theory, displacement current, and wave equation derivation.",
+                    "icon": "🌊",
+                    "badge": "Theory"
+                  },
+                  {
+                    "id": "wave_prop",
+                    "title": "Wave Propagation",
+                    "desc": "Plane waves, reflection, refraction, transmission lines, and waveguides.",
+                    "icon": "📡",
+                    "badge": "Waves"
+                  }
+                ]
+              }
+            ]
+          },
+          "power_sys": {
+            "title": "Power Systems Engineering",
+            "subtitle": "Generation, transmission, and distribution networks",
+            "rows": [
+              {
+                "title": "Power Generation",
+                "chapters": [
+                  {
+                    "id": "generators",
+                    "title": "Generators & Transformers",
+                    "desc": "Synchronous generators, transformer modeling, and per-unit systems.",
+                    "icon": "🏭",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "load_flow",
+                    "title": "Load Flow Analysis",
+                    "desc": "Gauss-Seidel, Newton-Raphson methods, and power system stability.",
+                    "icon": "📊",
+                    "badge": "Analysis"
+                  }
+                ]
+              },
+              {
+                "title": "Protection & Control",
+                "chapters": [
+                  {
+                    "id": "protection",
+                    "title": "Protective Relaying",
+                    "desc": "Overcurrent, distance, differential relays, and circuit breaker coordination.",
+                    "icon": "🛡️",
+                    "badge": "Protection"
+                  },
+                  {
+                    "id": "faults",
+                    "title": "Fault Analysis",
+                    "desc": "Symmetrical components, sequence networks, and short-circuit calculations.",
+                    "icon": "⚠️",
+                    "badge": "Faults"
+                  }
+                ]
+              }
+            ]
+          },
+          "signals": {
+            "title": "Signals & Systems Reference",
+            "subtitle": "Signal processing and system characterization",
+            "rows": [
+              {
+                "title": "Continuous-Time Systems",
+                "chapters": [
+                  {
+                    "id": "fourier",
+                    "title": "Fourier Analysis",
+                    "desc": "Fourier series, Fourier transform, convolution, and frequency response.",
+                    "icon": "🎵",
+                    "badge": "Transform"
+                  },
+                  {
+                    "id": "laplace",
+                    "title": "Laplace Transform",
+                    "desc": "Transfer functions, pole-zero analysis, stability, and feedback systems.",
+                    "icon": "📐",
+                    "badge": "S-domain"
+                  }
+                ]
+              },
+              {
+                "title": "Discrete-Time Systems",
+                "chapters": [
+                  {
+                    "id": "z_transform",
+                    "title": "Z-Transform & DFT",
+                    "desc": "Discrete Fourier transform, Z-domain analysis, and digital filtering.",
+                    "icon": "💻",
+                    "badge": "Digital"
+                  },
+                  {
+                    "id": "filter_design",
+                    "title": "Filter Design",
+                    "desc": "FIR/IIR filters, Butterworth, Chebyshev, and window methods.",
+                    "icon": "🔧",
+                    "badge": "Design"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "civil_engineering",
+        "name": "Civil Engineering",
+        "icon": "🏗️",
+        "themeColor": "#f97316",
+        "subjects": [
+          {
+            "id": "structural",
+            "name": "Structural Analysis",
+            "color": 16347926,
+            "desc": "Beams, trusses, frames, and matrix structural analysis"
+          },
+          {
+            "id": "geotech",
+            "name": "Geotechnical Eng.",
+            "color": 7893356,
+            "desc": "Soil mechanics, foundation design, and earth pressure"
+          },
+          {
+            "id": "concrete",
+            "name": "RCC Design",
+            "color": 6583435,
+            "desc": "Reinforced concrete beams, slabs, columns, and footings"
+          },
+          {
+            "id": "surveying",
+            "name": "Surveying",
+            "color": 2278750,
+            "desc": "Leveling, traversing, GPS, and remote sensing"
+          }
+        ],
+        "chapters": {
+          "structural": {
+            "title": "Structural Analysis Guide",
+            "subtitle": "Determinacy, indeterminacy, and structural matrix methods",
+            "rows": [
+              {
+                "title": "Determinate Structures",
+                "chapters": [
+                  {
+                    "id": "truss_analysis",
+                    "title": "Truss Analysis",
+                    "desc": "Method of joints, method of sections, and graphical methods.",
+                    "icon": "🔺",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "beam_analysis",
+                    "title": "Beam Analysis",
+                    "desc": "Shear force, bending moment, deflection, and influence lines.",
+                    "icon": "📏",
+                    "badge": "Beams"
+                  }
+                ]
+              },
+              {
+                "title": "Indeterminate Structures",
+                "chapters": [
+                  {
+                    "id": "moment_dist",
+                    "title": "Moment Distribution",
+                    "desc": "Hardy Cross method, stiffness factors, and carry-over moments.",
+                    "icon": "🔄",
+                    "badge": "Method"
+                  },
+                  {
+                    "id": "stiffness_method",
+                    "title": "Stiffness Matrix Method",
+                    "desc": "Global stiffness assembly, boundary conditions, and FEM basics.",
+                    "icon": "🧮",
+                    "badge": "Matrix"
+                  }
+                ]
+              }
+            ]
+          },
+          "geotech": {
+            "title": "Geotechnical Engineering Manual",
+            "subtitle": "Soil properties, testing, and foundation engineering",
+            "rows": [
+              {
+                "title": "Soil Mechanics",
+                "chapters": [
+                  {
+                    "id": "soil_properties",
+                    "title": "Soil Classification",
+                    "desc": "Atterberg limits, grain size, USCS classification, and phase relationships.",
+                    "icon": "🏔️",
+                    "badge": "Soil"
+                  },
+                  {
+                    "id": "consolidation",
+                    "title": "Consolidation & Settlement",
+                    "desc": "Terzaghi theory, e-log p curve, primary and secondary consolidation.",
+                    "icon": "📉",
+                    "badge": "Theory"
+                  }
+                ]
+              },
+              {
+                "title": "Foundation Design",
+                "chapters": [
+                  {
+                    "id": "shallow_found",
+                    "title": "Shallow Foundations",
+                    "desc": "Bearing capacity theories, Terzaghi, Meyerhof, and settlement analysis.",
+                    "icon": "🧱",
+                    "badge": "Design"
+                  },
+                  {
+                    "id": "deep_found",
+                    "title": "Deep Foundations",
+                    "desc": "Pile types, load capacity, group action, and negative skin friction.",
+                    "icon": "🔩",
+                    "badge": "Piles"
+                  }
+                ]
+              }
+            ]
+          },
+          "concrete": {
+            "title": "RCC Design Reference",
+            "subtitle": "Reinforced concrete structural elements design per IS codes",
+            "rows": [
+              {
+                "title": "Flexural Members",
+                "chapters": [
+                  {
+                    "id": "rcc_beams",
+                    "title": "Beam Design",
+                    "desc": "Singly and doubly reinforced beams, T-beams, and shear design.",
+                    "icon": "📐",
+                    "badge": "IS 456"
+                  },
+                  {
+                    "id": "rcc_slabs",
+                    "title": "Slab Design",
+                    "desc": "One-way, two-way slabs, flat slabs, and yield line theory.",
+                    "icon": "🏠",
+                    "badge": "Slabs"
+                  }
+                ]
+              },
+              {
+                "title": "Compression Members",
+                "chapters": [
+                  {
+                    "id": "rcc_columns",
+                    "title": "Column Design",
+                    "desc": "Short and long columns, interaction diagrams, and biaxial bending.",
+                    "icon": "🏛️",
+                    "badge": "Columns"
+                  },
+                  {
+                    "id": "rcc_footings",
+                    "title": "Footing Design",
+                    "desc": "Isolated, combined, strap footings, and raft foundation design.",
+                    "icon": "🧱",
+                    "badge": "Footings"
+                  }
+                ]
+              }
+            ]
+          },
+          "surveying": {
+            "title": "Surveying Techniques",
+            "subtitle": "Field measurement, mapping, and geospatial technologies",
+            "rows": [
+              {
+                "title": "Traditional Methods",
+                "chapters": [
+                  {
+                    "id": "leveling",
+                    "title": "Leveling & Contouring",
+                    "desc": "Differential leveling, profile leveling, and contour interpolation.",
+                    "icon": "📏",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "traversing",
+                    "title": "Traversing",
+                    "desc": "Open and closed traverse, Bowditch rule, and transit rule adjustments.",
+                    "icon": "🧭",
+                    "badge": "Field"
+                  }
+                ]
+              },
+              {
+                "title": "Modern Technologies",
+                "chapters": [
+                  {
+                    "id": "gps_survey",
+                    "title": "GPS & GNSS",
+                    "desc": "Satellite positioning, differential GPS, RTK, and coordinate systems.",
+                    "icon": "🛰️",
+                    "badge": "GPS"
+                  },
+                  {
+                    "id": "remote_sensing",
+                    "title": "Remote Sensing & GIS",
+                    "desc": "Image interpretation, GIS layers, DEM generation, and spatial analysis.",
+                    "icon": "🌍",
+                    "badge": "GIS"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "Competitive Exams",
+    "icon": "🏆",
+    "courses": [
+      {
+        "id": "upsc",
+        "name": "UPSC Civil Services",
+        "icon": "🏛️",
+        "themeColor": "#f59e0b",
+        "subjects": [
+          {
+            "id": "polity",
+            "name": "Indian Polity",
+            "color": 16096779,
+            "desc": "Constitution, governance, rights, and political institutions"
+          },
+          {
+            "id": "economy",
+            "name": "Indian Economy",
+            "color": 2278750,
+            "desc": "Planning, fiscal policy, banking, and economic reforms"
+          },
+          {
+            "id": "geography_upsc",
+            "name": "Geography",
+            "color": 3900150,
+            "desc": "Physical, human, economic geography and Indian geography"
+          },
+          {
+            "id": "history_upsc",
+            "name": "Indian History",
+            "color": 15680580,
+            "desc": "Ancient, medieval, modern history and freedom movement"
+          }
+        ],
+        "chapters": {
+          "polity": {
+            "title": "Indian Polity & Constitution",
+            "subtitle": "Constitutional framework and governance mechanisms",
+            "rows": [
+              {
+                "title": "Constitutional Framework",
+                "chapters": [
+                  {
+                    "id": "preamble",
+                    "title": "Preamble & Features",
+                    "desc": "Sovereign, socialist, secular, democratic republic — the philosophical foundation of the Constitution.",
+                    "icon": "📜",
+                    "badge": "Foundation"
+                  },
+                  {
+                    "id": "fundamental_rights",
+                    "title": "Fundamental Rights",
+                    "desc": "Articles 12-35: Right to equality, freedom, religion, cultural rights, and constitutional remedies.",
+                    "icon": "⚖️",
+                    "badge": "Rights"
+                  },
+                  {
+                    "id": "dpsp",
+                    "title": "Directive Principles",
+                    "desc": "Articles 36-51: Guiding principles for state policy and welfare state provisions.",
+                    "icon": "🎯",
+                    "badge": "Policy"
+                  }
+                ]
+              },
+              {
+                "title": "Governance & Institutions",
+                "chapters": [
+                  {
+                    "id": "parliament",
+                    "title": "Parliament & Legislature",
+                    "desc": "Lok Sabha, Rajya Sabha, legislative process, parliamentary committees, and privileges.",
+                    "icon": "🏛️",
+                    "badge": "Legislature"
+                  },
+                  {
+                    "id": "judiciary",
+                    "title": "Judiciary & Legal System",
+                    "desc": "Supreme Court, High Courts, judicial review, PIL, and independence of judiciary.",
+                    "icon": "⚖️",
+                    "badge": "Judiciary"
+                  }
+                ]
+              }
+            ]
+          },
+          "economy": {
+            "title": "Indian Economy",
+            "subtitle": "Economic development, planning, and policy analysis",
+            "rows": [
+              {
+                "title": "Economic Planning",
+                "chapters": [
+                  {
+                    "id": "planning",
+                    "title": "Planning & Development",
+                    "desc": "Five Year Plans, NITI Aayog, liberalization of 1991, and new economic policy.",
+                    "icon": "📊",
+                    "badge": "Planning"
+                  },
+                  {
+                    "id": "fiscal_policy",
+                    "title": "Fiscal Policy & Budget",
+                    "desc": "Revenue, expenditure, fiscal deficit, FRBM Act, and GST implementation.",
+                    "icon": "💰",
+                    "badge": "Fiscal"
+                  }
+                ]
+              },
+              {
+                "title": "Sectors & Reforms",
+                "chapters": [
+                  {
+                    "id": "banking",
+                    "title": "Banking & Finance",
+                    "desc": "RBI, monetary policy, commercial banking, NBFCs, and financial inclusion.",
+                    "icon": "🏦",
+                    "badge": "Banking"
+                  },
+                  {
+                    "id": "agriculture",
+                    "title": "Agricultural Economy",
+                    "desc": "Green revolution, MSP, food security, land reforms, and rural development.",
+                    "icon": "🌾",
+                    "badge": "Agriculture"
+                  }
+                ]
+              }
+            ]
+          },
+          "geography_upsc": {
+            "title": "Geography for UPSC",
+            "subtitle": "Physical, human, and Indian geography",
+            "rows": [
+              {
+                "title": "Physical Geography",
+                "chapters": [
+                  {
+                    "id": "geomorphology",
+                    "title": "Geomorphology",
+                    "desc": "Plate tectonics, landforms, weathering, erosion, and geological timescale.",
+                    "icon": "🏔️",
+                    "badge": "Physical"
+                  },
+                  {
+                    "id": "climatology",
+                    "title": "Climatology",
+                    "desc": "Atmospheric circulation, monsoons, El Niño, climate change, and weather systems.",
+                    "icon": "🌤️",
+                    "badge": "Climate"
+                  }
+                ]
+              },
+              {
+                "title": "Indian Geography",
+                "chapters": [
+                  {
+                    "id": "india_physical",
+                    "title": "Physical Features of India",
+                    "desc": "Himalayan system, peninsular plateau, drainage systems, and coastal features.",
+                    "icon": "🗺️",
+                    "badge": "India"
+                  },
+                  {
+                    "id": "india_resources",
+                    "title": "Resources & Industries",
+                    "desc": "Mineral resources, energy, industrial regions, and transport networks.",
+                    "icon": "🏭",
+                    "badge": "Resources"
+                  }
+                ]
+              }
+            ]
+          },
+          "history_upsc": {
+            "title": "Indian History for UPSC",
+            "subtitle": "Comprehensive history from ancient civilization to independence",
+            "rows": [
+              {
+                "title": "Ancient & Medieval India",
+                "chapters": [
+                  {
+                    "id": "ancient_india",
+                    "title": "Ancient Civilizations",
+                    "desc": "Indus Valley, Vedic period, Mauryas, Guptas, and classical art & architecture.",
+                    "icon": "🏛️",
+                    "badge": "Ancient"
+                  },
+                  {
+                    "id": "medieval_india",
+                    "title": "Medieval India",
+                    "desc": "Delhi Sultanate, Mughal Empire, Bhakti-Sufi movements, and regional kingdoms.",
+                    "icon": "🕌",
+                    "badge": "Medieval"
+                  }
+                ]
+              },
+              {
+                "title": "Modern India",
+                "chapters": [
+                  {
+                    "id": "colonial_india",
+                    "title": "British Colonial Rule",
+                    "desc": "East India Company, economic drain, social reforms, and administrative changes.",
+                    "icon": "📖",
+                    "badge": "Colonial"
+                  },
+                  {
+                    "id": "freedom_movement",
+                    "title": "Freedom Movement",
+                    "desc": "Congress, Gandhi, revolutionary movements, partition, and independence timeline.",
+                    "icon": "🇮🇳",
+                    "badge": "Freedom"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "ssc",
+        "name": "SSC Examinations",
+        "icon": "📝",
+        "themeColor": "#06b6d4",
+        "subjects": [
+          {
+            "id": "ssc_quant",
+            "name": "Quantitative Aptitude",
+            "color": 440020,
+            "desc": "Arithmetic, algebra, geometry, trigonometry, and data interpretation"
+          },
+          {
+            "id": "ssc_reasoning",
+            "name": "Reasoning Ability",
+            "color": 11032055,
+            "desc": "Logical, analytical, verbal, and non-verbal reasoning"
+          },
+          {
+            "id": "ssc_english",
+            "name": "English Language",
+            "color": 1096065,
+            "desc": "Grammar, vocabulary, comprehension, and verbal ability"
+          },
+          {
+            "id": "ssc_gk",
+            "name": "General Knowledge",
+            "color": 16096779,
+            "desc": "Current affairs, history, science, and static GK"
+          }
+        ],
+        "chapters": {
+          "ssc_quant": {
+            "title": "Quantitative Aptitude",
+            "subtitle": "Number systems, arithmetic, and mathematical problem-solving",
+            "rows": [
+              {
+                "title": "Arithmetic",
+                "chapters": [
+                  {
+                    "id": "number_system",
+                    "title": "Number Systems",
+                    "desc": "HCF, LCM, divisibility rules, remainders, and prime factorization.",
+                    "icon": "🔢",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "percentages",
+                    "title": "Percentages & Ratios",
+                    "desc": "Profit-loss, simple-compound interest, ratio-proportion, and partnerships.",
+                    "icon": "📊",
+                    "badge": "Core"
+                  }
+                ]
+              },
+              {
+                "title": "Geometry & Mensuration",
+                "chapters": [
+                  {
+                    "id": "geometry_ssc",
+                    "title": "Geometry",
+                    "desc": "Triangles, circles, quadrilaterals, coordinate geometry, and similarity.",
+                    "icon": "📐",
+                    "badge": "Geometry"
+                  },
+                  {
+                    "id": "mensuration",
+                    "title": "Mensuration",
+                    "desc": "Area, volume, surface area of 2D and 3D shapes, and complex figures.",
+                    "icon": "📏",
+                    "badge": "Mensuration"
+                  }
+                ]
+              }
+            ]
+          },
+          "ssc_reasoning": {
+            "title": "Reasoning & Logic",
+            "subtitle": "Analytical thinking and pattern recognition",
+            "rows": [
+              {
+                "title": "Verbal Reasoning",
+                "chapters": [
+                  {
+                    "id": "analogies",
+                    "title": "Analogies & Classification",
+                    "desc": "Word analogies, letter series, number patterns, and odd-one-out problems.",
+                    "icon": "🧩",
+                    "badge": "Verbal"
+                  },
+                  {
+                    "id": "coding",
+                    "title": "Coding & Decoding",
+                    "desc": "Letter coding, number coding, mixed coding, and sentence coding problems.",
+                    "icon": "🔐",
+                    "badge": "Logic"
+                  }
+                ]
+              },
+              {
+                "title": "Non-Verbal Reasoning",
+                "chapters": [
+                  {
+                    "id": "patterns",
+                    "title": "Pattern Recognition",
+                    "desc": "Figure series, mirror images, water images, and embedded figures.",
+                    "icon": "🔳",
+                    "badge": "Visual"
+                  },
+                  {
+                    "id": "syllogism",
+                    "title": "Syllogism & Statements",
+                    "desc": "Venn diagrams, logical deductions, cause-effect, and assumption problems.",
+                    "icon": "🧠",
+                    "badge": "Logic"
+                  }
+                ]
+              }
+            ]
+          },
+          "ssc_english": {
+            "title": "English Language Skills",
+            "subtitle": "Grammar, vocabulary, and reading comprehension",
+            "rows": [
+              {
+                "title": "Grammar & Usage",
+                "chapters": [
+                  {
+                    "id": "grammar",
+                    "title": "Grammar Rules",
+                    "desc": "Tenses, subject-verb agreement, articles, prepositions, and sentence correction.",
+                    "icon": "📖",
+                    "badge": "Grammar"
+                  },
+                  {
+                    "id": "vocab",
+                    "title": "Vocabulary Building",
+                    "desc": "Synonyms, antonyms, idioms, phrasal verbs, and one-word substitutions.",
+                    "icon": "📚",
+                    "badge": "Vocabulary"
+                  }
+                ]
+              },
+              {
+                "title": "Comprehension",
+                "chapters": [
+                  {
+                    "id": "reading_comp",
+                    "title": "Reading Comprehension",
+                    "desc": "Passage analysis, inference, tone, theme, and critical reading techniques.",
+                    "icon": "📰",
+                    "badge": "Reading"
+                  },
+                  {
+                    "id": "cloze_test",
+                    "title": "Cloze Test & Para Jumbles",
+                    "desc": "Fill in the blanks, sentence rearrangement, and paragraph coherence.",
+                    "icon": "✏️",
+                    "badge": "Practice"
+                  }
+                ]
+              }
+            ]
+          },
+          "ssc_gk": {
+            "title": "General Knowledge",
+            "subtitle": "Static GK, current affairs, and general science",
+            "rows": [
+              {
+                "title": "Static GK",
+                "chapters": [
+                  {
+                    "id": "history_gk",
+                    "title": "History & Culture",
+                    "desc": "Indian history highlights, cultural heritage, UNESCO sites, and classical arts.",
+                    "icon": "🏛️",
+                    "badge": "History"
+                  },
+                  {
+                    "id": "science_gk",
+                    "title": "General Science",
+                    "desc": "Physics basics, chemistry fundamentals, biology, and everyday science applications.",
+                    "icon": "🔬",
+                    "badge": "Science"
+                  }
+                ]
+              },
+              {
+                "title": "Current Affairs",
+                "chapters": [
+                  {
+                    "id": "current_affairs",
+                    "title": "Current Events",
+                    "desc": "National, international events, government schemes, and policy updates.",
+                    "icon": "📰",
+                    "badge": "Current"
+                  },
+                  {
+                    "id": "economy_gk",
+                    "title": "Economy & Polity",
+                    "desc": "Basic economic concepts, constitutional bodies, and governance awareness.",
+                    "icon": "💹",
+                    "badge": "Economy"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "banking",
+        "name": "Banking & Insurance",
+        "icon": "🏦",
+        "themeColor": "#22c55e",
+        "subjects": [
+          {
+            "id": "bank_quant",
+            "name": "Quantitative Aptitude",
+            "color": 2278750,
+            "desc": "Data interpretation, number series, and simplification"
+          },
+          {
+            "id": "bank_reasoning",
+            "name": "Reasoning & Logic",
+            "color": 440020,
+            "desc": "Puzzles, seating arrangement, and logical deduction"
+          },
+          {
+            "id": "bank_english",
+            "name": "English Language",
+            "color": 11032055,
+            "desc": "Reading comprehension, error spotting, and fill in the blanks"
+          },
+          {
+            "id": "bank_awareness",
+            "name": "Banking Awareness",
+            "color": 16096779,
+            "desc": "Banking history, RBI policies, financial instruments, and schemes"
+          }
+        ],
+        "chapters": {
+          "bank_quant": {
+            "title": "Quantitative Analysis for Banking",
+            "subtitle": "Data interpretation and mathematical techniques",
+            "rows": [
+              {
+                "title": "Data Interpretation",
+                "chapters": [
+                  {
+                    "id": "di_tables",
+                    "title": "Tables & Charts",
+                    "desc": "Bar graphs, pie charts, line graphs, tabular data, and mixed DI.",
+                    "icon": "📊",
+                    "badge": "DI"
+                  },
+                  {
+                    "id": "di_caselet",
+                    "title": "Caselet & Missing DI",
+                    "desc": "Paragraph-based data, missing value calculations, and estimation.",
+                    "icon": "📈",
+                    "badge": "Advanced"
+                  }
+                ]
+              },
+              {
+                "title": "Arithmetic & Algebra",
+                "chapters": [
+                  {
+                    "id": "si_ci",
+                    "title": "Interest & Profit-Loss",
+                    "desc": "Simple/compound interest, profit-loss, discount, and partnership.",
+                    "icon": "💰",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "number_series_b",
+                    "title": "Number Series",
+                    "desc": "Pattern detection, wrong number finding, and missing number problems.",
+                    "icon": "🔢",
+                    "badge": "Series"
+                  }
+                ]
+              }
+            ]
+          },
+          "bank_reasoning": {
+            "title": "Reasoning for Bank Exams",
+            "subtitle": "Puzzles, arrangements, and logical deduction",
+            "rows": [
+              {
+                "title": "Arrangement & Puzzles",
+                "chapters": [
+                  {
+                    "id": "seating",
+                    "title": "Seating Arrangement",
+                    "desc": "Linear, circular, rectangular arrangements with multiple variables.",
+                    "icon": "🪑",
+                    "badge": "Puzzle"
+                  },
+                  {
+                    "id": "puzzles",
+                    "title": "Complex Puzzles",
+                    "desc": "Floor-based, scheduling, box-based, and multi-parameter puzzles.",
+                    "icon": "🧩",
+                    "badge": "Advanced"
+                  }
+                ]
+              },
+              {
+                "title": "Logical Reasoning",
+                "chapters": [
+                  {
+                    "id": "inequalities",
+                    "title": "Inequalities & Ordering",
+                    "desc": "Coded inequalities, ranking, alphabetical ordering, and blood relations.",
+                    "icon": "⚖️",
+                    "badge": "Logic"
+                  },
+                  {
+                    "id": "critical_reasoning",
+                    "title": "Critical Reasoning",
+                    "desc": "Assumptions, conclusions, course of action, and argument strength.",
+                    "icon": "🧠",
+                    "badge": "Critical"
+                  }
+                ]
+              }
+            ]
+          },
+          "bank_english": {
+            "title": "English for Banking",
+            "subtitle": "Reading, grammar, and verbal ability",
+            "rows": [
+              {
+                "title": "Reading Skills",
+                "chapters": [
+                  {
+                    "id": "rc_banking",
+                    "title": "Reading Comprehension",
+                    "desc": "Economy, technology, social issue passages with inference-based questions.",
+                    "icon": "📖",
+                    "badge": "RC"
+                  },
+                  {
+                    "id": "error_spotting",
+                    "title": "Error Spotting",
+                    "desc": "Grammar errors, spelling, sentence improvement, and word replacement.",
+                    "icon": "🔍",
+                    "badge": "Grammar"
+                  }
+                ]
+              },
+              {
+                "title": "Verbal Ability",
+                "chapters": [
+                  {
+                    "id": "fib_banking",
+                    "title": "Fill in the Blanks",
+                    "desc": "Single, double, and sentence fillers based on context and grammar.",
+                    "icon": "✏️",
+                    "badge": "FIB"
+                  },
+                  {
+                    "id": "para_jumbles_b",
+                    "title": "Para Jumbles & Connectors",
+                    "desc": "Sentence rearrangement, starters, connectors, and odd sentence out.",
+                    "icon": "🔗",
+                    "badge": "Verbal"
+                  }
+                ]
+              }
+            ]
+          },
+          "bank_awareness": {
+            "title": "Banking & Financial Awareness",
+            "subtitle": "Banking operations, RBI policies, and financial markets",
+            "rows": [
+              {
+                "title": "Banking Fundamentals",
+                "chapters": [
+                  {
+                    "id": "rbi_policy",
+                    "title": "RBI & Monetary Policy",
+                    "desc": "Repo rate, CRR, SLR, open market operations, and inflation targeting.",
+                    "icon": "🏛️",
+                    "badge": "RBI"
+                  },
+                  {
+                    "id": "banking_history",
+                    "title": "Banking History & Types",
+                    "desc": "Nationalization, SBI formation, payment banks, small finance banks, and NBFCs.",
+                    "icon": "🏦",
+                    "badge": "History"
+                  }
+                ]
+              },
+              {
+                "title": "Financial Markets",
+                "chapters": [
+                  {
+                    "id": "capital_market",
+                    "title": "Capital & Money Markets",
+                    "desc": "SEBI, stock exchanges, mutual funds, bonds, and market instruments.",
+                    "icon": "💹",
+                    "badge": "Markets"
+                  },
+                  {
+                    "id": "insurance_fin",
+                    "title": "Insurance & Schemes",
+                    "desc": "IRDAI, insurance types, PMJJBY, PMSBY, APY, and financial inclusion schemes.",
+                    "icon": "🛡️",
+                    "badge": "Insurance"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "Humanities & Social Sciences",
+    "icon": "📜",
+    "courses": [
+      {
+        "id": "indian_history",
+        "name": "Indian History",
+        "icon": "📖",
+        "themeColor": "#ef4444",
+        "subjects": [
+          {
+            "id": "ancient",
+            "name": "Ancient India",
+            "color": 16096779,
+            "desc": "Indus Valley Civilization, Vedic Age, Mauryas, and Guptas"
+          },
+          {
+            "id": "medieval",
+            "name": "Medieval India",
+            "color": 15680580,
+            "desc": "Delhi Sultanate, Mughal Empire, and regional kingdoms"
+          },
+          {
+            "id": "modern_hist",
+            "name": "Modern India",
+            "color": 3900150,
+            "desc": "British rule, nationalism, and India's independence movement"
+          },
+          {
+            "id": "art_culture",
+            "name": "Art & Culture",
+            "color": 11032055,
+            "desc": "Architecture, literature, music, dance, and paintings"
+          }
+        ],
+        "chapters": {
+          "ancient": {
+            "title": "Ancient Indian Civilization",
+            "subtitle": "From pre-history to the classical age",
+            "rows": [
+              {
+                "title": "Early Civilizations",
+                "chapters": [
+                  {
+                    "id": "indus_valley",
+                    "title": "Indus Valley Civilization",
+                    "desc": "Harappan cities, urban planning, trade networks, seals, and decline theories.",
+                    "icon": "🏛️",
+                    "badge": "c.3300-1300 BCE"
+                  },
+                  {
+                    "id": "vedic_age",
+                    "title": "Vedic Period",
+                    "desc": "Rig Veda, Later Vedic literature, social structure, and religion evolution.",
+                    "icon": "📜",
+                    "badge": "c.1500-500 BCE"
+                  }
+                ]
+              },
+              {
+                "title": "Classical Empires",
+                "chapters": [
+                  {
+                    "id": "mauryan",
+                    "title": "Mauryan Empire",
+                    "desc": "Chandragupta, Ashoka, Kautilya's Arthashastra, and Dhamma policy.",
+                    "icon": "👑",
+                    "badge": "c.322-185 BCE"
+                  },
+                  {
+                    "id": "gupta_empire",
+                    "title": "Gupta Golden Age",
+                    "desc": "Classical arts, Aryabhata, Kalidasa, and the zenith of Indian culture.",
+                    "icon": "🌟",
+                    "badge": "c.320-550 CE"
+                  }
+                ]
+              }
+            ]
+          },
+          "medieval": {
+            "title": "Medieval Indian History",
+            "subtitle": "Sultanates, empires, and cultural synthesis",
+            "rows": [
+              {
+                "title": "Delhi Sultanate",
+                "chapters": [
+                  {
+                    "id": "slave_dynasty",
+                    "title": "Early Sultanates",
+                    "desc": "Slave dynasty, Khilji reforms, Tughlaq experiments, and Sayyid-Lodi decline.",
+                    "icon": "⚔️",
+                    "badge": "1206-1526 CE"
+                  },
+                  {
+                    "id": "admin_sultanate",
+                    "title": "Administration & Society",
+                    "desc": "Iqta system, market reforms, sufi movements, and Indo-Islamic architecture.",
+                    "icon": "🕌",
+                    "badge": "Admin"
+                  }
+                ]
+              },
+              {
+                "title": "Mughal Empire",
+                "chapters": [
+                  {
+                    "id": "mughal_rise",
+                    "title": "Rise of the Mughals",
+                    "desc": "Babur, Humayun, Akbar's reforms, Din-i-Ilahi, and Mansabdari system.",
+                    "icon": "👑",
+                    "badge": "1526-1707 CE"
+                  },
+                  {
+                    "id": "mughal_culture",
+                    "title": "Mughal Art & Decline",
+                    "desc": "Mughal painting, architecture (Taj Mahal), literature, and causes of decline.",
+                    "icon": "🎨",
+                    "badge": "Culture"
+                  }
+                ]
+              }
+            ]
+          },
+          "modern_hist": {
+            "title": "Modern Indian History",
+            "subtitle": "Colonial period, nationalism, and independence",
+            "rows": [
+              {
+                "title": "Colonial India",
+                "chapters": [
+                  {
+                    "id": "company_rule",
+                    "title": "East India Company",
+                    "desc": "Battle of Plassey, Permanent Settlement, Charter Acts, and economic exploitation.",
+                    "icon": "🏴",
+                    "badge": "1757-1857"
+                  },
+                  {
+                    "id": "revolt_1857",
+                    "title": "Revolt of 1857",
+                    "desc": "Causes, leaders, course of revolt, failure, and consequences on governance.",
+                    "icon": "⚔️",
+                    "badge": "1857"
+                  }
+                ]
+              },
+              {
+                "title": "Freedom Struggle",
+                "chapters": [
+                  {
+                    "id": "congress_era",
+                    "title": "Congress & Movements",
+                    "desc": "INC formation, moderates, extremists, Swadeshi, Non-Cooperation, and Salt Satyagraha.",
+                    "icon": "✊",
+                    "badge": "Nationalist"
+                  },
+                  {
+                    "id": "independence",
+                    "title": "Towards Independence",
+                    "desc": "Quit India, INA, Cabinet Mission, partition, and birth of the Indian republic.",
+                    "icon": "🇮🇳",
+                    "badge": "1942-1947"
+                  }
+                ]
+              }
+            ]
+          },
+          "art_culture": {
+            "title": "Indian Art & Culture",
+            "subtitle": "Artistic heritage and cultural traditions",
+            "rows": [
+              {
+                "title": "Visual & Architectural Arts",
+                "chapters": [
+                  {
+                    "id": "architecture",
+                    "title": "Architecture Styles",
+                    "desc": "Nagara, Dravida, Vesara, Indo-Islamic, colonial, and rock-cut architecture.",
+                    "icon": "🏛️",
+                    "badge": "Architecture"
+                  },
+                  {
+                    "id": "paintings",
+                    "title": "Indian Paintings",
+                    "desc": "Ajanta-Ellora murals, miniature traditions, Mughal painting, and modern art.",
+                    "icon": "🎨",
+                    "badge": "Paintings"
+                  }
+                ]
+              },
+              {
+                "title": "Performing & Literary Arts",
+                "chapters": [
+                  {
+                    "id": "classical_dance",
+                    "title": "Classical Dance & Music",
+                    "desc": "Bharatanatyam, Kathak, Hindustani, Carnatic traditions, and Natyashastra.",
+                    "icon": "💃",
+                    "badge": "Performing"
+                  },
+                  {
+                    "id": "literature_cult",
+                    "title": "Literature & Languages",
+                    "desc": "Sanskrit classics, vernacular literature, Sangam texts, and modern writing.",
+                    "icon": "📚",
+                    "badge": "Literature"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "political_science",
+        "name": "Political Science",
+        "icon": "🏛️",
+        "themeColor": "#8b5cf6",
+        "subjects": [
+          {
+            "id": "pol_theory",
+            "name": "Political Theory",
+            "color": 9133302,
+            "desc": "State, sovereignty, rights, liberty, and political ideologies"
+          },
+          {
+            "id": "indian_govt",
+            "name": "Indian Government",
+            "color": 16096779,
+            "desc": "Constitutional machinery and federal structure"
+          },
+          {
+            "id": "comp_politics",
+            "name": "Comparative Politics",
+            "color": 440020,
+            "desc": "Comparing political systems across major democracies"
+          },
+          {
+            "id": "intl_relations",
+            "name": "International Relations",
+            "color": 15680580,
+            "desc": "Foreign policy, international organizations, and global politics"
+          }
+        ],
+        "chapters": {
+          "pol_theory": {
+            "title": "Political Theory",
+            "subtitle": "Foundational concepts and ideological frameworks",
+            "rows": [
+              {
+                "title": "Core Concepts",
+                "chapters": [
+                  {
+                    "id": "state_sovereignty",
+                    "title": "State & Sovereignty",
+                    "desc": "Theories of state, sovereignty concepts, nation-state, and legitimacy.",
+                    "icon": "🏛️",
+                    "badge": "Theory"
+                  },
+                  {
+                    "id": "rights_liberty",
+                    "title": "Rights & Liberty",
+                    "desc": "Natural rights, civil liberties, positive-negative freedom, and justice theories.",
+                    "icon": "⚖️",
+                    "badge": "Rights"
+                  }
+                ]
+              },
+              {
+                "title": "Ideologies",
+                "chapters": [
+                  {
+                    "id": "liberalism",
+                    "title": "Liberalism & Democracy",
+                    "desc": "Classical and modern liberalism, representative democracy, and deliberative models.",
+                    "icon": "🗽",
+                    "badge": "Ideology"
+                  },
+                  {
+                    "id": "socialism",
+                    "title": "Socialism & Marxism",
+                    "desc": "Scientific socialism, class struggle, dialectical materialism, and welfare state.",
+                    "icon": "✊",
+                    "badge": "Ideology"
+                  }
+                ]
+              }
+            ]
+          },
+          "indian_govt": {
+            "title": "Indian Government & Politics",
+            "subtitle": "Constitutional institutions and political dynamics",
+            "rows": [
+              {
+                "title": "Constitutional Framework",
+                "chapters": [
+                  {
+                    "id": "executive",
+                    "title": "The Executive",
+                    "desc": "President, PM, Council of Ministers, Governor, and Chief Minister roles.",
+                    "icon": "🏛️",
+                    "badge": "Executive"
+                  },
+                  {
+                    "id": "federalism",
+                    "title": "Indian Federalism",
+                    "desc": "Centre-state relations, inter-state councils, finance commission, and cooperative federalism.",
+                    "icon": "🤝",
+                    "badge": "Federal"
+                  }
+                ]
+              },
+              {
+                "title": "Political Dynamics",
+                "chapters": [
+                  {
+                    "id": "party_system",
+                    "title": "Party System",
+                    "desc": "National and regional parties, coalition politics, and electoral reforms.",
+                    "icon": "🗳️",
+                    "badge": "Parties"
+                  },
+                  {
+                    "id": "local_govt",
+                    "title": "Local Governance",
+                    "desc": "Panchayati Raj, urban local bodies, 73rd and 74th amendments, and decentralization.",
+                    "icon": "🏘️",
+                    "badge": "Local"
+                  }
+                ]
+              }
+            ]
+          },
+          "comp_politics": {
+            "title": "Comparative Politics",
+            "subtitle": "Comparative study of major political systems",
+            "rows": [
+              {
+                "title": "Democratic Systems",
+                "chapters": [
+                  {
+                    "id": "westminster",
+                    "title": "Westminster Model",
+                    "desc": "British parliamentary system, constitutional monarchy, and conventions.",
+                    "icon": "🇬🇧",
+                    "badge": "UK"
+                  },
+                  {
+                    "id": "presidential",
+                    "title": "Presidential System",
+                    "desc": "US presidential model, separation of powers, checks and balances.",
+                    "icon": "🇺🇸",
+                    "badge": "USA"
+                  }
+                ]
+              },
+              {
+                "title": "Political Processes",
+                "chapters": [
+                  {
+                    "id": "electoral_sys",
+                    "title": "Electoral Systems",
+                    "desc": "FPTP, proportional representation, mixed systems, and electoral reforms globally.",
+                    "icon": "🗳️",
+                    "badge": "Elections"
+                  },
+                  {
+                    "id": "civil_society",
+                    "title": "Civil Society & Media",
+                    "desc": "NGOs, social movements, media influence, and public opinion formation.",
+                    "icon": "📢",
+                    "badge": "Society"
+                  }
+                ]
+              }
+            ]
+          },
+          "intl_relations": {
+            "title": "International Relations",
+            "subtitle": "Global politics, diplomacy, and international order",
+            "rows": [
+              {
+                "title": "Theoretical Frameworks",
+                "chapters": [
+                  {
+                    "id": "realism",
+                    "title": "Realism & Liberalism",
+                    "desc": "Balance of power, collective security, international cooperation, and regime theory.",
+                    "icon": "🌍",
+                    "badge": "IR Theory"
+                  },
+                  {
+                    "id": "india_fp",
+                    "title": "India's Foreign Policy",
+                    "desc": "Non-alignment, Look East policy, nuclear doctrine, and neighborhood first.",
+                    "icon": "🇮🇳",
+                    "badge": "India"
+                  }
+                ]
+              },
+              {
+                "title": "International Organizations",
+                "chapters": [
+                  {
+                    "id": "un_system",
+                    "title": "United Nations System",
+                    "desc": "General Assembly, Security Council, ICJ, UNSC reform, and peacekeeping.",
+                    "icon": "🏳️",
+                    "badge": "UN"
+                  },
+                  {
+                    "id": "regional_orgs",
+                    "title": "Regional Organizations",
+                    "desc": "SAARC, ASEAN, EU, BRICS, SCO, and multilateral diplomacy.",
+                    "icon": "🤝",
+                    "badge": "Regional"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "geography",
+        "name": "Geography",
+        "icon": "🌍",
+        "themeColor": "#22c55e",
+        "subjects": [
+          {
+            "id": "physical_geo",
+            "name": "Physical Geography",
+            "color": 2278750,
+            "desc": "Geomorphology, climatology, oceanography, and biogeography"
+          },
+          {
+            "id": "human_geo",
+            "name": "Human Geography",
+            "color": 16096779,
+            "desc": "Population, settlement, migration, and urbanization"
+          },
+          {
+            "id": "economic_geo",
+            "name": "Economic Geography",
+            "color": 3900150,
+            "desc": "Resources, agriculture, industry, and trade patterns"
+          },
+          {
+            "id": "india_geo",
+            "name": "Geography of India",
+            "color": 15680580,
+            "desc": "Physical features, climate, soils, and natural vegetation"
+          }
+        ],
+        "chapters": {
+          "physical_geo": {
+            "title": "Physical Geography",
+            "subtitle": "Earth sciences, landforms, and atmospheric processes",
+            "rows": [
+              {
+                "title": "Geomorphology",
+                "chapters": [
+                  {
+                    "id": "plate_tectonics",
+                    "title": "Plate Tectonics",
+                    "desc": "Continental drift, seafloor spreading, plate boundaries, and volcanic activity.",
+                    "icon": "🌋",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "landforms_geo",
+                    "title": "Landforms & Processes",
+                    "desc": "Fluvial, glacial, aeolian, and coastal landforms and erosion cycles.",
+                    "icon": "🏔️",
+                    "badge": "Landforms"
+                  }
+                ]
+              },
+              {
+                "title": "Climatology & Oceanography",
+                "chapters": [
+                  {
+                    "id": "atm_circulation",
+                    "title": "Atmospheric Circulation",
+                    "desc": "Global wind patterns, pressure belts, jet streams, and cyclone formation.",
+                    "icon": "🌬️",
+                    "badge": "Climate"
+                  },
+                  {
+                    "id": "oceanography",
+                    "title": "Oceanography",
+                    "desc": "Ocean currents, tides, salinity, ocean floor topography, and marine resources.",
+                    "icon": "🌊",
+                    "badge": "Oceans"
+                  }
+                ]
+              }
+            ]
+          },
+          "human_geo": {
+            "title": "Human Geography",
+            "subtitle": "Population dynamics and settlement patterns",
+            "rows": [
+              {
+                "title": "Population Studies",
+                "chapters": [
+                  {
+                    "id": "population_geo",
+                    "title": "Population Geography",
+                    "desc": "Distribution, density, growth models, demographic transition, and migration.",
+                    "icon": "👥",
+                    "badge": "Population"
+                  },
+                  {
+                    "id": "urbanization",
+                    "title": "Urbanization",
+                    "desc": "Urban growth, smart cities, rural-urban migration, and urban planning.",
+                    "icon": "🏙️",
+                    "badge": "Urban"
+                  }
+                ]
+              },
+              {
+                "title": "Cultural Geography",
+                "chapters": [
+                  {
+                    "id": "cultural_geo",
+                    "title": "Cultural Landscapes",
+                    "desc": "Language distribution, religious geography, ethnicity, and cultural diffusion.",
+                    "icon": "🎭",
+                    "badge": "Culture"
+                  },
+                  {
+                    "id": "settlements",
+                    "title": "Settlement Geography",
+                    "desc": "Rural and urban settlement types, patterns, and central place theory.",
+                    "icon": "🏘️",
+                    "badge": "Settlements"
+                  }
+                ]
+              }
+            ]
+          },
+          "economic_geo": {
+            "title": "Economic Geography",
+            "subtitle": "Resources, production, and spatial economic patterns",
+            "rows": [
+              {
+                "title": "Primary Activities",
+                "chapters": [
+                  {
+                    "id": "agriculture_geo",
+                    "title": "Agricultural Geography",
+                    "desc": "Farming types, Green Revolution, food security, and agricultural regions.",
+                    "icon": "🌾",
+                    "badge": "Agriculture"
+                  },
+                  {
+                    "id": "resources_geo",
+                    "title": "Natural Resources",
+                    "desc": "Mineral distribution, energy resources, conservation, and resource management.",
+                    "icon": "⛏️",
+                    "badge": "Resources"
+                  }
+                ]
+              },
+              {
+                "title": "Secondary & Tertiary",
+                "chapters": [
+                  {
+                    "id": "industries_geo",
+                    "title": "Industrial Geography",
+                    "desc": "Location theories, industrial regions, manufacturing belts, and industrial policy.",
+                    "icon": "🏭",
+                    "badge": "Industry"
+                  },
+                  {
+                    "id": "trade_transport",
+                    "title": "Trade & Transport",
+                    "desc": "International trade, transport networks, communication, and globalization.",
+                    "icon": "🚢",
+                    "badge": "Trade"
+                  }
+                ]
+              }
+            ]
+          },
+          "india_geo": {
+            "title": "Geography of India",
+            "subtitle": "Physical features, climate, and natural resources of India",
+            "rows": [
+              {
+                "title": "Physical Features",
+                "chapters": [
+                  {
+                    "id": "himalaya",
+                    "title": "Himalayan System",
+                    "desc": "Great, Middle, and Shivalik ranges, river systems, and tectonic activity.",
+                    "icon": "🏔️",
+                    "badge": "Mountains"
+                  },
+                  {
+                    "id": "peninsular",
+                    "title": "Peninsular India",
+                    "desc": "Deccan plateau, Western & Eastern Ghats, coastal plains, and islands.",
+                    "icon": "🗺️",
+                    "badge": "Plateau"
+                  }
+                ]
+              },
+              {
+                "title": "Climate & Vegetation",
+                "chapters": [
+                  {
+                    "id": "india_climate",
+                    "title": "Indian Monsoon System",
+                    "desc": "Southwest and northeast monsoons, rainfall distribution, and climate zones.",
+                    "icon": "🌧️",
+                    "badge": "Monsoon"
+                  },
+                  {
+                    "id": "india_veg",
+                    "title": "Soils & Vegetation",
+                    "desc": "Soil types, natural vegetation zones, forest types, and conservation.",
+                    "icon": "🌿",
+                    "badge": "Ecology"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "Sciences",
+    "icon": "🔬",
+    "courses": [
+      {
+        "id": "physics",
+        "name": "Physics",
+        "icon": "⚛️",
+        "themeColor": "#3b82f6",
+        "subjects": [
+          {
+            "id": "mechanics",
+            "name": "Classical Mechanics",
+            "color": 3900150,
+            "desc": "Newton's laws, rotational dynamics, and gravitation"
+          },
+          {
+            "id": "electro_mag",
+            "name": "Electromagnetism",
+            "color": 15381256,
+            "desc": "Electric fields, magnetic fields, and electromagnetic induction"
+          },
+          {
+            "id": "optics_waves",
+            "name": "Optics & Waves",
+            "color": 440020,
+            "desc": "Wave motion, interference, diffraction, and modern optics"
+          },
+          {
+            "id": "modern_physics",
+            "name": "Modern Physics",
+            "color": 11032055,
+            "desc": "Quantum mechanics, relativity, and nuclear physics"
+          }
+        ],
+        "chapters": {
+          "mechanics": {
+            "title": "Classical Mechanics",
+            "subtitle": "Newtonian dynamics and analytical mechanics",
+            "rows": [
+              {
+                "title": "Newtonian Mechanics",
+                "chapters": [
+                  {
+                    "id": "newtons_laws",
+                    "title": "Newton's Laws of Motion",
+                    "desc": "Inertia, force-acceleration, action-reaction, and free body diagrams.",
+                    "icon": "🍎",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "work_energy",
+                    "title": "Work, Energy & Power",
+                    "desc": "Work-energy theorem, conservative forces, potential energy, and collisions.",
+                    "icon": "⚡",
+                    "badge": "Energy"
+                  }
+                ]
+              },
+              {
+                "title": "Rotational & Gravitational",
+                "chapters": [
+                  {
+                    "id": "rotational",
+                    "title": "Rotational Dynamics",
+                    "desc": "Moment of inertia, torque, angular momentum, and rolling motion.",
+                    "icon": "🔄",
+                    "badge": "Rotational"
+                  },
+                  {
+                    "id": "gravitation",
+                    "title": "Gravitation",
+                    "desc": "Newton's law of gravitation, orbital mechanics, Kepler's laws, and escape velocity.",
+                    "icon": "🌍",
+                    "badge": "Gravity"
+                  }
+                ]
+              }
+            ]
+          },
+          "electro_mag": {
+            "title": "Electromagnetism",
+            "subtitle": "Electric and magnetic field theory",
+            "rows": [
+              {
+                "title": "Electrostatics",
+                "chapters": [
+                  {
+                    "id": "electric_fields",
+                    "title": "Electric Fields & Potential",
+                    "desc": "Coulomb's law, field lines, equipotential surfaces, and Gauss law applications.",
+                    "icon": "⚡",
+                    "badge": "Fields"
+                  },
+                  {
+                    "id": "capacitance",
+                    "title": "Capacitance & Dielectrics",
+                    "desc": "Parallel plate, series/parallel combinations, energy storage, and dielectric effects.",
+                    "icon": "🔋",
+                    "badge": "Capacitors"
+                  }
+                ]
+              },
+              {
+                "title": "Magnetism & Induction",
+                "chapters": [
+                  {
+                    "id": "magnetic_fields",
+                    "title": "Magnetic Force & Fields",
+                    "desc": "Lorentz force, Biot-Savart, Ampere's law, and moving charges in magnetic fields.",
+                    "icon": "🧲",
+                    "badge": "Magnetic"
+                  },
+                  {
+                    "id": "em_induction",
+                    "title": "Electromagnetic Induction",
+                    "desc": "Faraday's law, Lenz's law, inductance, and AC generators.",
+                    "icon": "🔌",
+                    "badge": "Induction"
+                  }
+                ]
+              }
+            ]
+          },
+          "optics_waves": {
+            "title": "Optics & Wave Physics",
+            "subtitle": "Wave phenomena and optical instruments",
+            "rows": [
+              {
+                "title": "Wave Motion",
+                "chapters": [
+                  {
+                    "id": "wave_mechanics",
+                    "title": "Wave Mechanics",
+                    "desc": "Transverse and longitudinal waves, superposition, standing waves, and resonance.",
+                    "icon": "🌊",
+                    "badge": "Waves"
+                  },
+                  {
+                    "id": "sound",
+                    "title": "Sound & Acoustics",
+                    "desc": "Speed of sound, Doppler effect, beats, and acoustic resonance.",
+                    "icon": "🔊",
+                    "badge": "Sound"
+                  }
+                ]
+              },
+              {
+                "title": "Optics",
+                "chapters": [
+                  {
+                    "id": "ray_optics",
+                    "title": "Ray Optics",
+                    "desc": "Reflection, refraction, lenses, mirrors, and optical instruments.",
+                    "icon": "🔭",
+                    "badge": "Geometric"
+                  },
+                  {
+                    "id": "wave_optics",
+                    "title": "Wave Optics",
+                    "desc": "Interference, diffraction, polarization, and Young's double slit experiment.",
+                    "icon": "🌈",
+                    "badge": "Wave"
+                  }
+                ]
+              }
+            ]
+          },
+          "modern_physics": {
+            "title": "Modern Physics",
+            "subtitle": "Quantum mechanics, relativity, and particle physics",
+            "rows": [
+              {
+                "title": "Quantum Theory",
+                "chapters": [
+                  {
+                    "id": "quantum_mech",
+                    "title": "Quantum Mechanics",
+                    "desc": "Photoelectric effect, de Broglie wavelength, Heisenberg principle, and Schrödinger equation.",
+                    "icon": "⚛️",
+                    "badge": "Quantum"
+                  },
+                  {
+                    "id": "atomic_models",
+                    "title": "Atomic Structure",
+                    "desc": "Bohr model, hydrogen spectrum, multi-electron atoms, and orbital theory.",
+                    "icon": "🔬",
+                    "badge": "Atomic"
+                  }
+                ]
+              },
+              {
+                "title": "Nuclear & Particle",
+                "chapters": [
+                  {
+                    "id": "nuclear",
+                    "title": "Nuclear Physics",
+                    "desc": "Radioactivity, nuclear fission and fusion, binding energy, and nuclear reactors.",
+                    "icon": "☢️",
+                    "badge": "Nuclear"
+                  },
+                  {
+                    "id": "relativity",
+                    "title": "Special Relativity",
+                    "desc": "Lorentz transformations, time dilation, length contraction, and E=mc².",
+                    "icon": "🚀",
+                    "badge": "Relativity"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "chemistry",
+        "name": "Chemistry",
+        "icon": "🧪",
+        "themeColor": "#ec4899",
+        "subjects": [
+          {
+            "id": "physical_chem",
+            "name": "Physical Chemistry",
+            "color": 15485081,
+            "desc": "Thermodynamics, kinetics, equilibrium, and electrochemistry"
+          },
+          {
+            "id": "organic_chem",
+            "name": "Organic Chemistry",
+            "color": 2278750,
+            "desc": "Hydrocarbons, functional groups, reaction mechanisms, and synthesis"
+          },
+          {
+            "id": "inorganic_chem",
+            "name": "Inorganic Chemistry",
+            "color": 3900150,
+            "desc": "Periodic table, chemical bonding, and coordination compounds"
+          },
+          {
+            "id": "analytical_chem",
+            "name": "Analytical Chemistry",
+            "color": 16096779,
+            "desc": "Qualitative analysis, spectroscopy, and chromatography"
+          }
+        ],
+        "chapters": {
+          "physical_chem": {
+            "title": "Physical Chemistry",
+            "subtitle": "Quantitative principles governing chemical systems",
+            "rows": [
+              {
+                "title": "Thermodynamics & Equilibrium",
+                "chapters": [
+                  {
+                    "id": "chem_thermo",
+                    "title": "Chemical Thermodynamics",
+                    "desc": "Enthalpy, entropy, Gibbs free energy, Hess's law, and spontaneity.",
+                    "icon": "🌡️",
+                    "badge": "Thermo"
+                  },
+                  {
+                    "id": "equilibrium",
+                    "title": "Chemical Equilibrium",
+                    "desc": "Le Chatelier principle, equilibrium constants, ICE tables, and buffer solutions.",
+                    "icon": "⚖️",
+                    "badge": "Equilibrium"
+                  }
+                ]
+              },
+              {
+                "title": "Kinetics & Electrochemistry",
+                "chapters": [
+                  {
+                    "id": "kinetics",
+                    "title": "Chemical Kinetics",
+                    "desc": "Rate laws, reaction order, Arrhenius equation, and catalysis mechanisms.",
+                    "icon": "⏱️",
+                    "badge": "Kinetics"
+                  },
+                  {
+                    "id": "electrochem",
+                    "title": "Electrochemistry",
+                    "desc": "Galvanic cells, electrolysis, Nernst equation, and corrosion.",
+                    "icon": "🔋",
+                    "badge": "Electro"
+                  }
+                ]
+              }
+            ]
+          },
+          "organic_chem": {
+            "title": "Organic Chemistry",
+            "subtitle": "Carbon compounds, reactions, and synthesis",
+            "rows": [
+              {
+                "title": "Fundamentals",
+                "chapters": [
+                  {
+                    "id": "hydrocarbons",
+                    "title": "Hydrocarbons",
+                    "desc": "Alkanes, alkenes, alkynes, aromaticity, and IUPAC nomenclature.",
+                    "icon": "⬡",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "functional_grp",
+                    "title": "Functional Groups",
+                    "desc": "Alcohols, aldehydes, ketones, carboxylic acids, amines, and their reactions.",
+                    "icon": "🧬",
+                    "badge": "Groups"
+                  }
+                ]
+              },
+              {
+                "title": "Reaction Chemistry",
+                "chapters": [
+                  {
+                    "id": "mechanisms",
+                    "title": "Reaction Mechanisms",
+                    "desc": "SN1, SN2, E1, E2, addition, elimination, and rearrangement reactions.",
+                    "icon": "🔄",
+                    "badge": "Mechanism"
+                  },
+                  {
+                    "id": "biomolecules",
+                    "title": "Biomolecules & Polymers",
+                    "desc": "Carbohydrates, proteins, nucleic acids, vitamins, and polymerization.",
+                    "icon": "🧪",
+                    "badge": "Bio"
+                  }
+                ]
+              }
+            ]
+          },
+          "inorganic_chem": {
+            "title": "Inorganic Chemistry",
+            "subtitle": "Elements, bonding, and coordination chemistry",
+            "rows": [
+              {
+                "title": "Chemical Bonding",
+                "chapters": [
+                  {
+                    "id": "bonding",
+                    "title": "Chemical Bonding",
+                    "desc": "Ionic, covalent, metallic bonds, VSEPR theory, and molecular orbital theory.",
+                    "icon": "🔗",
+                    "badge": "Bonding"
+                  },
+                  {
+                    "id": "periodic_table",
+                    "title": "Periodic Properties",
+                    "desc": "Trends in electronegativity, ionization energy, electron affinity, and atomic radius.",
+                    "icon": "📊",
+                    "badge": "Periodic"
+                  }
+                ]
+              },
+              {
+                "title": "Coordination Chemistry",
+                "chapters": [
+                  {
+                    "id": "coordination",
+                    "title": "Coordination Compounds",
+                    "desc": "Werner's theory, crystal field theory, ligand types, and isomerism.",
+                    "icon": "🔮",
+                    "badge": "Coordination"
+                  },
+                  {
+                    "id": "d_f_block",
+                    "title": "d and f Block Elements",
+                    "desc": "Transition metals, lanthanides, actinides, catalytic properties, and alloys.",
+                    "icon": "⚙️",
+                    "badge": "Metals"
+                  }
+                ]
+              }
+            ]
+          },
+          "analytical_chem": {
+            "title": "Analytical Chemistry",
+            "subtitle": "Methods of chemical analysis and instrumentation",
+            "rows": [
+              {
+                "title": "Classical Methods",
+                "chapters": [
+                  {
+                    "id": "qualitative",
+                    "title": "Qualitative Analysis",
+                    "desc": "Systematic analysis of cations and anions, flame tests, and spot tests.",
+                    "icon": "🔍",
+                    "badge": "Qualitative"
+                  },
+                  {
+                    "id": "volumetric",
+                    "title": "Volumetric Analysis",
+                    "desc": "Titrations, indicators, standardization, and gravimetric analysis.",
+                    "icon": "⚗️",
+                    "badge": "Volumetric"
+                  }
+                ]
+              },
+              {
+                "title": "Instrumental Methods",
+                "chapters": [
+                  {
+                    "id": "spectroscopy",
+                    "title": "Spectroscopy",
+                    "desc": "UV-Vis, IR, NMR, mass spectrometry, and molecular structure determination.",
+                    "icon": "🌈",
+                    "badge": "Spectral"
+                  },
+                  {
+                    "id": "chromatography",
+                    "title": "Chromatography",
+                    "desc": "TLC, column, HPLC, GC techniques, and separation principles.",
+                    "icon": "📊",
+                    "badge": "Separation"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": "mathematics",
+        "name": "Mathematics",
+        "icon": "📐",
+        "themeColor": "#6366f1",
+        "subjects": [
+          {
+            "id": "calculus",
+            "name": "Calculus",
+            "color": 6514417,
+            "desc": "Differential, integral calculus, and multivariable analysis"
+          },
+          {
+            "id": "linear_algebra",
+            "name": "Linear Algebra",
+            "color": 440020,
+            "desc": "Matrices, vector spaces, eigenvalues, and transformations"
+          },
+          {
+            "id": "probability",
+            "name": "Probability & Statistics",
+            "color": 1096065,
+            "desc": "Random variables, distributions, hypothesis testing, and regression"
+          },
+          {
+            "id": "discrete_math",
+            "name": "Discrete Mathematics",
+            "color": 16096779,
+            "desc": "Combinatorics, graph theory, logic, and number theory"
+          }
+        ],
+        "chapters": {
+          "calculus": {
+            "title": "Calculus",
+            "subtitle": "Limits, derivatives, integrals, and series",
+            "rows": [
+              {
+                "title": "Differential Calculus",
+                "chapters": [
+                  {
+                    "id": "limits",
+                    "title": "Limits & Continuity",
+                    "desc": "Epsilon-delta definition, L'Hôpital's rule, and continuity theorems.",
+                    "icon": "📈",
+                    "badge": "Foundations"
+                  },
+                  {
+                    "id": "derivatives",
+                    "title": "Differentiation",
+                    "desc": "Product, quotient, chain rules, implicit differentiation, and applications.",
+                    "icon": "📐",
+                    "badge": "Derivatives"
+                  }
+                ]
+              },
+              {
+                "title": "Integral Calculus",
+                "chapters": [
+                  {
+                    "id": "integration",
+                    "title": "Integration",
+                    "desc": "Fundamental theorem, substitution, integration by parts, and partial fractions.",
+                    "icon": "∫",
+                    "badge": "Integration"
+                  },
+                  {
+                    "id": "multivariable",
+                    "title": "Multivariable Calculus",
+                    "desc": "Partial derivatives, gradient, divergence, curl, and multiple integrals.",
+                    "icon": "🌀",
+                    "badge": "Multi-D"
+                  }
+                ]
+              }
+            ]
+          },
+          "linear_algebra": {
+            "title": "Linear Algebra",
+            "subtitle": "Vectors, matrices, and abstract linear structures",
+            "rows": [
+              {
+                "title": "Matrices & Determinants",
+                "chapters": [
+                  {
+                    "id": "matrices",
+                    "title": "Matrix Operations",
+                    "desc": "Addition, multiplication, inverse, rank, echelon forms, and Gaussian elimination.",
+                    "icon": "🔲",
+                    "badge": "Core"
+                  },
+                  {
+                    "id": "determinants",
+                    "title": "Determinants",
+                    "desc": "Properties, cofactors, Cramer's rule, and adjugate matrix.",
+                    "icon": "📊",
+                    "badge": "Determinants"
+                  }
+                ]
+              },
+              {
+                "title": "Vector Spaces & Eigenvalues",
+                "chapters": [
+                  {
+                    "id": "vector_spaces",
+                    "title": "Vector Spaces",
+                    "desc": "Basis, dimension, linear independence, span, and subspaces.",
+                    "icon": "↗️",
+                    "badge": "Spaces"
+                  },
+                  {
+                    "id": "eigenvalues",
+                    "title": "Eigenvalues & Eigenvectors",
+                    "desc": "Characteristic equation, diagonalization, and spectral decomposition.",
+                    "icon": "🎯",
+                    "badge": "Eigen"
+                  }
+                ]
+              }
+            ]
+          },
+          "probability": {
+            "title": "Probability & Statistics",
+            "subtitle": "Statistical analysis and probabilistic models",
+            "rows": [
+              {
+                "title": "Probability Theory",
+                "chapters": [
+                  {
+                    "id": "prob_basics",
+                    "title": "Probability Fundamentals",
+                    "desc": "Sample spaces, Bayes theorem, conditional probability, and independence.",
+                    "icon": "🎲",
+                    "badge": "Probability"
+                  },
+                  {
+                    "id": "distributions",
+                    "title": "Distributions",
+                    "desc": "Binomial, Poisson, normal, exponential distributions, and CLT.",
+                    "icon": "📉",
+                    "badge": "Distributions"
+                  }
+                ]
+              },
+              {
+                "title": "Statistical Inference",
+                "chapters": [
+                  {
+                    "id": "hypothesis",
+                    "title": "Hypothesis Testing",
+                    "desc": "Z-test, t-test, chi-square, p-values, confidence intervals, and ANOVA.",
+                    "icon": "📊",
+                    "badge": "Testing"
+                  },
+                  {
+                    "id": "regression",
+                    "title": "Regression Analysis",
+                    "desc": "Linear regression, correlation, R-squared, and multiple regression models.",
+                    "icon": "📈",
+                    "badge": "Regression"
+                  }
+                ]
+              }
+            ]
+          },
+          "discrete_math": {
+            "title": "Discrete Mathematics",
+            "subtitle": "Combinatorics, logic, and discrete structures",
+            "rows": [
+              {
+                "title": "Combinatorics & Logic",
+                "chapters": [
+                  {
+                    "id": "combinatorics",
+                    "title": "Combinatorics",
+                    "desc": "Permutations, combinations, pigeonhole principle, and inclusion-exclusion.",
+                    "icon": "🔢",
+                    "badge": "Counting"
+                  },
+                  {
+                    "id": "propositional",
+                    "title": "Propositional Logic",
+                    "desc": "Truth tables, logical connectives, normal forms, and predicate logic.",
+                    "icon": "🧠",
+                    "badge": "Logic"
+                  }
+                ]
+              },
+              {
+                "title": "Graph Theory & Number Theory",
+                "chapters": [
+                  {
+                    "id": "graph_theory",
+                    "title": "Graph Theory",
+                    "desc": "Trees, coloring, Euler/Hamilton paths, planarity, and network flow.",
+                    "icon": "🕸️",
+                    "badge": "Graphs"
+                  },
+                  {
+                    "id": "number_theory",
+                    "title": "Number Theory",
+                    "desc": "Divisibility, prime numbers, modular arithmetic, GCD, and cryptographic applications.",
+                    "icon": "🔐",
+                    "badge": "Numbers"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    ]
+  }
+]

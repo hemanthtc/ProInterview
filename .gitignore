@@ -50,6 +50,7 @@ next-env.d.ts
 !.cursor/environment.json
 !public/manifest.json
 !public/offline-drills.json
+!src/data/studyMaterialsSeed.json
 *.log
 err.json
 err2.json
