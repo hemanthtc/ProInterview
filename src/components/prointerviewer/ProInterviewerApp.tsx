@@ -163,6 +163,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const [aiNotesSkills, setAiNotesSkills] = useState<string>('');
   const [aiNotesLanguages, setAiNotesLanguages] = useState<string>('');
   const [aiNotesCertifications, setAiNotesCertifications] = useState<string>('');
+  const [aiRoleMode, setAiRoleMode] = useState<'specified' | 'fresher'>('specified');
   const [aiSourceMode, setAiSourceMode] = useState<'resume' | 'portfolio' | 'both'>('resume');
   const [showVerifyAlertModal, setShowVerifyAlertModal] = useState<boolean>(false);
   const [hasPortfolioUrl, setHasPortfolioUrl] = useState<boolean>(false);
@@ -815,8 +816,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('github', resumeData.personalInfo.github || getStorageItem("userGithub") || '');
       formData.append('linkedin', resumeData.personalInfo.linkedin || getStorageItem("userLinkedin") || '');
       formData.append('portfolioUrl', portfolioInputUrl || resumeData.personalInfo.website || getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || '');
-      formData.append('preferredRoles', aiTargetRoles || resumeData.personalInfo.title || 'Software Engineer');
-      formData.append('targetCompanies', aiTargetCompanies || 'Top Tech Companies');
+      formData.append('preferredRoles', aiRoleMode === 'fresher' ? 'Entry-Level / Fresher' : (aiTargetRoles || resumeData.personalInfo.title || ''));
+      formData.append('targetCompanies', aiRoleMode === 'fresher' ? 'Open Opportunity' : (aiTargetCompanies || ''));
+      formData.append('roleMode', aiRoleMode);
       formData.append('userInput', Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '');
       formData.append('missingSections', missingSectionsList.join(','));
       if (resumeUploadFile) {
@@ -953,8 +955,8 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('github', resumeData.personalInfo.github || '');
       formData.append('linkedin', resumeData.personalInfo.linkedin || '');
       formData.append('portfolioUrl', resumeData.personalInfo.website || '');
-      formData.append('preferredRoles', atsTargetRole || resumeData.personalInfo.title || 'Software Engineer');
-      formData.append('targetCompanies', atsTargetCompany || 'Top Tech Companies');
+      formData.append('preferredRoles', atsTargetRole || resumeData.personalInfo.title || '');
+      formData.append('targetCompanies', atsTargetCompany || '');
       formData.append('optimizeAts', 'true');
       formData.append('targetPages', atsTargetPages);
       formData.append('missingSections', 'summary,workExperience,education,projects,skills,languages,certifications');
@@ -1433,29 +1435,73 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                         />
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
-                        <div>
-                          <label className="ai-modal-label">Target Role</label>
-                          <input
-                            type="text"
-                            value={aiTargetRoles}
-                            onChange={(e) => setAiTargetRoles(e.target.value)}
-                            placeholder="e.g. Frontend Developer"
-                            className="ai-modal-input"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="ai-modal-label">Target Company</label>
-                          <input
-                            type="text"
-                            value={aiTargetCompanies}
-                            onChange={(e) => setAiTargetCompanies(e.target.value)}
-                            placeholder="e.g. Google"
-                            className="ai-modal-input"
-                          />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                        <label className="ai-modal-label">Job Search Target Mode</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.05)', padding: '4px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setAiRoleMode('specified')}
+                            style={{
+                              flex: 1,
+                              padding: '6px 12px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              borderRadius: '4px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: aiRoleMode === 'specified' ? '#8b5cf6' : 'transparent',
+                              color: aiRoleMode === 'specified' ? '#ffffff' : '#9ca3af',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Role Specified
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAiRoleMode('fresher')}
+                            style={{
+                              flex: 1,
+                              padding: '6px 12px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              borderRadius: '4px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: aiRoleMode === 'fresher' ? '#8b5cf6' : 'transparent',
+                              color: aiRoleMode === 'fresher' ? '#ffffff' : '#9ca3af',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Without Role (Fresher Mode)
+                          </button>
                         </div>
                       </div>
+
+                      {aiRoleMode === 'specified' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                          <div>
+                            <label className="ai-modal-label">Target Role</label>
+                            <input
+                              type="text"
+                              value={aiTargetRoles}
+                              onChange={(e) => setAiTargetRoles(e.target.value)}
+                              placeholder="e.g. Frontend Developer"
+                              className="ai-modal-input"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="ai-modal-label">Target Company</label>
+                            <input
+                              type="text"
+                              value={aiTargetCompanies}
+                              onChange={(e) => setAiTargetCompanies(e.target.value)}
+                              placeholder="e.g. Google"
+                              className="ai-modal-input"
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -1514,29 +1560,73 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                       marginBottom: '1.25rem',
                       boxSizing: 'border-box'
                     }}>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
-                        <div>
-                          <label className="ai-modal-label">Target Roles</label>
-                          <input
-                            type="text"
-                            value={aiTargetRoles}
-                            onChange={(e) => setAiTargetRoles(e.target.value)}
-                            placeholder="e.g. Frontend Engineer"
-                            className="ai-modal-input"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="ai-modal-label">Target Companies</label>
-                          <input
-                            type="text"
-                            value={aiTargetCompanies}
-                            onChange={(e) => setAiTargetCompanies(e.target.value)}
-                            placeholder="e.g. Top Tech Companies"
-                            className="ai-modal-input"
-                          />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                        <label className="ai-modal-label">Job Search Target Mode</label>
+                        <div style={{ display: 'flex', gap: '0.5rem', background: 'rgba(255, 255, 255, 0.05)', padding: '4px', borderRadius: '6px', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                          <button
+                            type="button"
+                            onClick={() => setAiRoleMode('specified')}
+                            style={{
+                              flex: 1,
+                              padding: '6px 12px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              borderRadius: '4px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: aiRoleMode === 'specified' ? '#8b5cf6' : 'transparent',
+                              color: aiRoleMode === 'specified' ? '#ffffff' : '#9ca3af',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Role Specified
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAiRoleMode('fresher')}
+                            style={{
+                              flex: 1,
+                              padding: '6px 12px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600,
+                              borderRadius: '4px',
+                              border: 'none',
+                              cursor: 'pointer',
+                              background: aiRoleMode === 'fresher' ? '#8b5cf6' : 'transparent',
+                              color: aiRoleMode === 'fresher' ? '#ffffff' : '#9ca3af',
+                              transition: 'all 0.2s'
+                            }}
+                          >
+                            Without Role (Fresher Mode)
+                          </button>
                         </div>
                       </div>
+
+                      {aiRoleMode === 'specified' && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.55rem' }}>
+                          <div>
+                            <label className="ai-modal-label">Target Roles</label>
+                            <input
+                              type="text"
+                              value={aiTargetRoles}
+                              onChange={(e) => setAiTargetRoles(e.target.value)}
+                              placeholder="e.g. Frontend Engineer"
+                              className="ai-modal-input"
+                            />
+                          </div>
+
+                          <div>
+                            <label className="ai-modal-label">Target Companies</label>
+                            <input
+                              type="text"
+                              value={aiTargetCompanies}
+                              onChange={(e) => setAiTargetCompanies(e.target.value)}
+                              placeholder="e.g. Top Tech Companies"
+                              className="ai-modal-input"
+                            />
+                          </div>
+                        </div>
+                      )}
 
                       {missingSectionsList.includes("summary") && (
                         <div>
@@ -2195,6 +2285,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     data={resumeData}
                     style={currentStyle}
                     onChangeData={setResumeData}
+                    onChangeStyle={setCurrentStyle}
                     onHeightChange={setContentHeight}
                   />
                 </div>

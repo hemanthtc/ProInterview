@@ -20,6 +20,7 @@ export interface WorkExperience {
   endDate: string;
   current: boolean;
   description: string; // Bullet points or text description
+  hidden?: boolean;
 }
 
 export interface Education {
@@ -33,6 +34,7 @@ export interface Education {
   cgpa?: string;
   percentage?: string;
   description: string;
+  hidden?: boolean;
 }
 
 export interface Project {
@@ -42,6 +44,7 @@ export interface Project {
   technologies: string[];
   link: string;
   role: string;
+  hidden?: boolean;
 }
 
 export interface Skill {
@@ -49,12 +52,14 @@ export interface Skill {
   name: string;
   level: string; // e.g. "Beginner", "Intermediate", "Advanced", "Expert", or ""
   category: string; // e.g. "Languages", "Frameworks", "Design"
+  hidden?: boolean;
 }
 
 export interface Language {
   id: string;
   name: string;
   proficiency: string; // e.g. "Native", "Fluent", "Conversational", "Basic"
+  hidden?: boolean;
 }
 
 export interface Certification {
@@ -63,6 +68,7 @@ export interface Certification {
   issuer: string;
   date: string;
   link: string;
+  hidden?: boolean;
 }
 
 export interface CustomSectionItem {
@@ -71,6 +77,7 @@ export interface CustomSectionItem {
   subtitle: string;
   date: string;
   description: string;
+  hidden?: boolean;
 }
 
 export interface CustomSection {
@@ -128,6 +135,7 @@ export interface ResumeStyle {
   spacing: SpacingSize;
   margins: MarginSize;
   showAvatars: boolean;
+  sectionOrder?: string[];
   visibleSections?: {
     summary?: boolean;
     experience?: boolean;

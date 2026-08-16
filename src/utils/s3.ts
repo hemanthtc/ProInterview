@@ -5,6 +5,7 @@ import {
     HeadBucketCommand,
     GetObjectCommand,
     CopyObjectCommand,
+    ListObjectsV2Command,
     type PutObjectCommandInput,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -197,5 +198,18 @@ export function getS3SyntheticKey(identifier: string, fileId: string): string {
     const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
     const safeFile = fileId.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
     return `synthetic/${safeUser}/${safeFile}.json`;
+}
+
+export async function listS3Objects(prefix: string, delimiter?: string): Promise<{ contents: string[]; commonPrefixes: string[] }> {
+    const bucket = getS3Bucket();
+    const command = new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        Delimiter: delimiter,
+    });
+    const response = await getS3Client().send(command);
+    const contents = (response.Contents || []).map(obj => obj.Key).filter((key): key is string => !!key);
+    const commonPrefixes = (response.CommonPrefixes || []).map(cp => cp.Prefix).filter((p): p is string => !!p);
+    return { contents, commonPrefixes };
 }
 

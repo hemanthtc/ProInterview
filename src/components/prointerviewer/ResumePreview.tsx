@@ -1,13 +1,14 @@
 import React from 'react';
 import type { ResumeData, ResumeStyle, WorkExperience, Education, Project, Skill, Language, Certification, CustomSection, CustomSectionItem } from './types';
 import { COLOR_PALETTES, FONT_FAMILIES } from './templates';
-import { Mail, Phone, MapPin, Globe, Pencil, Plus, Trash2, X } from 'lucide-react';
+import { Mail, Phone, MapPin, Globe, Pencil, Plus, Trash2, X, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
 const generateUniqueId = (prefix: string) => `${prefix}-new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 interface ResumePreviewProps {
   data: ResumeData;
   style: ResumeStyle;
   onChangeData: (updatedData: ResumeData) => void;
+  onChangeStyle?: (updatedStyle: ResumeStyle) => void;
   onHeightChange?: (height: number) => void;
 }
 
@@ -104,7 +105,7 @@ const EditableText: React.FC<EditableTextProps> = ({
   );
 };
 
-export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onChangeData, onHeightChange }) => {
+export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onChangeData, onChangeStyle, onHeightChange }) => {
   const activePalette = COLOR_PALETTES.find(p => p.id === style.colorPaletteId) || COLOR_PALETTES[0];
   const activeFont = FONT_FAMILIES.find(f => f.id === style.fontFamilyId) || FONT_FAMILIES[0];
 
@@ -226,6 +227,88 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
       })
     });
   };
+  // --- VISIBILITY & SWAPPING CONTROLS ---
+  const handleToggleItemVisibility = (itemId: string, listKey: 'workExperience' | 'education' | 'projects' | 'skills' | 'languages' | 'certifications' | 'customSections', customSectionId?: string) => {
+    if (listKey === 'customSections' && customSectionId) {
+      const updatedCustom = data.customSections.map(sect => {
+        if (sect.id === customSectionId) {
+          return {
+            ...sect,
+            items: sect.items.map(item => item.id === itemId ? { ...item, hidden: !item.hidden } : item)
+          };
+        }
+        return sect;
+      });
+      onChangeData({ ...data, customSections: updatedCustom });
+    } else if (listKey !== 'customSections') {
+      const list = (data as any)[listKey] as any[];
+      const updatedList = list.map(item => item.id === itemId ? { ...item, hidden: !item.hidden } : item);
+      onChangeData({ ...data, [listKey]: updatedList });
+    }
+  };
+
+  const handleMoveItem = (itemId: string, listKey: 'workExperience' | 'education' | 'projects' | 'skills' | 'languages' | 'certifications' | 'customSections', direction: 'up' | 'down', customSectionId?: string) => {
+    if (listKey === 'customSections' && customSectionId) {
+      const updatedCustom = data.customSections.map(sect => {
+        if (sect.id === customSectionId) {
+          const list = [...sect.items];
+          const idx = list.findIndex(item => item.id === itemId);
+          if (idx === -1) return sect;
+          const target = direction === 'up' ? idx - 1 : idx + 1;
+          if (target >= 0 && target < list.length) {
+            const temp = list[idx];
+            list[idx] = list[target];
+            list[target] = temp;
+          }
+          return { ...sect, items: list };
+        }
+        return sect;
+      });
+      onChangeData({ ...data, customSections: updatedCustom });
+    } else if (listKey !== 'customSections') {
+      const list = [...((data as any)[listKey] as any[])];
+      const idx = list.findIndex(item => item.id === itemId);
+      if (idx === -1) return;
+      const target = direction === 'up' ? idx - 1 : idx + 1;
+      if (target >= 0 && target < list.length) {
+        const temp = list[idx];
+        list[idx] = list[target];
+        list[target] = temp;
+        onChangeData({ ...data, [listKey]: list });
+      }
+    }
+  };
+
+  const handleMoveSection = (sectionName: string, direction: 'up' | 'down') => {
+    if (!onChangeStyle) return;
+    const defaultOrder = ['summary', 'experience', 'education', 'projects', 'skills', 'languages', 'certifications'];
+    const currentOrder = [...(style.sectionOrder || defaultOrder)];
+    const idx = currentOrder.indexOf(sectionName);
+    if (idx === -1) return;
+    const target = direction === 'up' ? idx - 1 : idx + 1;
+    if (target >= 0 && target < currentOrder.length) {
+      const temp = currentOrder[idx];
+      currentOrder[idx] = currentOrder[target];
+      currentOrder[target] = temp;
+      onChangeStyle({
+        ...style,
+        sectionOrder: currentOrder
+      });
+    }
+  };
+
+  const handleToggleSectionVisibility = (sectionName: 'summary' | 'experience' | 'education' | 'projects' | 'skills' | 'languages' | 'certifications') => {
+    if (!onChangeStyle) return;
+    const visible = style.visibleSections || {};
+    onChangeStyle({
+      ...style,
+      visibleSections: {
+        ...visible,
+        [sectionName]: visible[sectionName as keyof typeof visible] === false ? true : false
+      }
+    });
+  };
+
 
   // --- ADD / DELETE MUTATIONS FOR PREVIEW EDITOR ---
   const handleAddWorkExp = () => {
@@ -440,43 +523,71 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     const headerClass = `resume-header header-${style.headerStyle}`;
 
     const contactGrid = (
-      <div className="contact-grid">
-        {personalInfo.email && (
+      <div className="contact-grid-wrapper">
+        <div className="contact-grid">
+          {/* Email and Phone are mandatory and always render */}
           <div className="contact-item">
             <Mail size={12} />
-            <EditableText value={personalInfo.email} onChange={(val) => handleUpdatePersonalInfo('email', val)} placeholder="Email" />
+            <EditableText value={personalInfo.email || "email@example.com"} onChange={(val) => handleUpdatePersonalInfo('email', val)} placeholder="Email" />
           </div>
-        )}
-        {personalInfo.phone && (
           <div className="contact-item">
             <Phone size={12} />
-            <EditableText value={personalInfo.phone} onChange={(val) => handleUpdatePersonalInfo('phone', val)} placeholder="Phone" />
+            <EditableText value={personalInfo.phone || "+123-456-7890"} onChange={(val) => handleUpdatePersonalInfo('phone', val)} placeholder="Phone" />
           </div>
-        )}
-        {personalInfo.location && (
-          <div className="contact-item">
-            <MapPin size={12} />
-            <EditableText value={personalInfo.location} onChange={(val) => handleUpdatePersonalInfo('location', val)} placeholder="Location" />
-          </div>
-        )}
-        {personalInfo.website && (
-          <div className="contact-item">
-            <Globe size={12} />
-            <EditableText value={personalInfo.website} onChange={(val) => handleUpdatePersonalInfo('website', val)} placeholder="Website" />
-          </div>
-        )}
-        {personalInfo.linkedin && (
-          <div className="contact-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
-            <EditableText value={personalInfo.linkedin} onChange={(val) => handleUpdatePersonalInfo('linkedin', val)} placeholder="LinkedIn" />
-          </div>
-        )}
-        {personalInfo.github && (
-          <div className="contact-item">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
-            <EditableText value={personalInfo.github} onChange={(val) => handleUpdatePersonalInfo('github', val)} placeholder="GitHub" />
-          </div>
-        )}
+          
+          {personalInfo.location && (
+            <div className="contact-item" style={{ position: 'relative' }}>
+              <MapPin size={12} />
+              <EditableText value={personalInfo.location} onChange={(val) => handleUpdatePersonalInfo('location', val)} placeholder="Location" />
+              <button className="no-print contact-remove-btn" onClick={() => handleUpdatePersonalInfo('location', '')} title="Remove Location" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', padding: '1px', marginLeft: '2px', opacity: 0.6, transition: 'opacity 0.15s' }}><X size={10} /></button>
+            </div>
+          )}
+          {personalInfo.website && (
+            <div className="contact-item" style={{ position: 'relative' }}>
+              <Globe size={12} />
+              <EditableText value={personalInfo.website} onChange={(val) => handleUpdatePersonalInfo('website', val)} placeholder="Website" />
+              <button className="no-print contact-remove-btn" onClick={() => handleUpdatePersonalInfo('website', '')} title="Remove Website" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', padding: '1px', marginLeft: '2px', opacity: 0.6, transition: 'opacity 0.15s' }}><X size={10} /></button>
+            </div>
+          )}
+          {personalInfo.linkedin && (
+            <div className="contact-item" style={{ position: 'relative' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/></svg>
+              <EditableText value={personalInfo.linkedin} onChange={(val) => handleUpdatePersonalInfo('linkedin', val)} placeholder="LinkedIn" />
+              <button className="no-print contact-remove-btn" onClick={() => handleUpdatePersonalInfo('linkedin', '')} title="Remove LinkedIn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', padding: '1px', marginLeft: '2px', opacity: 0.6, transition: 'opacity 0.15s' }}><X size={10} /></button>
+            </div>
+          )}
+          {personalInfo.github && (
+            <div className="contact-item" style={{ position: 'relative' }}>
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></svg>
+              <EditableText value={personalInfo.github} onChange={(val) => handleUpdatePersonalInfo('github', val)} placeholder="GitHub" />
+              <button className="no-print contact-remove-btn" onClick={() => handleUpdatePersonalInfo('github', '')} title="Remove GitHub" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', padding: '1px', marginLeft: '2px', opacity: 0.6, transition: 'opacity 0.15s' }}><X size={10} /></button>
+            </div>
+          )}
+        </div>
+        
+        {/* Toggle to add other links/location/website */}
+        <div className="no-print add-links-container" style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.4rem', fontSize: '0.72rem' }}>
+          {!personalInfo.location && (
+            <button className="no-print resume-addlink-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', fontSize: '0.72rem', fontWeight: 600, color: '#7c3aed', background: '#ede9fe', border: '1px dashed #c4b5fd', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s ease' }} onClick={() => handleUpdatePersonalInfo('location', 'New York, NY')}>
+              <Plus size={10} /> Add Location
+            </button>
+          )}
+          {!personalInfo.website && (
+            <button className="no-print resume-addlink-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', fontSize: '0.72rem', fontWeight: 600, color: '#7c3aed', background: '#ede9fe', border: '1px dashed #c4b5fd', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s ease' }} onClick={() => handleUpdatePersonalInfo('website', 'https://myportfolio.com')}>
+              <Plus size={10} /> Add Website
+            </button>
+          )}
+          {!personalInfo.linkedin && (
+            <button className="no-print resume-addlink-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', fontSize: '0.72rem', fontWeight: 600, color: '#7c3aed', background: '#ede9fe', border: '1px dashed #c4b5fd', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s ease' }} onClick={() => handleUpdatePersonalInfo('linkedin', 'https://linkedin.com/in/username')}>
+              <Plus size={10} /> Add LinkedIn
+            </button>
+          )}
+          {!personalInfo.github && (
+            <button className="no-print resume-addlink-btn" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', fontSize: '0.72rem', fontWeight: 600, color: '#7c3aed', background: '#ede9fe', border: '1px dashed #c4b5fd', borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s ease' }} onClick={() => handleUpdatePersonalInfo('github', 'https://github.com/username')}>
+              <Plus size={10} /> Add GitHub
+            </button>
+          )}
+        </div>
       </div>
     );
 
@@ -501,7 +612,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
               tagName="h2" 
               value={personalInfo.title} 
               onChange={(val) => handleUpdatePersonalInfo('title', val)} 
-              placeholder="Professional Title" 
+              placeholder="Add Professional Title Here" 
               style={{ fontSize: '1.2em', fontWeight: 500, margin: 0, color: style.headerStyle === 'bold-banner' ? 'var(--banner-text)' : 'var(--secondary-color)', opacity: 0.95 }} 
             />
           </div>
@@ -514,37 +625,95 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     );
   };
 
-  const renderSectionTitle = (title: string, onRename?: (val: string) => void, onDelete?: () => void) => {
+  const renderSectionTitle = (title: string, sectionKey?: string, onRename?: (val: string) => void, onDelete?: () => void) => {
     return (
-      <div className="section-title-wrap group" style={{ position: 'relative' }}>
+      <div className="section-title-wrap group" style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
         {onRename ? (
-          <h3 className="section-title" style={{ display: 'inline-block' }}>
+          <h3 className="section-title" style={{ display: 'inline-block', margin: 0 }}>
             <EditableText value={title} onChange={onRename} placeholder="Section Title" />
           </h3>
         ) : (
-          <h3 className="section-title">{title}</h3>
+          <h3 className="section-title" style={{ margin: 0 }}>{title}</h3>
         )}
-        {onDelete && (
-          <button
-            type="button"
-            className="no-print section-delete-btn"
-            onClick={onDelete}
-            title="Delete Section"
-          >
-            <Trash2 size={10} />
-            <span>Delete Section</span>
-          </button>
-        )}
+        
+        <div className="no-print section-controls" style={{ display: 'flex', alignItems: 'center', gap: '4px', zIndex: 10 }}>
+          {sectionKey && (
+            <>
+              <button
+                type="button"
+                className="control-btn"
+                onClick={() => handleToggleSectionVisibility(sectionKey as any)}
+                title="Hide Section"
+                style={{ padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', color: '#6b7280' }}
+              >
+                <EyeOff size={13} />
+              </button>
+              <button
+                type="button"
+                className="control-btn"
+                onClick={() => handleMoveSection(sectionKey, 'up')}
+                title="Move Section Up"
+                style={{ padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', color: '#6b7280' }}
+              >
+                <ChevronUp size={13} />
+              </button>
+              <button
+                type="button"
+                className="control-btn"
+                onClick={() => handleMoveSection(sectionKey, 'down')}
+                title="Move Section Down"
+                style={{ padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', display: 'inline-flex', color: '#6b7280' }}
+              >
+                <ChevronDown size={13} />
+              </button>
+            </>
+          )}
+          {onDelete && (
+            <button
+              type="button"
+              className="no-print section-delete-btn"
+              onClick={onDelete}
+              title="Delete Section"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '2px',
+                background: 'transparent',
+                border: 'none',
+                color: '#ef4444',
+                cursor: 'pointer',
+                fontSize: '0.75rem',
+                fontWeight: 600
+              }}
+            >
+              <Trash2 size={10} />
+              <span>Delete</span>
+            </button>
+          )}
+        </div>
       </div>
     );
   };
 
   const renderSummary = () => {
-    if (style.visibleSections?.summary === false) return null;
+    if (style.visibleSections?.summary === false) {
+      return (
+        <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="no-print resume-turnon-btn"
+            style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => handleToggleSectionVisibility('summary')}
+          >
+            <Plus size={10} /> Turn On Summary Section
+          </button>
+        </div>
+      );
+    }
     if (!data.personalInfo.summary) return null;
     return (
       <section className="resume-section">
-        {renderSectionTitle("Profile Summary")}
+        {renderSectionTitle("Profile Summary", "summary")}
         <EditableText 
           tagName="p"
           value={data.personalInfo.summary}
@@ -559,21 +728,64 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderExperience = () => {
-    if (style.visibleSections?.experience === false) return null;
+    if (style.visibleSections?.experience === false) {
+      return (
+        <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="no-print resume-turnon-btn"
+            style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => handleToggleSectionVisibility('experience')}
+          >
+            <Plus size={10} /> Turn On Work Experience Section
+          </button>
+        </div>
+      );
+    }
     return (
       <section className="resume-section">
-        {renderSectionTitle("Work Experience")}
+        {renderSectionTitle("Work Experience", "experience")}
         <div className="section-list">
           {data.workExperience.map(exp => (
-            <div key={exp.id} className="resume-item-wrap group">
-              <button
-                type="button"
-                className="no-print resume-item-delete-btn"
-                onClick={() => handleDeleteWorkExp(exp.id)}
-                title="Delete Experience"
-              >
-                <Trash2 size={13} />
-              </button>
+            <div key={exp.id} className={`resume-item-wrap group ${exp.hidden ? 'resume-item-hidden' : ''}`}>
+              <div className="no-print resume-item-controls">
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleToggleItemVisibility(exp.id, 'workExperience')}
+                  title={exp.hidden ? "Unhide Item" : "Hide Item"}
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                >
+                  {exp.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(exp.id, 'workExperience', 'up')}
+                  title="Move Up"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronUp size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(exp.id, 'workExperience', 'down')}
+                  title="Move Down"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronDown size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleDeleteWorkExp(exp.id)}
+                  title="Delete Item"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
               <div className="resume-item">
                 <div className="resume-item-top">
                   <EditableText 
@@ -629,21 +841,64 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderEducation = () => {
-    if (style.visibleSections?.education === false) return null;
+    if (style.visibleSections?.education === false) {
+      return (
+        <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="no-print resume-turnon-btn"
+            style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => handleToggleSectionVisibility('education')}
+          >
+            <Plus size={10} /> Turn On Education Section
+          </button>
+        </div>
+      );
+    }
     return (
       <section className="resume-section">
-        {renderSectionTitle("Education")}
+        {renderSectionTitle("Education", "education")}
         <div className="section-list">
           {data.education.map(edu => (
-            <div key={edu.id} className="resume-item-wrap group">
-              <button
-                type="button"
-                className="no-print resume-item-delete-btn"
-                onClick={() => handleDeleteEdu(edu.id)}
-                title="Delete Education"
-              >
-                <Trash2 size={13} />
-              </button>
+            <div key={edu.id} className={`resume-item-wrap group ${edu.hidden ? 'resume-item-hidden' : ''}`}>
+              <div className="no-print resume-item-controls">
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleToggleItemVisibility(edu.id, 'education')}
+                  title={edu.hidden ? "Unhide Item" : "Hide Item"}
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                >
+                  {edu.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(edu.id, 'education', 'up')}
+                  title="Move Up"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronUp size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(edu.id, 'education', 'down')}
+                  title="Move Down"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronDown size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleDeleteEdu(edu.id)}
+                  title="Delete Item"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
               <div className="resume-item">
                 <div className="resume-item-top">
                   <span className="resume-item-role">
@@ -706,21 +961,64 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderProjects = () => {
-    if (style.visibleSections?.projects === false) return null;
+    if (style.visibleSections?.projects === false) {
+      return (
+        <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="no-print resume-turnon-btn"
+            style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => handleToggleSectionVisibility('projects')}
+          >
+            <Plus size={10} /> Turn On Projects Section
+          </button>
+        </div>
+      );
+    }
     return (
       <section className="resume-section">
-        {renderSectionTitle("Projects")}
+        {renderSectionTitle("Projects", "projects")}
         <div className="section-list">
           {data.projects.map(proj => (
-            <div key={proj.id} className="resume-item-wrap group">
-              <button
-                type="button"
-                className="no-print resume-item-delete-btn"
-                onClick={() => handleDeleteProj(proj.id)}
-                title="Delete Project"
-              >
-                <Trash2 size={13} />
-              </button>
+            <div key={proj.id} className={`resume-item-wrap group ${proj.hidden ? 'resume-item-hidden' : ''}`}>
+              <div className="no-print resume-item-controls">
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleToggleItemVisibility(proj.id, 'projects')}
+                  title={proj.hidden ? "Unhide Item" : "Hide Item"}
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                >
+                  {proj.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(proj.id, 'projects', 'up')}
+                  title="Move Up"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronUp size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(proj.id, 'projects', 'down')}
+                  title="Move Down"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronDown size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleDeleteProj(proj.id)}
+                  title="Delete Item"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
               <div className="resume-item">
                 <div className="resume-item-top">
                   <EditableText 
@@ -774,13 +1072,26 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderSkills = () => {
-    if (style.visibleSections?.skills === false) return null;
+    if (style.visibleSections?.skills === false) {
+      return (
+        <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="no-print resume-turnon-btn"
+            style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => handleToggleSectionVisibility('skills')}
+          >
+            <Plus size={10} /> Turn On Skills Section
+          </button>
+        </div>
+      );
+    }
     return (
       <section className="resume-section">
-        {renderSectionTitle("Skills")}
+        {renderSectionTitle("Skills", "skills")}
         <div className="skills-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           {data.skills.map(skill => (
-            <span key={skill.id} className="skill-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <span key={skill.id} className={`skill-tag ${skill.hidden ? 'resume-item-hidden' : ''}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <EditableText value={skill.name} onChange={(val) => handleUpdateSkill(skill.id, 'name', val)} placeholder="Skill" />
               {skill.level && (
                 <span style={{ opacity: 0.65, fontSize: '0.85em' }}>
@@ -789,6 +1100,15 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
                   {')'}
                 </span>
               )}
+              <button
+                type="button"
+                className="no-print skill-visibility-btn"
+                onClick={() => handleToggleItemVisibility(skill.id, 'skills')}
+                title={skill.hidden ? "Unhide Skill" : "Hide Skill"}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: skill.hidden ? '#ef4444' : '#10b981', display: 'inline-flex', padding: '2px', alignItems: 'center' }}
+              >
+                {skill.hidden ? <EyeOff size={10} /> : <Eye size={10} />}
+              </button>
               <button
                 type="button"
                 className="no-print skill-delete-btn"
@@ -828,13 +1148,26 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderLanguages = () => {
-    if (style.visibleSections?.languages === false) return null;
+    if (style.visibleSections?.languages === false) {
+      return (
+        <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="no-print resume-turnon-btn"
+            style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => handleToggleSectionVisibility('languages')}
+          >
+            <Plus size={10} /> Turn On Languages Section
+          </button>
+        </div>
+      );
+    }
     return (
       <section className="resume-section">
-        {renderSectionTitle("Languages")}
+        {renderSectionTitle("Languages", "languages")}
         <div className="skills-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
           {data.languages.map(lang => (
-            <span key={lang.id} className="skill-tag" style={{ background: 'transparent', border: '1px solid var(--divider-color)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <span key={lang.id} className={`skill-tag ${lang.hidden ? 'resume-item-hidden' : ''}`} style={{ background: 'transparent', border: '1px solid var(--divider-color)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
               <EditableText value={lang.name} onChange={(val) => handleUpdateLang(lang.id, 'name', val)} placeholder="Language" />
               {lang.proficiency && (
                 <span style={{ opacity: 0.7, fontSize: '0.85em' }}>
@@ -842,6 +1175,15 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
                   <EditableText value={lang.proficiency} onChange={(val) => handleUpdateLang(lang.id, 'proficiency', val)} placeholder="Level" />
                 </span>
               )}
+              <button
+                type="button"
+                className="no-print skill-visibility-btn"
+                onClick={() => handleToggleItemVisibility(lang.id, 'languages')}
+                title={lang.hidden ? "Unhide Language" : "Hide Language"}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: lang.hidden ? '#ef4444' : '#10b981', display: 'inline-flex', padding: '2px', alignItems: 'center' }}
+              >
+                {lang.hidden ? <EyeOff size={10} /> : <Eye size={10} />}
+              </button>
               <button
                 type="button"
                 className="no-print skill-delete-btn"
@@ -881,21 +1223,64 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   };
 
   const renderCertifications = () => {
-    if (style.visibleSections?.certifications === false) return null;
+    if (style.visibleSections?.certifications === false) {
+      return (
+        <div className="no-print" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+          <button
+            type="button"
+            className="no-print resume-turnon-btn"
+            style={{ border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+            onClick={() => handleToggleSectionVisibility('certifications')}
+          >
+            <Plus size={10} /> Turn On Certifications Section
+          </button>
+        </div>
+      );
+    }
     return (
       <section className="resume-section">
-        {renderSectionTitle("Certifications")}
+        {renderSectionTitle("Certifications", "certifications")}
         <div className="section-list">
           {data.certifications.map(cert => (
-            <div key={cert.id} className="resume-item-wrap group">
-              <button
-                type="button"
-                className="no-print resume-item-delete-btn"
-                onClick={() => handleDeleteCert(cert.id)}
-                title="Delete Certification"
-              >
-                <Trash2 size={13} />
-              </button>
+            <div key={cert.id} className={`resume-item-wrap group ${cert.hidden ? 'resume-item-hidden' : ''}`}>
+              <div className="no-print resume-item-controls">
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleToggleItemVisibility(cert.id, 'certifications')}
+                  title={cert.hidden ? "Unhide Item" : "Hide Item"}
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                >
+                  {cert.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(cert.id, 'certifications', 'up')}
+                  title="Move Up"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronUp size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleMoveItem(cert.id, 'certifications', 'down')}
+                  title="Move Down"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                >
+                  <ChevronDown size={13} />
+                </button>
+                <button
+                  type="button"
+                  className="control-btn"
+                  onClick={() => handleDeleteCert(cert.id)}
+                  title="Delete Item"
+                  style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
               <div className="resume-item" style={{ gap: 0 }}>
                 <div className="resume-item-top" style={{ fontWeight: 600 }}>
                   <span>
@@ -931,20 +1316,51 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         <section key={sect.id} className="resume-section">
           {renderSectionTitle(
             sect.title,
+            undefined,
             (val) => handleRenameCustomSection(sect.id, val),
             () => handleDeleteCustomSection(sect.id)
           )}
           <div className="section-list">
             {sect.items.map(item => (
-              <div key={item.id} className="resume-item-wrap group">
-                <button
-                  type="button"
-                  className="no-print resume-item-delete-btn"
-                  onClick={() => handleDeleteCustomItem(sect.id, item.id)}
-                  title="Delete Item"
-                >
-                  <Trash2 size={13} />
-                </button>
+              <div key={item.id} className={`resume-item-wrap group ${item.hidden ? 'resume-item-hidden' : ''}`}>
+                <div className="no-print resume-item-controls">
+                  <button
+                    type="button"
+                    className="control-btn"
+                    onClick={() => handleToggleItemVisibility(item.id, 'customSections', sect.id)}
+                    title={item.hidden ? "Unhide Item" : "Hide Item"}
+                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer' }}
+                  >
+                    {item.hidden ? <EyeOff size={13} style={{ color: '#ef4444' }} /> : <Eye size={13} style={{ color: '#10b981' }} />}
+                  </button>
+                  <button
+                    type="button"
+                    className="control-btn"
+                    onClick={() => handleMoveItem(item.id, 'customSections', 'up', sect.id)}
+                    title="Move Up"
+                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                  >
+                    <ChevronUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="control-btn"
+                    onClick={() => handleMoveItem(item.id, 'customSections', 'down', sect.id)}
+                    title="Move Down"
+                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#4b5563' }}
+                  >
+                    <ChevronDown size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    className="control-btn"
+                    onClick={() => handleDeleteCustomItem(sect.id, item.id)}
+                    title="Delete Item"
+                    style={{ display: 'inline-flex', padding: '2px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#ef4444' }}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
                 <div className="resume-item">
                   <div className="resume-item-top">
                     <EditableText 
@@ -1057,15 +1473,22 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     }
 
     // Default: single column layout
+    const order = style.sectionOrder || ['summary', 'experience', 'education', 'projects', 'skills', 'languages', 'certifications'];
     return (
       <div className="resume-body">
-        {renderSummary()}
-        {renderExperience()}
-        {renderEducation()}
-        {renderProjects()}
-        {renderSkills()}
-        {renderLanguages()}
-        {renderCertifications()}
+        {order.map(section => {
+          let content: React.ReactNode = null;
+          switch (section) {
+            case 'summary': content = renderSummary(); break;
+            case 'experience': content = renderExperience(); break;
+            case 'education': content = renderEducation(); break;
+            case 'projects': content = renderProjects(); break;
+            case 'skills': content = renderSkills(); break;
+            case 'languages': content = renderLanguages(); break;
+            case 'certifications': content = renderCertifications(); break;
+          }
+          return <React.Fragment key={section}>{content}</React.Fragment>;
+        })}
         {renderCustomSections()}
       </div>
     );
@@ -1107,6 +1530,90 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         }
         .resume-item-wrap {
           position: relative;
+          padding-right: 20px;
+        }
+        .resume-item-controls {
+          position: absolute;
+          top: 0px;
+          right: -22px;
+          display: flex;
+          flex-direction: column;
+          gap: 1px;
+          align-items: center;
+          background: rgba(255, 255, 255, 0.95);
+          border: 1px solid rgba(0,0,0,0.10);
+          padding: 3px 2px;
+          border-radius: 5px;
+          z-index: 10;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+          opacity: 1;
+        }
+        .resume-item-controls button {
+          padding: 3px !important;
+          border-radius: 3px !important;
+          transition: background 0.15s ease;
+        }
+        .resume-item-controls button:hover {
+          background: rgba(0,0,0,0.06) !important;
+        }
+        .section-controls {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          opacity: 1;
+        }
+        .section-controls button {
+          padding: 3px !important;
+          border-radius: 3px !important;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+        .section-controls button:hover {
+          background: rgba(0,0,0,0.06) !important;
+          color: #111827 !important;
+        }
+        .resume-turnon-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 6px 14px;
+          font-size: 0.78rem;
+          font-weight: 600;
+          color: #7c3aed;
+          background: #ede9fe;
+          border: 1px dashed #c4b5fd !important;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .resume-turnon-btn:hover {
+          background: #ddd6fe;
+          color: #5b21b6;
+        }
+        .resume-addlink-btn:hover {
+          background: #ddd6fe !important;
+          color: #5b21b6 !important;
+        }
+        .resume-item-hidden {
+          opacity: 0.4 !important;
+          border: 1px dashed #ef4444 !important;
+          background: rgba(239, 68, 68, 0.02) !important;
+          border-radius: 4px;
+          padding: 4px;
+          position: relative;
+        }
+        .resume-item-hidden::before {
+          content: "Hidden from Export";
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          background: #ef4444;
+          color: #ffffff;
+          font-size: 8px;
+          font-weight: 700;
+          padding: 1px 3px;
+          border-radius: 2px;
+          pointer-events: none;
+          z-index: 9;
         }
         .resume-item-delete-btn {
           position: absolute;
@@ -1219,7 +1726,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           .resume-preview-add-btn,
           .resume-item-delete-btn,
           .section-delete-btn,
-          .skill-delete-btn {
+          .skill-delete-btn,
+          .resume-item-controls,
+          .resume-item-hidden,
+          .skill-visibility-btn {
             display: none !important;
           }
         }

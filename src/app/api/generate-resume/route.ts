@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
         const portfolioUrl = formData.get("portfolioUrl") as string;
         const targetCompanies = formData.get("targetCompanies") as string;
         const preferredRoles = formData.get("preferredRoles") as string;
+        const roleMode = formData.get("roleMode") as string || "specified";
         const userInput = formData.get("userInput") as string;
         const missingSectionsRaw = formData.get("missingSections") as string || "summary,workExperience";
         const projectFiles = formData.getAll("projectFiles") as File[];
@@ -150,8 +151,8 @@ ${portfolioText}
 
 ${parsedResumeDataText ? parsedResumeDataText : ""}
 
-Target Roles: ${preferredRoles || "Software Engineer"}
-Target Companies: ${targetCompanies || "Top Tech Companies"}
+Target Roles: ${roleMode === "fresher" ? "Entry-Level / Fresher (No specific target role)" : (preferredRoles || "Not specified")}
+Target Companies: ${roleMode === "fresher" ? "Open Opportunity" : (targetCompanies || "Not specified")}
 GitHub Profile: ${github || "Not specified"}
 LinkedIn Profile: ${linkedin || "Not specified"}
 Portfolio Website: ${portfolioUrl || "Not specified"}
@@ -160,6 +161,18 @@ ${parsedInputText ? `Candidate's Background & Notes:
 ${parsedInputText}
 ` : ""}Additional Code / Projects / Files context:
 ${projectText || "No project files provided."}
+
+${roleMode === "fresher" ? `
+CRITICAL FRESHER MODE INSTRUCTIONS:
+1. Structure all generated descriptions, summary, and projects for a fresh graduate or entry-level candidate.
+2. Focus on academic projects, lab works, basic skills, and educational qualifications.
+3. Avoid senior management, high-level corporate leadership, or years of industry-experience jargon.
+4. Set the candidate's professional title/role to "Fresher / Entry-Level Engineer" or similar.
+` : ""}
+
+CRITICAL HALLUCINATION PREVENTION:
+1. Do NOT invent, guess, or insert placeholder values (such as "your.email@example.com", "your-linkedin", "github.com/username", "+1234567890", etc.) for missing personal details.
+2. If a contact detail (phone, email, linkedin, github, website, location) is not found in the uploaded file or inputs, leave the corresponding JSON field blank ("") or completely omit it.
 
 Return a valid JSON block matching this schema. ONLY include keys that are in the requested list [${missingSectionsRaw}] as well as the 'personalInfo' key (omit any other keys not requested):
 {

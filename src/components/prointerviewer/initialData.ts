@@ -3,7 +3,7 @@ import type { ResumeData } from './types';
 export const initialResumeData: ResumeData = {
   personalInfo: {
     name: "Alex Morgan",
-    title: "Senior Full Stack Engineer",
+    title: "",
     email: "alex.morgan@techcorp.com",
     phone: "+1 (555) 019-2834",
     location: "San Francisco, CA",
