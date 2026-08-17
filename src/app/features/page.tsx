@@ -3269,7 +3269,7 @@ function FeaturesContent() {
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials" || activeModal === "synthetic_data") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
             {activeModal !== "study_materials" && activeModal !== "synthetic_data" && (activeModal !== "prointerviewer" || builderMobileView !== "preview") && (
                 <>
-                    <header className="px-4 sm:px-8 py-4 sm:py-5 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+                    <header className="px-4 sm:px-8 h-20 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                         <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
                             <BrandLogo />
                             {activeModal === "prointerviewer" && isAtsWarningActive && (
@@ -3616,9 +3616,9 @@ function FeaturesContent() {
                             }}
                         />
                     ) : activeModal === "negotiate" ? (
-                        <div className="w-full max-w-4xl lg:max-w-full overflow-x-hidden negotiate-modal-lock px-1 sm:px-3 pt-28 lg:pt-0 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
+                        <div className="w-full max-w-4xl lg:max-w-full overflow-x-hidden negotiate-modal-lock px-1 sm:px-3 pt-[130px] lg:pt-0 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
                             {/* Mobile Top Controls Bar (Positioned cleanly below main site navbar) */}
-                            <div className="lg:hidden fixed top-16 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 py-2 bg-[#0c0c12]/95 backdrop-blur-md border-b border-white/10 shadow-2xl">
+                            <div className="lg:hidden fixed top-20 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 py-2 bg-[#0c0c12]/95 backdrop-blur-md border-b border-white/10 shadow-2xl">
                                 <div className="flex items-center gap-1 flex-1 min-w-0">
                                     <button
                                         type="button"
