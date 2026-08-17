@@ -27,6 +27,11 @@ export const DEFAULT_COMMUNITY_CHANNELS = [
         name: "Study Buddy",
         description: "Find a partner for pair practice and accountability.",
     },
+    {
+        slug: "feedback",
+        name: "Feedback",
+        description: "Submit feedback, bug reports, and suggestions directly to the admin team.",
+    },
 ] as const;
 
 const DEFAULT_SLUGS = new Set(DEFAULT_COMMUNITY_CHANNELS.map((c) => c.slug));

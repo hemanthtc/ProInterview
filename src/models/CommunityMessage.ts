@@ -5,6 +5,14 @@ export interface ICommunityMessage extends Document {
     senderId: string;
     senderName: string;
     body: string;
+    replyToId?: string;
+    replyToMessage?: {
+        body: string;
+        senderName: string;
+        attachmentType?: string;
+    };
+    attachmentUrl?: string;
+    attachmentType?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -14,7 +22,15 @@ const CommunityMessageSchema: Schema<ICommunityMessage> = new Schema(
         roomSlug: { type: String, required: true, index: true },
         senderId: { type: String, required: true, index: true },
         senderName: { type: String, required: true },
-        body: { type: String, required: true, maxlength: 2000 },
+        body: { type: String, default: "", maxlength: 2000 },
+        replyToId: { type: String },
+        replyToMessage: {
+            body: { type: String },
+            senderName: { type: String },
+            attachmentType: { type: String },
+        },
+        attachmentUrl: { type: String },
+        attachmentType: { type: String },
     },
     {
         timestamps: true,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import StudyMaterialsManager from "@/components/admin/StudyMaterialsManager";
+import FeedbackAdminPanel from "@/components/admin/FeedbackAdminPanel";
 import {
     Users, UserPlus, Trash2, BarChart3, ShieldCheck, LogOut,
     TrendingUp, Server, Crown, Zap, RefreshCw, X, Eye, EyeOff,
@@ -106,7 +107,7 @@ function StatCard({ icon, label, value, sub, color, onClick }: { icon: React.Rea
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 export default function AdminDashboard() {
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account" | "leaderboard" | "ratelimits" | "study_materials" | "tier_features">("dashboard");
+    const [activeTab, setActiveTab] = useState<"dashboard" | "employees" | "account" | "leaderboard" | "ratelimits" | "study_materials" | "tier_features" | "feedback">("dashboard");
     const [leaderboard, setLeaderboard] = useState<any[]>([]);
     const [leaderboardMeta, setLeaderboardMeta] = useState<{ organizationName?: string; seatsUsed?: number; planHint?: string }>({});
     const [stats, setStats] = useState<StatsData | null>(null);
@@ -472,7 +473,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <nav className="hidden md:flex items-center gap-1">
-                    {(["dashboard", "employees", "leaderboard", "ratelimits", "tier_features", "study_materials", "account"] as const).map(tab => (
+                    {(["dashboard", "employees", "leaderboard", "ratelimits", "tier_features", "study_materials", "feedback", "account"] as const).map(tab => (
                         <button
                             key={tab}
                             onClick={() => {
@@ -501,7 +502,7 @@ export default function AdminDashboard() {
                                     : `${isDark ? "text-white/50 hover:text-white hover:bg-white/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"}`
                             }`}
                         >
-                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : tab === "leaderboard" ? "Team / College" : tab === "ratelimits" ? "Rate Limits" : tab === "tier_features" ? "Tier Features" : tab === "study_materials" ? "Study Materials" : "Dashboard"}
+                            {tab === "employees" ? "Employees" : tab === "account" ? "My Account" : tab === "leaderboard" ? "Team / College" : tab === "ratelimits" ? "Rate Limits" : tab === "tier_features" ? "Tier Features" : tab === "study_materials" ? "Study Materials" : tab === "feedback" ? "Feedback Chat" : "Dashboard"}
                         </button>
                     ))}
                 </nav>
@@ -522,7 +523,7 @@ export default function AdminDashboard() {
 
             {/* ── Mobile tab bar ── */}
             <div className={`md:hidden flex items-center gap-1 px-4 py-2 border-b ${isDark ? "border-white/8 bg-[#05050f]/90" : "border-slate-200 bg-white/90"} backdrop-blur-xl sticky top-[57px] z-10 overflow-x-auto`}>
-                {(["dashboard", "employees", "leaderboard", "tier_features", "study_materials", "account"] as const).map(tab => (
+                {(["dashboard", "employees", "leaderboard", "tier_features", "study_materials", "feedback", "account"] as const).map(tab => (
                     <button
                         key={tab}
                         onClick={() => {
@@ -549,7 +550,7 @@ export default function AdminDashboard() {
                                 : `${isDark ? "text-white/40" : "text-slate-400"}`
                         }`}
                     >
-                        {tab === "employees" ? "Employees" : tab === "account" ? "Account" : tab === "leaderboard" ? "Team" : tab === "tier_features" ? "Tiers" : tab === "study_materials" ? "Study" : "Dashboard"}
+                        {tab === "employees" ? "Employees" : tab === "account" ? "Account" : tab === "leaderboard" ? "Team" : tab === "tier_features" ? "Tiers" : tab === "study_materials" ? "Study" : tab === "feedback" ? "Feedback" : "Dashboard"}
                     </button>
                 ))}
             </div>
@@ -1521,6 +1522,10 @@ export default function AdminDashboard() {
 
                 {activeTab === "study_materials" && (
                     <StudyMaterialsManager />
+                )}
+
+                {activeTab === "feedback" && (
+                    <FeedbackAdminPanel />
                 )}
             </main>
 

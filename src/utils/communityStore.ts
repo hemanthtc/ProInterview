@@ -21,6 +21,14 @@ export type MemMessage = {
     senderId: string;
     senderName: string;
     body: string;
+    replyToId?: string;
+    replyToMessage?: {
+        body: string;
+        senderName: string;
+        attachmentType?: string;
+    };
+    attachmentUrl?: string;
+    attachmentType?: string;
     createdAt: string;
 };
 
@@ -63,7 +71,6 @@ export function memSeedChannels(
     defaults: { slug: string; name: string; description: string }[]
 ) {
     const s = store();
-    if (s.seeded && s.rooms.some((r) => r.type === "channel")) return;
     for (const d of defaults) {
         if (!s.rooms.find((r) => r.slug === d.slug)) {
             s.rooms.push({
@@ -134,6 +141,10 @@ export function memPostMessage(input: {
     senderId: string;
     senderName: string;
     body: string;
+    replyToId?: string;
+    replyToMessage?: { body: string; senderName: string; attachmentType?: string };
+    attachmentUrl?: string;
+    attachmentType?: string;
 }) {
     const s = store();
     const msg: MemMessage = {
@@ -142,6 +153,10 @@ export function memPostMessage(input: {
         senderId: input.senderId,
         senderName: input.senderName,
         body: input.body,
+        replyToId: input.replyToId,
+        replyToMessage: input.replyToMessage,
+        attachmentUrl: input.attachmentUrl,
+        attachmentType: input.attachmentType,
         createdAt: new Date().toISOString(),
     };
     s.messages.push(msg);
@@ -178,6 +193,17 @@ export function memDeleteMessages(messageIds: string[], senderId: string): boole
         return !(isTarget && isOwner);
     });
     return s.messages.length < beforeCount;
+}
+
+export function memPruneExpiredAttachments(roomSlug: string, limitMs: number) {
+    const s = store();
+    const now = Date.now();
+    s.messages.forEach(m => {
+        if (m.roomSlug === roomSlug && m.attachmentUrl && now - Date.parse(m.createdAt) > limitMs) {
+            m.attachmentUrl = undefined;
+            m.attachmentType = undefined;
+        }
+    });
 }
 
 /** Test helper — clear ephemeral store between unit tests. */

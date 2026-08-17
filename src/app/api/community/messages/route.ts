@@ -18,6 +18,7 @@ import {
     memSeedChannels,
     memTouchPresence,
     memDeleteMessages,
+    memPruneExpiredAttachments,
 } from "@/utils/communityStore";
 import { rateLimit } from "@/utils/rateLimit";
 import User from "@/models/User";
@@ -30,6 +31,7 @@ import {
     s3UpdateReadReceipt,
     s3DeleteMessages,
 } from "@/utils/s3Community";
+import { deleteObject, uploadJSON, createPresignedDownloadUrl } from "@/utils/s3";
 
 function mapMessage(
     m: {
@@ -39,6 +41,10 @@ function mapMessage(
         senderId: string;
         senderName: string;
         body: string;
+        replyToId?: string;
+        replyToMessage?: { body: string; senderName: string; attachmentType?: string };
+        attachmentUrl?: string;
+        attachmentType?: string;
         createdAt: Date | string;
         likes?: string[];
     },
@@ -60,12 +66,42 @@ function mapMessage(
         senderPublicId: presencePublicId(senderId),
         senderName: m.senderName,
         body: m.body,
+        replyToId: m.replyToId,
+        replyToMessage: m.replyToMessage,
+        attachmentUrl: m.attachmentUrl,
+        attachmentType: m.attachmentType,
         createdAt: createdAtStr,
         mine,
         delivered: true,
         read,
         likes: m.likes || [],
     };
+}
+
+async function resolveAttachmentUrls(messages: any[]) {
+    if (!isS3Configured()) return messages;
+    for (const m of messages) {
+        await resolveAttachmentUrlSingle(m);
+    }
+    return messages;
+}
+
+async function resolveAttachmentUrlSingle(m: any) {
+    if (!m || !isS3Configured()) return m;
+    if (m.attachmentUrl) {
+        const url = m.attachmentUrl;
+        if (url.startsWith("data:")) return m;
+        const keyIndex = url.indexOf("community/") !== -1 ? url.indexOf("community/") : url.indexOf("feedback/");
+        if (keyIndex !== -1) {
+            const key = url.substring(keyIndex);
+            try {
+                m.attachmentUrl = await createPresignedDownloadUrl(key, 48 * 3600);
+            } catch (err) {
+                console.warn(`Failed to sign key ${key}:`, err);
+            }
+        }
+    }
+    return m;
 }
 
 async function assertRoomAccess(roomSlug: string, identifier: string): Promise<
@@ -134,6 +170,79 @@ async function assertRoomAccess(roomSlug: string, identifier: string): Promise<
     }
 }
 
+async function pruneExpiredAttachments(roomSlug: string, source: string) {
+    try {
+        const now = Date.now();
+        const limitHours = roomSlug === "general" ? 24 : 48;
+        const limitMs = limitHours * 60 * 60 * 1000;
+
+        if (source === "s3") {
+            const rawMessages = await s3GetMessages(roomSlug);
+            let changed = false;
+            for (const m of rawMessages) {
+                if (m.attachmentUrl && now - Date.parse(m.createdAt) > limitMs) {
+                    const url = m.attachmentUrl;
+                    const keyIndex = url.indexOf("community/") !== -1 ? url.indexOf("community/") : url.indexOf("feedback/");
+                    if (keyIndex !== -1) {
+                        const key = url.substring(keyIndex);
+                        try {
+                            await deleteObject(key);
+                        } catch (s3Err) {
+                            console.warn(`S3 prune failed for key ${key}:`, s3Err);
+                        }
+                    }
+                    m.attachmentUrl = undefined;
+                    m.attachmentType = undefined;
+                    changed = true;
+                }
+            }
+            if (changed) {
+                const key = `community/messages/${roomSlug}.json`;
+                await uploadJSON(key, rawMessages);
+            }
+        } else if (source === "mongo") {
+            await connectDB();
+            const expiredDate = new Date(now - limitMs);
+            const expiredMsgs = await CommunityMessage.find({
+                roomSlug,
+                attachmentUrl: { $ne: null },
+                createdAt: { $lt: expiredDate },
+            }).lean();
+
+            if (expiredMsgs.length > 0) {
+                for (const m of expiredMsgs) {
+                    if (m.attachmentUrl) {
+                        const url = m.attachmentUrl;
+                        const keyIndex = url.indexOf("community/") !== -1 ? url.indexOf("community/") : url.indexOf("feedback/");
+                        if (keyIndex !== -1) {
+                            const key = url.substring(keyIndex);
+                            try {
+                                await deleteObject(key);
+                            } catch (s3Err) {
+                                console.warn(`S3 prune failed for key ${key}:`, s3Err);
+                            }
+                        }
+                    }
+                }
+                await CommunityMessage.updateMany(
+                    {
+                        roomSlug,
+                        attachmentUrl: { $ne: null },
+                        createdAt: { $lt: expiredDate },
+                    },
+                    {
+                        $unset: { attachmentUrl: "", attachmentType: "" },
+                    }
+                );
+            }
+        } else if (source === "memory") {
+            memPruneExpiredAttachments(roomSlug, limitMs);
+        }
+    } catch (err) {
+        console.error("Prune expired attachments failed:", err);
+    }
+}
+
 export async function GET(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
@@ -154,6 +263,8 @@ export async function GET(req: NextRequest) {
         if (!access.ok) {
             return NextResponse.json({ error: access.error }, { status: access.status });
         }
+
+        void pruneExpiredAttachments(roomSlug, access.source);
 
         let displayName = sanitizeDisplayName(session.identifier.split("@")[0] || "Student");
         try {
@@ -194,6 +305,7 @@ export async function GET(req: NextRequest) {
                 .slice(-limit)
                 .map((m) => mapMessage(m, session.identifier, receipts));
 
+            await resolveAttachmentUrls(messages);
             return NextResponse.json({ messages, source: "s3" });
         }
 
@@ -202,6 +314,7 @@ export async function GET(req: NextRequest) {
             const messages = memGetMessages(roomSlug, after, limit).map((m) =>
                 mapMessage(m, session.identifier)
             );
+            await resolveAttachmentUrls(messages);
             return NextResponse.json({ messages, source: "memory" });
         }
 
@@ -213,9 +326,11 @@ export async function GET(req: NextRequest) {
         }
 
         const messages = await CommunityMessage.find(filter).sort({ createdAt: 1 }).limit(limit).lean();
+        const mapped = messages.map((m) => mapMessage(m, session.identifier));
+        await resolveAttachmentUrls(mapped);
 
         return NextResponse.json({
-            messages: messages.map((m) => mapMessage(m, session.identifier)),
+            messages: mapped,
             source: "mongo",
         });
     } catch (error: unknown) {
@@ -239,13 +354,21 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const { roomSlug, body } = await req.json();
+        const { roomSlug, body, replyToId, replyToMessage, attachmentUrl, attachmentType } = await req.json();
         if (!roomSlug || typeof roomSlug !== "string") {
             return NextResponse.json({ error: "roomSlug is required" }, { status: 400 });
         }
 
+        // Admin-only reply check for feedback
+        if (roomSlug === "feedback" && replyToId) {
+            const isAdminOrEmployee = session.role === "admin" || session.role === "employee";
+            if (!isAdminOrEmployee) {
+                return NextResponse.json({ error: "Only administrators and employees can reply to feedback." }, { status: 403 });
+            }
+        }
+
         const clean = sanitizeChatBody(body);
-        if (!clean) {
+        if (!clean && !attachmentUrl) {
             return NextResponse.json({ error: "Message cannot be empty." }, { status: 400 });
         }
 
@@ -269,6 +392,10 @@ export async function POST(req: NextRequest) {
                 senderId: session.identifier.toLowerCase(),
                 senderName: displayName,
                 body: clean,
+                replyToId,
+                replyToMessage,
+                attachmentUrl,
+                attachmentType,
             });
 
             memTouchPresence(
@@ -284,8 +411,11 @@ export async function POST(req: NextRequest) {
             // Fetch receipts to get read/tick states right away
             const receipts = await s3GetReadReceipts(roomSlug);
 
+            const mapped = mapMessage(msg, session.identifier, receipts);
+            await resolveAttachmentUrlSingle(mapped);
+
             return NextResponse.json({
-                message: mapMessage(msg, session.identifier, receipts),
+                message: mapped,
                 source: "s3",
             });
         }
@@ -301,6 +431,10 @@ export async function POST(req: NextRequest) {
                     senderId: session.identifier.toLowerCase(),
                     senderName: displayName,
                     body: clean,
+                    replyToId,
+                    replyToMessage,
+                    attachmentUrl,
+                    attachmentType,
                 });
 
                 memTouchPresence(
@@ -313,18 +447,25 @@ export async function POST(req: NextRequest) {
                     presencePublicId(session.identifier)
                 );
 
+                const mapped = mapMessage(
+                    {
+                        id: String(msg._id),
+                        roomSlug: msg.roomSlug,
+                        senderId: msg.senderId,
+                        senderName: msg.senderName,
+                        body: msg.body,
+                        replyToId: msg.replyToId,
+                        replyToMessage: msg.replyToMessage,
+                        attachmentUrl: msg.attachmentUrl,
+                        attachmentType: msg.attachmentType,
+                        createdAt: msg.createdAt,
+                    },
+                    session.identifier
+                );
+                await resolveAttachmentUrlSingle(mapped);
+
                 return NextResponse.json({
-                    message: mapMessage(
-                        {
-                            id: String(msg._id),
-                            roomSlug: msg.roomSlug,
-                            senderId: msg.senderId,
-                            senderName: msg.senderName,
-                            body: msg.body,
-                            createdAt: msg.createdAt,
-                        },
-                        session.identifier
-                    ),
+                    message: mapped,
                     source: "mongo",
                 });
             } catch (err) {
@@ -352,6 +493,10 @@ export async function POST(req: NextRequest) {
             senderId: session.identifier.toLowerCase(),
             senderName: displayName,
             body: clean,
+            replyToId,
+            replyToMessage,
+            attachmentUrl,
+            attachmentType,
         });
         memTouchPresence(
             {
@@ -362,8 +507,10 @@ export async function POST(req: NextRequest) {
             },
             presencePublicId(session.identifier)
         );
+        const mapped = mapMessage(msg, session.identifier);
+        await resolveAttachmentUrlSingle(mapped);
         return NextResponse.json({
-            message: mapMessage(msg, session.identifier),
+            message: mapped,
             source: "memory",
         });
     } catch (error: unknown) {

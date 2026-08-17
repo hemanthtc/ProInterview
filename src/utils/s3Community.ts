@@ -18,6 +18,14 @@ export type S3Message = {
     senderId: string;
     senderName: string;
     body: string;
+    replyToId?: string;
+    replyToMessage?: {
+        body: string;
+        senderName: string;
+        attachmentType?: string;
+    };
+    attachmentUrl?: string;
+    attachmentType?: string;
     createdAt: string;
     likes?: string[]; // array of user publicIds
 };
@@ -25,8 +33,9 @@ export type S3Message = {
 const ROOMS_KEY = "community/rooms.json";
 
 export async function s3GetRooms(): Promise<S3Room[]> {
+    let rooms: S3Room[] = [];
     try {
-        return await getJSON<S3Room[]>(ROOMS_KEY);
+        rooms = await getJSON<S3Room[]>(ROOMS_KEY);
     } catch {
         // Seeding default channels if key doesn't exist
         const initialRooms: S3Room[] = DEFAULT_COMMUNITY_CHANNELS.map(ch => ({
@@ -44,6 +53,30 @@ export async function s3GetRooms(): Promise<S3Room[]> {
         }
         return initialRooms;
     }
+
+    // Append new default channels if they are missing
+    let changed = false;
+    for (const ch of DEFAULT_COMMUNITY_CHANNELS) {
+        if (!rooms.some(r => r.slug === ch.slug)) {
+            rooms.push({
+                slug: ch.slug,
+                name: ch.name,
+                description: ch.description,
+                type: "channel" as const,
+                members: [],
+                createdAt: new Date().toISOString()
+            });
+            changed = true;
+        }
+    }
+    if (changed) {
+        try {
+            await uploadJSON(ROOMS_KEY, rooms);
+        } catch (e) {
+            console.error("Failed to update seed rooms on S3", e);
+        }
+    }
+    return rooms;
 }
 
 export async function s3UpsertDm(slug: string, name: string, members: string[], createdBy: string): Promise<S3Room> {

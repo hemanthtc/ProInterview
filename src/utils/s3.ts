@@ -213,3 +213,12 @@ export async function listS3Objects(prefix: string, delimiter?: string): Promise
     return { contents, commonPrefixes };
 }
 
+export async function createPresignedDownloadUrl(key: string, expiresInSec = 48 * 3600): Promise<string> {
+    const bucket = getS3Bucket();
+    const command = new GetObjectCommand({
+        Bucket: bucket,
+        Key: key,
+    });
+    return getSignedUrl(getS3Client(), command, { expiresIn: expiresInSec });
+}
+

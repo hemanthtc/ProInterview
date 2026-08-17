@@ -20,6 +20,8 @@ import {
     Trash2,
     Image,
     Paperclip,
+    CornerUpLeft,
+    Video,
 } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
 
@@ -37,6 +39,14 @@ type ChatMessage = {
     senderPublicId: string;
     senderName: string;
     body: string;
+    replyToId?: string;
+    replyToMessage?: {
+        body: string;
+        senderName: string;
+        attachmentType?: string;
+    };
+    attachmentUrl?: string;
+    attachmentType?: string;
     createdAt: string;
     mine?: boolean;
     isPending?: boolean;
@@ -98,10 +108,19 @@ export default function CommunityPage() {
     const [uploadingImage, setUploadingImage] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const [replyingTo, setReplyingTo] = useState<ChatMessage | null>(null);
+    const [myRole, setMyRole] = useState<string>("");
+    const touchStartX = useRef<number | null>(null);
+    const touchStartMsg = useRef<ChatMessage | null>(null);
+    const activeSendingIds = useRef<Set<string>>(new Set());
+
     // Touch events state
     const longPressTimer = useRef<NodeJS.Timeout | null>(null);
 
-    const handleTouchStart = (msg: ChatMessage) => {
+    const handleTouchStart = (e: React.TouchEvent, msg: ChatMessage) => {
+        touchStartX.current = e.touches[0]?.clientX || null;
+        touchStartMsg.current = msg;
+
         const mine = Boolean(msg.mine) || msg.senderPublicId === mePublicId;
         if (!mine || msg.isPending) return;
         if (longPressTimer.current) clearTimeout(longPressTimer.current);
@@ -110,11 +129,38 @@ export default function CommunityPage() {
         }, 800);
     };
 
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (longPressTimer.current) {
+            clearTimeout(longPressTimer.current);
+            longPressTimer.current = null;
+        }
+
+        if (touchStartX.current === null || !touchStartMsg.current) return;
+        const currentX = e.touches[0]?.clientX || null;
+        if (currentX !== null) {
+            const deltaX = currentX - touchStartX.current;
+            if (deltaX > 80) { // Swipe right by 80px
+                const msg = touchStartMsg.current;
+                const isAdminOrEmployee = myRole === "admin" || myRole === "employee";
+                const isFeedback = activeSlug === "feedback";
+                const isReplyRestricted = isFeedback && !isAdminOrEmployee;
+
+                if (!isReplyRestricted && !msg.isPending) {
+                    setReplyingTo(msg);
+                }
+                touchStartX.current = null;
+                touchStartMsg.current = null;
+            }
+        }
+    };
+
     const handleTouchEnd = () => {
         if (longPressTimer.current) {
             clearTimeout(longPressTimer.current);
             longPressTimer.current = null;
         }
+        touchStartX.current = null;
+        touchStartMsg.current = null;
     };
 
     useEffect(() => {
@@ -205,6 +251,7 @@ export default function CommunityPage() {
             const data = await res.json();
             setRooms(data.rooms || []);
             setMePublicId(data.mePublicId || "");
+            setMyRole(data.role || "");
             setSource(data.source || "");
         } catch {
             setError("Could not load community channels.");
@@ -259,11 +306,21 @@ export default function CommunityPage() {
 
             // Process sequentially
             for (const m of list) {
+                if (activeSendingIds.current.has(m.id)) {
+                    continue;
+                }
                 try {
                     const res = await fetch("/api/community/messages", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ roomSlug: m.roomSlug, body: m.body }),
+                        body: JSON.stringify({
+                            roomSlug: m.roomSlug,
+                            body: m.body,
+                            replyToId: m.replyToId,
+                            replyToMessage: m.replyToMessage,
+                            attachmentUrl: m.attachmentUrl,
+                            attachmentType: m.attachmentType,
+                        }),
                     });
                     if (res.ok) {
                         // Success: remove from local queue state and storage
@@ -333,12 +390,19 @@ export default function CommunityPage() {
 
         setSending(true);
         const tempId = `pending_${Date.now()}`;
+        activeSendingIds.current.add(tempId);
         const newMsg: ChatMessage = {
             id: tempId,
             roomSlug: activeSlug,
             senderPublicId: mePublicId,
             senderName: getStorageItem("userName") || "Me",
             body: text,
+            replyToId: replyingTo?.id,
+            replyToMessage: replyingTo ? {
+                body: replyingTo.body,
+                senderName: replyingTo.senderName,
+                attachmentType: replyingTo.attachmentType,
+            } : undefined,
             createdAt: new Date().toISOString(),
             mine: true,
             isPending: true,
@@ -352,13 +416,19 @@ export default function CommunityPage() {
             return next;
         });
         setDraft("");
+        setReplyingTo(null);
         setError("");
 
         try {
             const res = await fetch("/api/community/messages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ roomSlug: activeSlug, body: text }),
+                body: JSON.stringify({
+                    roomSlug: activeSlug,
+                    body: text,
+                    replyToId: newMsg.replyToId,
+                    replyToMessage: newMsg.replyToMessage,
+                }),
             });
             if (res.status === 401) {
                 handleAuthExpired();
@@ -377,11 +447,12 @@ export default function CommunityPage() {
         } catch {
             // Keep in queue for background sync once connectivity is restored
         } finally {
+            activeSendingIds.current.delete(tempId);
             setSending(false);
         }
     };
 
-    const sendMessageDirectly = async (text: string) => {
+    const sendMessageDirectly = async (text: string, attachmentUrl?: string, attachmentType?: string) => {
         const tempId = `pending_${Date.now()}`;
         const newMsg: ChatMessage = {
             id: tempId,
@@ -389,23 +460,34 @@ export default function CommunityPage() {
             senderPublicId: mePublicId,
             senderName: getStorageItem("userName") || "Me",
             body: text,
+            attachmentUrl,
+            attachmentType,
             createdAt: new Date().toISOString(),
             mine: true,
             isPending: true,
             likes: [],
         };
+        activeSendingIds.current.add(tempId);
         setPendingQueue((prev) => [...prev, newMsg]);
         try {
             const res = await fetch("/api/community/messages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ roomSlug: activeSlug, body: text }),
+                body: JSON.stringify({
+                    roomSlug: activeSlug,
+                    body: text,
+                    attachmentUrl,
+                    attachmentType,
+                }),
             });
             if (res.ok) {
                 setPendingQueue((prev) => prev.filter((m) => m.id !== tempId));
                 await loadMessages();
             }
         } catch { /* ignore */ }
+        finally {
+            activeSendingIds.current.delete(tempId);
+        }
     };
 
     const deleteMessages = async (ids: string[]) => {
@@ -451,17 +533,18 @@ export default function CommunityPage() {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            const res = await fetch("/api/upload", {
+            formData.append("roomSlug", activeSlug);
+            const res = await fetch("/api/community/upload", {
                 method: "POST",
                 body: formData
             });
             const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to upload image.");
+            if (!res.ok) throw new Error(data.error || "Failed to upload file.");
             if (data.url) {
-                await sendMessageDirectly(data.url);
+                await sendMessageDirectly("", data.url, data.type);
             }
         } catch (err: unknown) {
-            setError(err instanceof Error ? err.message : "Failed to upload image.");
+            setError(err instanceof Error ? err.message : "Failed to upload file.");
         } finally {
             setUploadingImage(false);
         }
@@ -809,9 +892,9 @@ export default function CommunityPage() {
                                             setHoveredDeleteMsgId(m.id);
                                         }
                                     }}
-                                    onTouchStart={() => handleTouchStart(m)}
+                                    onTouchStart={(e) => handleTouchStart(e, m)}
                                     onTouchEnd={handleTouchEnd}
-                                    onTouchMove={handleTouchEnd}
+                                    onTouchMove={handleTouchMove}
                                 >
                                     {selectedMessageIds.length > 0 && mine && (
                                         <input
@@ -868,7 +951,37 @@ export default function CommunityPage() {
                                         {!mine && (
                                             <div className={`text-[10px] font-bold mb-0.5 ${isLight ? "text-indigo-700" : "text-indigo-300/90"}`}>{m.senderName}</div>
                                         )}
-                                        <div className="whitespace-pre-wrap break-words leading-relaxed">{renderMessageBody(m.body)}</div>
+                                        
+                                        {m.replyToMessage && (
+                                            <div className={`mb-2 rounded-lg px-2.5 py-1.5 text-xs border-l-2 ${
+                                                mine
+                                                    ? "bg-black/10 border-white/40 text-white/95"
+                                                    : (isLight
+                                                        ? "bg-slate-200/50 border-slate-400 text-slate-700"
+                                                        : "bg-white/5 border-white/20 text-white/85")
+                                            }`}>
+                                                <div className="font-bold mb-0.5">{m.replyToMessage.senderName}</div>
+                                                <div className="truncate italic">
+                                                    {m.replyToMessage.attachmentType && !m.replyToMessage.body 
+                                                        ? `[${m.replyToMessage.attachmentType.startsWith("video/") ? "Video" : "Image"}]`
+                                                        : m.replyToMessage.body}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {m.attachmentUrl && (!m.attachmentType || m.attachmentType.startsWith("image/")) && (
+                                            <div className="mt-1 mb-2 max-w-sm overflow-hidden rounded-lg cursor-pointer border border-black/10 shadow-sm bg-black/5" onClick={() => setExpandedImageUrl(m.attachmentUrl || null)}>
+                                                <img src={m.attachmentUrl} alt="Attached image" className="max-h-60 w-full object-cover transition hover:scale-[1.02]" />
+                                            </div>
+                                        )}
+
+                                        {m.attachmentUrl && m.attachmentType?.startsWith("video/") && (
+                                            <div className="mt-1 mb-2 max-w-sm overflow-hidden rounded-lg border border-black/10 shadow-sm bg-black/40">
+                                                <video src={m.attachmentUrl} controls className="max-h-60 w-full object-contain" />
+                                            </div>
+                                        )}
+
+                                        {m.body && <div className="whitespace-pre-wrap break-words leading-relaxed">{renderMessageBody(m.body)}</div>}
                                         
                                         <div className="flex items-center justify-between gap-4 mt-1.5 text-[10px]">
                                             <div className={`flex items-center gap-1.5 select-none ${mine ? (isLight ? "text-white/80" : "text-white/60") : (isLight ? "text-slate-500" : "text-white/35")}`}>
@@ -885,21 +998,39 @@ export default function CommunityPage() {
                                                     </span>
                                                 )}
                                             </div>
-                                            <button
-                                                type="button"
-                                                onClick={() => void toggleLike(m)}
-                                                disabled={Boolean(m.isPending)}
-                                                className={`flex items-center gap-1 transition px-1 py-0.5 rounded hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer ${
-                                                    (m.likes || []).includes(mePublicId)
-                                                        ? "text-rose-500 font-semibold"
-                                                        : mine
-                                                        ? (isLight ? "text-white/80 hover:text-white" : "text-white/60 hover:text-white")
-                                                        : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/35 hover:text-white/70")
-                                                }`}
-                                            >
-                                                <Heart className="w-3.5 h-3.5" fill={(m.likes || []).includes(mePublicId) ? "currentColor" : "none"} />
-                                                { (m.likes || []).length > 0 && <span>{(m.likes || []).length}</span> }
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                {!(activeSlug === "feedback" && !(myRole === "admin" || myRole === "employee")) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReplyingTo(m)}
+                                                        disabled={Boolean(m.isPending)}
+                                                        className={`flex items-center gap-1 transition px-1 py-0.5 rounded hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer ${
+                                                            mine
+                                                                ? (isLight ? "text-white/80 hover:text-white" : "text-white/60 hover:text-white")
+                                                                : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/35 hover:text-white/70")
+                                                        }`}
+                                                        title="Reply"
+                                                    >
+                                                        <CornerUpLeft className="w-3.5 h-3.5" />
+                                                        <span>Reply</span>
+                                                    </button>
+                                                )}
+                                                <button
+                                                    type="button"
+                                                    onClick={() => void toggleLike(m)}
+                                                    disabled={Boolean(m.isPending)}
+                                                    className={`flex items-center gap-1 transition px-1 py-0.5 rounded hover:bg-black/10 disabled:opacity-40 disabled:hover:bg-transparent cursor-pointer ${
+                                                        (m.likes || []).includes(mePublicId)
+                                                            ? "text-rose-500 font-semibold"
+                                                            : mine
+                                                            ? (isLight ? "text-white/80 hover:text-white" : "text-white/60 hover:text-white")
+                                                            : (isLight ? "text-slate-500 hover:text-slate-700" : "text-white/35 hover:text-white/70")
+                                                    }`}
+                                                >
+                                                    <Heart className="w-3.5 h-3.5" fill={(m.likes || []).includes(mePublicId) ? "currentColor" : "none"} />
+                                                    { (m.likes || []).length > 0 && <span>{(m.likes || []).length}</span> }
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -909,11 +1040,30 @@ export default function CommunityPage() {
                     </div>
 
                     <form onSubmit={(e) => void sendMessage(e)} className={`shrink-0 border-t p-3 ${isLight ? "border-slate-200 bg-slate-50" : "border-white/10 bg-black/30"}`}>
+                        {replyingTo && (
+                            <div className={`flex items-center justify-between px-3 py-2 mb-2 border-b rounded-t-xl text-xs ${
+                                isLight ? "bg-slate-100/90 border-slate-200 text-slate-700" : "bg-white/5 border-white/10 text-white/80"
+                            }`}>
+                                <div className="truncate flex-1">
+                                    <span className="font-semibold text-indigo-500">Replying to {replyingTo.senderName}: </span>
+                                    <span className="italic opacity-85">
+                                        {replyingTo.attachmentUrl && !replyingTo.body ? `[${replyingTo.attachmentType?.startsWith("video/") ? "Video" : "Image"}]` : replyingTo.body}
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setReplyingTo(null)}
+                                    className="ml-2 text-rose-500 hover:text-rose-600 font-bold px-1.5 py-0.5 rounded hover:bg-black/5 cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        )}
                         {error && <p className="text-rose-500 text-xs mb-2 px-1 font-semibold">{error}</p>}
                         <div className="flex gap-2">
                             <input
                                 type="file"
-                                accept="image/*"
+                                accept={activeSlug === "general" ? "image/*" : "image/*,video/*"}
                                 ref={fileInputRef}
                                 onChange={(e) => {
                                     const file = e.target.files?.[0];
@@ -930,7 +1080,7 @@ export default function CommunityPage() {
                                         ? "bg-white border-slate-300 text-slate-600 hover:bg-slate-50 shadow-sm"
                                         : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10"
                                 }`}
-                                title="Attach Image"
+                                title={activeSlug === "general" ? "Attach Image" : "Attach Image/Video"}
                             >
                                 {uploadingImage ? (
                                     <Loader2 className="w-4 h-4 animate-spin" />
