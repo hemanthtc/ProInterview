@@ -15,7 +15,7 @@ if (IS_LOCAL) {
     );
   });
 } else {
-  const CACHE = "prointerview-shell-v4";
+  const CACHE = "prointerview-shell-v5";
   const SHELL = ["/", "/labs", "/prep", "/star-coach", "/coding-lab", "/manifest.json", "/offline-drills.json"];
 
   // API GET responses that are safe to cache network-first, for offline drill practice.
@@ -61,6 +61,25 @@ if (IS_LOCAL) {
     // Never cache other API/auth responses
     if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) {
       event.respondWith(fetch(req));
+      return;
+    }
+
+    // Use Network-First for HTML/navigation requests (including iframe pages like /study-materials/index.html).
+    // This ensures that when the user is online, they always fetch the fresh HTML page
+    // linking to the latest hashed JS/CSS assets, preventing caching issues on deployments.
+    const isHtml = req.mode === "navigate" || (req.headers.get("accept") && req.headers.get("accept").includes("text/html"));
+    if (url.origin === self.location.origin && isHtml) {
+      event.respondWith(
+        fetch(req)
+          .then((res) => {
+            if (res.ok) {
+              const copy = res.clone();
+              caches.open(CACHE).then((cache) => cache.put(req, copy));
+            }
+            return res;
+          })
+          .catch(() => caches.match(req))
+      );
       return;
     }
 

@@ -8,7 +8,7 @@ import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
 import { getStorageItem, setStorageItem } from '../../utils/storage';
 import { 
-  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2, Globe
+  FileText, Palette, Sliders, Printer, RotateCcw, Download, Upload, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2, Globe, Plus
 } from 'lucide-react';
 
 interface ProInterviewerAppProps {
@@ -175,6 +175,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const [portfolioInputUrl, setPortfolioInputUrl] = useState<string>('');
   const [showOfflineAlert, setShowOfflineAlert] = useState<boolean>(false);
   const [s3ErrorMsg, setS3ErrorMsg] = useState<string>('');
+  const isInitialLoadedRef = useRef(false);
 
   const syncResumesList = async (list: any[]) => {
     const isGuest = getStorageItem("userLoggedIn") === "guest";
@@ -259,8 +260,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
   // Load saved state from localStorage on mount (with security schema validation)
   useEffect(() => {
-    Promise.resolve().then(() => {
-      const saved = getStorageItem("proResumeState");
+    const saved = getStorageItem("proResumeState");
+
+    const timer = setTimeout(() => {
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -285,11 +287,17 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       if (savedPortfolio && savedPortfolio.trim()) {
         setHasPortfolioUrl(true);
       }
-    });
+
+      isInitialLoadedRef.current = true;
+    }, 0);
+
+    return () => clearTimeout(timer);
   }, []);
 
   // Save changes to localStorage and sync to S3 on any data or style update
   useEffect(() => {
+    if (!isInitialLoadedRef.current) return;
+
     try {
       const stateToSave = {
         data: resumeData,
@@ -323,7 +331,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     } catch (e) {
       console.error("Failed to save resume state to local storage", e);
     }
-  }, [resumeData, currentStyle, activeTemplateId]);
+  }, [resumeData, currentStyle, activeTemplateId, activeResumeId]);
 
   // Collapse info tip popover when clicking outside
   useEffect(() => {
@@ -471,6 +479,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     setStorageItem("proActiveResumeId", id);
     
     triggerToast(`Loaded resume: "${target.title}"`);
+    setShowSavedResumesModal(false);
   };
 
   const handleDownloadSavedResume = (id: string) => {
@@ -1921,6 +1930,29 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 >
                   <Folder size={14} />
                 </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={handleCreateBlankResume}
+                  title="Create New Resume"
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    color: 'var(--text-main)',
+                    height: '2rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Plus size={14} />
+                </button>
               </div>
 
               {/* RIGHT: ATS AI Optimizer + Info Note icon */}
@@ -2071,6 +2103,29 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                   }}
                 >
                   <Folder size={14} />
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={handleCreateBlankResume}
+                  title="Create New Resume"
+                  style={{
+                    padding: '0.4rem 0.6rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                    background: 'transparent',
+                    border: '1px solid var(--panel-border)',
+                    color: 'var(--text-main)',
+                    height: '2rem',
+                    borderRadius: '6px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <Plus size={14} />
                 </button>
 
                 {/* ATS AI Optimizer positioned next to My Resumes */}
@@ -2393,12 +2448,40 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     </div>
                     <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>My Saved Resumes</h3>
                   </div>
-                  <button 
-                    type="button" onClick={() => setShowSavedResumesModal(false)}
-                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
-                  >
-                    <X size={18} />
-                  </button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowSavedResumesModal(false);
+                        handleCreateBlankResume();
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.opacity = '0.9'}
+                      onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                      style={{
+                        background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '0.375rem',
+                        padding: '0.35rem 0.65rem',
+                        fontSize: '0.72rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        transition: 'opacity 0.2s ease',
+                      }}
+                    >
+                      <Plus size={12} />
+                      <span>Create New</span>
+                    </button>
+                    <button 
+                      type="button" onClick={() => setShowSavedResumesModal(false)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.25rem' }}
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
                 </div>
 
                 <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '0 0 1.25rem 0', lineHeight: 1.5 }}>
@@ -2455,7 +2538,6 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                             <button
                               type="button"
                               onClick={() => handleLoadResume(resume.id)}
-                              disabled={isActive}
                               className="btn-load"
                               title="Load / View"
                               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '2rem', height: '2rem', padding: 0 }}

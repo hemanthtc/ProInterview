@@ -4182,6 +4182,65 @@ void main() {
         viewport.addEventListener('contextmenu', (e) => {
           e.preventDefault();
         });
+
+        // Touch Pinch-to-Zoom Event Listeners for Touch Screen Devices
+        let initialPinchDistance = 0;
+        let initialPinchScale = 1.0;
+        let lastPinchFactor = 1.0;
+        let isPinching = false;
+
+        viewport.addEventListener('touchstart', (e) => {
+          if (e.touches.length === 2 && this.currentPdf) {
+            e.preventDefault();
+            isPinching = true;
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            initialPinchDistance = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+            initialPinchScale = this.lastComputedPdfScale || 1.0;
+            lastPinchFactor = 1.0;
+            
+            const rect = viewport.getBoundingClientRect();
+            const midX = ((t1.clientX + t2.clientX) / 2) - rect.left;
+            const midY = ((t1.clientY + t2.clientY) / 2) - rect.top;
+            viewport.style.transformOrigin = `${midX}px ${midY}px`;
+            viewport.style.transition = 'none';
+          }
+        }, { passive: false });
+
+        viewport.addEventListener('touchmove', (e) => {
+          if (isPinching && e.touches.length === 2) {
+            e.preventDefault();
+            const t1 = e.touches[0];
+            const t2 = e.touches[1];
+            const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+            if (initialPinchDistance > 0) {
+              lastPinchFactor = dist / initialPinchDistance;
+              const tempScale = initialPinchScale * lastPinchFactor;
+              if (tempScale >= 0.5 && tempScale <= 3.0) {
+                viewport.style.transform = `scale(${lastPinchFactor})`;
+              }
+            }
+          }
+        }, { passive: false });
+
+        viewport.addEventListener('touchend', (e) => {
+          if (isPinching) {
+            e.preventDefault();
+            isPinching = false;
+            viewport.style.transform = '';
+            viewport.style.transformOrigin = '';
+            viewport.style.transition = '';
+
+            const finalScale = Math.min(3.0, Math.max(0.5, initialPinchScale * lastPinchFactor));
+            this.currentPdfScale = finalScale;
+
+            const scaleSpan = document.getElementById('zoom-scale-span');
+            if (scaleSpan) {
+              scaleSpan.innerText = Math.round(finalScale * 100) + '%';
+            }
+            this.renderPdf();
+          }
+        }, { passive: false });
       }
 
       const pageInput = document.getElementById('page-num-input');
@@ -4608,15 +4667,19 @@ void main() {
         scale = targetHeight / unscaledViewport.height;
       }
 
+      this.lastComputedPdfScale = scale;
+
+      const pixelRatio = window.devicePixelRatio || 1;
       const pdfViewport = page.getViewport({ scale: scale });
-      canvas.width = pdfViewport.width;
-      canvas.height = pdfViewport.height;
+      canvas.width = Math.floor(pdfViewport.width * pixelRatio);
+      canvas.height = Math.floor(pdfViewport.height * pixelRatio);
       canvas.style.width = pdfViewport.width + 'px';
       canvas.style.height = pdfViewport.height + 'px';
       
       const context = canvas.getContext('2d');
       const renderContext = {
         canvasContext: context,
+        transform: [pixelRatio, 0, 0, pixelRatio, 0, 0],
         viewport: pdfViewport
       };
       page.render(renderContext);

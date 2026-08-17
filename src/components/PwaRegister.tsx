@@ -22,8 +22,22 @@ export default function PwaRegister() {
             });
             return;
         }
-        navigator.serviceWorker.register("/sw.js").catch(() => {
+        navigator.serviceWorker.register("/sw.js", { updateViaCache: "none" }).then((reg) => {
+            // Check for updates periodically (e.g., every hour)
+            setInterval(() => {
+                reg.update().catch(() => {/* ignore */});
+            }, 60 * 60 * 1000);
+        }).catch(() => {
             /* ignore offline register errors */
+        });
+
+        // Automatically reload the page when a new service worker takes over control
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+            if (!refreshing) {
+                refreshing = true;
+                window.location.reload();
+            }
         });
     }, []);
     return null;

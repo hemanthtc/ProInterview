@@ -1,7 +1,8 @@
 import React from 'react';
 import type { ResumeData, ResumeStyle, WorkExperience, Education, Project, Skill, Language, Certification, CustomSection, CustomSectionItem } from './types';
 import { COLOR_PALETTES, FONT_FAMILIES } from './templates';
-import { Mail, Phone, MapPin, Globe, Pencil, Plus, Trash2, X, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { Mail, Phone, MapPin, Globe, Pencil, Plus, Trash2, X, ChevronUp, ChevronDown, Eye, EyeOff, Sparkles } from 'lucide-react';
+import { VoiceAIWriterModal } from './VoiceAIWriterModal';
 const generateUniqueId = (prefix: string) => `${prefix}-new-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
 interface ResumePreviewProps {
@@ -111,6 +112,44 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
 
   const pageRef = React.useRef<HTMLDivElement>(null);
   const [activeItemMenuId, setActiveItemMenuId] = React.useState<string | null>(null);
+
+  const [voiceAiOpen, setVoiceAiOpen] = React.useState(false);
+  const [voiceAiConfig, setVoiceAiConfig] = React.useState<{
+    itemId: string;
+    section: 'workExperience' | 'projects' | 'customSections';
+    title: string;
+    top: number;
+    left: number;
+    right: number;
+    customSectionId?: string;
+  } | null>(null);
+
+  const handleOpenVoiceAI = (
+    itemId: string,
+    section: 'workExperience' | 'projects' | 'customSections',
+    title: string,
+    top: number,
+    left: number,
+    right: number,
+    customSectionId?: string
+  ) => {
+    setVoiceAiConfig({ itemId, section, title, top, left, right, customSectionId });
+    setVoiceAiOpen(true);
+  };
+
+  const handleVoiceAiGenerate = (text: string) => {
+    if (!voiceAiConfig) return;
+    const { itemId, section, customSectionId } = voiceAiConfig;
+    if (section === 'workExperience') {
+      handleUpdateWorkExp(itemId, 'description', text);
+    } else if (section === 'projects') {
+      handleUpdateProj(itemId, 'description', text);
+    } else if (section === 'customSections' && customSectionId) {
+      handleUpdateCustomSection(customSectionId, itemId, 'description', text);
+    }
+    setVoiceAiOpen(false);
+    setVoiceAiConfig(null);
+  };
 
   React.useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -938,13 +977,49 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
               {renderItemControls(exp.id, 'workExperience', !!exp.hidden, () => handleDeleteWorkExp(exp.id))}
               <div className="resume-item">
                 <div className="resume-item-top">
-                  <EditableText 
-                    tagName="span"
-                    value={exp.position}
-                    onChange={(val) => handleUpdateWorkExp(exp.id, 'position', val)}
-                    placeholder="Position"
-                    className="resume-item-role"
-                  />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <EditableText 
+                      tagName="span"
+                      value={exp.position}
+                      onChange={(val) => handleUpdateWorkExp(exp.id, 'position', val)}
+                      placeholder="Position"
+                      className="resume-item-role"
+                    />
+                    <button
+                      type="button"
+                      className="no-print ai-write-item-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        handleOpenVoiceAI(
+                          exp.id,
+                          'workExperience',
+                          `${exp.position || 'Position'} at ${exp.company || 'Company'}`,
+                          rect.top,
+                          rect.left,
+                          rect.right
+                        );
+                      }}
+                      title="Write description with AI voice"
+                      style={{
+                        background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(139, 92, 246, 0.4)',
+                        padding: 0,
+                        flexShrink: 0
+                      }}
+                    >
+                      <Sparkles size={10} />
+                    </button>
+                  </span>
                   <span className="resume-item-date" style={{ fontWeight: 400, fontSize: '0.85em', color: 'var(--secondary-color)' }}>
                     <EditableText value={exp.startDate} onChange={(val) => handleUpdateWorkExp(exp.id, 'startDate', val)} placeholder="YYYY-MM" />
                     {' - '}
@@ -1099,13 +1174,49 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
               {renderItemControls(proj.id, 'projects', !!proj.hidden, () => handleDeleteProj(proj.id))}
               <div className="resume-item">
                 <div className="resume-item-top">
-                  <EditableText 
-                    tagName="span"
-                    value={proj.name}
-                    onChange={(val) => handleUpdateProj(proj.id, 'name', val)}
-                    placeholder="Project Name"
-                    style={{ fontWeight: 700 }}
-                  />
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <EditableText 
+                      tagName="span"
+                      value={proj.name}
+                      onChange={(val) => handleUpdateProj(proj.id, 'name', val)}
+                      placeholder="Project Name"
+                      style={{ fontWeight: 700 }}
+                    />
+                    <button
+                      type="button"
+                      className="no-print ai-write-item-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        handleOpenVoiceAI(
+                          proj.id,
+                          'projects',
+                          `Project: ${proj.name || 'Unnamed Project'}`,
+                          rect.top,
+                          rect.left,
+                          rect.right
+                        );
+                      }}
+                      title="Write description with AI voice"
+                      style={{
+                        background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '18px',
+                        height: '18px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 3px rgba(139, 92, 246, 0.4)',
+                        padding: 0,
+                        flexShrink: 0
+                      }}
+                    >
+                      <Sparkles size={10} />
+                    </button>
+                  </span>
                   <EditableText 
                     tagName="span"
                     value={proj.link || ""}
@@ -1370,13 +1481,50 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
                 {renderItemControls(item.id, 'customSections', !!item.hidden, () => handleDeleteCustomItem(sect.id, item.id), sect.id)}
                 <div className="resume-item">
                   <div className="resume-item-top">
-                    <EditableText 
-                      tagName="span"
-                      value={item.title}
-                      onChange={(val) => handleUpdateCustomSection(sect.id, item.id, 'title', val)}
-                      placeholder="Title"
-                      style={{ fontWeight: 700 }}
-                    />
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                      <EditableText 
+                        tagName="span"
+                        value={item.title}
+                        onChange={(val) => handleUpdateCustomSection(sect.id, item.id, 'title', val)}
+                        placeholder="Title"
+                        style={{ fontWeight: 700 }}
+                      />
+                      <button
+                        type="button"
+                        className="no-print ai-write-item-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          handleOpenVoiceAI(
+                            item.id,
+                            'customSections',
+                            `${item.title || 'Unnamed Item'} at ${item.subtitle || sect.title}`,
+                            rect.top,
+                            rect.left,
+                            rect.right,
+                            sect.id
+                          );
+                        }}
+                        title="Write description with AI voice"
+                        style={{
+                          background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '18px',
+                          height: '18px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          cursor: 'pointer',
+                          boxShadow: '0 1px 3px rgba(139, 92, 246, 0.4)',
+                          padding: 0,
+                          flexShrink: 0
+                        }}
+                      >
+                        <Sparkles size={10} />
+                      </button>
+                    </span>
                     <span className="resume-item-date" style={{ fontWeight: 400, fontSize: '0.85em', color: 'var(--secondary-color)' }}>
                       <EditableText value={item.date} onChange={(val) => handleUpdateCustomSection(sect.id, item.id, 'date', val)} placeholder="Date / Range" />
                     </span>
@@ -1724,6 +1872,10 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           .skill-visibility-btn {
             display: none !important;
           }
+          .editable-element[data-placeholder]:empty::before {
+            display: none !important;
+            content: "" !important;
+          }
         }
       `}} />
       {renderHeader()}
@@ -1739,6 +1891,22 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           <span>Add Custom/Voluntary Section</span>
         </button>
       </div>
+
+      {voiceAiOpen && voiceAiConfig && (
+        <VoiceAIWriterModal
+          isOpen={voiceAiOpen}
+          onClose={() => {
+            setVoiceAiOpen(false);
+            setVoiceAiConfig(null);
+          }}
+          onGenerate={handleVoiceAiGenerate}
+          title={voiceAiConfig.title}
+          section={voiceAiConfig.section}
+          top={voiceAiConfig.top}
+          left={voiceAiConfig.left}
+          right={voiceAiConfig.right}
+        />
+      )}
     </div>
   );
 };
