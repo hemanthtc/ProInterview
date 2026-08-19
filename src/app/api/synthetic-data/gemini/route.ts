@@ -84,9 +84,28 @@ export async function POST(req: NextRequest) {
           break;
         }
         lastErrorMsg = data?.error?.message || `HTTP ${resp.status}`;
+
+        // Abort retries if the error is a critical API key or quota issue (400, 403, 429)
+        const isFatalKeyError = 
+          resp.status === 400 || 
+          resp.status === 403 || 
+          resp.status === 429 || 
+          lastErrorMsg.toLowerCase().includes("api key") || 
+          lastErrorMsg.toLowerCase().includes("key") || 
+          lastErrorMsg.toLowerCase().includes("quota") || 
+          lastErrorMsg.toLowerCase().includes("limit");
+
+        if (isFatalKeyError) {
+          console.error(`[Gemini Route] Critical key/quota error: ${lastErrorMsg}. Aborting retries.`);
+          break;
+        }
+
         console.warn(`[Gemini Route] Model '${currentModel}' failed (${lastErrorMsg}). Retrying next model...`);
       } catch (err: any) {
         lastErrorMsg = err?.message || "Fetch network error";
+        if (lastErrorMsg.toLowerCase().includes("api key") || lastErrorMsg.toLowerCase().includes("key")) {
+          break;
+        }
       }
     }
 

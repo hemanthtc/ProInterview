@@ -65,9 +65,25 @@ export async function POST(req: NextRequest) {
         const finalCycle: "monthly" | "yearly" | null =
             billingCycle === "yearly" ? "yearly" : billingCycle === "monthly" ? "monthly" : null;
 
+        const now = new Date();
+        let expiresAt: Date | null = null;
+        if (finalPlanName !== "Free Tier") {
+            expiresAt = new Date(now);
+            if (finalCycle === "yearly") {
+                expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+            } else {
+                expiresAt.setDate(expiresAt.getDate() + 30);
+            }
+        }
+
         const user = await User.findOneAndUpdate(
             { identifier: userIdentifier },
-            { subscriptionPlan: finalPlanName, billingCycle: finalCycle },
+            { 
+                subscriptionPlan: finalPlanName, 
+                billingCycle: finalCycle,
+                subscriptionStartedAt: finalPlanName === "Free Tier" ? null : now,
+                subscriptionExpiresAt: expiresAt
+            },
             { new: true }
         );
 
@@ -79,6 +95,9 @@ export async function POST(req: NextRequest) {
             success: true,
             message: "Payment verified successfully.",
             subscriptionPlan: user.subscriptionPlan,
+            billingCycle: user.billingCycle,
+            subscriptionStartedAt: user.subscriptionStartedAt,
+            subscriptionExpiresAt: user.subscriptionExpiresAt,
         });
     } catch (error: any) {
         console.error("Razorpay verification error:", error);

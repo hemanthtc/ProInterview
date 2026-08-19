@@ -72,6 +72,9 @@ export async function POST(req: NextRequest) {
             if (accountType === "admin" || accountType === "employee") {
                 (account as { isOnline?: boolean; lastActive?: Date }).isOnline = true;
                 (account as { isOnline?: boolean; lastActive?: Date }).lastActive = new Date();
+            } else if (accountType === "user") {
+                const { checkAndDegradeSubscription } = await import("@/utils/subscription");
+                await checkAndDegradeSubscription(account as any);
             }
             await account.save();
 
@@ -98,6 +101,9 @@ export async function POST(req: NextRequest) {
                     isOrganization,
                     orgRole,
                     subscriptionPlan: account.subscriptionPlan,
+                    billingCycle: (account as any).billingCycle || null,
+                    subscriptionStartedAt: (account as any).subscriptionStartedAt || null,
+                    subscriptionExpiresAt: (account as any).subscriptionExpiresAt || null,
                     createdAt: account.createdAt,
                     organizationName: (account as { organizationName?: string }).organizationName || "",
                     department: (account as { department?: string }).department || "",

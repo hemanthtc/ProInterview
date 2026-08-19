@@ -5,6 +5,7 @@ import {
     Loader2, Send, Paperclip, Check, CheckCheck, CornerUpLeft, Trash2, Heart, Play, CornerDownRight, X, Film, Image as ImageIcon
 } from "lucide-react";
 import { getStorageItem } from "@/utils/storage";
+import { processImageForUpload } from "@/utils/imageProcess";
 
 interface ChatMessage {
     id: string;
@@ -145,8 +146,9 @@ export default function FeedbackAdminPanel() {
         setError("");
 
         try {
+            const processedFile = await processImageForUpload(file);
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", processedFile);
             formData.append("roomSlug", "feedback");
 
             const res = await fetch("/api/community/upload", {

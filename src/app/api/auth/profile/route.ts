@@ -84,6 +84,9 @@ export async function GET(req: NextRequest) {
             account.isOnline = true;
             account.lastActive = new Date();
             await account.save();
+        } else if (accountType === "user") {
+            const { checkAndDegradeSubscription } = await import("@/utils/subscription");
+            await checkAndDegradeSubscription(account);
         }
 
         let profile: any = null;
@@ -132,6 +135,9 @@ export async function GET(req: NextRequest) {
                 isOrganization: accountType !== "user",
                 orgRole: accountType === "admin" ? "admin" : accountType === "employee" ? "employee" : "user",
                 subscriptionPlan: account.subscriptionPlan,
+                billingCycle: account.billingCycle,
+                subscriptionStartedAt: account.subscriptionStartedAt,
+                subscriptionExpiresAt: account.subscriptionExpiresAt,
                 createdAt: account.createdAt,
                 organizationName: (account as any).organizationName || "",
                 department: (account as any).department || "",
@@ -207,7 +213,27 @@ export async function POST(req: NextRequest) {
         }
 
         if (displayName !== undefined) account.displayName = displayName;
-        if (subscriptionPlan !== undefined) account.subscriptionPlan = subscriptionPlan;
+        if (subscriptionPlan !== undefined) {
+            account.subscriptionPlan = subscriptionPlan;
+            if (subscriptionPlan === "Free Tier") {
+                account.subscriptionStartedAt = null;
+                account.subscriptionExpiresAt = null;
+                account.billingCycle = null;
+            } else {
+                const now = new Date();
+                account.subscriptionStartedAt = now;
+                const expiresAt = new Date(now);
+                if (account.billingCycle === "yearly") {
+                    expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+                } else {
+                    expiresAt.setDate(expiresAt.getDate() + 30);
+                }
+                account.subscriptionExpiresAt = expiresAt;
+            }
+        } else if (accountType === "user") {
+            const { checkAndDegradeSubscription } = await import("@/utils/subscription");
+            await checkAndDegradeSubscription(account);
+        }
         if (organizationName !== undefined && accountType !== "user") (account as any).organizationName = organizationName;
         if (department !== undefined && accountType === "employee") (account as any).department = department;
         await account.save();
@@ -302,6 +328,9 @@ export async function POST(req: NextRequest) {
                 isOrganization: accountType !== "user",
                 orgRole: accountType === "admin" ? "admin" : accountType === "employee" ? "employee" : "user",
                 subscriptionPlan: account.subscriptionPlan,
+                billingCycle: account.billingCycle,
+                subscriptionStartedAt: account.subscriptionStartedAt,
+                subscriptionExpiresAt: account.subscriptionExpiresAt,
                 createdAt: account.createdAt,
                 organizationName: (account as any).organizationName || "",
                 department: (account as any).department || "",

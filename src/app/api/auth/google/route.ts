@@ -60,6 +60,9 @@ export async function POST(req: NextRequest) {
             { upsert: true, new: true }
         );
 
+        const { checkAndDegradeSubscription } = await import("@/utils/subscription");
+        await checkAndDegradeSubscription(user);
+
         // Set secure HttpOnly session cookie
         try {
             await setSessionCookie({
@@ -82,6 +85,9 @@ export async function POST(req: NextRequest) {
             email: user.identifier,
             picture: userInfo.picture,
             subscriptionPlan: user.subscriptionPlan,
+            billingCycle: user.billingCycle,
+            subscriptionStartedAt: user.subscriptionStartedAt,
+            subscriptionExpiresAt: user.subscriptionExpiresAt,
         });
 
     } catch (error: any) {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Video, LogOut, Download, TrendingUp, User, Award, Activity, Trash2, Sparkles, Loader2, ChevronDown, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText } from "lucide-react";
+import { ArrowLeft, Video, LogOut, Download, TrendingUp, User, Award, Activity, Trash2, Sparkles, Loader2, ChevronDown, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { ProfileInterviewSession, ProfileToastState } from "../../types/profile";
 import { useRouter } from "next/navigation";
@@ -118,6 +118,9 @@ export default function ProfilePage() {
     const [upgradingPlan, setUpgradingPlan] = useState<string | null>(null);
     const [upgradeSuccess, setUpgradeSuccess] = useState(false);
     const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
+    const [subscriptionStartedAt, setSubscriptionStartedAt] = useState<string | null>(null);
+    const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
+    const [showDegradedBanner, setShowDegradedBanner] = useState(false);
 
     // Razorpay Checkout Payment States
     const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<string | null>(null);
@@ -128,6 +131,13 @@ export default function ProfilePage() {
     const getPlanDisplay = (plan: string) => {
         if (plan === "Enterprise Tier" || plan === "Enterprise Plan") return "Elite Plan";
         return plan;
+    };
+
+    const getDaysRemaining = () => {
+        if (!subscriptionExpiresAt || subscriptionPlan === "Free Tier") return null;
+        const diffTime = new Date(subscriptionExpiresAt).getTime() - Date.now();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays > 0 ? diffDays : 0;
     };
 
     // Sync profile helper
@@ -237,9 +247,15 @@ export default function ProfilePage() {
                                 setStorageItem("userAdditionalEmail", u.additionalEmail);
                             }
                             if (u.subscriptionPlan) {
+                                const localPlan = getStorageItem("userSubscriptionPlan");
+                                if (localPlan && localPlan !== "Free Tier" && u.subscriptionPlan === "Free Tier") {
+                                    setShowDegradedBanner(true);
+                                }
                                 setSubscriptionPlan(u.subscriptionPlan);
                                 setStorageItem("userSubscriptionPlan", u.subscriptionPlan);
                             }
+                            setSubscriptionStartedAt(u.subscriptionStartedAt || null);
+                            setSubscriptionExpiresAt(u.subscriptionExpiresAt || null);
                             if (u.github) {
                                 setGithub(u.github);
                                 setEditGithubValue(u.github);
@@ -476,6 +492,8 @@ export default function ProfilePage() {
 
                         setStorageItem("userSubscriptionPlan", finalPlan);
                         setSubscriptionPlan(finalPlan);
+                        setSubscriptionStartedAt(verifyData.subscriptionStartedAt || null);
+                        setSubscriptionExpiresAt(verifyData.subscriptionExpiresAt || null);
                         setPaymentStatus("success");
                     } catch (err: any) {
                         console.error("Signature verification error:", err);
@@ -1150,6 +1168,61 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
             <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-8 relative z-10">
 
+                {/* Expiry Warning Banner */}
+                {subscriptionPlan !== "Free Tier" && subscriptionExpiresAt && (() => {
+                    const daysLeft = getDaysRemaining();
+                    if (daysLeft !== null && daysLeft <= 2) {
+                        return (
+                            <div className="mb-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between gap-4 animate-pulse">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400 shrink-0">
+                                        <AlertTriangle className="w-5 h-5 animate-bounce" />
+                                    </div>
+                                    <div>
+                                        <h4 className="text-sm font-bold text-amber-200">Subscription Ending Soon!</h4>
+                                        <p className="text-xs text-white/60 mt-0.5">
+                                            Your {getPlanDisplay(subscriptionPlan)} will expire in {daysLeft} day{daysLeft !== 1 ? "s" : ""}. Please renew it to keep your premium benefits.
+                                        </p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setSubModalOpen(true)}
+                                    className="shrink-0 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-lg"
+                                >
+                                    Renew Now
+                                </button>
+                            </div>
+                        );
+                    }
+                    return null;
+                })()}
+
+                {/* Degradation Warning Banner */}
+                {showDegradedBanner && (
+                    <div className="mb-6 bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/30 p-4 rounded-2xl flex items-center justify-between gap-4 animate-fade-in">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 bg-red-500/20 rounded-xl flex items-center justify-center text-red-400 shrink-0">
+                                <AlertTriangle className="w-5 h-5 animate-pulse" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-red-200">Subscription Expired</h4>
+                                <p className="text-xs text-white/60 mt-0.5">
+                                    Your premium subscription plan has expired and your account has been degraded to the Free Tier.
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setShowDegradedBanner(false);
+                                setSubModalOpen(true);
+                            }}
+                            className="shrink-0 bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all"
+                        >
+                            Reactivate Plan
+                        </button>
+                    </div>
+                )}
+
                 {/* Profile Header */}
                 <div className="bg-[#111] border border-white/10 rounded-3xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between shadow-[0_0_50px_rgba(0,0,0,0.5)] gap-6">
                     <div className="flex items-center gap-6 mb-4 md:mb-0">
@@ -1268,6 +1341,11 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                 <Award className="w-4 h-4 text-indigo-400 shrink-0" />
                                 {getPlanDisplay(subscriptionPlan)}
                             </span>
+                            {subscriptionPlan !== "Free Tier" && subscriptionExpiresAt && (
+                                <span className="text-[10px] text-white/50 mt-0.5">
+                                    {getDaysRemaining() !== null ? `${getDaysRemaining()} day(s) remaining` : ""}
+                                </span>
+                            )}
                         </div>
                         <button
                             onClick={() => setSubModalOpen(true)}

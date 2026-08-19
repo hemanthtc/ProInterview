@@ -7,6 +7,8 @@ export interface IUser extends Document {
     type: "email" | "phone";
     subscriptionPlan: string;
     billingCycle: "monthly" | "yearly" | null;
+    subscriptionStartedAt?: Date | null;
+    subscriptionExpiresAt?: Date | null;
     isVerified: boolean;
     createdAt: Date;
     updatedAt: Date;
@@ -22,6 +24,8 @@ const UserSchema: Schema<IUser> = new Schema(
         type: { type: String, enum: ["email", "phone"], required: true },
         subscriptionPlan: { type: String, default: "Free Tier" },
         billingCycle: { type: String, enum: ["monthly", "yearly", null], default: null },
+        subscriptionStartedAt: { type: Date, default: null },
+        subscriptionExpiresAt: { type: Date, default: null },
         isVerified: { type: Boolean, default: false },
         otpCode: { type: String },
         otpExpires: { type: Date },

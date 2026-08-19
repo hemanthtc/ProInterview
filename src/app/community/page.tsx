@@ -24,6 +24,7 @@ import {
     Video,
 } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
+import { processImageForUpload } from "@/utils/imageProcess";
 
 type Room = {
     slug: string;
@@ -531,8 +532,9 @@ export default function CommunityPage() {
         setUploadingImage(true);
         setError("");
         try {
+            const processedFile = await processImageForUpload(file);
             const formData = new FormData();
-            formData.append("file", file);
+            formData.append("file", processedFile);
             formData.append("roomSlug", activeSlug);
             const res = await fetch("/api/community/upload", {
                 method: "POST",
