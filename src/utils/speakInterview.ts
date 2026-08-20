@@ -97,11 +97,19 @@ export async function speakInterviewText(
 
     const pickVoice = () => {
         const voices = window.speechSynthesis.getVoices();
-        const exact = voices.find((v) => v.lang === voiceLanguage);
-        const prefix = voices.find((v) => v.lang?.startsWith(voiceLanguage.slice(0, 2)));
-        const googleEn = voices.find((v) => v.lang?.startsWith("en") && v.name.includes("Google"));
-        utterance.voice = exact || prefix || googleEn || voices[0] || null;
-        utterance.rate = 1.05;
+        const base = (voiceLanguage || "en").slice(0, 2).toLowerCase();
+        // Prefer high-quality neural / natural voices so the interviewer sounds human.
+        const isNatural = (v: SpeechSynthesisVoice) =>
+            /natural|neural|premium|enhanced|google|online|siri|aria|jenny|libby|sonia|samantha|neerja|prabhat/i.test(v.name);
+        const langVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith(base));
+        const naturalExact = langVoices.find(isNatural);
+        const plainExact = voices.find((v) => v.lang === voiceLanguage);
+        const naturalEn = voices.filter((v) => v.lang?.toLowerCase().startsWith("en")).find(isNatural);
+        utterance.voice = naturalExact || plainExact || langVoices[0] || naturalEn || voices[0] || null;
+        // Natural human cadence: a touch slower than default with neutral pitch.
+        utterance.rate = 0.96;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
         utterance.onstart = () => opts.onStart?.();
         utterance.onend = () => opts.onEnd?.();
         window.speechSynthesis.speak(utterance);

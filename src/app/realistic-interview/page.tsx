@@ -383,7 +383,6 @@ export default function RealisticInterviewRoom() {
 
         isCallEndedRef.current = false;
         const text = getInterviewResumeText();
-        const levelText = getStorageItem("interviewLevel") || "intermediate";
         
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
@@ -515,11 +514,11 @@ export default function RealisticInterviewRoom() {
         const typeText = getStorageItem("interviewType") || "realistic";
         const targetCompanyTxt = getStorageItem("targetCompany") || "a technology company";
         const roleText = getStorageItem("preferredRoles") || "Software Engineer";
-        const firstMessageBase = `Please start the realistic company interview. You are a hiring manager for ${targetCompanyTxt}. The candidate is applying for the role(s) of: ${roleText}. You will conduct a full-spectrum interview consisting of behavioral questions, experience deep-dives based on my resume, and real-world scenarios, just like a real company interviewer at ${targetCompanyTxt}. Adjust the difficulty of your questions to a strictly ${levelText} level. Note: do not repeatedly welcome the user, just start.`;
+        const firstMessageBase = `Please start the realistic company interview. You are a hiring manager for ${targetCompanyTxt}. The candidate is applying for the role(s) of: ${roleText}. Conduct a full-spectrum interview grounded strictly in my resume — my education background, skills, projects, preferred role, and the target company. Ask a natural, unpredictable MIX of practical, theoretical, and challenging questions. There is NO fixed difficulty level. Note: do not repeatedly welcome the user, just start.`;
         const focusedRetake = getStorageItem("focusedRetakePrompt");
         if (focusedRetake) removeStorageItem("focusedRetakePrompt");
         const firstMessage = focusedRetake
-            ? `Please start a focused rematch for ${roleText} at ${targetCompanyTxt} (difficulty: ${levelText}). Briefly welcome me, then ask EXACTLY this practice question first: "${focusedRetake}". After I answer, give concise coach feedback, then continue with 2-3 related follow-ups.`
+            ? `Please start a focused rematch for ${roleText} at ${targetCompanyTxt}. Briefly welcome me, then ask EXACTLY this practice question first: "${focusedRetake}". After I answer, give concise coach feedback, then continue with 2-3 related follow-ups.`
             : firstMessageBase;
         triggerAiResponse(text || "", [], firstMessage, typeText);
 

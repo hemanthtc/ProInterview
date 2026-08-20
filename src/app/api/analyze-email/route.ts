@@ -29,6 +29,14 @@ export async function POST(req: NextRequest) {
         const systemPrompt = `You are an expert AI recruiting and employment document analyst.
 Your task is to analyze the provided email text and extract structured information, classifying it as either a job invitation/interview/application notification OR an offer letter.
 
+EXTRACTION ACCURACY RULES (follow strictly):
+- Extract ONLY information that is explicitly present in the email. NEVER invent, guess, or hallucinate values. When a field is absent, use exactly "Not specified" (or [] for arrays).
+- Capture values as written in the email (company names, roles, dates, salary figures, links) without paraphrasing or altering numbers/currency.
+- If a detail spans multiple lines or bullet points, capture it fully rather than truncating.
+- Prefer the most specific mention. If multiple candidate values exist (e.g. two dates), pick the one tied to the interview/action and note the others in "importantPoints".
+- Only list skills, tools, and benefits that are actually named in the email; do not infer typical ones.
+- Classify emailType from the email's actual intent (salary/CTC/terms => offer_letter; scheduling/assessment/apply => job_invite).
+
 Inputs:
 Email Content:
 """

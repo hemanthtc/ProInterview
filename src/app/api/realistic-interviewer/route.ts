@@ -36,27 +36,20 @@ export async function POST(req: NextRequest) {
             ? `\nCandidate preferred language/locale: ${voiceLanguage}. You may greet bilingually for Indian locales; keep technical terms precise.\n`
             : "";
 
-        let mappedType = "off-campus";
-        if (companyClone === false) {
-            if (safeLevel === "basic") mappedType = "internship";
-            else mappedType = "on-campus";
-        } else {
-            if (safeLevel === "basic") mappedType = "internship";
-            else if (safeLevel === "intermediate") mappedType = "off-campus";
-            else mappedType = "experienced";
-        }
+        // Realistic interview has NO difficulty levels. The interview TYPE is decided
+        // SOLELY by Company Clone mode: OFF => on-campus, ON => off-campus.
+        const mappedType = companyClone === false ? "on-campus" : "off-campus";
 
         const recruitmentModeBlock = `
 ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
-- Adopt the following specific focus based on this mapped type:
-  * INTERNSHIP: Calibrate questions to candidate's baseline programming skills, learning agility, basic code syntax, and university/college projects.
-  * ON-CAMPUS: Focus on Computer Science core theoretical foundations (Object-Oriented Programming (OOP) concepts, Database Management Systems (DBMS Normalization, ACID), Operating Systems (Concurrency, deadlocks, virtual memory), Computer Networks (TCP/UDP, HTTP, DNS), basic Data Structures & Algorithms, and college projects).
-  * OFF-CAMPUS: Focus on practical application building, systems integration, code quality, unit/integration testing patterns, API design, and logical scaling.
-  * EXPERIENCED: Focus on advanced system designs, scalability, performance bottlenecks, distributed architectural trade-offs, Sprint delivery shifts, mentorship, and extensive previous work history.
+- ON-CAMPUS (Company Clone OFF): Emphasise Computer Science core theoretical foundations grounded in the candidate's education background — Object-Oriented Programming concepts, Database Management Systems (Normalization, ACID), Operating Systems (concurrency, deadlocks, virtual memory), Computer Networks (TCP/UDP, HTTP, DNS), core Data Structures & Algorithms, and their college/academic projects.
+- OFF-CAMPUS (Company Clone ON): Emphasise practical application building, systems integration, code quality, unit/integration testing patterns, API design, real-world scaling, and role-specific depth aligned to the target company.
 `;
 
-        const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
-- You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.`;
+        const difficultyInstruction = `QUESTION VARIETY (NO FIXED DIFFICULTY LEVEL):
+- This interview has NO preset difficulty tier. Naturally and unpredictably MIX easy, medium, and hard questions across the session.
+- Randomly alternate between PRACTICAL (hands-on coding/build), THEORETICAL (concepts/fundamentals), and SCENARIO/BEHAVIORAL questions.
+- Ground EVERY question strictly in the candidate's actual resume: education background, skills, and projects — tailored to their preferred role (${safeRoles}) and target company (${safeCompany}).`;
 
         const profileSection = await buildRealisticProfileSection(resume, github, linkedin, portfolioUrl, portfolioRating, portfolioFeedback);
 
@@ -65,7 +58,6 @@ ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
 ACTIVE PARAMETERS:
 - Target Company: ${safeCompany}
 - Target Role: ${safeRoles}
-- Difficulty Level: ${safeLevel.toUpperCase()}
 - Interview Type: ${mappedType.toUpperCase()}
 
 ${difficultyInstruction}

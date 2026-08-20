@@ -27,6 +27,7 @@ export default function SetupPage() {
     const [companyCloneMode, setCompanyCloneMode] = useState(true);
     const [hrPersonaPreview, setHrPersonaPreview] = useState<{ name?: string; title?: string } | null>(null);
     const [voiceLanguage, setVoiceLanguage] = useState("en-IN");
+    const [campusPath, setCampusPath] = useState("onCampus");
     const router = useRouter();
 
     const [hasAccountPortfolio, setHasAccountPortfolio] = useState(false);
@@ -107,6 +108,7 @@ export default function SetupPage() {
         setTargetCompanies([]);
         setPreferredRoles([]);
         setCompanyCloneMode(getStorageItem("companyCloneMode") !== "false");
+        setCampusPath(getStorageItem("campusPath") || "onCampus");
 
         const fetchUserProfile = async () => {
             try {
@@ -306,6 +308,7 @@ export default function SetupPage() {
             setStorageItem("preferredRoles", finalRoles);
             setStorageItem("portfolioScoringEnabled", "false");
             setStorageItem("companyCloneMode", companyCloneMode ? "true" : "false");
+            setStorageItem("campusPath", campusPath);
 
             removeStorageItem("resumeFromPaused"); // ensure fresh start
             
@@ -595,6 +598,40 @@ export default function SetupPage() {
                                     </button>
                                 ))}
                             </div>
+                        </div>
+
+                        <div className="mt-6">
+                            <label className={`font-semibold mb-3 block text-sm ${isLight ? "text-slate-800" : "text-white/80"}`}>Select Campus Path</label>
+                            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                                {[
+                                    { id: "onCampus", label: "On-Campus" },
+                                    { id: "offCampus", label: "Off-Campus" },
+                                    { id: "rural", label: "Rural" },
+                                ].map((cp) => (
+                                    <button
+                                        key={cp.id}
+                                        type="button"
+                                        data-testid={`campus-path-${cp.id}`}
+                                        onClick={() => setCampusPath(cp.id)}
+                                        className={`py-3 px-1 rounded-xl border font-semibold transition-all text-xs sm:text-base truncate cursor-pointer ${
+                                            campusPath === cp.id
+                                                ? (theme === "eyeprotect"
+                                                    ? "bg-[#0b5f58] border-[#084842] text-white shadow-lg font-bold"
+                                                    : "bg-indigo-600 border-indigo-500 text-white shadow-lg font-bold")
+                                                : (theme === "light"
+                                                    ? "bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200"
+                                                    : theme === "eyeprotect"
+                                                    ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                    : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white")
+                                        }`}
+                                    >
+                                        {cp.label}
+                                    </button>
+                                ))}
+                            </div>
+                            <p className={`text-xs mt-2 ${isLight ? "text-slate-500" : "text-white/45"}`}>
+                                Decides the question style: on-campus (CS fundamentals), off-campus (practical/company-style), or rural (fundamentals-first, encouraging).
+                            </p>
                         </div>
 
                         <div className="mt-8">

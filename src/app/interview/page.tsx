@@ -557,6 +557,7 @@ export default function InterviewRoom() {
                     level,
                     hrIntel: activeHrIntel || undefined,
                     companyClone: companyCloneMode,
+                    campusPath: getStorageItem("campusPath") || "onCampus",
                     domainPackId: getStorageItem("domainPackId") || undefined,
                     voiceLanguage: getStorageItem("voiceLanguage") || "en-IN",
                 }),
