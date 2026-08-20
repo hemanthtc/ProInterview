@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ADVANCED_CANDIDATE_MODELS, fetchKeySupportedModels } from "@/utils/gemini";
+import {
+  ADVANCED_CANDIDATE_MODELS,
+  fetchKeySupportedModels,
+  preferTextModels,
+} from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
+
+// Max models to try before giving up. Kept small so a request never spends its
+// whole budget looping through failing models (this was the cause of gateway 504s).
+const MAX_MODEL_ATTEMPTS = 5;
+// Per-call upstream timeout so a single hung request cannot exhaust the gateway budget.
+const UPSTREAM_TIMEOUT_MS = 55000;
 
 async function fetchGeminiContent(
   prompt: string,
@@ -10,17 +20,24 @@ async function fetchGeminiContent(
   apiKey: string
 ): Promise<Response> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature,
-        responseMimeType: jsonMode ? "application/json" : "text/plain",
-      },
-    }),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    return await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      signal: controller.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature,
+          responseMimeType: jsonMode ? "application/json" : "text/plain",
+        },
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -50,26 +67,32 @@ export async function POST(req: NextRequest) {
         : 0.7;
 
     const requestedModel =
-      typeof body?.model === "string" && body.model.trim() && body.model.trim() !== "gemini-2.5-flash"
+      typeof body?.model === "string" && body.model.trim()
         ? body.model.trim()
-        : ADVANCED_CANDIDATE_MODELS[0];
+        : "";
 
     if (!prompt.trim()) {
       return NextResponse.json({ error: "Prompt is required." }, { status: 400 });
     }
 
-    if (prompt.length > 50000) {
-      return NextResponse.json(
-        { error: "Prompt exceeds maximum allowed length (50,000 characters)." },
-        { status: 400 }
-      );
-    }
+    // No artificial prompt-length cap: the integrated path must handle full-length
+    // document prompts exactly like the direct (custom key) path does. Gemini's own
+    // input limit is enforced upstream and surfaced as a normal API error if hit.
 
-    // Auto-detect key supported models dynamically from Google API
-    const detectedKeyModels = await fetchKeySupportedModels(API_KEY);
-    const modelQueue = Array.from(
-      new Set([requestedModel, ...detectedKeyModels, ...ADVANCED_CANDIDATE_MODELS])
-    );
+    // Auto-detect the models this key actually supports, flash-first. This makes the
+    // route adapt automatically to whatever key/model is configured — no code change
+    // needed when Google upgrades or renames models.
+    const detectedKeyModels = preferTextModels(await fetchKeySupportedModels(API_KEY));
+
+    const queue: string[] = [];
+    // Honour an explicitly requested model only if the key actually supports it,
+    // otherwise it just wastes an attempt failing.
+    if (requestedModel && detectedKeyModels.includes(requestedModel)) {
+      queue.push(requestedModel);
+    }
+    queue.push(...detectedKeyModels, ...ADVANCED_CANDIDATE_MODELS);
+
+    const modelQueue = Array.from(new Set(queue)).slice(0, MAX_MODEL_ATTEMPTS);
 
     let lastResponse: Response | null = null;
     let data: any = null;
@@ -85,15 +108,17 @@ export async function POST(req: NextRequest) {
         }
         lastErrorMsg = data?.error?.message || `HTTP ${resp.status}`;
 
-        // Abort retries if the error is a critical API key or quota issue (400, 403, 429)
-        const isFatalKeyError = 
-          resp.status === 400 || 
-          resp.status === 403 || 
-          resp.status === 429 || 
-          lastErrorMsg.toLowerCase().includes("api key") || 
-          lastErrorMsg.toLowerCase().includes("key") || 
-          lastErrorMsg.toLowerCase().includes("quota") || 
-          lastErrorMsg.toLowerCase().includes("limit");
+        // Abort retries only on genuine key/quota problems — not on a 404/400 caused
+        // by a single bad model name, which should fall through to the next model.
+        const msg = lastErrorMsg.toLowerCase();
+        const isFatalKeyError =
+          resp.status === 403 ||
+          resp.status === 429 ||
+          msg.includes("api key") ||
+          msg.includes("api_key") ||
+          msg.includes("permission") ||
+          msg.includes("quota") ||
+          msg.includes("rate limit");
 
         if (isFatalKeyError) {
           console.error(`[Gemini Route] Critical key/quota error: ${lastErrorMsg}. Aborting retries.`);
@@ -102,15 +127,16 @@ export async function POST(req: NextRequest) {
 
         console.warn(`[Gemini Route] Model '${currentModel}' failed (${lastErrorMsg}). Retrying next model...`);
       } catch (err: any) {
-        lastErrorMsg = err?.message || "Fetch network error";
-        if (lastErrorMsg.toLowerCase().includes("api key") || lastErrorMsg.toLowerCase().includes("key")) {
-          break;
-        }
+        lastErrorMsg =
+          err?.name === "AbortError"
+            ? "Upstream Gemini request timed out."
+            : err?.message || "Fetch network error";
+        console.warn(`[Gemini Route] Model '${currentModel}' errored (${lastErrorMsg}). Retrying next model...`);
       }
     }
 
     if (!lastResponse || !lastResponse.ok) {
-      const status = lastResponse?.status || 500;
+      const status = lastResponse?.status || 502;
       const message =
         data?.error?.message || lastErrorMsg || `Gemini request failed (${status})`;
       return NextResponse.json({ error: message }, { status });

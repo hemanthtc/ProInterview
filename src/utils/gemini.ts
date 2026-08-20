@@ -20,38 +20,41 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
     return `${namespace}:${hash.digest("hex").slice(0, 32)}`;
 }
 
+// Real, currently valid Gemini models for text generateContent, ordered by preference.
+// The "-latest" aliases auto-track Google's newest release, so upgrading the key/model
+// needs no code change.
 export const ADVANCED_CANDIDATE_MODELS = [
-  // 1. Core Gemini & Flash Models
-  "gemini-3.6-flash",
-  "gemini-3.5-flash",
-  "gemini-3.5-flash-lite",
-  "gemini-3.1-flash-lite",
-  "gemini-3.1-pro-preview",
-  "gemini-3-flash-preview",
-  "gemini-2.5-pro",
+  "gemini-flash-latest",
   "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite",
-  "gemini-2.0-pro-exp-02-05",
-  "gemini-2.0-flash-thinking-exp-01-21",
-  "gemini-1.5-pro",
-  "gemini-1.5-flash-latest",
+  "gemini-flash-lite-latest",
+  "gemini-pro-latest",
+  "gemini-2.5-pro",
+  "gemini-1.5-flash",
   "gemini-1.5-flash-8b",
-
-  // 2. Real-Time Audio & Live Conversational Models
-  "gemini-omni-flash",
-  "gemini-3.5-live-translate-preview",
-  "gemini-3.1-flash-live-preview",
-  "gemini-3.1-flash-tts-preview",
-  "gemini-2.5-flash-live",
-
-  // 3. Generative Media & Specialized Task Models
-  "gemini-3.1-flash-image",
-  "gemini-3-pro-image",
-  "gemini-embedding-2-preview",
-  "gemini-robotics-er-2-preview",
+  "gemini-1.5-pro",
 ];
+
+/**
+ * Given a list of models a key supports, keep only text chat models and order them
+ * flash-first (faster/cheaper) so the working model is hit on the first try.
+ */
+export function preferTextModels(models: string[]): string[] {
+  const isTextModel = (m: string) =>
+    !/(embedding|image|imagen|tts|audio|live|vision|aqa|learnlm|veo|robotics)/i.test(m);
+  const score = (m: string) => {
+    let s = 0;
+    if (m.includes("flash")) s -= 10; // prefer flash
+    if (m.includes("latest")) s -= 5; // prefer latest aliases
+    if (m.includes("lite")) s += 1;
+    if (m.includes("pro")) s += 5;
+    if (/1\.5|1\.0/.test(m)) s += 3; // deprioritise old versions
+    return s;
+  };
+  return models.filter(isTextModel).sort((a, b) => score(a) - score(b));
+}
 
 const keyModelsCache = new Map<string, { at: number; models: string[] }>();
 
