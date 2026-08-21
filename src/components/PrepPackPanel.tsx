@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
 import type { PrepPack } from "../utils/prepPack";
-import { Bell, CheckSquare, ClipboardList, Square, Trash2 } from "lucide-react";
+import { Bell, CheckSquare, ClipboardList, Square, Trash2, Play, Compass, DollarSign, Calendar, Mail } from "lucide-react";
 import { syncSessionsToCloud } from "../utils/cloudSync";
 
 interface PrepPackPanelProps {
@@ -149,56 +149,59 @@ export default function PrepPackPanel({
     const totalCount = active?.checklist.length || 0;
 
     return (
-        <div className={`rounded-2xl border border-white/10 bg-[#111] p-5 space-y-4 ${className}`}>
+        <div className={`rounded-2xl border border-white/10 bg-[#111] p-3 sm:p-4 space-y-3 overflow-hidden ${className}`}>
             <div className="flex items-center justify-between gap-2 flex-wrap">
-                <h3 className="text-base font-semibold text-white flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4 text-sky-400" />
-                    Prep Packs
+                <h3 className="text-sm sm:text-base font-semibold text-white flex items-center gap-1.5">
+                    <ClipboardList className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span className="truncate">Prep Packs</span>
                 </h3>
-                <div className="flex items-center gap-2">
-                    {packs.length > 1 && (
-                        <select
-                            value={active?.id || ""}
-                            onChange={(e) => setActiveId(e.target.value)}
-                            className="rounded-lg bg-black/40 border border-white/10 text-xs text-white px-2 py-1.5"
-                        >
-                            {packs.map((p) => (
-                                <option key={p.id} value={p.id}>
-                                    {p.company} · {p.role}
-                                </option>
-                            ))}
-                        </select>
-                    )}
-                    {active && (
+                {active && (
+                    <div className="flex items-center gap-1.5 shrink-0">
                         <button
                             type="button"
                             onClick={() => deletePack(active.id)}
-                            className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer flex items-center justify-center"
+                            className="p-1 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer flex items-center justify-center shrink-0"
                             title="Delete Prep Pack"
                         >
                             <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                    )}
-                </div>
+                    </div>
+                )}
             </div>
+
+            {packs.length > 1 && (
+                <div className="w-full">
+                    <select
+                        value={active?.id || ""}
+                        onChange={(e) => setActiveId(e.target.value)}
+                        className="w-full max-w-full rounded-lg bg-black/50 border border-white/10 text-xs text-white px-2.5 py-1.5 outline-none focus:border-sky-500/50 truncate cursor-pointer"
+                    >
+                        {packs.map((p) => (
+                            <option key={p.id} value={p.id} className="bg-[#181818] text-white">
+                                {p.company} · {p.role}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             {active && (
                 <>
                     <div>
-                        <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-white">
+                        <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                            <p className="text-xs sm:text-sm font-semibold text-white truncate min-w-0 flex-1">
                                 {active.company} — {active.role}
                             </p>
                             <button
                                 type="button"
                                 onClick={() => resetPrepPack(active.id)}
-                                className="text-[10px] font-bold text-sky-400 hover:text-sky-300 transition-colors cursor-pointer animate-fade-in"
+                                className="text-[10px] font-bold text-sky-400 hover:text-sky-300 transition-colors cursor-pointer whitespace-nowrap shrink-0"
                                 title="Reset reminders and checklist"
                             >
                                 Clear All Data
                             </button>
                         </div>
-                        <p className="text-xs text-white/45 mt-0.5">
+                        <p className="text-[11px] text-white/45 mt-0.5 truncate">
                             {active.interviewDate && active.interviewDate !== "Not specified"
                                 ? `Interview: ${active.interviewDate}`
                                 : "Interview date TBD"}
@@ -208,7 +211,7 @@ export default function PrepPackPanel({
                     </div>
 
                     {(dueReminders.length > 0 || upcomingReminders.length > 0) && (
-                        <div className="space-y-2">
+                        <div className="space-y-1.5">
                             <div className="flex items-center justify-between gap-2">
                                 <p className="text-[10px] uppercase tracking-wide text-white/40 font-semibold flex items-center gap-1">
                                     <Bell className="w-3 h-3" /> Reminders
@@ -226,7 +229,7 @@ export default function PrepPackPanel({
                                 return (
                                     <div
                                         key={r.id}
-                                        className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs ${
+                                        className={`flex items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${
                                             isDue
                                                 ? "border-amber-500/30 bg-amber-500/10 text-amber-100"
                                                 : "border-white/10 bg-white/5 text-white/65"
@@ -258,114 +261,161 @@ export default function PrepPackPanel({
                         </div>
                     )}
 
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                         <p className="text-[10px] uppercase tracking-wide text-white/40 font-semibold">Checklist</p>
                         {active.checklist.map((item) => (
                             <button
                                 key={item.id}
                                 type="button"
                                 onClick={() => toggleChecklist(active.id, item.id)}
-                                className="w-full flex items-start gap-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/[0.07] px-3 py-2 text-left text-sm text-white/80"
+                                className="w-full flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/[0.07] px-2.5 py-1.5 text-left text-xs text-white/80 transition-all"
                             >
                                 {item.done ? (
-                                    <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                                    <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                                 ) : (
-                                    <Square className="w-4 h-4 text-white/35 shrink-0 mt-0.5" />
+                                    <Square className="w-3.5 h-3.5 text-white/35 shrink-0 mt-0.5" />
                                 )}
                                 <span className={item.done ? "line-through text-white/40" : ""}>{item.label}</span>
                             </button>
                         ))}
                     </div>
 
-                    <div className="flex flex-wrap gap-2 pt-1">
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
                         {active.meetingUrl && (
                             <a
                                 href={active.meetingUrl}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="px-3 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-bold text-white"
+                                className="w-full px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-[11px] font-bold text-white transition-all shrink-0 text-center"
                             >
                                 Open Google Meet / call link
                             </a>
                         )}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setStorageItem("targetCompany", active.company);
-                                setStorageItem("preferredRoles", active.role);
-                                setStorageItem("interviewLevel", getStorageItem("interviewLevel") || "intermediate");
-                                setStorageItem(
-                                    "focusedRetakePrompt",
-                                    `Run a focused 15-minute mini mock for ${active.role} at ${active.company}. Ask 4 tight questions covering motivation, one STAR story, one technical depth check, and logistics.`
-                                );
-                                if (active.hrName) {
-                                    /* keep any existing activeHrIntel */
-                                }
-                                window.location.href = "/setup";
-                            }}
-                            className="px-3 py-2 rounded-xl bg-teal-650 hover:bg-teal-500 text-xs font-bold text-white cursor-pointer"
-                        >
-                            Start 15-min mini mock
-                        </button>
-                        {onCreateRoadmap && (
+                        <div className="w-full flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
                             <button
                                 type="button"
-                                onClick={() => onCreateRoadmap(active.company, active.role, active.skills)}
-                                className="px-3 py-2 rounded-xl bg-indigo-650 hover:bg-indigo-500 text-xs font-bold text-white cursor-pointer"
+                                onClick={() => {
+                                    setStorageItem("targetCompany", active.company);
+                                    setStorageItem("preferredRoles", active.role);
+                                    setStorageItem("interviewLevel", getStorageItem("interviewLevel") || "intermediate");
+                                    setStorageItem(
+                                        "focusedRetakePrompt",
+                                        `Run a focused 15-minute mini mock for ${active.role} at ${active.company}. Ask 4 tight questions covering motivation, one STAR story, one technical depth check, and logistics.`
+                                    );
+                                    if (active.hrName) {
+                                        /* keep any existing activeHrIntel */
+                                    }
+                                    window.location.href = "/setup";
+                                }}
+                                className="flex-1 min-w-[130px] px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white/90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                             >
-                                Create Roadmap
+                                <Play className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                                Start 15-min mini mock
                             </button>
-                        )}
-                        {onOpenNegotiation && (
+                            {onCreateRoadmap && (
+                                <button
+                                    type="button"
+                                    onClick={() => onCreateRoadmap(active.company, active.role, active.skills)}
+                                    className="flex-1 min-w-[130px] px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white/90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                                >
+                                    <Compass className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                    Create Roadmap
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="w-full flex items-center gap-1.5 flex-wrap sm:flex-nowrap">
+                            {onOpenNegotiation && (
+                                <button
+                                    type="button"
+                                    onClick={() => onOpenNegotiation(active.company, active.role)}
+                                    className="flex-1 min-w-[130px] px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white/90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                                >
+                                    <DollarSign className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                                    Open Negotiator
+                                </button>
+                            )}
                             <button
                                 type="button"
-                                onClick={() => onOpenNegotiation(active.company, active.role)}
-                                className="px-3 py-2 rounded-xl bg-emerald-650 hover:bg-emerald-500 text-xs font-bold text-white cursor-pointer"
+                                onClick={async () => {
+                                    const meet = active.meetingUrl || "";
+                                    const lines = [
+                                        "BEGIN:VCALENDAR",
+                                        "VERSION:2.0",
+                                        "PRODID:-//ProInterview//PrepPack//EN",
+                                        ...active.reminders
+                                            .filter((r) => !r.fired)
+                                            .map((r) => {
+                                                const dt = new Date(r.at);
+                                                const stamp = dt
+                                                    .toISOString()
+                                                    .replace(/[-:]/g, "")
+                                                    .replace(/\.\d{3}Z$/, "Z");
+                                                return [
+                                                    "BEGIN:VEVENT",
+                                                    `UID:${active.id}-${r.id}@prointerview`,
+                                                    `DTSTAMP:${stamp}`,
+                                                    `DTSTART:${stamp}`,
+                                                    `SUMMARY:ProInterview prep — ${r.label} (${active.company})`,
+                                                    `DESCRIPTION:Prep for ${active.role} at ${active.company}${meet ? `\\nJoin: ${meet}` : ""}`,
+                                                    ...(meet ? [`URL:${meet}`, `LOCATION:${meet}`] : []),
+                                                    "END:VEVENT",
+                                                ].join("\r\n");
+                                            }),
+                                        "END:VCALENDAR",
+                                    ].join("\r\n");
+                                    const filename = `prointerview-prep-${active.company.replace(/\s+/g, "-").toLowerCase()}.ics`;
+                                    const blob = new Blob([lines], { type: "text/calendar;charset=utf-8" });
+
+                                    const isMobileOrPwa = typeof window !== "undefined" && (
+                                        /android|iphone|ipad|ipod/i.test(navigator.userAgent) ||
+                                        window.matchMedia("(display-mode: standalone)").matches
+                                    );
+
+                                    if (isMobileOrPwa && typeof navigator !== "undefined") {
+                                        try {
+                                            const icsFile = new File([blob], filename, { type: "text/calendar" });
+                                            if (navigator.canShare && navigator.canShare({ files: [icsFile] })) {
+                                                await navigator.share({
+                                                    title: `ProInterview Prep — ${active.company}`,
+                                                    text: `Prep reminders for ${active.role} at ${active.company}`,
+                                                    files: [icsFile],
+                                                });
+                                                return;
+                                            }
+                                        } catch (e: any) {
+                                            if (e.name === "AbortError") return;
+                                        }
+
+                                        const reminder = active.reminders.find((r) => !r.fired) || active.reminders[0];
+                                        const startDt = reminder ? new Date(reminder.at) : new Date();
+                                        const endDt = new Date(startDt.getTime() + 30 * 60 * 1000);
+                                        const formatGCalDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+
+                                        const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
+                                            `ProInterview prep — ${active.company}`
+                                        )}&details=${encodeURIComponent(
+                                            `Prep for ${active.role} at ${active.company}${meet ? `\nMeeting: ${meet}` : ""}`
+                                        )}&location=${encodeURIComponent(meet)}&dates=${formatGCalDate(startDt)}/${formatGCalDate(endDt)}`;
+
+                                        window.open(gCalUrl, "_blank");
+                                        return;
+                                    }
+
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = filename;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                }}
+                                className="flex-1 min-w-[130px] px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white/90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                             >
-                                Open Negotiator
+                                <Calendar className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                                Add to calendar (.ics)
                             </button>
-                        )}
-                        <button
-                            type="button"
-                            onClick={() => {
-                                const meet = active.meetingUrl || "";
-                                const lines = [
-                                    "BEGIN:VCALENDAR",
-                                    "VERSION:2.0",
-                                    "PRODID:-//ProInterview//PrepPack//EN",
-                                    ...active.reminders
-                                        .filter((r) => !r.fired)
-                                        .map((r) => {
-                                            const dt = new Date(r.at);
-                                            const stamp = dt
-                                                .toISOString()
-                                                .replace(/[-:]/g, "")
-                                                .replace(/\.\d{3}Z$/, "Z");
-                                            return [
-                                                "BEGIN:VEVENT",
-                                                `UID:${active.id}-${r.id}@prointerview`,
-                                                `DTSTAMP:${stamp}`,
-                                                `DTSTART:${stamp}`,
-                                                `SUMMARY:ProInterview prep — ${r.label} (${active.company})`,
-                                                `DESCRIPTION:Prep for ${active.role} at ${active.company}${meet ? `\\nJoin: ${meet}` : ""}`,
-                                                ...(meet ? [`URL:${meet}`, `LOCATION:${meet}`] : []),
-                                                "END:VEVENT",
-                                            ].join("\r\n");
-                                        }),
-                                    "END:VCALENDAR",
-                                ].join("\r\n");
-                                const blob = new Blob([lines], { type: "text/calendar;charset=utf-8" });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement("a");
-                                a.href = url;
-                                a.download = `prointerview-prep-${active.company.replace(/\s+/g, "-").toLowerCase()}.ics`;
-                                a.click();
-                                URL.revokeObjectURL(url);
-                            }}
-                            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white/80 cursor-pointer"
-                        >
-                            Download calendar (.ics)
-                        </button>
+                        </div>
+
                         <button
                             type="button"
                             onClick={async () => {
@@ -388,8 +438,9 @@ export default function PrepPackPanel({
                                 });
                                 alert("Reminder notification requested.");
                             }}
-                            className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-bold text-white/80 cursor-pointer"
+                            className="w-full px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white/90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                         >
+                            <Mail className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                             Email / WhatsApp reminder
                         </button>
                     </div>

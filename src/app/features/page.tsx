@@ -1839,7 +1839,7 @@ function FeaturesContent() {
         }
     };
 
-    const handleCreatePrepPack = () => {
+    const handleCreatePrepPack = async () => {
         if (!emailAnalysisResult) return;
         try {
             const data = emailAnalysisResult;
@@ -1859,7 +1859,11 @@ function FeaturesContent() {
             const existing = JSON.parse(getStorageItem("prepPacks") || "[]");
             const nextPacks = [pack, ...(Array.isArray(existing) ? existing : [])].slice(0, 20);
             setStorageItem("prepPacks", JSON.stringify(nextPacks));
-            void syncSessionsToCloud({ prepPacks: nextPacks });
+            try {
+                await syncSessionsToCloud({ prepPacks: nextPacks });
+            } catch (syncErr) {
+                console.error("Failed to sync new prep pack to cloud:", syncErr);
+            }
             
             // Redirect / open the Prep Pack modal tool
             setActiveModal("prep_pack");

@@ -99,7 +99,21 @@ export async function pullSessionsFromCloud(): Promise<boolean> {
         }
         const merged = Array.from(mergedMap.values()).sort((a, b) => b.timestamp - a.timestamp);
         setStorageItem("interviewSessions", JSON.stringify(merged));
-        if (Array.isArray(data.prepPacks)) setStorageItem("prepPacks", JSON.stringify(data.prepPacks));
+        if (Array.isArray(data.prepPacks)) {
+            const localPacks = JSON.parse(getStorageItem("prepPacks") || "[]");
+            const packMap = new Map<string, any>();
+            for (const p of [...(data.prepPacks || []), ...(Array.isArray(localPacks) ? localPacks : [])]) {
+                if (!p?.id) continue;
+                if (!packMap.has(p.id)) {
+                    packMap.set(p.id, p);
+                }
+            }
+            const mergedPacks = Array.from(packMap.values());
+            setStorageItem("prepPacks", JSON.stringify(mergedPacks));
+            if (mergedPacks.length > (data.prepPacks || []).length) {
+                void syncSessionsToCloud({ prepPacks: mergedPacks });
+            }
+        }
         if (Array.isArray(data.spacedDrills)) {
             setStorageItem("spacedDrills", JSON.stringify(data.spacedDrills));
         } else {
