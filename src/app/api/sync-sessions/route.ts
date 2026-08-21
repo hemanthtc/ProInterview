@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import CloudSession from "@/models/CloudSession";
 import { getVerifiedSession } from "@/utils/auth";
-import { isS3Configured, getJSON, uploadJSON, pingS3, getS3SessionsKey, getS3PrepPacksKey } from "@/utils/s3";
+import { isS3Configured, getJSON, uploadJSON, deleteS3Object, pingS3, getS3SessionsKey, getS3PrepPacksKey } from "@/utils/s3";
 
 function sessionKey(s: any): string | null {
     if (!s || typeof s.timestamp !== "number") return null;
@@ -213,9 +213,15 @@ export async function POST(req: NextRequest) {
                 const migratedPacks = await migrateMongoPrepPacksToS3(session.identifier, prepPacksKey);
                 const basePacks = migratedPacks.length > 0 ? migratedPacks : s3Packs;
                 
-                const mergedPacks = hasIncomingPacks ? incomingPacks : basePacks;
+                let mergedPacks: any[] = [];
+                if (hasIncomingPacks && incomingPacks.length === 0) {
+                    await deleteS3Object(prepPacksKey);
+                    mergedPacks = [];
+                } else {
+                    mergedPacks = hasIncomingPacks ? incomingPacks : basePacks;
+                    await uploadJSON(prepPacksKey, mergedPacks);
+                }
                 finalPacks = mergedPacks;
-                await uploadJSON(prepPacksKey, finalPacks);
 
                 // Fetch Sessions & Self-heal if needed
                 let s3Data: any = { sessions: [], prepPacks: [], spacedDrills: [] };
