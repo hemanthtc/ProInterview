@@ -214,7 +214,8 @@ export async function POST(req: NextRequest) {
                 const basePacks = migratedPacks.length > 0 ? migratedPacks : s3Packs;
                 
                 let mergedPacks: any[] = [];
-                if (hasIncomingPacks && incomingPacks.length === 0) {
+                if (body.clearAllPrepPacks || (hasIncomingPacks && incomingPacks.length === 0)) {
+                    await uploadJSON(prepPacksKey, []);
                     await deleteS3Object(prepPacksKey);
                     mergedPacks = [];
                 } else {
@@ -246,13 +247,9 @@ export async function POST(req: NextRequest) {
                 // Force clear MongoDB prepPacks cache to be 105% sure nothing remains on the server
                 try {
                     const blob = await CloudSession.findOne({ identifier: session.identifier });
-                    if (blob && (blob.prepPacks.length > 0 || blob.sessions.length > 0)) {
+                    if (blob && blob.prepPacks && blob.prepPacks.length > 0) {
                         blob.prepPacks = [];
-                        blob.sessions = [];
-                        blob.spacedDrills = [];
                         blob.markModified("prepPacks");
-                        blob.markModified("sessions");
-                        blob.markModified("spacedDrills");
                         await blob.save();
                     }
                 } catch (e) {

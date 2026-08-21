@@ -51,13 +51,14 @@ export async function pullPrepProgressFromCloud(): Promise<boolean> {
 export async function syncSessionsToCloud(options?: {
     prepPacks?: any[];
     pushDrills?: boolean;
+    clearAllPrepPacks?: boolean;
 }): Promise<{ ok: boolean; sessions?: any[] }> {
     if (typeof window === "undefined") return { ok: false };
     if (getStorageItem("userLoggedIn") !== "true") return { ok: false };
 
     try {
         const localSessions = JSON.parse(getStorageItem("interviewSessions") || "[]");
-        const localPacks = options?.prepPacks || JSON.parse(getStorageItem("prepPacks") || "[]");
+        const localPacks = options?.clearAllPrepPacks ? [] : (options?.prepPacks || JSON.parse(getStorageItem("prepPacks") || "[]"));
         const drills = options?.pushDrills !== false ? buildSpacedDrills(localSessions) : undefined;
         if (drills) setStorageItem("spacedDrills", JSON.stringify(drills));
 
@@ -68,6 +69,7 @@ export async function syncSessionsToCloud(options?: {
                 sessions: localSessions,
                 prepPacks: localPacks,
                 spacedDrills: drills,
+                clearAllPrepPacks: options?.clearAllPrepPacks,
             }),
         });
         if (!res.ok) return { ok: false };

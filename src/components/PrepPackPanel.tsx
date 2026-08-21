@@ -23,9 +23,13 @@ function loadPacks(): PrepPack[] {
     }
 }
 
-function savePacks(packs: PrepPack[]) {
+async function savePacks(packs: PrepPack[]) {
     setStorageItem("prepPacks", JSON.stringify(packs));
-    void syncSessionsToCloud({ prepPacks: packs });
+    try {
+        await syncSessionsToCloud({ prepPacks: packs });
+    } catch (e) {
+        console.error("Failed to sync prep packs to cloud:", e);
+    }
 }
 
 export default function PrepPackPanel({
@@ -99,11 +103,11 @@ export default function PrepPackPanel({
         savePacks(next);
     }
 
-    function deletePack(packId: string) {
+    async function deletePack(packId: string) {
         if (!confirm("Are you sure you want to delete this prep pack? All checklist items and reminders will be cleared.")) return;
         const next = packs.filter((p) => p.id !== packId);
         setPacks(next);
-        savePacks(next);
+        await savePacks(next);
         if (next.length > 0) {
             setActiveId(next[0].id);
         } else {
@@ -111,11 +115,11 @@ export default function PrepPackPanel({
         }
     }
 
-    function resetPrepPack(packId: string) {
+    async function resetPrepPack(packId: string) {
         if (!confirm("Are you sure you want to clear all data for this prep pack? All checklist items and reminders will be permanently deleted.")) return;
         const next = packs.filter((p) => p.id !== packId);
         setPacks(next);
-        savePacks(next);
+        await savePacks(next);
         if (next.length > 0) {
             setActiveId(next[0].id);
         } else {
@@ -129,14 +133,20 @@ export default function PrepPackPanel({
         setStorageItem("prepPacks", JSON.stringify([]));
         setPacks([]);
         setActiveId(null);
-        // 2. Push empty packs to cloud (S3 + MongoDB) — MUST await before reload
+        // 2. Push empty packs to cloud (S3 + MongoDB) with force clear flag — MUST await before reload
         try {
-            await syncSessionsToCloud({ prepPacks: [] });
+            await syncSessionsToCloud({ prepPacks: [], clearAllPrepPacks: true });
         } catch (e) {
             console.error("Failed to sync empty packs to cloud:", e);
         }
-        // 3. Now remove the key entirely and reload
+        // 3. Purge all local storage keys and reload
         removeStorageItem("prepPacks");
+        if (typeof window !== "undefined") {
+            const userIdentifier = localStorage.getItem("userIdentifier") || "guest";
+            localStorage.removeItem(`prepPacks_${userIdentifier}`);
+            localStorage.removeItem("prepPacks");
+            localStorage.removeItem("prepPack");
+        }
         window.location.reload();
     }
 

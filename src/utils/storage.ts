@@ -75,12 +75,39 @@ export function setStorageItem(key: string, value: string): void {
     emitStorageChange(key);
 }
 
+export function purgeAllUserLocalCaches(): void {
+    if (typeof window === "undefined") return;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && !GLOBAL_KEYS.includes(key)) {
+            keysToRemove.push(key);
+        }
+    }
+    keysToRemove.forEach((key) => {
+        try {
+            localStorage.removeItem(key);
+        } catch (e) {}
+    });
+
+    Object.keys(tempMemory).forEach((key) => {
+        if (!GLOBAL_KEYS.includes(key)) {
+            delete tempMemory[key];
+        }
+    });
+}
+
 export function removeStorageItem(key: string): void {
     if (typeof window === "undefined") return;
     if (key === "userLoggedIn") {
         localStorage.removeItem("userLoggedIn");
+        localStorage.removeItem("userIdentifier");
+        localStorage.removeItem("userName");
         delete tempMemory["userLoggedIn"];
+        delete tempMemory["userIdentifier"];
+        delete tempMemory["userName"];
         document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        purgeAllUserLocalCaches();
         emitStorageChange(key);
         return;
     }
