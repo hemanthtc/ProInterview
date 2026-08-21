@@ -10,7 +10,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-export type S3Prefix = "resumes" | "profile-photos" | "resume_builder_resumes" | "profile_details" | "synthetic" | "uploads" | "scorecards" | "profiles" | "sessions";
+export type S3Prefix = "resumes" | "profile-photos" | "resume_builder_resumes" | "profile_details" | "synthetic" | "uploads" | "scorecards" | "profiles" | "sessions" | "prep-packs";
 
 function env(name: string): string | undefined {
     const v = process.env[name]?.replace(/^["']|["']$/g, "").trim();
@@ -187,6 +187,11 @@ export function getLegacyS3ResumesKey(identifier: string): string {
 export function getS3SessionsKey(identifier: string): string {
     const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
     return `sessions/${safeUser}/session_data.json`;
+}
+
+export function getS3PrepPacksKey(identifier: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `prep-packs/${safeUser}/pack_data.json`;
 }
 
 export function getS3ScorecardKey(shareId: string): string {

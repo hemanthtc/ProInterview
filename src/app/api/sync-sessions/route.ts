@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import CloudSession from "@/models/CloudSession";
 import { getVerifiedSession } from "@/utils/auth";
-import { isS3Configured, getJSON, uploadJSON, pingS3, getS3SessionsKey } from "@/utils/s3";
+import { isS3Configured, getJSON, uploadJSON, pingS3, getS3SessionsKey, getS3PrepPacksKey } from "@/utils/s3";
 
 function sessionKey(s: any): string | null {
     if (!s || typeof s.timestamp !== "number") return null;
@@ -63,7 +63,7 @@ async function migrateMongoSessionsToS3(userIdentifier: string, key: string, s3D
             console.log(`Migrating MongoDB sessions to S3 for ${userIdentifier}...`);
             const merged = {
                 sessions: mergeByTimestamp(s3Data.sessions || [], blob.sessions || []),
-                prepPacks: mergeById(s3Data.prepPacks || [], blob.prepPacks || []),
+                prepPacks: [], // Kept separate in its own S3 folder now
                 spacedDrills: mergeById(s3Data.spacedDrills || [], blob.spacedDrills || []),
             };
             await uploadJSON(key, merged);
@@ -71,6 +71,9 @@ async function migrateMongoSessionsToS3(userIdentifier: string, key: string, s3D
             blob.sessions = [];
             blob.prepPacks = [];
             blob.spacedDrills = [];
+            blob.markModified("sessions");
+            blob.markModified("prepPacks");
+            blob.markModified("spacedDrills");
             await blob.save();
             console.log("Successfully migrated sessions to S3 and cleared MongoDB cache.");
             return merged;
@@ -79,6 +82,36 @@ async function migrateMongoSessionsToS3(userIdentifier: string, key: string, s3D
         console.error("Failed to migrate MongoDB sessions to S3:", err);
     }
     return s3Data;
+}
+
+async function migrateMongoPrepPacksToS3(userIdentifier: string, key: string): Promise<any[]> {
+    try {
+        await connectDB();
+        const blob = await CloudSession.findOne({ identifier: userIdentifier });
+        if (blob && blob.prepPacks && blob.prepPacks.length > 0) {
+            console.log(`Migrating MongoDB prep-packs to S3 for ${userIdentifier}...`);
+            let s3Packs: any[] = [];
+            try {
+                s3Packs = await getJSON<any[]>(key);
+            } catch (err: any) {
+                if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                    throw err;
+                }
+            }
+            const mergedPacks = mergeById(s3Packs || [], blob.prepPacks);
+            await uploadJSON(key, mergedPacks);
+
+            // Clear from MongoDB to keep it clean
+            blob.prepPacks = [];
+            blob.markModified("prepPacks");
+            await blob.save();
+            console.log("Successfully migrated prep-packs to S3 and cleared MongoDB cache.");
+            return mergedPacks;
+        }
+    } catch (err) {
+        console.error("Failed to migrate MongoDB prep-packs to S3:", err);
+    }
+    return [];
 }
 
 export async function GET() {
@@ -91,19 +124,36 @@ export async function GET() {
         await connectDB();
         
         let data: any = null;
+        let prepPacks: any[] = [];
+        
         if (isS3Configured()) {
             const ping = await pingS3();
             if (ping.ok) {
-                const key = getS3SessionsKey(session.identifier);
-                let s3Data: any = { sessions: [], prepPacks: [], spacedDrills: [] };
+                const sessionsKey = getS3SessionsKey(session.identifier);
+                const prepPacksKey = getS3PrepPacksKey(session.identifier);
+                
+                // Fetch Prep Packs
+                let s3Packs: any[] = [];
                 try {
-                    s3Data = await getJSON<any>(key);
+                    s3Packs = await getJSON<any[]>(prepPacksKey);
                 } catch (err: any) {
                     if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
                         throw err;
                     }
                 }
-                data = await migrateMongoSessionsToS3(session.identifier, key, s3Data);
+                const migratedPacks = await migrateMongoPrepPacksToS3(session.identifier, prepPacksKey);
+                prepPacks = migratedPacks.length > 0 ? migratedPacks : s3Packs;
+
+                // Fetch Sessions
+                let s3Data: any = { sessions: [], prepPacks: [], spacedDrills: [] };
+                try {
+                    s3Data = await getJSON<any>(sessionsKey);
+                } catch (err: any) {
+                    if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                        throw err;
+                    }
+                }
+                data = await migrateMongoSessionsToS3(session.identifier, sessionsKey, s3Data);
             }
         }
 
@@ -111,14 +161,15 @@ export async function GET() {
             const blob = await getOrCreateBlob(session.identifier);
             data = {
                 sessions: blob.sessions || [],
-                prepPacks: blob.prepPacks || [],
+                prepPacks: [],
                 spacedDrills: blob.spacedDrills || [],
             };
+            prepPacks = blob.prepPacks || [];
         }
 
         return NextResponse.json({
             sessions: data.sessions || [],
-            prepPacks: data.prepPacks || [],
+            prepPacks: prepPacks || [],
             spacedDrills: data.spacedDrills || [],
         });
     } catch (error: any) {
@@ -137,49 +188,87 @@ export async function POST(req: NextRequest) {
         await connectDB();
         const body = await req.json();
         const incomingSessions = Array.isArray(body.sessions) ? body.sessions : [];
-        const incomingPacks = Array.isArray(body.prepPacks) ? body.prepPacks : [];
+        const hasIncomingPacks = body.prepPacks !== undefined && Array.isArray(body.prepPacks);
+        const incomingPacks = hasIncomingPacks ? body.prepPacks : [];
         const incomingDrills = Array.isArray(body.spacedDrills) ? body.spacedDrills : [];
 
         let finalData: any = null;
+        let finalPacks: any[] = [];
+        
         if (isS3Configured()) {
             const ping = await pingS3();
             if (ping.ok) {
-                const key = getS3SessionsKey(session.identifier);
-                let s3Data: any = { sessions: [], prepPacks: [], spacedDrills: [] };
+                const sessionsKey = getS3SessionsKey(session.identifier);
+                const prepPacksKey = getS3PrepPacksKey(session.identifier);
+                
+                // Fetch Prep Packs & Self-heal if needed
+                let s3Packs: any[] = [];
                 try {
-                    s3Data = await getJSON<any>(key);
+                    s3Packs = await getJSON<any[]>(prepPacksKey);
                 } catch (err: any) {
                     if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
                         throw err;
                     }
                 }
+                const migratedPacks = await migrateMongoPrepPacksToS3(session.identifier, prepPacksKey);
+                const basePacks = migratedPacks.length > 0 ? migratedPacks : s3Packs;
+                
+                const mergedPacks = hasIncomingPacks ? incomingPacks : basePacks;
+                finalPacks = mergedPacks;
+                await uploadJSON(prepPacksKey, finalPacks);
 
-                // Migrate legacy Mongo data first if present
-                s3Data = await migrateMongoSessionsToS3(session.identifier, key, s3Data);
-
+                // Fetch Sessions & Self-heal if needed
+                let s3Data: any = { sessions: [], prepPacks: [], spacedDrills: [] };
+                try {
+                    s3Data = await getJSON<any>(sessionsKey);
+                } catch (err: any) {
+                    if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                        throw err;
+                    }
+                }
+                s3Data = await migrateMongoSessionsToS3(session.identifier, sessionsKey, s3Data);
                 const mergedSessions = mergeByTimestamp(s3Data.sessions || [], incomingSessions);
-                const mergedPacks = incomingPacks.length > 0 ? mergeById(s3Data.prepPacks || [], incomingPacks) : s3Data.prepPacks || [];
                 const mergedDrills = incomingDrills.length > 0 ? mergeById(s3Data.spacedDrills || [], incomingDrills) : s3Data.spacedDrills || [];
 
                 finalData = {
                     sessions: mergedSessions,
-                    prepPacks: mergedPacks,
+                    prepPacks: [], // Kept separate now
                     spacedDrills: mergedDrills,
                 };
+                await uploadJSON(sessionsKey, finalData);
 
-                await uploadJSON(key, finalData);
+                // Force clear MongoDB prepPacks cache to be 105% sure nothing remains on the server
+                try {
+                    const blob = await CloudSession.findOne({ identifier: session.identifier });
+                    if (blob && (blob.prepPacks.length > 0 || blob.sessions.length > 0)) {
+                        blob.prepPacks = [];
+                        blob.sessions = [];
+                        blob.spacedDrills = [];
+                        blob.markModified("prepPacks");
+                        blob.markModified("sessions");
+                        blob.markModified("spacedDrills");
+                        await blob.save();
+                    }
+                } catch (e) {
+                    console.error("Force clear MongoDB cache failed:", e);
+                }
             }
         }
 
         if (!finalData) {
             const blob = await getOrCreateBlob(session.identifier);
             const mergedSessions = mergeByTimestamp(blob.sessions || [], incomingSessions);
-            const mergedPacks = incomingPacks.length > 0 ? mergeById(blob.prepPacks || [], incomingPacks) : blob.prepPacks || [];
+            const mergedPacks = hasIncomingPacks ? incomingPacks : (blob.prepPacks || []);
             const mergedDrills = incomingDrills.length > 0 ? mergeById(blob.spacedDrills || [], incomingDrills) : blob.spacedDrills || [];
 
             blob.sessions = mergedSessions;
             blob.prepPacks = mergedPacks;
             blob.spacedDrills = mergedDrills;
+
+            blob.markModified("sessions");
+            blob.markModified("prepPacks");
+            blob.markModified("spacedDrills");
+
             await blob.save();
 
             finalData = {
@@ -187,12 +276,13 @@ export async function POST(req: NextRequest) {
                 prepPacks: mergedPacks,
                 spacedDrills: mergedDrills,
             };
+            finalPacks = mergedPacks;
         }
 
         return NextResponse.json({
             ok: true,
             sessions: finalData.sessions,
-            prepPacks: finalData.prepPacks,
+            prepPacks: finalPacks,
             spacedDrills: finalData.spacedDrills,
         });
     } catch (error: any) {

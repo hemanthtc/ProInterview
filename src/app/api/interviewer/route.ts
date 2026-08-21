@@ -64,9 +64,9 @@ export async function POST(req: NextRequest) {
 
 
         // Practice interview KEEPS difficulty levels. The campus PATH is chosen by the
-        // user in the UI (on-campus / off-campus / rural). If provided, it takes priority;
+        // user in the UI (on-campus / off-campus). If provided, it takes priority;
         // otherwise we fall back to the legacy clone+level heuristic.
-        const campusMap: Record<string, string> = { onCampus: "on-campus", offCampus: "off-campus", rural: "rural" };
+        const campusMap: Record<string, string> = { onCampus: "on-campus", offCampus: "off-campus" };
         let mappedType: string;
         if (campusPath && campusMap[campusPath]) {
             mappedType = campusMap[campusPath];
@@ -84,7 +84,6 @@ ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
   * INTERNSHIP: Calibrate questions to candidate's baseline programming skills, learning agility, basic code syntax, and university/college projects.
   * ON-CAMPUS: Focus on Computer Science core theoretical foundations (Object-Oriented Programming (OOP) concepts, Database Management Systems (DBMS Normalization, ACID), Operating Systems (Concurrency, deadlocks, virtual memory), Computer Networks (TCP/UDP, HTTP, DNS), basic Data Structures & Algorithms, and college projects).
   * OFF-CAMPUS: Focus on practical application building, systems integration, code quality, unit/integration testing patterns, API design, and logical scaling.
-  * RURAL: This refers ONLY to the candidate's regional/rural or Tier-3 academic background — it is NOT a job role. Ask questions for their actual PREFERRED ROLE (${safeRoles}), but emphasise strong core fundamentals and role basics using clear, accessible phrasing. Reduce elite FAANG-style trick puzzles; focus on genuine problem-solving, foundational Data Structures & Algorithms, and practical skills for that role. Stay encouraging while STILL calibrating depth to the selected difficulty level.
   * EXPERIENCED: Focus on advanced system designs, scalability, performance bottlenecks, distributed architectural trade-offs, Sprint delivery shifts, mentorship, and extensive previous work history.
 - Ground all questions in the candidate's education background, skills and projects from their resume, tailored to the target role and company.
 `;

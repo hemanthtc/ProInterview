@@ -61,6 +61,7 @@ export default function RealisticInterviewRoom() {
     const [isAvatarGenerating, setIsAvatarGenerating] = useState(false);
     const [isDidAvailable, setIsDidAvailable] = useState<boolean | null>(null);
     const [avatarType, setAvatarType] = useState<"d-id" | "svg">("svg");
+    const [avatarError, setAvatarError] = useState<string | null>(null);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
@@ -701,9 +702,13 @@ export default function RealisticInterviewRoom() {
             
             console.log("D-ID WebRTC Stream initialized successfully.");
             setIsDidAvailable(true);
-        } catch (err) {
+        } catch (err: any) {
             console.error("D-ID WebRTC initialization failed, falling back:", err);
             setIsDidAvailable(false);
+            closeDIdStream();
+            setAvatarType("svg");
+            setAvatarError(err?.message || "D-ID stream limit reached or connection failed. Using SVG fallback.");
+            setTimeout(() => setAvatarError(null), 6000);
         }
     }, [avatarType]);
 
@@ -775,6 +780,11 @@ export default function RealisticInterviewRoom() {
                     const errData = await res.json().catch(() => ({}));
                     console.warn("D-ID Stream speak failed. Falling back to local TTS.", errData);
                     speakText(text);
+                    setIsDidAvailable(false);
+                    closeDIdStream();
+                    setAvatarType("svg");
+                    setAvatarError("D-ID Stream speak failed. Falling back to built-in SVG avatar.");
+                    setTimeout(() => setAvatarError(null), 6000);
                 } else {
                     console.log("D-ID Stream speak triggered successfully.");
                 }
@@ -782,6 +792,11 @@ export default function RealisticInterviewRoom() {
             .catch((err) => {
                 console.error("D-ID Stream speak error:", err);
                 speakText(text);
+                setIsDidAvailable(false);
+                closeDIdStream();
+                setAvatarType("svg");
+                setAvatarError("D-ID Stream speak error. Falling back to built-in SVG avatar.");
+                setTimeout(() => setAvatarError(null), 6000);
             })
             .finally(() => {
                 setIsAvatarGenerating(false);
@@ -801,9 +816,10 @@ export default function RealisticInterviewRoom() {
             if (!res.ok) {
                 const errData = await res.json().catch(() => ({}));
                 console.warn("D-ID generation failed. Falling back to SVG.", errData);
-                if (res.status === 400) {
-                    setIsDidAvailable(false);
-                }
+                setIsDidAvailable(false);
+                setAvatarType("svg");
+                setAvatarError(errData?.error || "D-ID presenter generation failed. Using built-in SVG avatar.");
+                setTimeout(() => setAvatarError(null), 6000);
                 return;
             }
             const videoData = await res.json();
@@ -830,11 +846,17 @@ export default function RealisticInterviewRoom() {
                 }, 100);
             } else {
                 setIsDidAvailable(false);
+                setAvatarType("svg");
+                setAvatarError("D-ID presenter did not return a valid URL. Using built-in SVG avatar.");
+                setTimeout(() => setAvatarError(null), 6000);
             }
         })
         .catch((err) => {
             console.error("D-ID fetch error:", err);
             setIsDidAvailable(false);
+            setAvatarType("svg");
+            setAvatarError("D-ID network request error. Using built-in SVG avatar.");
+            setTimeout(() => setAvatarError(null), 6000);
         })
         .finally(() => {
             setIsAvatarGenerating(false);
@@ -1651,8 +1673,20 @@ export default function RealisticInterviewRoom() {
                         <div className="flex flex-col gap-4 flex-1 min-h-0">
                             {/* Desktop Video Grid */}
                             <div className="hidden lg:grid gap-4 grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
-                                {/* AI Video - Animated Human Face */}
+                                // {/* AI Video - Animated Human Face */}
                                 <div className="relative bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center min-h-[300px]">
+                                    {avatarError && (
+                                        <div className="absolute top-12 right-3 left-3 bg-red-950/80 backdrop-blur-sm border border-red-500/30 text-red-200 text-[10px] p-2 rounded-lg z-30 flex items-center justify-between shadow-lg">
+                                            <span>⚠️ {avatarError}</span>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => setAvatarError(null)} 
+                                                className="text-red-400 hover:text-white ml-2 text-xs font-bold cursor-pointer"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    )}
                                     <div className="absolute top-3 left-3 inline-flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg text-xs font-semibold z-10">
                                         ProInterview <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
                                     </div>
@@ -1794,6 +1828,18 @@ export default function RealisticInterviewRoom() {
 
                             {/* Mobile/Tablet Video Frame (Picture in Picture) */}
                             <div className="lg:hidden relative w-full h-[220px] sm:h-[280px] bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center shrink-0">
+                                {avatarError && (
+                                    <div className="absolute top-12 right-3 left-3 bg-red-950/80 backdrop-blur-sm border border-red-500/30 text-red-200 text-[10px] p-2 rounded-lg z-30 flex items-center justify-between shadow-lg">
+                                        <span>⚠️ {avatarError}</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setAvatarError(null)} 
+                                            className="text-red-400 hover:text-white ml-2 text-xs font-bold cursor-pointer"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+                                )}
                                 <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg text-[10px] font-semibold z-10">
                                     ProInterview <Volume2 className={`w-2.5 h-2.5 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
                                 </div>

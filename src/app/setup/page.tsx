@@ -108,7 +108,8 @@ export default function SetupPage() {
         setTargetCompanies([]);
         setPreferredRoles([]);
         setCompanyCloneMode(getStorageItem("companyCloneMode") !== "false");
-        setCampusPath(getStorageItem("campusPath") || "onCampus");
+        const savedPath = getStorageItem("campusPath");
+        setCampusPath(savedPath === "onCampus" || savedPath === "offCampus" ? savedPath : "onCampus");
 
         const fetchUserProfile = async () => {
             try {
@@ -602,11 +603,10 @@ export default function SetupPage() {
 
                         <div className="mt-6">
                             <label className={`font-semibold mb-3 block text-sm ${isLight ? "text-slate-800" : "text-white/80"}`}>Select Campus Path</label>
-                            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                            <div className="grid grid-cols-2 gap-2 sm:gap-3">
                                 {[
                                     { id: "onCampus", label: "On-Campus" },
                                     { id: "offCampus", label: "Off-Campus" },
-                                    { id: "rural", label: "Rural" },
                                 ].map((cp) => (
                                     <button
                                         key={cp.id}
@@ -630,7 +630,7 @@ export default function SetupPage() {
                                 ))}
                             </div>
                             <p className={`text-xs mt-2 ${isLight ? "text-slate-500" : "text-white/45"}`}>
-                                Decides the question style: on-campus (CS fundamentals), off-campus (practical/company-style), or rural (fundamentals-first, encouraging).
+                                Decides the question style: on-campus (CS fundamentals) or off-campus (practical/company-style).
                             </p>
                         </div>
 

@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { getStorageItem, setStorageItem } from "../utils/storage";
+import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
 import type { PrepPack } from "../utils/prepPack";
-import { Bell, CheckSquare, ClipboardList, Square } from "lucide-react";
+import { Bell, CheckSquare, ClipboardList, Square, Trash2, RefreshCw } from "lucide-react";
+import { syncSessionsToCloud } from "../utils/cloudSync";
 
 interface PrepPackPanelProps {
     className?: string;
+    onCreateRoadmap?: (company: string, role: string, skills: string[]) => void;
+    onOpenNegotiation?: (company: string, role: string) => void;
 }
 
 function loadPacks(): PrepPack[] {
@@ -22,9 +25,14 @@ function loadPacks(): PrepPack[] {
 
 function savePacks(packs: PrepPack[]) {
     setStorageItem("prepPacks", JSON.stringify(packs));
+    void syncSessionsToCloud({ prepPacks: packs });
 }
 
-export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
+export default function PrepPackPanel({
+    className = "",
+    onCreateRoadmap,
+    onOpenNegotiation,
+}: PrepPackPanelProps) {
     const [packs, setPacks] = useState<PrepPack[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [now, setNow] = useState(() => Date.now());
@@ -79,6 +87,59 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
         savePacks(next);
     }
 
+    function dismissAllReminders(packId: string) {
+        const next = packs.map((p) => {
+            if (p.id !== packId) return p;
+            return {
+                ...p,
+                reminders: p.reminders.map((r) => ({ ...r, fired: true })),
+            };
+        });
+        setPacks(next);
+        savePacks(next);
+    }
+
+    function deletePack(packId: string) {
+        if (!confirm("Are you sure you want to delete this prep pack? All checklist items and reminders will be cleared.")) return;
+        const next = packs.filter((p) => p.id !== packId);
+        setPacks(next);
+        savePacks(next);
+        if (next.length > 0) {
+            setActiveId(next[0].id);
+        } else {
+            setActiveId(null);
+        }
+    }
+
+    function resetPrepPack(packId: string) {
+        if (!confirm("Are you sure you want to clear all data for this prep pack? All checklist items and reminders will be permanently deleted.")) return;
+        const next = packs.filter((p) => p.id !== packId);
+        setPacks(next);
+        savePacks(next);
+        if (next.length > 0) {
+            setActiveId(next[0].id);
+        } else {
+            setActiveId(null);
+        }
+    }
+
+    async function clearAllPacksData() {
+        if (!confirm("Factory Reset: Are you sure you want to permanently delete ALL prep packs and clear all browser/cloud cached packs data? This cannot be undone.")) return;
+        // 1. Write empty array into the scoped storage key so any concurrent reads see empty data
+        setStorageItem("prepPacks", JSON.stringify([]));
+        setPacks([]);
+        setActiveId(null);
+        // 2. Push empty packs to cloud (S3 + MongoDB) — MUST await before reload
+        try {
+            await syncSessionsToCloud({ prepPacks: [] });
+        } catch (e) {
+            console.error("Failed to sync empty packs to cloud:", e);
+        }
+        // 3. Now remove the key entirely and reload
+        removeStorageItem("prepPacks");
+        window.location.reload();
+    }
+
     if (packs.length === 0) {
         return (
             <div className={`rounded-2xl border border-white/10 bg-[#111] p-5 ${className}`}>
@@ -107,27 +168,59 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
                     <ClipboardList className="w-4 h-4 text-sky-400" />
                     Prep Packs
                 </h3>
-                {packs.length > 1 && (
-                    <select
-                        value={active?.id || ""}
-                        onChange={(e) => setActiveId(e.target.value)}
-                        className="rounded-lg bg-black/40 border border-white/10 text-xs text-white px-2 py-1.5"
-                    >
-                        {packs.map((p) => (
-                            <option key={p.id} value={p.id}>
-                                {p.company} · {p.role}
-                            </option>
-                        ))}
-                    </select>
-                )}
+                <div className="flex items-center gap-2">
+                    {packs.length > 1 && (
+                        <select
+                            value={active?.id || ""}
+                            onChange={(e) => setActiveId(e.target.value)}
+                            className="rounded-lg bg-black/40 border border-white/10 text-xs text-white px-2 py-1.5"
+                        >
+                            {packs.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    {p.company} · {p.role}
+                                </option>
+                            ))}
+                        </select>
+                    )}
+                    {active && (
+                        <button
+                            type="button"
+                            onClick={() => deletePack(active.id)}
+                            className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer flex items-center justify-center"
+                            title="Delete Prep Pack"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                    {packs.length > 0 && (
+                        <button
+                            type="button"
+                            onClick={clearAllPacksData}
+                            className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer flex items-center justify-center"
+                            title="Factory Reset: Clear All Packs & Cache"
+                        >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {active && (
                 <>
                     <div>
-                        <p className="text-sm font-semibold text-white">
-                            {active.company} — {active.role}
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-white">
+                                {active.company} — {active.role}
+                            </p>
+                            <button
+                                type="button"
+                                onClick={() => resetPrepPack(active.id)}
+                                className="text-[10px] font-bold text-sky-400 hover:text-sky-300 transition-colors cursor-pointer animate-fade-in"
+                                title="Reset reminders and checklist"
+                            >
+                                Clear All Data
+                            </button>
+                        </div>
                         <p className="text-xs text-white/45 mt-0.5">
                             {active.interviewDate && active.interviewDate !== "Not specified"
                                 ? `Interview: ${active.interviewDate}`
@@ -139,9 +232,18 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
 
                     {(dueReminders.length > 0 || upcomingReminders.length > 0) && (
                         <div className="space-y-2">
-                            <p className="text-[10px] uppercase tracking-wide text-white/40 font-semibold flex items-center gap-1">
-                                <Bell className="w-3 h-3" /> Reminders
-                            </p>
+                            <div className="flex items-center justify-between gap-2">
+                                <p className="text-[10px] uppercase tracking-wide text-white/40 font-semibold flex items-center gap-1">
+                                    <Bell className="w-3 h-3" /> Reminders
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => dismissAllReminders(active.id)}
+                                    className="text-[10px] font-semibold text-sky-400 hover:text-sky-300 transition-colors"
+                                >
+                                    Clear All
+                                </button>
+                            </div>
                             {[...dueReminders, ...upcomingReminders.slice(0, 3)].map((r) => {
                                 const isDue = r.at <= now;
                                 return (
@@ -224,10 +326,28 @@ export default function PrepPackPanel({ className = "" }: PrepPackPanelProps) {
                                 }
                                 window.location.href = "/setup";
                             }}
-                            className="px-3 py-2 rounded-xl bg-teal-600 hover:bg-teal-500 text-xs font-bold text-white cursor-pointer"
+                            className="px-3 py-2 rounded-xl bg-teal-650 hover:bg-teal-500 text-xs font-bold text-white cursor-pointer"
                         >
                             Start 15-min mini mock
                         </button>
+                        {onCreateRoadmap && (
+                            <button
+                                type="button"
+                                onClick={() => onCreateRoadmap(active.company, active.role, active.skills)}
+                                className="px-3 py-2 rounded-xl bg-indigo-650 hover:bg-indigo-500 text-xs font-bold text-white cursor-pointer"
+                            >
+                                Create Roadmap
+                            </button>
+                        )}
+                        {onOpenNegotiation && (
+                            <button
+                                type="button"
+                                onClick={() => onOpenNegotiation(active.company, active.role)}
+                                className="px-3 py-2 rounded-xl bg-emerald-650 hover:bg-emerald-500 text-xs font-bold text-white cursor-pointer"
+                            >
+                                Open Negotiator
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => {

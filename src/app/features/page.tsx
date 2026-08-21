@@ -264,6 +264,16 @@ function FeaturesContent() {
     const [hrResearchResult, setHrResearchResult] = useState<any>(null);
     const [hrHappenstanceUrl, setHrHappenstanceUrl] = useState<string | null>(null);
 
+    // Negotiator default states
+    const [negotiateCompany, setNegotiateCompany] = useState("");
+    const [negotiateRole, setNegotiateRole] = useState("");
+    const [negotiateOffer, setNegotiateOffer] = useState("");
+    const [negotiateBenefits, setNegotiateBenefits] = useState("");
+
+    // Background study materials generation states
+    const [isGeneratingStudyMaterials, setIsGeneratingStudyMaterials] = useState(false);
+    const [studyMaterialsProgress, setStudyMaterialsProgress] = useState<{ current: number; total: number; topicName: string } | null>(null);
+
     // Roadmap Generator states
     const [roadmapCourse, setRoadmapCourse] = useState("");
     const [roadmapCompany, setRoadmapCompany] = useState("");
@@ -1812,29 +1822,7 @@ function FeaturesContent() {
                     verificationFeedback: data.verificationFeedback
                 });
 
-                if (data.emailType === "job_invite") {
-                    try {
-                        const pack = buildPrepPackFromEmail({
-                            company: data.extractedDetails?.company,
-                            role: data.extractedDetails?.role,
-                            hrName: data.extractedDetails?.hrName,
-                            interviewDate: data.extractedDetails?.interviewDate,
-                            platform: data.extractedDetails?.platformOrFormat,
-                            meetingUrl: extractMeetingUrl(
-                                `${data.extractedDetails?.platformOrFormat || ""} ${Array.isArray(data.importantPoints) ? data.importantPoints.join(" ") : data.importantPoints || ""} ${emailText}`
-                            ),
-                            skills: data.extractedDetails?.skills,
-                            mandatoryThings: data.mandatoryThings,
-                            importantPoints: data.importantPoints,
-                        });
-                        const existing = JSON.parse(getStorageItem("prepPacks") || "[]");
-                        const nextPacks = [pack, ...(Array.isArray(existing) ? existing : [])].slice(0, 20);
-                        setStorageItem("prepPacks", JSON.stringify(nextPacks));
-                        void syncSessionsToCloud({ prepPacks: nextPacks });
-                    } catch (packErr) {
-                        console.error("Failed to build prep pack", packErr);
-                    }
-                }
+
 
                 // Auto-research HR via Happenstance when a sender name is present
                 if (isUsableHrName(data.extractedDetails?.hrName)) {
@@ -1848,6 +1836,42 @@ function FeaturesContent() {
             alert("Failed to connect to the email analyzer API.");
         } finally {
             setIsAnalyzingEmail(false);
+        }
+    };
+
+    const handleCreatePrepPack = () => {
+        if (!emailAnalysisResult) return;
+        try {
+            const data = emailAnalysisResult;
+            const pack = buildPrepPackFromEmail({
+                company: data.extractedDetails?.company,
+                role: data.extractedDetails?.role,
+                hrName: data.extractedDetails?.hrName,
+                interviewDate: data.extractedDetails?.interviewDate,
+                platform: data.extractedDetails?.platformOrFormat,
+                meetingUrl: extractMeetingUrl(
+                    `${data.extractedDetails?.platformOrFormat || ""} ${Array.isArray(data.importantPoints) ? data.importantPoints.join(" ") : data.importantPoints || ""} ${emailText}`
+                ),
+                skills: data.extractedDetails?.skills,
+                mandatoryThings: data.mandatoryThings,
+                importantPoints: data.importantPoints,
+            });
+            const existing = JSON.parse(getStorageItem("prepPacks") || "[]");
+            const nextPacks = [pack, ...(Array.isArray(existing) ? existing : [])].slice(0, 20);
+            setStorageItem("prepPacks", JSON.stringify(nextPacks));
+            void syncSessionsToCloud({ prepPacks: nextPacks });
+            
+            // Redirect / open the Prep Pack modal tool
+            setActiveModal("prep_pack");
+            setActiveTool("prep_pack");
+            
+            // Dispatch a storage event to force the PrepPackPanel to reload
+            if (typeof window !== "undefined") {
+                window.dispatchEvent(new CustomEvent("ai-storage-change", { detail: { key: "prepPacks" } }));
+            }
+        } catch (packErr) {
+            console.error("Failed to build prep pack", packErr);
+            alert("Failed to build prep pack.");
         }
     };
 
@@ -2029,6 +2053,111 @@ function FeaturesContent() {
         setRoadmapResult(null);
         setRoadmapTasksChecked({});
         setExpandedPhases({ 0: true });
+    };
+
+    const handleGenerateBackgroundStudyMaterials = async () => {
+        if (!roadmapResult || !roadmapResult.timeline) return;
+
+        const topics: string[] = [];
+        roadmapResult.timeline.forEach((phase: any) => {
+            if (Array.isArray(phase.topics)) {
+                phase.topics.forEach((t: string) => {
+                    const clean = t.trim();
+                    if (clean && !topics.includes(clean)) {
+                        topics.push(clean);
+                    }
+                });
+            }
+        });
+
+        if (topics.length === 0) {
+            alert("No topics found in this roadmap to generate materials for.");
+            return;
+        }
+
+        setIsGeneratingStudyMaterials(true);
+        setStudyMaterialsProgress({ current: 0, total: topics.length, topicName: "Initializing folder..." });
+
+        try {
+            const folderName = `${roadmapCompany || "Target"} - ${roadmapCourse || "Role"} Prep Pack`;
+            const folderRes = await fetch("/api/synthetic/folders", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    name: folderName,
+                    type: "document",
+                    parentId: null
+                })
+            });
+            const folderData = await folderRes.json();
+            if (!folderRes.ok) {
+                throw new Error(folderData.error || "Failed to create folder");
+            }
+            const folderId = folderData.id || folderData._id;
+
+            for (let i = 0; i < topics.length; i++) {
+                const topic = topics[i];
+                setStudyMaterialsProgress({ current: i + 1, total: topics.length, topicName: topic });
+
+                const prompt = `Write a comprehensive, deep-dive technical study guide and documentation for the topic: "${topic}". This is part of prep for a ${roadmapCourse || "Software Engineer"} interview at ${roadmapCompany || "a top tech company"}. Structure it with: 
+- High-level overview of the concept
+- Key technical principles / architectures
+- Common questions / trade-offs
+- Code snippets / implementation guidelines if applicable.`;
+
+                const geminiRes = await fetch("/api/synthetic-data/gemini", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ prompt, jsonMode: false, temperature: 0.6 })
+                });
+                
+                if (!geminiRes.ok) {
+                    console.warn(`Failed to generate content for topic "${topic}", skipping.`);
+                    continue;
+                }
+                const geminiData = await geminiRes.json();
+                const contentText = geminiData.text || "";
+
+                if (!contentText.trim()) continue;
+
+                await fetch("/api/synthetic/files", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        name: `${topic} - Study Guide`,
+                        folderId: folderId,
+                        contentType: "document",
+                        textContent: contentText
+                    })
+                });
+            }
+
+            setIsGeneratingStudyMaterials(false);
+            setStudyMaterialsProgress(null);
+
+            alert(`Study Pack Generation Complete!\nSuccessfully created folder "${folderName}" and saved ${topics.length} study guide files.`);
+
+            if ("Notification" in window) {
+                if (Notification.permission === "granted") {
+                    new Notification("Study Materials Complete!", {
+                        body: `Created folder "${folderName}" with ${topics.length} topic guides.`
+                    });
+                } else if (Notification.permission !== "denied") {
+                    const permission = await Notification.requestPermission();
+                    if (permission === "granted") {
+                        new Notification("Study Materials Complete!", {
+                            body: `Created folder "${folderName}" with ${topics.length} topic guides.`
+                        });
+                    }
+                }
+            }
+
+        } catch (err: any) {
+            console.error(err);
+            alert(`Failed to generate study materials: ${err.message || err}`);
+            setIsGeneratingStudyMaterials(false);
+            setStudyMaterialsProgress(null);
+        }
     };
 
     const handleStartInterviewAsHr = () => {
@@ -3271,7 +3400,17 @@ function FeaturesContent() {
                 <>
                     <header className="px-4 sm:px-8 h-20 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
                         <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
-                            <BrandLogo />
+                            <div className="flex items-center gap-3">
+                                <BrandLogo />
+                                {studyMaterialsProgress && (
+                                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 animate-pulse ml-2">
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span className="text-[11px] font-bold">
+                                            Generating: "{studyMaterialsProgress.topicName}" ({studyMaterialsProgress.current}/{studyMaterialsProgress.total})
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
                             {activeModal === "prointerviewer" && isAtsWarningActive && (
                                 <div
                                     className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg lg:ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)] w-fit"
@@ -3712,8 +3851,10 @@ function FeaturesContent() {
                                 </button>
 
                                 <NegotiatePanel
-                                    defaultCompany={emailAnalysisResult?.extractedDetails?.company || ""}
-                                    defaultRole={emailAnalysisResult?.extractedDetails?.role || ""}
+                                    defaultCompany={negotiateCompany || emailAnalysisResult?.extractedDetails?.company || ""}
+                                    defaultRole={negotiateRole || emailAnalysisResult?.extractedDetails?.role || ""}
+                                    defaultCurrentOffer={negotiateOffer}
+                                    defaultBenefits={negotiateBenefits}
                                     onUpdateStrategy={({ levers, redLines, mood }) => {
                                         if (Array.isArray(levers) && levers.length > 0) setDynamicLevers(levers);
                                         if (Array.isArray(redLines) && redLines.length > 0) setDynamicRedLines(redLines);
@@ -5499,12 +5640,31 @@ function FeaturesContent() {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => {
+                                                                        const details = emailAnalysisResult.extractedDetails;
+                                                                        setNegotiateCompany(details?.company || "");
+                                                                        setNegotiateRole(details?.role || "");
+                                                                        setNegotiateOffer(details?.salaryDetails?.baseSalary || "");
+                                                                        setNegotiateBenefits(
+                                                                            Array.isArray(details?.salaryDetails?.benefits)
+                                                                                ? details.salaryDetails.benefits.join(", ")
+                                                                                : details?.salaryDetails?.benefits || ""
+                                                                        );
                                                                         setActiveModal("negotiate");
                                                                         setActiveTool("negotiate");
                                                                     }}
                                                                     className="w-full py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-green-600/10 cursor-pointer"
                                                                 >
                                                                     <Handshake className="w-4 h-4" /> Open Negotiation
+                                                                </button>
+                                                            )}
+
+                                                            {emailAnalysisResult.emailType === "job_invite" && (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={handleCreatePrepPack}
+                                                                    className="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-sky-600/10 cursor-pointer"
+                                                                >
+                                                                    <CalendarClock className="w-4 h-4" /> Create Prep Pack
                                                                 </button>
                                                             )}
 
@@ -5534,7 +5694,34 @@ function FeaturesContent() {
                                                 <p className="text-xs text-white/50">Checklists and reminders from your interview invites.</p>
                                             </div>
                                         </div>
-                                        <PrepPackPanel />
+                                        <PrepPackPanel
+                                            onCreateRoadmap={(company, role, skills) => {
+                                                setRoadmapCourse(role);
+                                                setRoadmapCompany(company);
+                                                setRoadmapLocation("");
+                                                setRoadmapAdditional(
+                                                    skills && skills.length > 0 
+                                                        ? `Skills parsed from invite: ${skills.join(", ")}` 
+                                                        : ""
+                                                );
+                                                setActiveModal("roadmap_generator");
+                                                setActiveTool("roadmap_generator");
+                                                setActiveRoadmapId(null);
+                                                setRoadmapImages([]);
+                                                setRoadmapImageError("");
+                                                setRoadmapResult(null);
+                                                setRoadmapTasksChecked({});
+                                                setExpandedPhases({ 0: true });
+                                            }}
+                                            onOpenNegotiation={(company, role) => {
+                                                setNegotiateCompany(company);
+                                                setNegotiateRole(role);
+                                                setNegotiateOffer("");
+                                                setNegotiateBenefits("");
+                                                setActiveModal("negotiate");
+                                                setActiveTool("negotiate");
+                                            }}
+                                        />
                                     </div>
                                 )}
 
@@ -5788,92 +5975,135 @@ function FeaturesContent() {
                                                         const checkedTasksCount = Object.values(roadmapTasksChecked).filter(Boolean).length;
                                                         const progressPercentage = totalTasks > 0 ? Math.round((checkedTasksCount / totalTasks) * 100) : 0;
                                                         return (
-                                                            <div className={`border rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 ${isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.02] border border-white/5"
+                                                            <div className={`border rounded-2xl p-6 flex flex-col gap-6 ${isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.02] border border-white/5"
                                                                 }`}>
-                                                                <div className="flex items-center gap-5">
-                                                                    {/* Circular Progress SVG */}
-                                                                    <div className="relative w-20 h-20 shrink-0">
-                                                                        <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                                                                            {/* Background Circle */}
-                                                                            <circle
-                                                                                cx="50"
-                                                                                cy="50"
-                                                                                r="40"
-                                                                                className={isLight ? "stroke-slate-200" : "stroke-white/[0.04]"}
-                                                                                strokeWidth="8"
-                                                                                fill="transparent"
-                                                                            />
-                                                                            {/* Progress Glow Circle */}
-                                                                            <circle
-                                                                                cx="50"
-                                                                                cy="50"
-                                                                                r="40"
-                                                                                className="stroke-emerald-500/20 blur-[2px]"
-                                                                                strokeWidth="8"
-                                                                                fill="transparent"
-                                                                                strokeDasharray={251.3}
-                                                                                strokeDashoffset={251.3 - (251.3 * progressPercentage) / 100}
-                                                                                strokeLinecap="round"
-                                                                            />
-                                                                            {/* Foreground Progress Circle */}
-                                                                            <circle
-                                                                                cx="50"
-                                                                                cy="50"
-                                                                                r="40"
-                                                                                className="stroke-emerald-500 transition-all duration-500 ease-out"
-                                                                                strokeWidth="8"
-                                                                                fill="transparent"
-                                                                                strokeDasharray={251.3}
-                                                                                strokeDashoffset={251.3 - (251.3 * progressPercentage) / 100}
-                                                                                strokeLinecap="round"
-                                                                            />
-                                                                        </svg>
-                                                                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                                                            <span className={`text-lg font-black leading-none ${isLight ? "text-slate-900" : "text-white"}`}>{progressPercentage}%</span>
-                                                                            <span className={`text-[8px] font-bold uppercase tracking-wider mt-0.5 ${isLight ? "text-slate-500" : "text-white/40"}`}>Done</span>
+                                                                <div className="flex flex-col md:flex-row items-center justify-between gap-6 w-full">
+                                                                    <div className="flex items-center gap-5">
+                                                                        {/* Circular Progress SVG */}
+                                                                        <div className="relative w-20 h-20 shrink-0">
+                                                                            <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                                                                                {/* Background Circle */}
+                                                                                <circle
+                                                                                    cx="50"
+                                                                                    cy="50"
+                                                                                    r="40"
+                                                                                    className={isLight ? "stroke-slate-200" : "stroke-white/[0.04]"}
+                                                                                    strokeWidth="8"
+                                                                                    fill="transparent"
+                                                                                />
+                                                                                {/* Progress Glow Circle */}
+                                                                                <circle
+                                                                                    cx="50"
+                                                                                    cy="50"
+                                                                                    r="40"
+                                                                                    className="stroke-emerald-500/20 blur-[2px]"
+                                                                                    strokeWidth="8"
+                                                                                    fill="transparent"
+                                                                                    strokeDasharray={251.3}
+                                                                                    strokeDashoffset={251.3 - (251.3 * progressPercentage) / 100}
+                                                                                    strokeLinecap="round"
+                                                                                />
+                                                                                {/* Foreground Progress Circle */}
+                                                                                <circle
+                                                                                    cx="50"
+                                                                                    cy="50"
+                                                                                    r="40"
+                                                                                    className="stroke-emerald-500 transition-all duration-500 ease-out"
+                                                                                    strokeWidth="8"
+                                                                                    fill="transparent"
+                                                                                    strokeDasharray={251.3}
+                                                                                    strokeDashoffset={251.3 - (251.3 * progressPercentage) / 100}
+                                                                                    strokeLinecap="round"
+                                                                                />
+                                                                            </svg>
+                                                                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                                                                                <span className={`text-lg font-black leading-none ${isLight ? "text-slate-900" : "text-white"}`}>{progressPercentage}%</span>
+                                                                                <span className={`text-[8px] font-bold uppercase tracking-wider mt-0.5 ${isLight ? "text-slate-500" : "text-white/40"}`}>Done</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${isLight ? "text-slate-400" : "text-white/40"}`}>Overall Completion Progress</div>
+                                                                            <div className="text-sm font-extrabold flex items-baseline gap-1">
+                                                                                <span className="text-emerald-500 text-lg">{checkedTasksCount}</span>
+                                                                                <span className={isLight ? "text-slate-300" : "text-white/40"}>/</span>
+                                                                                <span className={isLight ? "text-slate-700" : "text-white/70"}>{totalTasks}</span>
+                                                                                <span className={`ml-2 font-medium ${isLight ? "text-slate-500" : "text-white/40"}`}>tasks completed</span>
+                                                                            </div>
+                                                                            <p className={`text-xs mt-1 ${isLight ? "text-slate-500" : "text-white/50"}`}>Keep checking off tasks in the timeline below to track your progress</p>
                                                                         </div>
                                                                     </div>
-                                                                    <div>
-                                                                        <div className={`text-xs font-bold uppercase tracking-wider mb-0.5 ${isLight ? "text-slate-400" : "text-white/40"}`}>Overall Completion Progress</div>
-                                                                        <div className="text-sm font-extrabold flex items-baseline gap-1">
-                                                                            <span className="text-emerald-500 text-lg">{checkedTasksCount}</span>
-                                                                            <span className={isLight ? "text-slate-300" : "text-white/40"}>/</span>
-                                                                            <span className={isLight ? "text-slate-700" : "text-white/70"}>{totalTasks}</span>
-                                                                            <span className={`ml-2 font-medium ${isLight ? "text-slate-500" : "text-white/40"}`}>tasks completed</span>
-                                                                        </div>
-                                                                        <p className={`text-xs mt-1 ${isLight ? "text-slate-500" : "text-white/50"}`}>Keep checking off tasks in the timeline below to track your progress</p>
+                                                                    {/* Quick Actions Panel */}
+                                                                    <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={handleSyncRoadmapToResume}
+                                                                            className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/10"
+                                                                        >
+                                                                            <Briefcase className="w-3.5 h-3.5" /> Sync to Resume
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={isGeneratingStudyMaterials}
+                                                                            onClick={handleGenerateBackgroundStudyMaterials}
+                                                                            className="flex-1 md:flex-none px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-indigo-600/10 disabled:opacity-50"
+                                                                        >
+                                                                            {isGeneratingStudyMaterials ? (
+                                                                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating Guides...</>
+                                                                            ) : (
+                                                                                <><BookOpen className="w-3.5 h-3.5" /> Generate Study Pack</>
+                                                                            )}
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={handleCopyRoadmapMarkdown}
+                                                                            className={`flex-1 md:flex-none px-4 py-2.5 border font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${isLight
+                                                                                ? "bg-white hover:bg-slate-50 border-slate-200 text-slate-750 hover:text-slate-900 shadow-sm"
+                                                                                : "bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white"
+                                                                                }`}
+                                                                        >
+                                                                            <Copy className="w-3.5 h-3.5" /> Copy Markdown
+                                                                        </button>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={handleDownloadRoadmapText}
+                                                                            className={`flex-1 md:flex-none px-4 py-2.5 border font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${isLight
+                                                                                ? "bg-white hover:bg-slate-50 border-slate-200 text-slate-750 hover:text-slate-900 shadow-sm"
+                                                                                : "bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white"
+                                                                                }`}
+                                                                        >
+                                                                            <Download className="w-3.5 h-3.5" /> Download Text
+                                                                        </button>
                                                                     </div>
                                                                 </div>
-                                                                {/* Quick Actions Panel */}
-                                                                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={handleSyncRoadmapToResume}
-                                                                        className="flex-1 md:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/10"
-                                                                    >
-                                                                        <Briefcase className="w-3.5 h-3.5" /> Sync to Resume
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={handleCopyRoadmapMarkdown}
-                                                                        className={`flex-1 md:flex-none px-4 py-2.5 border font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${isLight
-                                                                            ? "bg-white hover:bg-slate-50 border-slate-200 text-slate-750 hover:text-slate-900 shadow-sm"
-                                                                            : "bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white"
-                                                                            }`}
-                                                                    >
-                                                                        <Copy className="w-3.5 h-3.5" /> Copy Markdown
-                                                                    </button>
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={handleDownloadRoadmapText}
-                                                                        className={`flex-1 md:flex-none px-4 py-2.5 border font-bold text-xs rounded-xl transition-all flex items-center justify-center gap-2 cursor-pointer ${isLight
-                                                                            ? "bg-white hover:bg-slate-50 border-slate-200 text-slate-750 hover:text-slate-900 shadow-sm"
-                                                                            : "bg-white/5 hover:bg-white/10 border border-white/10 text-white/80 hover:text-white"
-                                                                            }`}
-                                                                    >
-                                                                        <Download className="w-3.5 h-3.5" /> Download Text
-                                                                    </button>
-                                                                </div>
+                                                                {(() => {
+                                                                    const topics: string[] = [];
+                                                                    roadmapResult.timeline.forEach((phase: any) => {
+                                                                        if (Array.isArray(phase.topics)) {
+                                                                            phase.topics.forEach((t: string) => {
+                                                                                const clean = t.trim();
+                                                                                if (clean && !topics.includes(clean)) {
+                                                                                    topics.push(clean);
+                                                                                }
+                                                                            });
+                                                                        }
+                                                                    });
+                                                                    if (topics.length === 0) return null;
+                                                                    return (
+                                                                        <div className="w-full border-t border-white/10 pt-4 mt-2 space-y-2">
+                                                                            <div className="text-xs font-bold text-white/50 uppercase tracking-wide flex items-center gap-1.5">
+                                                                                <Database className="w-3.5 h-3.5 text-indigo-400" />
+                                                                                Topics to generate ({topics.length}):
+                                                                            </div>
+                                                                            <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pb-1 scrollbar-thin">
+                                                                                {topics.map((topic, idx) => (
+                                                                                    <span key={idx} className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 px-2 py-0.5 rounded text-[10px] font-semibold font-sans">
+                                                                                        {topic}
+                                                                                    </span>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })()}
                                                             </div>
                                                         );
                                                     })()}

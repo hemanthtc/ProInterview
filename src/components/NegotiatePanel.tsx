@@ -16,6 +16,8 @@ interface NegotiatePanelProps {
     className?: string;
     defaultCompany?: string;
     defaultRole?: string;
+    defaultCurrentOffer?: string;
+    defaultBenefits?: string;
     onUpdateStrategy?: (strategy: { levers: string[]; redLines: string[]; mood: string }) => void;
 }
 
@@ -34,15 +36,17 @@ export default function NegotiatePanel({
     className = "",
     defaultCompany = "",
     defaultRole = "",
+    defaultCurrentOffer = "",
+    defaultBenefits = "",
     onUpdateStrategy,
 }: NegotiatePanelProps) {
     const [company, setCompany] = useState(defaultCompany);
     const [role, setRole] = useState(defaultRole);
-    const [currentOffer, setCurrentOffer] = useState("");
+    const [currentOffer, setCurrentOffer] = useState(defaultCurrentOffer);
     const [targetComp, setTargetComp] = useState("");
     const [currency, setCurrency] = useState("USD");
     const [payPeriod, setPayPeriod] = useState<"annually" | "monthly">("annually");
-    const [benefits, setBenefits] = useState("");
+    const [benefits, setBenefits] = useState(defaultBenefits);
     const [batna, setBatna] = useState("");
     const [mode, setMode] = useState<Mode>("coach");
     const [userMessage, setUserMessage] = useState("");
@@ -56,6 +60,22 @@ export default function NegotiatePanel({
     const [copiedScriptIndex, setCopiedScriptIndex] = useState<number | null>(null);
     const [salaryIntel, setSalaryIntel] = useState<any>(null);
     const [salaryLoading, setSalaryLoading] = useState(false);
+
+    useEffect(() => {
+        setCompany(defaultCompany);
+    }, [defaultCompany]);
+
+    useEffect(() => {
+        setRole(defaultRole);
+    }, [defaultRole]);
+
+    useEffect(() => {
+        setCurrentOffer(defaultCurrentOffer);
+    }, [defaultCurrentOffer]);
+
+    useEffect(() => {
+        setBenefits(defaultBenefits);
+    }, [defaultBenefits]);
 
     async function loadSalaryIntel() {
         setSalaryLoading(true);
