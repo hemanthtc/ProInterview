@@ -268,12 +268,12 @@ export default function PrepPackPanel({
                                 key={item.id}
                                 type="button"
                                 onClick={() => toggleChecklist(active.id, item.id)}
-                                className="w-full flex items-start gap-2 rounded-lg border border-white/10 bg-white/5 hover:bg-white/[0.07] px-2.5 py-1.5 text-left text-xs text-white/80 transition-all"
+                                className="w-full flex items-start gap-2 rounded-lg border border-white/15 bg-white/5 hover:bg-white/[0.08] px-2.5 py-1.5 text-left text-xs text-white/90 transition-all"
                             >
                                 {item.done ? (
                                     <CheckSquare className="w-3.5 h-3.5 text-emerald-400 shrink-0 mt-0.5" />
                                 ) : (
-                                    <Square className="w-3.5 h-3.5 text-white/35 shrink-0 mt-0.5" />
+                                    <Square className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
                                 )}
                                 <span className={item.done ? "line-through text-white/40" : ""}>{item.label}</span>
                             </button>
@@ -374,11 +374,11 @@ export default function PrepPackPanel({
 
                                     if (isMobileOrPwa && typeof navigator !== "undefined") {
                                         try {
-                                            const icsFile = new File([blob], filename, { type: "text/calendar" });
+                                            const icsFile = new File([lines], filename, { type: "text/calendar" });
                                             if (navigator.canShare && navigator.canShare({ files: [icsFile] })) {
                                                 await navigator.share({
                                                     title: `ProInterview Prep — ${active.company}`,
-                                                    text: `Prep reminders for ${active.role} at ${active.company}`,
+                                                    text: `Add prep reminders for ${active.role} at ${active.company} to your calendar`,
                                                     files: [icsFile],
                                                 });
                                                 return;
@@ -387,19 +387,19 @@ export default function PrepPackPanel({
                                             if (e.name === "AbortError") return;
                                         }
 
-                                        const reminder = active.reminders.find((r) => !r.fired) || active.reminders[0];
-                                        const startDt = reminder ? new Date(reminder.at) : new Date();
-                                        const endDt = new Date(startDt.getTime() + 30 * 60 * 1000);
-                                        const formatGCalDate = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
-
-                                        const gCalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(
-                                            `ProInterview prep — ${active.company}`
-                                        )}&details=${encodeURIComponent(
-                                            `Prep for ${active.role} at ${active.company}${meet ? `\nMeeting: ${meet}` : ""}`
-                                        )}&location=${encodeURIComponent(meet)}&dates=${formatGCalDate(startDt)}/${formatGCalDate(endDt)}`;
-
-                                        window.open(gCalUrl, "_blank");
-                                        return;
+                                        // Fallback via Data URI download to launch Android System Calendar chooser
+                                        try {
+                                            const dataUri = "data:text/calendar;charset=utf-8," + encodeURIComponent(lines);
+                                            const link = document.createElement("a");
+                                            link.href = dataUri;
+                                            link.download = filename;
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                            return;
+                                        } catch (e) {
+                                            console.error("Calendar chooser fallback failed", e);
+                                        }
                                     }
 
                                     const url = URL.createObjectURL(blob);
