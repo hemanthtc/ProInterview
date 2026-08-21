@@ -214,12 +214,12 @@ export async function POST(req: NextRequest) {
                 const basePacks = migratedPacks.length > 0 ? migratedPacks : s3Packs;
                 
                 let mergedPacks: any[] = [];
-                if (body.clearAllPrepPacks || (hasIncomingPacks && incomingPacks.length === 0)) {
+                if (body.clearAllPrepPacks) {
                     await uploadJSON(prepPacksKey, []);
                     await deleteS3Object(prepPacksKey);
                     mergedPacks = [];
                 } else {
-                    mergedPacks = hasIncomingPacks ? incomingPacks : basePacks;
+                    mergedPacks = hasIncomingPacks && incomingPacks.length > 0 ? incomingPacks : basePacks;
                     await uploadJSON(prepPacksKey, mergedPacks);
                 }
                 finalPacks = mergedPacks;

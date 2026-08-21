@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
 import type { PrepPack } from "../utils/prepPack";
-import { Bell, CheckSquare, ClipboardList, Square, Trash2, RefreshCw } from "lucide-react";
+import { Bell, CheckSquare, ClipboardList, Square, Trash2 } from "lucide-react";
 import { syncSessionsToCloud } from "../utils/cloudSync";
 
 interface PrepPackPanelProps {
@@ -26,7 +26,7 @@ function loadPacks(): PrepPack[] {
 async function savePacks(packs: PrepPack[]) {
     setStorageItem("prepPacks", JSON.stringify(packs));
     try {
-        await syncSessionsToCloud({ prepPacks: packs });
+        await syncSessionsToCloud({ prepPacks: packs, clearAllPrepPacks: packs.length === 0 });
     } catch (e) {
         console.error("Failed to sync prep packs to cloud:", e);
     }
@@ -127,29 +127,6 @@ export default function PrepPackPanel({
         }
     }
 
-    async function clearAllPacksData() {
-        if (!confirm("Factory Reset: Are you sure you want to permanently delete ALL prep packs and clear all browser/cloud cached packs data? This cannot be undone.")) return;
-        // 1. Write empty array into the scoped storage key so any concurrent reads see empty data
-        setStorageItem("prepPacks", JSON.stringify([]));
-        setPacks([]);
-        setActiveId(null);
-        // 2. Push empty packs to cloud (S3 + MongoDB) with force clear flag — MUST await before reload
-        try {
-            await syncSessionsToCloud({ prepPacks: [], clearAllPrepPacks: true });
-        } catch (e) {
-            console.error("Failed to sync empty packs to cloud:", e);
-        }
-        // 3. Purge all local storage keys and reload
-        removeStorageItem("prepPacks");
-        if (typeof window !== "undefined") {
-            const userIdentifier = localStorage.getItem("userIdentifier") || "guest";
-            localStorage.removeItem(`prepPacks_${userIdentifier}`);
-            localStorage.removeItem("prepPacks");
-            localStorage.removeItem("prepPack");
-        }
-        window.location.reload();
-    }
-
     if (packs.length === 0) {
         return (
             <div className={`rounded-2xl border border-white/10 bg-[#111] p-5 ${className}`}>
@@ -200,16 +177,6 @@ export default function PrepPackPanel({
                             title="Delete Prep Pack"
                         >
                             <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                    )}
-                    {packs.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={clearAllPacksData}
-                            className="p-1.5 rounded-lg border border-white/10 bg-white/5 text-white/60 hover:text-red-400 hover:bg-red-500/10 transition-all cursor-pointer flex items-center justify-center"
-                            title="Factory Reset: Clear All Packs & Cache"
-                        >
-                            <RefreshCw className="w-3.5 h-3.5" />
                         </button>
                     )}
                 </div>
