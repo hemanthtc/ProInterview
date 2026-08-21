@@ -130,6 +130,18 @@ export async function uploadJSON(key: string, data: any): Promise<void> {
     }));
 }
 
+export async function deleteS3Object(key: string): Promise<void> {
+    try {
+        const bucket = getS3Bucket();
+        await getS3Client().send(new DeleteObjectCommand({
+            Bucket: bucket,
+            Key: key,
+        }));
+    } catch (err) {
+        console.error(`Failed to delete S3 object ${key}:`, err);
+    }
+}
+
 export async function getJSON<T>(key: string): Promise<T> {
     const bucket = getS3Bucket();
     const response = await getS3Client().send(new GetObjectCommand({
