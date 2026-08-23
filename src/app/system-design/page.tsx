@@ -23,6 +23,7 @@ interface EvalResult {
 
 export default function SystemDesignPage() {
     const whiteboardRef = useRef<InteractiveWhiteboardHandle>(null);
+    const promptTextareaRef = useRef<HTMLTextAreaElement>(null);
     const [questions, setQuestions] = useState<SystemDesignQuestion[]>([]);
     const [activeId, setActiveId] = useState<string>("");
     const [prompt, setPrompt] = useState("");
@@ -46,6 +47,14 @@ export default function SystemDesignPage() {
             Promise.resolve().then(() => setTheme(savedTheme));
         }
     }, []);
+
+    useEffect(() => {
+        const textarea = promptTextareaRef.current;
+        if (textarea) {
+            textarea.style.height = "auto";
+            textarea.style.height = `${textarea.scrollHeight}px`;
+        }
+    }, [prompt]);
 
     const isLight = theme === "light" || theme === "eyeprotect";
 
@@ -372,10 +381,10 @@ export default function SystemDesignPage() {
                         <div className="space-y-2">
                             <label className={`text-xs ${isLight ? "text-slate-700 font-bold" : "text-white/50"}`}>Active prompt</label>
                             <textarea
+                                ref={promptTextareaRef}
                                 value={prompt}
                                 onChange={(e) => setPrompt(e.target.value)}
-                                rows={2}
-                                className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition resize-none overflow-hidden ${
                                     theme === "eyeprotect"
                                         ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917]"
                                         : isLight

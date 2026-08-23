@@ -488,16 +488,32 @@ export default function Home() {
             )}
 
             <main className="flex-1 flex flex-col items-center justify-center relative overflow-hidden px-4 sm:px-6 min-h-[90vh]">
+                {/* Hero Background Image */}
+                <div className="absolute inset-0 z-0">
+                    <img 
+                        src="/hero-bg.jpg" 
+                        alt="" 
+                        className="w-full h-full object-cover object-center"
+                        style={{ opacity: theme === "dark" ? 0.3 : theme === "light" ? 0.5 : 0.45 }}
+                    />
+                    {/* Gradient overlay for text readability */}
+                    <div 
+                        className="absolute inset-0"
+                        style={{
+                            background: theme === "dark" 
+                                ? "linear-gradient(to bottom, rgba(5,5,5,0.5) 0%, rgba(5,5,5,0.25) 40%, rgba(5,5,5,0.7) 100%)"
+                                : theme === "light"
+                                ? "linear-gradient(to bottom, rgba(248,250,252,0.5) 0%, rgba(248,250,252,0.3) 40%, rgba(248,250,252,0.6) 100%)"
+                                : "linear-gradient(to bottom, rgba(244,234,225,0.5) 0%, rgba(244,234,225,0.35) 40%, rgba(244,234,225,0.65) 100%)"
+                        }}
+                    />
+                </div>
+
                 {/* Abstract shapes */}
-                <div className="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none" />
-                <div className="absolute bottom-[20%] right-[20%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
+                <div className="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none z-[1]" />
+                <div className="absolute bottom-[20%] right-[20%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none z-[1]" />
 
                 <div className="max-w-4xl w-full mx-auto text-center z-10 flex flex-col items-center">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-indigo-300 mb-8 backdrop-blur-sm">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                        Powered by Google Gemini
-                    </div>
-
                     <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
                         <motion.span
                             initial={{ opacity: 0, y: 30 }}

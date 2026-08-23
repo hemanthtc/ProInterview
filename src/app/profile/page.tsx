@@ -1224,140 +1224,162 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                 )}
 
                 {/* Profile Header */}
-                <div className="bg-[#111] border border-white/10 rounded-3xl p-8 mb-8 flex flex-col md:flex-row items-center justify-between shadow-[0_0_50px_rgba(0,0,0,0.5)] gap-6">
-                    <div className="flex items-center gap-6 mb-4 md:mb-0">
-                        {/* Circular Avatar with SVG completion ring & Dropdown Menu */}
-                        <div className="relative">
-                            <svg width="96" height="96" className="absolute -top-2 -left-2 pointer-events-none" viewBox="0 0 100 100">
-                                {/* Background track */}
-                                <circle cx="50" cy="50" r={circleRadius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
-                                {/* Progress arc */}
-                                <circle
-                                    cx="50" cy="50" r={circleRadius}
-                                    fill="none"
-                                    stroke={completionColor}
-                                    strokeWidth="4"
-                                    strokeLinecap="round"
-                                    strokeDasharray={circleCircumference}
-                                    strokeDashoffset={circleOffset}
-                                    transform="rotate(-90 50 50)"
-                                    style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                <div className="bg-[#0e1017]/90 border border-white/10 rounded-3xl p-6 sm:p-8 mb-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+                    {/* Decorative background glow */}
+                    <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+
+                    <div className="flex flex-col lg:flex-row items-center justify-between gap-6 relative z-10">
+                        {/* Left: Avatar + User Details */}
+                        <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left min-w-0 w-full lg:w-auto">
+                            {/* Circular Avatar with SVG completion ring & Dropdown Menu */}
+                            <div className="relative shrink-0">
+                                <svg width="96" height="96" className="absolute -top-2 -left-2 pointer-events-none" viewBox="0 0 100 100">
+                                    {/* Background track */}
+                                    <circle cx="50" cy="50" r={circleRadius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
+                                    {/* Progress arc */}
+                                    <circle
+                                        cx="50" cy="50" r={circleRadius}
+                                        fill="none"
+                                        stroke={completionColor}
+                                        strokeWidth="4"
+                                        strokeLinecap="round"
+                                        strokeDasharray={circleCircumference}
+                                        strokeDashoffset={circleOffset}
+                                        transform="rotate(-90 50 50)"
+                                        style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                                    />
+                                </svg>
+                                <div 
+                                    onClick={() => setPhotoMenuOpen(!photoMenuOpen)} 
+                                    className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 overflow-hidden relative group cursor-pointer border border-white/10"
+                                    title="Profile photo options"
+                                >
+                                    {profilePhoto ? (
+                                        <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-3xl font-extrabold text-white">{userName.charAt(0).toUpperCase()}</span>
+                                    )}
+                                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
+                                        <Camera className="w-5 h-5 text-white/80" />
+                                    </div>
+                                </div>
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    onChange={handlePhotoChange} 
+                                    className="hidden" 
+                                    accept="image/*" 
                                 />
-                            </svg>
-                            <div 
-                                onClick={() => setPhotoMenuOpen(!photoMenuOpen)} 
-                                className="w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 overflow-hidden relative group cursor-pointer border border-white/10"
-                                title="Profile photo options"
-                            >
-                                {profilePhoto ? (
-                                    <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
-                                ) : (
-                                    <span className="text-3xl font-extrabold text-white">{userName.charAt(0).toUpperCase()}</span>
+                                <input
+                                    type="file"
+                                    ref={resumeFileInputRef}
+                                    onChange={handleResumeCvChange}
+                                    className="hidden"
+                                    accept=".pdf,.txt,.doc,.docx,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                                />
+                                {photoMenuOpen && (
+                                    <>
+                                        <div className="fixed top-0 left-0 w-full h-full z-40" onClick={() => setPhotoMenuOpen(false)} />
+                                        <div className="absolute top-[110%] left-1/2 -translate-x-1/2 bg-[#16161a] border border-white/10 rounded-xl shadow-2xl p-1 z-50 w-48 flex flex-col gap-0.5 overflow-hidden">
+                                            <button
+                                                type="button"
+                                                disabled={!profilePhoto}
+                                                onClick={() => { setViewPhotoOpen(true); setPhotoMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-white/5 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg flex items-center gap-2 transition-colors text-white/80"
+                                            >
+                                                <User className="w-3.5 h-3.5" /> View Photo
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { triggerFileInput(); setPhotoMenuOpen(false); }}
+                                                className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-white/5 rounded-lg flex items-center gap-2 transition-colors text-white/80"
+                                            >
+                                                <Camera className="w-3.5 h-3.5" /> Add New Photo
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setResumeSourceModalOpen(true); setPhotoMenuOpen(false); void loadBuilderResumes(); }}
+                                                className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-white/5 rounded-lg flex items-center gap-2 transition-colors text-white/80"
+                                            >
+                                                <FileText className="w-3.5 h-3.5" /> Upload Resume / CV
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={!profilePhoto}
+                                                onClick={() => {
+                                                    removeStorageItem("userProfilePhoto");
+                                                    setProfilePhoto("");
+                                                    setPhotoMenuOpen(false);
+                                                }}
+                                                className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-red-500/10 text-red-400 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg flex items-center gap-2 transition-colors"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5" /> Remove Photo
+                                            </button>
+                                        </div>
+                                    </>
                                 )}
-                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
-                                    <Camera className="w-5 h-5 text-white/80" />
+                            </div>
+
+                            {/* Name & Strength */}
+                            <div className="space-y-1.5 min-w-0 flex-1">
+                                <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                                    <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight leading-tight">
+                                        {userName}
+                                    </h1>
+                                    <span className="bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 text-[10px] sm:text-xs px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
+                                        Verified
+                                    </span>
+                                </div>
+
+                                <p className="text-xs sm:text-sm text-white/50 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
+                                    <User className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                    {totalInterviews} interview{totalInterviews !== 1 ? "s" : ""} on record
+                                </p>
+
+                                <div className="flex items-center justify-center sm:justify-start">
+                                    <span 
+                                        className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider"
+                                        style={{ backgroundColor: `${completionColor}15`, color: completionColor, borderColor: `${completionColor}35` }}
+                                    >
+                                        {profileCompletionPct}% Profile Strength
+                                    </span>
                                 </div>
                             </div>
-                            <input 
-                                type="file" 
-                                ref={fileInputRef} 
-                                onChange={handlePhotoChange} 
-                                className="hidden" 
-                                accept="image/*" 
-                            />
-                            <input
-                                type="file"
-                                ref={resumeFileInputRef}
-                                onChange={handleResumeCvChange}
-                                className="hidden"
-                                accept=".pdf,.txt,.doc,.docx,application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                            />
-                            {photoMenuOpen && (
-                                <>
-                                    <div className="fixed top-0 left-0 w-full h-full z-40" onClick={() => setPhotoMenuOpen(false)} />
-                                    <div className="absolute top-[110%] left-1/2 -translate-x-1/2 bg-[#16161a] border border-white/10 rounded-xl shadow-2xl p-1 z-50 w-48 flex flex-col gap-0.5 overflow-hidden">
-                                        <button
-                                            type="button"
-                                            disabled={!profilePhoto}
-                                            onClick={() => { setViewPhotoOpen(true); setPhotoMenuOpen(false); }}
-                                            className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-white/5 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg flex items-center gap-2 transition-colors text-white/80"
-                                        >
-                                            <User className="w-3.5 h-3.5" /> View Photo
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { triggerFileInput(); setPhotoMenuOpen(false); }}
-                                            className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-white/5 rounded-lg flex items-center gap-2 transition-colors text-white/80"
-                                        >
-                                            <Camera className="w-3.5 h-3.5" /> Add New Photo
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => { setResumeSourceModalOpen(true); setPhotoMenuOpen(false); void loadBuilderResumes(); }}
-                                            className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-white/5 rounded-lg flex items-center gap-2 transition-colors text-white/80"
-                                        >
-                                            <FileText className="w-3.5 h-3.5" /> Upload Resume / CV
-                                        </button>
-                                        <button
-                                            type="button"
-                                            disabled={!profilePhoto}
-                                            onClick={() => {
-                                                removeStorageItem("userProfilePhoto");
-                                                setProfilePhoto("");
-                                                setPhotoMenuOpen(false);
-                                            }}
-                                            className="w-full text-left px-3 py-2 text-xs font-semibold hover:bg-red-500/10 text-red-400 disabled:opacity-40 disabled:hover:bg-transparent rounded-lg flex items-center gap-2 transition-colors"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5" /> Remove Photo
-                                        </button>
-                                    </div>
-                                </>
-                            )}
                         </div>
-                        <div>
-                            <h1 className="text-2xl font-extrabold tracking-tight mb-1 flex items-center gap-3">
-                                {userName}
-                                <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-xs px-2.5 py-0.5 rounded-full font-bold">Verified</span>
-                            </h1>
-                            <p className="text-white/50 flex items-center gap-2 text-sm mb-1.5">
-                                <User className="w-4 h-4" /> {totalInterviews} interview{totalInterviews !== 1 ? "s" : ""} on record
-                            </p>
-                            <div className="flex items-center">
-                                <span 
-                                    className="px-2.5 py-0.5 rounded-full text-[10px] font-black border uppercase tracking-wider"
-                                    style={{ backgroundColor: `${completionColor}15`, color: completionColor, borderColor: `${completionColor}35` }}
+
+                        {/* Right: Subscription Info & Logout */}
+                        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto shrink-0">
+                            {/* Subscription Card */}
+                            <div className="flex items-center justify-between gap-4 bg-white/[0.03] border border-white/10 px-4 py-3 rounded-2xl flex-1 sm:flex-initial">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Subscription</span>
+                                    <span className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5 mt-0.5">
+                                        <Award className="w-4 h-4 text-indigo-400 shrink-0" />
+                                        {getPlanDisplay(subscriptionPlan)}
+                                    </span>
+                                    {subscriptionPlan !== "Free Tier" && subscriptionExpiresAt && (
+                                        <span className="text-[10px] text-white/50 mt-0.5">
+                                            {getDaysRemaining() !== null ? `${getDaysRemaining()} day(s) remaining` : ""}
+                                        </span>
+                                    )}
+                                </div>
+                                <button
+                                    onClick={() => setSubModalOpen(true)}
+                                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition-all shadow-lg shadow-indigo-500/20 shrink-0"
                                 >
-                                    {profileCompletionPct}% Profile Strength
-                                </span>
+                                    Manage Plan
+                                </button>
                             </div>
+
+                            {/* Logout Button */}
+                            <button 
+                                onClick={handleLogout} 
+                                className="flex items-center justify-center gap-2 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 hover:border-rose-500/40 px-4 py-3 rounded-2xl transition-all font-bold text-xs whitespace-nowrap shrink-0"
+                            >
+                                <LogOut className="w-4 h-4" /> Log Out
+                            </button>
                         </div>
                     </div>
-
-                    {/* Subscription section in between */}
-                    <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-5 py-3 rounded-2xl md:ml-auto w-full md:w-auto justify-between md:justify-start">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Subscription</span>
-                            <span className="text-sm font-extrabold text-indigo-400 flex items-center gap-1.5 mt-0.5">
-                                <Award className="w-4 h-4 text-indigo-400 shrink-0" />
-                                {getPlanDisplay(subscriptionPlan)}
-                            </span>
-                            {subscriptionPlan !== "Free Tier" && subscriptionExpiresAt && (
-                                <span className="text-[10px] text-white/50 mt-0.5">
-                                    {getDaysRemaining() !== null ? `${getDaysRemaining()} day(s) remaining` : ""}
-                                </span>
-                            )}
-                        </div>
-                        <button
-                            onClick={() => setSubModalOpen(true)}
-                            className="bg-indigo-600/20 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/30 hover:border-indigo-500 transition-all text-xs font-bold px-4 py-2 rounded-xl"
-                        >
-                            Manage Plan
-                        </button>
-                    </div>
-
-                    <button onClick={handleLogout} className="flex items-center gap-2 bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500/20 px-6 py-3 rounded-xl transition-colors font-bold whitespace-nowrap w-full md:w-auto justify-center">
-                        <LogOut className="w-4 h-4" /> Log Out
-                    </button>
                 </div>
 
                 {/* Compact collapsible Account Details */}
@@ -1850,64 +1872,130 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                     )}
                 </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                    <div className="bg-[#111] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden group shadow-[0_0_20px_rgba(79,70,229,0.1)]">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 text-indigo-500 group-hover:scale-110 transition-transform"><Activity className="w-16 h-16" /></div>
-                        <h3 className="text-indigo-400 font-bold mb-2 text-xs tracking-widest uppercase">Total Interviews</h3>
-                        <p className="text-4xl font-black">{totalInterviews}</p>
-                        <p className="text-xs text-white/30 mt-1">Last 12 months</p>
+                {/* Stats Grid - 3 High-End Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+                    {/* Stat Card 1: Total Interviews */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-950/40 via-[#0e1017] to-[#0e1017] border border-indigo-500/25 hover:border-indigo-500/50 p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/20 transition-all" />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
+                                <h3 className="text-indigo-300 font-extrabold text-[11px] tracking-wider uppercase">Total Interviews</h3>
+                            </div>
+                            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0 group-hover:scale-110 transition-transform">
+                                <Activity className="w-4 h-4" />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline justify-between">
+                            <p className="text-4xl font-black text-white group-hover:text-indigo-200 transition-colors tracking-tight">{totalInterviews}</p>
+                            <span className="text-[10px] font-semibold text-indigo-300/80 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                                Last 12 mos
+                            </span>
+                        </div>
+                        <p className="text-[11px] text-white/40 mt-2 font-medium">Logged & synced attempts</p>
                     </div>
-                    <div className="bg-[#111] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden group shadow-[0_0_20px_rgba(79,70,229,0.1)]">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 text-indigo-500 group-hover:scale-110 transition-transform"><TrendingUp className="w-16 h-16" /></div>
-                        <h3 className="text-indigo-400 font-bold mb-2 text-xs tracking-widest uppercase">Weighted Avg Score</h3>
-                        <p className="text-4xl font-black">{avgScore} <span className="text-lg text-white/30 font-bold">/ 100</span></p>
-                        <p className="text-xs text-white/30 mt-1">Recent sessions count more</p>
+
+                    {/* Stat Card 2: Weighted Avg Score */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-purple-950/40 via-[#0e1017] to-[#0e1017] border border-purple-500/25 hover:border-purple-500/50 p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/20 transition-all" />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+                                <h3 className="text-purple-300 font-extrabold text-[11px] tracking-wider uppercase">Weighted Avg Score</h3>
+                            </div>
+                            <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 group-hover:scale-110 transition-transform">
+                                <TrendingUp className="w-4 h-4" />
+                            </div>
+                        </div>
+                        <div className="flex items-baseline justify-between mb-2">
+                            <p className="text-4xl font-black text-white group-hover:text-purple-200 transition-colors tracking-tight">
+                                {avgScore} <span className="text-sm font-bold text-white/30">/ 100</span>
+                            </p>
+                            <span className="text-[10px] font-semibold text-purple-300/80 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                                Recency weighted
+                            </span>
+                        </div>
+                        {/* Mini score progress track */}
+                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-2">
+                            <div
+                                className="h-full bg-gradient-to-r from-purple-500 to-pink-400 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(100, Math.max(0, avgScore))}%` }}
+                            />
+                        </div>
                     </div>
-                    <div className="bg-[#111] border border-indigo-500/30 rounded-2xl p-6 relative overflow-hidden group shadow-[0_0_20px_rgba(79,70,229,0.1)]">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 text-indigo-500 group-hover:scale-110 transition-transform"><Award className="w-16 h-16" /></div>
-                        <h3 className="text-indigo-400 font-bold mb-2 text-xs tracking-widest uppercase">Benchmark</h3>
-                        <p className={`text-xl font-bold mt-1 ${benchmarkColor}`}>{benchmark}</p>
-                        <p className="text-xs text-white/30 mt-1">Based on weighted performance</p>
+
+                    {/* Stat Card 3: Benchmark Rating */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-emerald-950/30 via-[#0e1017] to-[#0e1017] border border-emerald-500/25 hover:border-emerald-500/50 p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                                <h3 className="text-emerald-300 font-extrabold text-[11px] tracking-wider uppercase">Hiring Benchmark</h3>
+                            </div>
+                            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 group-hover:scale-110 transition-transform">
+                                <Award className="w-4 h-4" />
+                            </div>
+                        </div>
+                        <div className="flex items-center justify-between min-h-[40px]">
+                            {benchmark === "No Data Yet" ? (
+                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 font-bold text-xs">
+                                    Pending Session Data
+                                </span>
+                            ) : (
+                                <p className={`text-xl font-extrabold tracking-tight ${benchmarkColor}`}>{benchmark}</p>
+                            )}
+                        </div>
+                        <p className="text-[11px] text-white/40 mt-2 font-medium">Industry hiring bar evaluation</p>
                     </div>
                 </div>
 
-                {/* AI Guidance Panel */}
-                <div className="mb-8 bg-[#111] border border-indigo-500/30 rounded-2xl overflow-hidden shadow-[0_0_20px_rgba(79,70,229,0.1)]">
-                    <div className="p-6 flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                {/* AI Career Coach Panel */}
+                <div className="mb-8 bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-[#0e1017] border border-indigo-500/30 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(79,70,229,0.12)] backdrop-blur-xl">
+                    <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
                                 <Sparkles className="w-5 h-5 text-indigo-400" />
                             </div>
-                            <div>
-                                <h2 className="font-bold text-lg">AI Career Coach</h2>
-                                <p className="text-sm text-white/50">Get personalized guidance based on your interview history</p>
+                            <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                    <h2 className="font-extrabold text-base sm:text-lg text-white">AI Career Coach</h2>
+                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider border border-indigo-500/30">
+                                        Personalized
+                                    </span>
+                                </div>
+                                <p className="text-xs sm:text-sm text-white/60 line-clamp-1">Get custom guidance & action plan based on your interview history</p>
                             </div>
                         </div>
                         <button
                             onClick={guidanceOpen ? () => setGuidanceOpen(false) : fetchGuidance}
                             disabled={loadingGuidance || sessions.length === 0}
-                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 transition-colors px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-indigo-500/20"
+                            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 transition-all px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-lg shadow-indigo-500/25 shrink-0 whitespace-nowrap w-full sm:w-auto"
                         >
-                            {loadingGuidance ? <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</> : guidanceOpen ? "Close" : "Get My Plan"}
+                            {loadingGuidance ? (
+                                <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
+                            ) : guidanceOpen ? (
+                                "Close Plan"
+                            ) : (
+                                "Get My Plan"
+                            )}
                         </button>
                     </div>
 
                     {guidanceOpen && (
-                        <div className="border-t border-white/10 p-6">
+                        <div className="border-t border-white/10 p-5 sm:p-6 bg-black/30">
                             {loadingGuidance ? (
                                 <div className="flex flex-col items-center justify-center py-8 gap-3 text-white/50">
                                     <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
-                                    <p className="text-sm">Analyzing your sessions and crafting your personalized plan...</p>
+                                    <p className="text-sm font-medium">Analyzing your sessions and crafting your personalized plan...</p>
                                 </div>
                             ) : (
-                                <div className="prose prose-invert max-w-none">
+                                <div className="prose prose-invert max-w-none space-y-2">
                                     {guidance.split("\n").map((line, i) => {
                                         const isBold = /^\*\*.+\*\*/.test(line);
                                         const cleaned = line.replace(/\*\*/g, "").replace(/^#+\s*/, "");
                                         if (!cleaned.trim()) return <div key={i} className="h-2" />;
                                         if (isBold) return <p key={i} className="font-extrabold text-indigo-300 text-base mt-4 mb-1">{cleaned}</p>;
-                                        if (line.startsWith("- ") || line.startsWith("• ")) return <p key={i} className="text-white/70 text-sm pl-4 before:content-['•'] before:text-indigo-400 before:mr-2">{cleaned.replace(/^[-•]\s*/, "")}</p>;
+                                        if (line.startsWith("- ") || line.startsWith("• ")) return <p key={i} className="text-white/80 text-sm pl-4 before:content-['•'] before:text-indigo-400 before:mr-2">{cleaned.replace(/^[-•]\s*/, "")}</p>;
                                         return <p key={i} className="text-white/70 text-sm leading-relaxed">{cleaned}</p>;
                                     })}
                                 </div>
@@ -1915,6 +2003,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                         </div>
                     )}
                 </div>
+
 
                 {/* Session Logs Section */}
                 <SessionHistoryPanel
@@ -1943,7 +2032,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             initial={{ scale: 0.95, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 20 }}
-                            className="bg-gradient-to-b from-[#16161a] to-[#0c0c0e] border border-white/10 rounded-3xl p-6 md:p-8 max-w-4xl w-full shadow-[0_20px_50px_rgba(79,70,229,0.25)] relative overflow-y-auto max-h-[90vh] scrollbar-thin"
+                            className="bg-gradient-to-b from-[#16161a] to-[#0c0c0e] border border-white/10 rounded-3xl p-5 md:p-8 max-w-4xl w-full shadow-[0_20px_50px_rgba(79,70,229,0.25)] relative overflow-y-auto overflow-x-hidden max-h-[90vh] scrollbar-thin"
                         >
                             {/* Decorative background lights */}
                             <div className="absolute -top-32 -right-32 w-64 h-64 bg-indigo-500/10 rounded-full blur-[80px] pointer-events-none" />
@@ -1984,13 +2073,13 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             </AnimatePresence>
 
                             {selectedPlanForPayment ? (
-                                <div className="relative z-10 flex flex-col md:flex-row gap-6 items-stretch">
+                                <div className="relative z-10 flex flex-col md:flex-row gap-6 items-stretch w-full overflow-x-hidden">
                                     {/* Left Column: Transaction details & Razorpay Status */}
-                                    <div className="flex-1 flex flex-col justify-between border border-white/10 rounded-2xl bg-white/[0.01] p-5">
+                                    <div className="flex-1 flex flex-col justify-between border border-white/10 rounded-2xl bg-white/[0.01] p-5 min-w-0">
                                         <div>
-                                            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4">
+                                            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-4 flex-wrap gap-2">
                                                 <div className="flex items-center gap-2">
-                                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-500/20 flex items-center justify-center shrink-0">
                                                         <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                                                         </svg>
@@ -2027,7 +2116,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             </div>
  
                                             <div className="bg-white/[0.02] border border-white/5 rounded-xl p-4 mb-4">
-                                                <div className="flex justify-between items-start mb-2">
+                                                <div className="flex justify-between items-start mb-2 flex-wrap gap-2">
                                                     <div>
                                                         <p className="text-xs text-white/50">Subscription Plan</p>
                                                         <h4 className="text-lg font-black text-white">{selectedPlanForPayment === "Enterprise Plan" ? "Elite Plan" : selectedPlanForPayment}</h4>
@@ -2040,7 +2129,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div className="border-t border-white/5 pt-2 mt-2 flex justify-between text-[11px] text-white/40 font-mono">
+                                                <div className="border-t border-white/5 pt-2 mt-2 flex justify-between text-[11px] text-white/40 font-mono flex-wrap gap-2">
                                                     <span>Order ID: {txDetails?.txId || "PENDING"}</span>
                                                     <span>Ref No: {txDetails?.refNo || "PENDING"}</span>
                                                 </div>
@@ -2082,7 +2171,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                         <div className="flex justify-between"><span className="text-white/40">Settle Date:</span><span className="text-white">{txDetails?.date}</span></div>
                                                     </div>
  
-                                                    <div className="flex gap-2">
+                                                    <div className="flex gap-2 flex-wrap">
                                                         <button
                                                             onClick={downloadReceipt}
                                                             className="flex-1 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-xs font-bold text-white transition-colors flex items-center justify-center gap-1.5"
@@ -2132,7 +2221,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             )}
                                         </div>
  
-                                        <div className="border-t border-white/5 pt-4 mt-4 flex items-center justify-between text-[10px] text-white/40">
+                                        <div className="border-t border-white/5 pt-4 mt-4 flex items-center justify-between text-[10px] text-white/40 flex-wrap gap-2">
                                             <span className="flex items-center gap-1">
                                                 <svg className="w-3.5 h-3.5 text-indigo-400" fill="currentColor" viewBox="0 0 20 20">
                                                     <path fillRule="evenodd" d="M2.166 4.9L10 1.154l7.834 3.746A2 2 0 0119 6.653v5.694a8 8 0 01-4.767 7.307l-3.733 1.68a1 1 0 01-.88 0l-3.733-1.68A8 8 0 011 12.347V6.653a2 2 0 011.166-1.753zM10 3.74l-6 2.87v5.738a6 6 0 003.575 5.48l2.425 1.092 2.425-1.092A6 6 0 0016 12.348V6.61l-6-2.87z" clipRule="evenodd" />
@@ -2176,7 +2265,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         </div>
                                         
                                         {/* Header Actions Container */}
-                                        <div className="flex items-center gap-3 self-start sm:self-auto shrink-0">
+                                        <div className="flex items-center gap-3 self-start sm:self-auto shrink-0 flex-wrap">
                                             {/* Billing Cycle Toggle */}
                                             <div className="flex items-center gap-2 bg-black/40 border border-white/10 p-1 rounded-xl">
                                                 <button
@@ -2214,7 +2303,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         </div>
                                     </div>
  
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 relative z-10">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 relative z-10 w-full overflow-x-hidden">
                                         {/* Free Tier Card */}
                                         <div className={`rounded-2xl p-5 border transition-all duration-200 flex flex-col justify-between ${subscriptionPlan === "Free Tier" ? "bg-indigo-500/5 border-indigo-500/40 shadow-[0_0_15px_rgba(79,70,229,0.1)]" : "bg-white/5 border-white/5 hover:border-white/10"}`}>
                                             <div>
@@ -2223,11 +2312,11 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     {subscriptionPlan === "Free Tier" && <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">Active</span>}
                                                 </div>
                                                 <h3 className="text-lg font-bold text-white">Free Tier</h3>
-                                                <div className="mt-3 mb-4 flex items-baseline">
+                                                <div className="mt-3 mb-4 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                                                     <span className="text-3xl font-black">₹0</span>
-                                                    <span className="text-xs text-white/40 ml-1">/ month</span>
+                                                    <span className="text-xs text-white/40">/ month</span>
                                                 </div>
-                                                <ul className="space-y-2.5 text-xs text-white/60 mb-6">
+                                                <ul className="space-y-2.5 text-xs text-white/60 mb-6 break-words">
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                                         2 standard interviews / month
@@ -2264,18 +2353,18 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 <h3 className="text-lg font-bold text-white flex items-center gap-1.5">
                                                     Pro Plan <Sparkles className="w-4 h-4 text-indigo-400" />
                                                 </h3>
-                                                <div className="mt-3 mb-4 flex items-baseline">
+                                                <div className="mt-3 mb-4 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                                                     <span className="text-3xl font-black">
                                                         ₹{billingCycle === "yearly" ? "999" : "1,299"}
                                                     </span>
-                                                    <span className="text-xs text-white/40 ml-1">/ month</span>
+                                                    <span className="text-xs text-white/40">/ month</span>
                                                     {billingCycle === "yearly" && (
-                                                        <span className="text-[10px] text-indigo-400 font-extrabold ml-2">
+                                                        <span className="text-[10px] text-indigo-400 font-extrabold block w-full">
                                                             (₹11,988 billed annually)
                                                         </span>
                                                     )}
                                                 </div>
-                                                <ul className="space-y-2.5 text-xs text-white/60 mb-6">
+                                                <ul className="space-y-2.5 text-xs text-white/60 mb-6 break-words">
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                                         Unlimited standard interviews
@@ -2315,18 +2404,18 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     {(subscriptionPlan === "Elite Plan" || subscriptionPlan === "Enterprise Plan" || subscriptionPlan === "Enterprise Tier") && <span className="bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded-full font-bold">Active</span>}
                                                 </div>
                                                 <h3 className="text-lg font-bold text-white">Elite Plan</h3>
-                                                <div className="mt-3 mb-4 flex items-baseline">
+                                                <div className="mt-3 mb-4 flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
                                                     <span className="text-3xl font-black">
                                                         ₹{billingCycle === "yearly" ? "2,999" : "3,499"}
                                                     </span>
-                                                    <span className="text-xs text-white/40 ml-1">/ month</span>
+                                                    <span className="text-xs text-white/40">/ month</span>
                                                     {billingCycle === "yearly" && (
-                                                        <span className="text-[10px] text-indigo-400 font-extrabold ml-2">
+                                                        <span className="text-[10px] text-indigo-400 font-extrabold block w-full">
                                                             (₹35,988 billed annually)
                                                         </span>
                                                     )}
                                                 </div>
-                                                <ul className="space-y-2.5 text-xs text-white/60 mb-6">
+                                                <ul className="space-y-2.5 text-xs text-white/60 mb-6 break-words">
                                                     <li className="flex items-center gap-2 font-bold text-indigo-300">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                                                         Unlimited D-ID Avatar Calls
