@@ -92,7 +92,13 @@ function MobileDashboardContent({
                 {/* Background Image Cover Right Side with Fade to Left */}
                 <div className="absolute right-0 top-0 bottom-0 h-full w-[48%] z-0 select-none pointer-events-none overflow-hidden rounded-r-3xl">
                     <img 
-                        src="/ai-avatar.jpg" 
+                        src={
+                            theme === "light" 
+                                ? "/ai-avatar-light.jpg" 
+                                : theme === "eyeprotect" 
+                                ? "/ai-avatar-eyeprotect.jpg" 
+                                : "/ai-avatar.jpg"
+                        } 
                         alt="AI Coach" 
                         className="w-full h-full object-cover object-center"
                         style={{
@@ -1207,23 +1213,53 @@ export default function Home() {
                         {/* Right: Robot Avatar Artwork */}
                         <div className="relative w-[220px] h-[220px] lg:w-[260px] lg:h-[260px] flex items-center justify-center shrink-0 select-none">
                             <img 
-                                src="/ai-avatar.jpg" 
+                                src={
+                                    theme === "light" 
+                                        ? "/ai-avatar-light.jpg" 
+                                        : theme === "eyeprotect" 
+                                        ? "/ai-avatar-eyeprotect.jpg" 
+                                        : "/ai-avatar.jpg"
+                                } 
                                 alt="AI Coach" 
                                 className="w-full h-full object-cover rounded-full border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.25)]"
                             />
-                            <div className="absolute -bottom-4 right-0 left-0 mx-auto w-max px-3 py-1 bg-[#08080f]/90 border border-white/10 rounded-full flex items-center gap-1.5 shadow-lg">
+                            <div className={`absolute -bottom-4 right-0 left-0 mx-auto w-max px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg border transition-all duration-300 ${
+                                theme === "light"
+                                ? "bg-white border-slate-200/80"
+                                : theme === "eyeprotect"
+                                ? "bg-[#fffcf5] border-[#8c8578]/30"
+                                : "bg-[#08080f]/90 border-white/10"
+                            }`}>
                                 <span className="w-2 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className="text-[10px] font-black text-white/80 tracking-tight">AI Interviewer Online</span>
+                                <span className={`text-[10px] font-black tracking-tight transition-colors duration-300 ${
+                                    theme === "light"
+                                    ? "text-slate-700"
+                                    : theme === "eyeprotect"
+                                    ? "text-[#57534e]"
+                                    : "text-white/80"
+                                }`}>AI Interviewer Online</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Mobile Hero Card (Visible on mobile only) */}
-                    <div className="flex md:hidden w-full relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0c0d1b] via-[#090918] to-[#04040f] border border-white/10 p-5 flex-row items-center justify-between shadow-[0_0_20px_rgba(79,70,229,0.12)]">
+                    <div className={`flex md:hidden w-full relative overflow-hidden rounded-3xl p-5 flex-row items-center justify-between transition-all duration-300 ${
+                        theme === "light"
+                        ? "bg-white border border-slate-200/80 shadow-md shadow-slate-100/10"
+                        : theme === "eyeprotect"
+                        ? "bg-[#fffcf5] border border-[#8c8578]/30 shadow-md shadow-stone-200/10"
+                        : "bg-gradient-to-br from-[#0c0d1b] via-[#090918] to-[#04040f] border border-white/10 shadow-[0_0_20px_rgba(79,70,229,0.12)]"
+                    }`}>
                         {/* Background Image Cover Right Side with Fade to Left */}
                         <div className="absolute right-0 top-0 bottom-0 h-full w-[48%] z-0 select-none pointer-events-none overflow-hidden rounded-r-3xl">
                             <img 
-                                src="/ai-avatar.jpg" 
+                                src={
+                                    theme === "light" 
+                                        ? "/ai-avatar-light.jpg" 
+                                        : theme === "eyeprotect" 
+                                        ? "/ai-avatar-eyeprotect.jpg" 
+                                        : "/ai-avatar.jpg"
+                                } 
                                 alt="AI Coach" 
                                 className="w-full h-full object-cover object-center"
                                 style={{
@@ -1244,14 +1280,32 @@ export default function Home() {
                                 </span>
                             </div>
                             
-                            <h2 className="text-lg font-black text-white leading-tight">
+                            <h2 className={`text-lg font-black leading-tight transition-colors duration-300 ${
+                                theme === "light" 
+                                ? "text-slate-900" 
+                                : theme === "eyeprotect" 
+                                ? "text-[#1c1917]" 
+                                : "text-white"
+                            }`}>
                                 Master your next <br />
-                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+                                <span className={`transition-colors duration-300 ${
+                                    theme === "light" 
+                                    ? "text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600" 
+                                    : theme === "eyeprotect" 
+                                    ? "text-amber-800" 
+                                    : "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400"
+                                }`}>
                                     technical interview
                                 </span>
                             </h2>
                             
-                            <p className="text-[10px] text-white/50 leading-relaxed font-semibold">
+                            <p className={`text-[10px] leading-relaxed font-semibold transition-colors duration-300 ${
+                                theme === "light" 
+                                ? "text-slate-700" 
+                                : theme === "eyeprotect" 
+                                ? "text-[#57534e]" 
+                                : "text-white/50"
+                            }`}>
                                 {isRealisticMode 
                                     ? "Simulate a real-world company interview under hiring manager conditions."
                                     : "Practice with our AI interviewer, get real-time feedback, and improve with every session."}

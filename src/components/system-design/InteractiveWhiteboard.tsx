@@ -33,12 +33,18 @@ export interface InteractiveWhiteboardHandle {
     getPngDataUrl: () => string | null;
 }
 
-function ShapeVisual({ shape }: { shape: BoardShape }) {
+function ShapeVisual({ shape, isLight, theme }: { shape: BoardShape; isLight?: boolean; theme?: "dark" | "light" | "eyeprotect" }) {
     const isLine = typeof shape.x2 === "number" && typeof shape.y2 === "number";
+
+    const labelColorClass = theme === "eyeprotect"
+        ? "text-[#451a03]"
+        : isLight
+        ? "text-slate-800"
+        : "text-cyan-50";
 
     const commonLabel =
         shape.label && !["arrow", "line", "dashed-line", "double-arrow", "curved-arrow"].includes(shape.kind) ? (
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center px-2 text-center text-[11px] font-semibold leading-tight text-cyan-50 z-[1] select-none break-all line-clamp-3">
+            <span className={`pointer-events-none absolute inset-0 flex items-center justify-center px-2 text-center text-[11px] font-black leading-tight ${labelColorClass} z-[1] select-none break-all line-clamp-3`}>
                 {shape.label}
             </span>
         ) : null;
@@ -59,8 +65,24 @@ function ShapeVisual({ shape }: { shape: BoardShape }) {
     const x2_loc = isLine ? (shape.x2! >= shape.x ? w : 0) : 100;
     const y2_loc = isLine ? (shape.y2! >= shape.y ? h : 0) : 100;
 
-    const stroke = isLine ? "#818cf8" : "#22d3ee";
-    const fill = isLine ? "none" : "rgba(8, 47, 73, 0.7)";
+    let stroke = isLine ? "#818cf8" : "#22d3ee";
+    let fill = isLine ? "none" : "rgba(8, 47, 73, 0.7)";
+
+    if (theme === "eyeprotect") {
+        stroke = isLine ? "#7c2d12" : "#0f766e";
+        fill = isLine ? "none" : "rgba(242, 230, 210, 0.85)";
+    } else if (isLight) {
+        stroke = isLine ? "#4f46e5" : "#0891b2";
+        fill = isLine ? "none" : "rgba(241, 245, 249, 0.95)";
+    }
+
+    if (shape.kind === "service") {
+        stroke = theme === "eyeprotect" ? "#0d9488" : isLight ? "#0d9488" : "#34d399";
+        fill = theme === "eyeprotect" ? "rgba(204, 251, 241, 0.65)" : isLight ? "rgba(204, 251, 241, 0.65)" : "rgba(6, 78, 59, 0.5)";
+    } else if (shape.kind === "database") {
+        stroke = theme === "eyeprotect" ? "#d97706" : isLight ? "#d97706" : "#fbbf24";
+        fill = theme === "eyeprotect" ? "rgba(254, 243, 199, 0.7)" : isLight ? "rgba(254, 243, 199, 0.7)" : "rgba(120, 53, 4, 0.5)";
+    }
     const strokeWidth = "2.5";
 
     let svgContent = null;
@@ -263,30 +285,30 @@ function ShapeVisual({ shape }: { shape: BoardShape }) {
 
             // --- SYSTEM DESIGN SPECIFIC ---
             case "service":
-                svgContent = <rect x="2" y="2" width="96" height="96" rx="12" fill="rgba(6,78,59,0.5)" stroke="#34d399" strokeWidth={strokeWidth} />;
+                svgContent = <rect x="2" y="2" width="96" height="96" rx="12" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />;
                 break;
             case "database":
                 svgContent = (
                     <g>
-                        <path d="M 4,20 C 4,5 96,5 96,20 L 96,80 C 96,95 4,95 4,80 Z" fill="rgba(120,53,4,0.5)" stroke="#fbbf24" strokeWidth={strokeWidth} />
-                        <path d="M 4,20 C 4,35 96,35 96,20" fill="none" stroke="#fbbf24" strokeWidth="1.5" />
-                        <path d="M 4,50 C 4,65 96,65 96,50" fill="none" stroke="#fbbf24" strokeWidth="1.5" />
+                        <path d="M 4,20 C 4,5 96,5 96,20 L 96,80 C 96,95 4,95 4,80 Z" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+                        <path d="M 4,20 C 4,35 96,35 96,20" fill="none" stroke={stroke} strokeWidth="1.5" />
+                        <path d="M 4,50 C 4,65 96,65 96,50" fill="none" stroke={stroke} strokeWidth="1.5" />
                     </g>
                 );
                 break;
             case "queue":
                 svgContent = (
                     <g>
-                        <rect x="2" y="2" width="96" height="96" rx="4" fill="rgba(8,47,73,0.5)" stroke="#38bdf8" strokeWidth={strokeWidth} />
-                        <line x1="25" y1="2" x2="25" y2="98" stroke="#38bdf8" strokeWidth="1.5" />
-                        <line x1="50" y1="2" x2="50" y2="98" stroke="#38bdf8" strokeWidth="1.5" />
-                        <line x1="75" y1="2" x2="75" y2="98" stroke="#38bdf8" strokeWidth="1.5" />
+                        <rect x="2" y="2" width="96" height="96" rx="4" fill={fill} stroke={stroke} strokeWidth={strokeWidth} />
+                        <line x1="25" y1="2" x2="25" y2="98" stroke={stroke} strokeWidth="1.5" />
+                        <line x1="50" y1="2" x2="50" y2="98" stroke={stroke} strokeWidth="1.5" />
+                        <line x1="75" y1="2" x2="75" y2="98" stroke={stroke} strokeWidth="1.5" />
                     </g>
                 );
                 break;
             case "actor":
                 svgContent = (
-                    <g fill="none" stroke="#a78bfa" strokeWidth={strokeWidth}>
+                    <g fill="none" stroke={stroke} strokeWidth={strokeWidth}>
                         {/* Head */}
                         <circle cx="50" cy="25" r="16" />
                         {/* Body/Arms */}
@@ -295,7 +317,7 @@ function ShapeVisual({ shape }: { shape: BoardShape }) {
                 );
                 break;
             case "text":
-                svgContent = <rect x="2" y="2" width="96" height="96" rx="4" fill="none" stroke="#ffffff" strokeDasharray="3,3" strokeWidth="1" />;
+                svgContent = <rect x="2" y="2" width="96" height="96" rx="4" fill="none" stroke={stroke} strokeDasharray="3,3" strokeWidth="1" />;
                 break;
 
             default:
@@ -599,14 +621,26 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
     };
 
     useEffect(() => {
-        // Paint grid on separate background canvas
+        // Paint grid on separate background canvas whenever theme/isLight changes
         const gridCanvas = gridCanvasRef.current;
         if (gridCanvas) {
             const gCtx = gridCanvas.getContext("2d");
             if (gCtx) {
-                gCtx.fillStyle = "#0b1220";
+                const fillStyle = theme === "eyeprotect"
+                    ? "#fdfbf7"
+                    : isLight
+                    ? "#f8fafc"
+                    : "#0b1220";
+                
+                const strokeStyle = theme === "eyeprotect"
+                    ? "rgba(140, 133, 120, 0.12)"
+                    : isLight
+                    ? "rgba(15, 23, 42, 0.06)"
+                    : "rgba(148, 163, 184, 0.08)";
+
+                gCtx.fillStyle = fillStyle;
                 gCtx.fillRect(0, 0, gridCanvas.width, gridCanvas.height);
-                gCtx.strokeStyle = "rgba(148,163,184,0.08)";
+                gCtx.strokeStyle = strokeStyle;
                 gCtx.lineWidth = 1;
                 for (let x = 0; x < gridCanvas.width; x += 40) {
                     gCtx.beginPath();
@@ -622,8 +656,10 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 }
             }
         }
+    }, [theme, isLight]);
 
-        // Clear ink canvas (transparent)
+    useEffect(() => {
+        // Clear ink canvas (transparent) on mount
         const canvas = canvasRef.current;
         if (canvas) {
             const ctx = canvas.getContext("2d");
@@ -633,8 +669,6 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
         }
         inkRef.current = false;
         onFreehandChange?.(false);
-        // Grid once on mount — tool changes must not wipe freestyle ink.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -643,7 +677,13 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
         const ctx = canvas.getContext("2d");
         if (!ctx) return;
 
-        ctx.strokeStyle = "#a5b4fc";
+        const inkColor = theme === "eyeprotect"
+            ? "#451a03" // warm brown
+            : isLight
+            ? "#4f46e5" // indigo-600
+            : "#a5b4fc"; // light indigo
+
+        ctx.strokeStyle = inkColor;
         ctx.lineWidth = 2.5;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -667,7 +707,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 ctx.lineWidth = 22;
             } else {
                 ctx.globalCompositeOperation = "source-over";
-                ctx.strokeStyle = "#a5b4fc";
+                ctx.strokeStyle = inkColor;
                 ctx.lineWidth = 2.5;
             }
         };
@@ -695,7 +735,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
             canvas.removeEventListener("pointermove", move);
             window.removeEventListener("pointerup", up);
         };
-    }, [tool, onFreehandChange]);
+    }, [tool, onFreehandChange, theme, isLight]);
 
     function boardPointFromClient(clientX: number, clientY: number) {
         const board = boardRef.current;
@@ -844,7 +884,13 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
         out.height = ink.height;
         const ctx = out.getContext("2d");
         if (!ctx) return null;
-        ctx.fillStyle = "#0b1220";
+
+        const exportedBg = theme === "eyeprotect"
+            ? "#fdfbf7"
+            : isLight
+            ? "#f8fafc"
+            : "#0b1220";
+        ctx.fillStyle = exportedBg;
         ctx.fillRect(0, 0, out.width, out.height);
         if (grid) ctx.drawImage(grid, 0, 0);
 
@@ -888,17 +934,25 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
             const y = shape.y * scaleY;
             const w = shape.w * scaleX;
             const h = shape.h * scaleY;
-            ctx.strokeStyle = "#22d3ee";
-            ctx.fillStyle = "rgba(8, 47, 73, 0.7)";
-            ctx.lineWidth = 2.5;
+            
+            const isLine = typeof shape.x2 === "number" && typeof shape.y2 === "number";
+            let stroke = isLine ? "#818cf8" : "#22d3ee";
+            let fill = isLine ? "none" : "rgba(8, 47, 73, 0.7)";
 
-            // Custom coloring for DB/Service
+            if (theme === "eyeprotect") {
+                stroke = isLine ? "#7c2d12" : "#0f766e";
+                fill = isLine ? "none" : "rgba(242, 230, 210, 0.85)";
+            } else if (isLight) {
+                stroke = isLine ? "#4f46e5" : "#0891b2";
+                fill = isLine ? "none" : "rgba(241, 245, 249, 0.95)";
+            }
+
             if (shape.kind === "service") {
-                ctx.strokeStyle = "#34d399";
-                ctx.fillStyle = "rgba(6, 78, 59, 0.5)";
+                stroke = theme === "eyeprotect" ? "#0d9488" : isLight ? "#0d9488" : "#34d399";
+                fill = theme === "eyeprotect" ? "rgba(204, 251, 241, 0.65)" : isLight ? "rgba(204, 251, 241, 0.65)" : "rgba(6, 78, 59, 0.5)";
             } else if (shape.kind === "database") {
-                ctx.strokeStyle = "#fbbf24";
-                ctx.fillStyle = "rgba(120, 53, 4, 0.5)";
+                stroke = theme === "eyeprotect" ? "#d97706" : isLight ? "#d97706" : "#fbbf24";
+                fill = theme === "eyeprotect" ? "rgba(254, 243, 199, 0.7)" : isLight ? "rgba(254, 243, 199, 0.7)" : "rgba(120, 53, 4, 0.5)";
             }
 
             const points = POLYGON_MAP[shape.kind];
@@ -912,46 +966,52 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                     else ctx.lineTo(absX, absY);
                 });
                 ctx.closePath();
+                ctx.fillStyle = fill;
                 ctx.fill();
+                ctx.strokeStyle = stroke;
+                ctx.lineWidth = 2.5;
                 ctx.stroke();
             } else if (["circle", "cloud", "connector", "callout-cloud"].includes(shape.kind)) {
                 ctx.beginPath();
                 ctx.ellipse(x + w / 2, y + h / 2, w / 2, h / 2, 0, 0, Math.PI * 2);
+                ctx.fillStyle = fill;
                 ctx.fill();
+                ctx.strokeStyle = stroke;
                 ctx.stroke();
             } else if (shape.kind === "arrow") {
                 ctx.beginPath();
                 ctx.moveTo(x, y + h / 2);
                 ctx.lineTo(x + w - 12, y + h / 2);
+                ctx.strokeStyle = stroke;
                 ctx.stroke();
                 ctx.beginPath();
                 ctx.moveTo(x + w - 12, y + h / 2 - 8);
                 ctx.lineTo(x + w, y + h / 2);
                 ctx.lineTo(x + w - 12, y + h / 2 + 8);
                 ctx.closePath();
-                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fillStyle = stroke;
                 ctx.fill();
             } else if (shape.kind === "line" || shape.kind === "dashed-line") {
                 if (shape.kind === "dashed-line") ctx.setLineDash([10, 8]);
                 ctx.beginPath();
                 ctx.moveTo(x, y + h / 2);
                 ctx.lineTo(x + w, y + h / 2);
+                ctx.strokeStyle = stroke;
                 ctx.stroke();
                 ctx.setLineDash([]);
             } else if (shape.kind === "double-arrow") {
                 ctx.beginPath();
                 ctx.moveTo(x + 12, y + h / 2);
                 ctx.lineTo(x + w - 12, y + h / 2);
+                ctx.strokeStyle = stroke;
                 ctx.stroke();
-                // Arrowhead left
                 ctx.beginPath();
                 ctx.moveTo(x + 12, y + h / 2 - 8);
                 ctx.lineTo(x, y + h / 2);
                 ctx.lineTo(x + 12, y + h / 2 + 8);
                 ctx.closePath();
-                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fillStyle = stroke;
                 ctx.fill();
-                // Arrowhead right
                 ctx.beginPath();
                 ctx.moveTo(x + w - 12, y + h / 2 - 8);
                 ctx.lineTo(x + w, y + h / 2);
@@ -959,8 +1019,9 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 ctx.closePath();
                 ctx.fill();
             } else {
-                // Default box / rounded-rect / terminator / predefined-process / manual-input / text / etc
+                ctx.fillStyle = fill;
                 ctx.fillRect(x, y, w, h);
+                ctx.strokeStyle = stroke;
                 ctx.strokeRect(x, y, w, h);
                 if (shape.kind === "predefined-process") {
                     ctx.beginPath();
@@ -973,7 +1034,11 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
             }
 
             if (shape.label && !["arrow", "line", "dashed-line", "double-arrow", "curved-arrow"].includes(shape.kind)) {
-                ctx.fillStyle = "#e0f2fe";
+                ctx.fillStyle = theme === "eyeprotect"
+                    ? "#451a03"
+                    : isLight
+                    ? "#0f172a"
+                    : "#e0f2fe";
                 ctx.font = `${Math.max(11, Math.round(12 * scaleX))}px sans-serif`;
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
@@ -1237,7 +1302,13 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className="lg:col-start-2 lg:row-start-3 relative w-full overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220] min-h-[440px] sm:min-h-[520px] lg:min-h-[560px] aspect-[4/3] sm:aspect-[900/560] touch-none"
+                className={`lg:col-start-2 lg:row-start-3 relative w-full overflow-hidden rounded-2xl border aspect-[4/3] sm:aspect-[900/560] touch-none transition-colors duration-300 min-h-[440px] sm:min-h-[520px] lg:min-h-[560px] ${
+                    theme === "eyeprotect"
+                        ? "bg-[#fffcf5] border-[#8c8578]/40"
+                        : isLight
+                        ? "bg-slate-50 border-slate-300 shadow-inner"
+                        : "bg-[#0b1220] border-white/10"
+                }`}
             >
                 {/* Layer 0: Grid background */}
                 <canvas
@@ -1294,7 +1365,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                                      tool === "select" ? "cursor-move" : "pointer-events-none"
                                  } ${selectedId === shape.id && !isLine ? "ring-2 ring-cyan-400/80 ring-offset-1 ring-offset-slate-950" : ""}`}
                              >
-                                <ShapeVisual shape={shape} />
+                                <ShapeVisual shape={shape} isLight={isLight} theme={theme} />
                                 {selectedId === shape.id && isLine && (
                                     <>
                                         {/* Start Handle */}

@@ -367,7 +367,7 @@ export default function LabsPage() {
                 </div>
 
                 {/* Labs Cards Grid */}
-                <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5 sm:gap-4 w-full z-10">
+                <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-4 w-full z-10">
                     {ITEMS.map((item) => {
                         const Icon = item.icon;
                         const themeInfo = colorThemes[item.color] || colorThemes.indigo;
@@ -378,7 +378,7 @@ export default function LabsPage() {
                             <Link
                                 key={item.href + item.title}
                                 href={item.href}
-                                className={`rounded-2xl border p-3.5 transition-all duration-300 flex flex-row gap-3 items-start ${
+                                className={`rounded-2xl border p-4 transition-all duration-300 flex flex-col gap-3 ${
                                     theme === "light"
                                         ? "bg-white border-slate-100 hover:border-indigo-500 hover:shadow-[0_8px_30px_rgb(241,245,249)] text-slate-900 shadow-sm shadow-slate-100/50"
                                         : theme === "eyeprotect"
@@ -386,27 +386,20 @@ export default function LabsPage() {
                                         : "bg-[#0b1329] border-white/5 hover:border-indigo-500/50 hover:bg-[#111c3a] text-white shadow-lg shadow-black/20"
                                 }`}
                             >
-                                {/* Left: Rounded Icon Container */}
-                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-                                    <Icon className={`w-5 h-5 ${iconText}`} />
-                                </div>
-
-                                {/* Right: Title, Badges, and Description */}
-                                <div className="flex-1 min-w-0 flex flex-col">
-                                    <div className="flex items-start justify-between gap-1.5 w-full">
-                                        <h2 className={`font-bold text-[12.5px] sm:text-base tracking-tight truncate text-left transition-colors duration-300 ${
-                                            theme === "light" ? "text-slate-800" : theme === "eyeprotect" ? "text-stone-800" : "text-white"
-                                        }`}>
-                                            {item.title}
-                                        </h2>
+                                <div className="flex flex-col gap-3 w-full">
+                                    {/* Top Row: Icon Container and Badges */}
+                                    <div className="flex items-center justify-between gap-2 w-full">
+                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                                            <Icon className={`w-5 h-5 ${iconText}`} />
+                                        </div>
                                         
-                                        <div className="flex flex-wrap justify-end gap-1 shrink-0">
+                                        <div className="flex flex-wrap justify-end gap-1">
                                             {item.badges.map((b) => (
                                                 <span
                                                     key={b}
-                                                    className={`rounded px-1 py-0.5 text-[7.5px] sm:text-[9.5px] font-black border tracking-tight ${
+                                                    className={`rounded px-1.5 py-0.5 text-[8px] sm:text-[10px] font-black border tracking-tight ${
                                                         isLight
-                                                            ? (b === "New" ? "border-emerald-250 bg-emerald-50 text-emerald-800"
+                                                            ? (b === "New" ? "border-emerald-250 bg-emerald-50 text-emerald-700"
                                                                 : b === "Beta" ? "border-amber-250 bg-amber-50 text-amber-800"
                                                                 : b === "Sign-in" ? "border-sky-250 bg-sky-50 text-sky-800"
                                                                 : "border-slate-200 bg-slate-50 text-slate-700")
@@ -419,11 +412,20 @@ export default function LabsPage() {
                                         </div>
                                     </div>
                                     
-                                    <p className={`text-[9.5px] sm:text-xs mt-1 leading-relaxed text-left font-medium transition-colors duration-300 ${
-                                        isLight ? "text-slate-500" : "text-white/50"
-                                    }`}>
-                                        {item.desc}
-                                    </p>
+                                    {/* Bottom Stack: Title and Description */}
+                                    <div className="space-y-1">
+                                        <h2 className={`font-bold text-xs sm:text-sm tracking-tight text-left transition-colors duration-300 ${
+                                            theme === "light" ? "text-slate-800" : theme === "eyeprotect" ? "text-stone-800" : "text-white"
+                                        }`}>
+                                            {item.title}
+                                        </h2>
+                                        
+                                        <p className={`text-[9.5px] sm:text-xs leading-relaxed text-left font-medium transition-colors duration-300 ${
+                                            isLight ? "text-slate-500" : "text-white/50"
+                                        }`}>
+                                            {item.desc}
+                                        </p>
+                                    </div>
                                 </div>
                             </Link>
                         );
