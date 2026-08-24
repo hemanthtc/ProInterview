@@ -131,8 +131,29 @@ async function connectDB() {
         );
     }
 
-    if (mongoose.connection.readyState === 1 && cached.conn) {
-        return cached.conn;
+    if (mongoose.connection.readyState === 1) {
+        return mongoose.connection;
+    }
+
+    if (mongoose.connection.readyState === 2) {
+        // Wait for the in-progress connection to finish connecting
+        await new Promise<void>((resolve, reject) => {
+            const onConnected = () => {
+                cleanup();
+                resolve();
+            };
+            const onError = (err: any) => {
+                cleanup();
+                reject(err);
+            };
+            const cleanup = () => {
+                mongoose.connection.off("connected", onConnected);
+                mongoose.connection.off("error", onError);
+            };
+            mongoose.connection.once("connected", onConnected);
+            mongoose.connection.once("error", onError);
+        });
+        return mongoose.connection;
     }
 
     // Reset cached state if connection was dropped or disconnected

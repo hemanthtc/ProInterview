@@ -1856,7 +1856,7 @@ function FeaturesContent() {
                 throw new Error(pollData.error || "Failed while polling Happenstance research");
             }
             if (pollData.status === "RUNNING") {
-                setHrResearchMessage(pollData.message || "Still researching this person on Happenstanceâ€¦");
+                setHrResearchMessage(pollData.message || "Still researching this person on Happenstance...");
                 continue;
             }
             setHrResearchResult(pollData);
@@ -1886,7 +1886,7 @@ function FeaturesContent() {
         setHrResearchStatus("running");
         setHrResearchResult(null);
         setHrHappenstanceUrl(null);
-        setHrResearchMessage(`Looking up ${hrName} on Happenstanceâ€¦`);
+        setHrResearchMessage(`Looking up ${hrName} on Happenstance...`);
 
         try {
             const startRes = await fetch("/api/research-hr", {
@@ -1922,7 +1922,7 @@ function FeaturesContent() {
                 throw new Error("Happenstance did not return a research id");
             }
 
-            setHrResearchMessage(startData.message || "Happenstance research runningâ€¦");
+            setHrResearchMessage(startData.message || "Happenstance research running...");
             await pollHrResearch(startData.researchId, {
                 hrName,
                 company: details?.company,
@@ -2862,7 +2862,7 @@ function FeaturesContent() {
                                 onClick={() => setIsMockTestMode(false)}
                                 className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer font-sans"
                             >
-                                â†  Exit Mock Results
+                                \u2190 Exit Mock Results
                             </button>
                             <h3 className="text-lg font-bold text-white font-sans">
                                 Off-Campus Mock Test Results
@@ -2906,7 +2906,7 @@ function FeaturesContent() {
                                     : "border-transparent text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                ðŸ“  MCQ Solutions Review
+                                \uD83D\uDCCB MCQ Solutions Review
                             </button>
                             <button
                                 type="button"
@@ -2916,7 +2916,7 @@ function FeaturesContent() {
                                     : "border-transparent text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                ðŸ’» Coding Solutions Review
+                                \uD83D\uDCBB Coding Solutions Review
                             </button>
                         </div>
 
@@ -3009,7 +3009,7 @@ function FeaturesContent() {
                                         <div key={q.id} className="border border-white/5 bg-[#0d0d12]/30 rounded-xl p-6 space-y-4 font-sans">
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
                                                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                                                    ðŸ’» {q.title}
+                                                    \uD83D\uDCBB {q.title}
                                                     <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
                                                         {lang}
                                                     </span>
@@ -3044,10 +3044,10 @@ function FeaturesContent() {
                                                                     Status: {grading.status}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
-                                                                    â ± Time: {grading.timeComplexity}
+                                                                    \u23F1 Time: {grading.timeComplexity}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
-                                                                    ðŸ’¾ Space: {grading.spaceComplexity}
+                                                                    \uD83D\uDCBE Space: {grading.spaceComplexity}
                                                                 </span>
                                                             </div>
                                                             <div className="space-y-1">
@@ -3118,21 +3118,21 @@ function FeaturesContent() {
                     <div className="flex flex-wrap items-center gap-3 font-sans">
                         {mockProctorWarnings > 0 && (
                             <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
-                                âš ï¸  Proctor: {mockProctorWarnings}/3
+                                \u26A0\uFE0F Proctor: {mockProctorWarnings}/3
                             </span>
                         )}
                         <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold border ${isTimerWarning
                             ? "bg-red-500/10 border-red-500/20 text-red-400 animate-pulse"
                             : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
                             }`}>
-                            â ± {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
+                            {"\u23F1"} {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
                         </span>
                         <button
                             type="button"
                             onClick={triggerSubmitMockTestConfirmation}
                             className="px-4.5 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 border border-green-500/20 text-white font-extrabold text-[10px] rounded-lg tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.15)]"
                         >
-                            âœ“ Submit Test
+                            \u2713 Submit Test
                         </button>
                     </div>
                 </div>
@@ -3151,7 +3151,7 @@ function FeaturesContent() {
                                     : "text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                ðŸ“  MCQs
+                                \uD83D\uDCCB MCQs
                             </button>
                             <button
                                 type="button"
@@ -3164,7 +3164,7 @@ function FeaturesContent() {
                                     : "text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                ðŸ’» Coding
+                                \uD83D\uDCBB Coding
                             </button>
                         </div>
 
@@ -3331,7 +3331,7 @@ function FeaturesContent() {
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        â†  Previous
+                                        \u2190 Previous
                                     </button>
 
                                     <button
@@ -3345,7 +3345,7 @@ function FeaturesContent() {
                                             : "bg-white/5 border-white/5 text-white/50 hover:text-white"
                                             }`}
                                     >
-                                        â­  {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
+                                        \u2B50 {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
                                     </button>
 
                                     <button
@@ -3360,7 +3360,7 @@ function FeaturesContent() {
                                         }}
                                         className="px-4.5 py-2.5 bg-pink-650 hover:bg-pink-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)] flex items-center gap-1.5"
                                     >
-                                        {currentMockQuestionIndex < 24 ? "Next MCQ â†’" : "Proceed to Coding C1 â†’"}
+                                        {currentMockQuestionIndex < 24 ? "Next MCQ \u2192" : "Proceed to Coding C1 \u2192"}
                                     </button>
                                 </div>
                             </div>
@@ -3467,7 +3467,7 @@ function FeaturesContent() {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            âš™ Run AI Code Grade
+                                                            \u2699 Run AI Code Grade
                                                         </>
                                                     )}
                                                 </button>
@@ -3493,10 +3493,10 @@ function FeaturesContent() {
                                                         Score: {out.score} / 10 Points
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                                                        â ± Time: {out.timeComplexity}
+                                                        \u23F1 Time: {out.timeComplexity}
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                                                        ðŸ’¾ Space: {out.spaceComplexity}
+                                                        \uD83D\uDCBE Space: {out.spaceComplexity}
                                                     </span>
                                                 </div>
                                                 <div className="space-y-1 leading-relaxed">
@@ -3522,7 +3522,7 @@ function FeaturesContent() {
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        â†  Previous Coding
+                                        \u2190 Previous Coding
                                     </button>
 
                                     <button
@@ -3536,7 +3536,7 @@ function FeaturesContent() {
                                         }}
                                         className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(79,70,229,0.15)] flex items-center gap-1.5"
                                     >
-                                        {currentMockQuestionIndex < 2 ? "Next Coding â†’" : "âœ“ Finish & Review Test"}
+                                        {currentMockQuestionIndex < 2 ? "Next Coding \u2192" : "\u2713 Finish & Review Test"}
                                     </button>
                                 </div>
                             </div>
@@ -3687,7 +3687,7 @@ if (!isAuthChecked) return null;
                                         </button>
                                         <div className="absolute right-0 mt-2 w-72 p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left">
                                             <p className="text-xs font-bold text-white mb-1 flex items-center gap-1">
-                                                ðŸ’¡ Exploring as Guest
+                                                {"\uD83D\uDCA1"} Exploring as Guest
                                             </p>
                                             <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
                                                 You are in Guest Mode. To save your progress, use AI resume editing, unlock realistic mock interviews, and access cloud storage, please create an account.
@@ -4140,7 +4140,7 @@ if (!isAuthChecked) return null;
 
                                                     {fetchLinksError && (
                                                         <div className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5 font-sans leading-snug">
-                                                            âš ï¸ {fetchLinksError}
+                                                            {"\u26A0\uFE0F"} {fetchLinksError}
                                                         </div>
                                                     )}
 
@@ -4303,10 +4303,10 @@ if (!isAuthChecked) return null;
                                                                             return <h5 key={i} className="text-xs font-black text-indigo-300 mt-3 mb-1 uppercase tracking-wider">{line.replace("### ", "")}</h5>;
                                                                         }
 
-                                                                        if (line.startsWith("- ") || line.startsWith("â€¢ ")) {
+                                                                        if (line.startsWith("- ") || line.startsWith("• ") || line.startsWith("\u2022 ")) {
                                                                             return (
-                                                                                <p key={i} className="pl-3 before:content-['â€¢'] before:text-indigo-400 before:mr-2 flex items-start text-[11px] leading-relaxed font-medium">
-                                                                                    <span>{cleaned.replace(/^[-â€¢]\s*/, "")}</span>
+                                                                                <p key={i} className="pl-3 before:content-['\u2022'] before:text-indigo-400 before:mr-2 flex items-start text-[11px] leading-relaxed font-medium">
+                                                                                    <span>{cleaned.replace(/^[-•\u2022]\s*/, "")}</span>
                                                                                 </p>
                                                                             );
                                                                         }
@@ -4646,7 +4646,7 @@ if (!isAuthChecked) return null;
                                                             <div className="flex items-center gap-3 text-[10px] text-white/25 pt-0.5">
                                                                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full border border-white/20" /> Empty</span>
                                                                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500 border border-purple-400" /> Filled</span>
-                                                                <span className="ml-auto">1=Basic Â· 5=Native</span>
+                                                                <span className="ml-auto">1=Basic \u00B7 5=Native</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -4981,9 +4981,9 @@ if (!isAuthChecked) return null;
                                                                 </h1>
                                                                 <div className={`flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] mt-1 text-neutral-500 justify-start ${selectedTemplateId === "classic" ? "justify-center" : ""}`}>
                                                                     {resEmail && <span>Email: {resEmail}</span>}
-                                                                    {resPhone && <span>â€¢ Phone: {resPhone}</span>}
-                                                                    {github && <span>â€¢ GitHub: {github.replace('https://', '')}</span>}
-                                                                    {linkedin && <span>â€¢ LinkedIn: {linkedin.replace('https://', '')}</span>}
+                                                                    {resPhone && <span>\u2022 Phone: {resPhone}</span>}
+                                                                    {github && <span>\u2022 GitHub: {github.replace('https://', '')}</span>}
+                                                                    {linkedin && <span>\u2022 LinkedIn: {linkedin.replace('https://', '')}</span>}
                                                                 </div>
                                                             </div>
 
@@ -5144,7 +5144,7 @@ if (!isAuthChecked) return null;
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-bold text-white">AI Email Analyser</h3>
-                                                <p className="text-xs text-white/50">Paste or import an interview email â€” extract details, research the HR contact on Happenstance, and prep for their likely questions &amp; tone</p>
+                                                <p className="text-xs text-white/50">Paste or import an interview email \u2014 extract details, research the HR contact on Happenstance, and prep for their likely questions &amp; tone</p>
                                             </div>
                                         </div>
 
@@ -5310,11 +5310,11 @@ if (!isAuthChecked) return null;
                                                             ).map((line: string, i: number) => {
                                                                 const cleaned = line.replace(/^\*\*/g, "").replace(/\*\*/g, "").trim();
                                                                 if (!cleaned) return <div key={i} className="h-1" />;
-                                                                if (line.startsWith("- ") || line.startsWith("â€¢ ")) {
+                                                                if (line.startsWith("- ") || line.startsWith("• ") || line.startsWith("\u2022 ")) {
                                                                     return (
-                                                                        <p key={i} className={`pl-4 before:content-['â€¢'] before:mr-2 flex items-start ${isLight ? "before:text-teal-600 text-slate-700 font-medium" : "before:text-teal-400 text-white/70"
+                                                                        <p key={i} className={`pl-4 before:content-['\u2022'] before:mr-2 flex items-start ${isLight ? "before:text-teal-600 text-slate-700 font-medium" : "before:text-teal-400 text-white/70"
                                                                             }`}>
-                                                                            <span>{cleaned.replace(/^[-â€¢]\s*/, "")}</span>
+                                                                            <span>{cleaned.replace(/^[-•\u2022]\s*/, "")}</span>
                                                                         </p>
                                                                     );
                                                                 }
@@ -5669,7 +5669,7 @@ if (!isAuthChecked) return null;
                                                                     {hrResearchStatus === "running" && (
                                                                         <div className={`flex items-center gap-2 text-xs ${isLight ? "text-slate-600" : "text-white/70"}`}>
                                                                             <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
-                                                                            Pulling public profile, writings, and career signalsâ€¦
+                                                                            Pulling public profile, writings, and career signals...
                                                                         </div>
                                                                     )}
 
@@ -5694,11 +5694,11 @@ if (!isAuthChecked) return null;
                                                                                 <p className={`text-[11px] font-sans italic ${isLight ? "text-slate-600" : "text-white/60"}`}>
                                                                                     {hrResearchResult.profile.fullName || hrResearchResult.intel.interviewerName}
                                                                                     {hrResearchResult.profile.currentRoles?.[0]
-                                                                                        ? ` Â· ${hrResearchResult.profile.currentRoles[0].title || ""} @ ${hrResearchResult.profile.currentRoles[0].company || ""}`
+                                                                                        ? ` \u00B7 ${hrResearchResult.profile.currentRoles[0].title || ""} @ ${hrResearchResult.profile.currentRoles[0].company || ""}`
                                                                                         : hrResearchResult.intel.titleGuess
-                                                                                            ? ` Â· ${hrResearchResult.intel.titleGuess}`
+                                                                                            ? ` \u00B7 ${hrResearchResult.intel.titleGuess}`
                                                                                             : ""}
-                                                                                    {" â€” "}
+                                                                                    {" \u2014 "}
                                                                                     {hrResearchResult.profile.tagline}
                                                                                 </p>
                                                                             )}
@@ -5753,7 +5753,7 @@ if (!isAuthChecked) return null;
                                                                                                         <p className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{q.question}</p>
                                                                                                         <p className={`mt-0.5 font-sans ${isLight ? "text-slate-500" : "text-white/45"}`}>
                                                                                                             <span className="font-bold uppercase tracking-wide text-[9px]">{q.category}</span>
-                                                                                                            {q.why ? ` Â· ${q.why}` : ""}
+                                                                                                            {q.why ? ` \u00B7 ${q.why}` : ""}
                                                                                                         </p>
                                                                                                     </div>
                                                                                                 </div>
@@ -5799,14 +5799,14 @@ if (!isAuthChecked) return null;
                                                                                 <div className={`rounded-lg px-2.5 py-2 border text-[11px] ${isLight ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-amber-500/10 border-amber-500/20 text-amber-100"
                                                                                     }`}>
                                                                                     <span className="font-bold">Watch outs: </span>
-                                                                                    {hrResearchResult.intel.watchOuts.join(" Â· ")}
+                                                                                    {hrResearchResult.intel.watchOuts.join(" \u00B7 ")}
                                                                                 </div>
                                                                             )}
 
                                                                             <p className={`text-[10px] font-sans ${isLight ? "text-slate-400" : "text-white/35"}`}>
                                                                                 Confidence {Math.round(hrResearchResult.intel.confidence || 0)}%
-                                                                                {hrResearchResult.intel.source === "gemini_fallback" ? " Â· Happenstance profile unavailable (fallback guidance)" : " Â· grounded in Happenstance research"}
-                                                                                {hrResearchResult.intel.disclaimer ? ` Â· ${hrResearchResult.intel.disclaimer}` : ""}
+                                                                                {hrResearchResult.intel.source === "gemini_fallback" ? " \u00B7 Happenstance profile unavailable (fallback guidance)" : " \u00B7 grounded in Happenstance research"}
+                                                                                {hrResearchResult.intel.disclaimer ? ` \u00B7 ${hrResearchResult.intel.disclaimer}` : ""}
                                                                             </p>
 
                                                                             <button
@@ -6650,11 +6650,11 @@ if (!isAuthChecked) return null;
                                                     <div className="flex items-center gap-3">
                                                         {proctorWarnings > 0 && (
                                                             <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
-                                                                âš ï¸ Warning: {proctorWarnings}/3
+                                                                {"\u26A0\uFE0F"} Warning: {proctorWarnings}/3
                                                             </span>
                                                         )}
                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-extrabold bg-pink-500/15 border border-pink-500/20 text-pink-400">
-                                                            â± {quizTimeRemaining}s
+                                                            \u23F1 {quizTimeRemaining}s
                                                         </span>
                                                     </div>
                                                 </div>
@@ -6756,7 +6756,7 @@ if (!isAuthChecked) return null;
                                                                 }}
                                                                 className="px-6 py-2.5 bg-pink-650 hover:bg-pink-500 disabled:bg-white/5 disabled:text-white/20 disabled:border-transparent text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)]"
                                                             >
-                                                                {currentQuizQuestionIndex + 1 < quizQuestionsList.length ? "Submit Answer â†’" : "âœ“ Finish Quiz"}
+                                                                {currentQuizQuestionIndex + 1 < quizQuestionsList.length ? "Submit Answer \u2192" : "\u2713 Finish Quiz"}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -6775,7 +6775,7 @@ if (!isAuthChecked) return null;
                                                             onClick={() => setAptitudePath(null)}
                                                             className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
                                                         >
-                                                            â† Change Path
+                                                            {"\u2190"} Change Path
                                                         </button>
                                                     )}
                                                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -6823,7 +6823,7 @@ if (!isAuthChecked) return null;
                                                                         }`}>
                                                                         {data.label} Path
                                                                     </h4>
-                                                                    <p className={`text-[11px] font-bold ${isLight ? "text-slate-500" : "text-white/40"} uppercase tracking-wider`}>{data.difficulty} â€¢ {data.duration}</p>
+                                                                    <p className={`text-[11px] font-bold ${isLight ? "text-slate-500" : "text-white/40"} uppercase tracking-wider`}>{data.difficulty} {"\u2022"} {data.duration}</p>
                                                                     <p className={`text-xs ${isLight ? "text-slate-700" : "text-white/55"} leading-relaxed font-semibold`}>{data.evaluation.whatTheyJudge}</p>
                                                                 </div>
                                                             </div>
@@ -6838,7 +6838,7 @@ if (!isAuthChecked) return null;
                                                             <div className="space-y-2 text-left z-10">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="px-2.5 py-1 rounded bg-pink-500/10 border border-pink-500/20 text-pink-400 text-[9px] font-black uppercase tracking-wider">PLACEMENT READY</span>
-                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">â± 60 MINUTES TEST</span>
+                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">\u23F1 60 MINUTES TEST</span>
                                                                 </div>
                                                                 <h4 className="text-base font-extrabold text-white">On-Campus Placement Mock Assessment Simulator</h4>
                                                                 <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
@@ -6857,7 +6857,7 @@ if (!isAuthChecked) return null;
                                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
                                                                     </span>
                                                                 ) : (
-                                                                    "âš¡ Launch Mock Test"
+                                                                    "\u26A1 Launch Mock Test"
                                                                 )}
                                                             </button>
                                                             <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-pink-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -6870,7 +6870,7 @@ if (!isAuthChecked) return null;
                                                             <div className="space-y-2 text-left z-10">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="px-2.5 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-wider">OFF-CAMPUS CHALLENGE</span>
-                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">â± 60 MINUTES TEST</span>
+                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">\u23F1 60 MINUTES TEST</span>
                                                                 </div>
                                                                 <h4 className="text-base font-extrabold text-white">Off-Campus Placement Mock Assessment Simulator</h4>
                                                                 <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
@@ -6889,7 +6889,7 @@ if (!isAuthChecked) return null;
                                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
                                                                     </span>
                                                                 ) : (
-                                                                    "âš¡ Launch Mock Test"
+                                                                    "\u26A1 Launch Mock Test"
                                                                 )}
                                                             </button>
                                                             <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -6983,7 +6983,7 @@ if (!isAuthChecked) return null;
                                                                     {(selectedPathData as any)?.finalStage && (
                                                                         <div className="flex gap-3 text-left">
                                                                             <div className="w-5 h-5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
-                                                                                â˜…
+                                                                                {"\u2605"}
                                                                             </div>
                                                                             <p className={`text-xs font-semibold leading-relaxed ${isLight ? "text-slate-750" : "text-white/80"}`}>
                                                                                 <span className="text-indigo-400 font-extrabold font-sans">Final Stage: </span>{(selectedPathData as any).finalStage}

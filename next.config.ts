@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV === "development";
+
 const securityHeaders = [
     {
         key: "X-Content-Type-Options",
@@ -29,7 +31,7 @@ const securityHeaders = [
         key: "Content-Security-Policy",
         value: [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com https://accounts.google.com https://apis.google.com",
+            `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com https://accounts.google.com https://apis.google.com`,
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob: https://*.amazonaws.com https://*.googleusercontent.com https://lh3.googleusercontent.com",
