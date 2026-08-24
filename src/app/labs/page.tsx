@@ -39,7 +39,7 @@ const ITEMS: {
         title: "Prep dashboard",
         desc: "Unified drills, gaps, and progress",
         icon: LayoutDashboard,
-        color: "text-indigo-400",
+        color: "indigo",
         badges: ["New"],
     },
     {
@@ -47,7 +47,7 @@ const ITEMS: {
         title: "Community chat",
         desc: "Talk with other students",
         icon: Users,
-        color: "text-indigo-400",
+        color: "violet",
         badges: ["Sign-in"],
     },
     {
@@ -55,7 +55,7 @@ const ITEMS: {
         title: "Panel interviews",
         desc: "Multi-interviewer rounds + end score",
         icon: Users,
-        color: "text-indigo-400",
+        color: "orange",
         badges: ["Sign-in", "Beta"],
     },
     {
@@ -63,7 +63,7 @@ const ITEMS: {
         title: "System design lab",
         desc: "Shapes, freestyle, export PNG, online eval",
         icon: PenTool,
-        color: "text-cyan-400",
+        color: "cyan",
         badges: ["New", "Sign-in"],
     },
     {
@@ -71,7 +71,7 @@ const ITEMS: {
         title: "STAR coach",
         desc: "Generate/custom Q, history, Film Room links",
         icon: Target,
-        color: "text-violet-400",
+        color: "violet",
         badges: ["New", "Sign-in"],
     },
     {
@@ -79,7 +79,7 @@ const ITEMS: {
         title: "Open job roles",
         desc: "Resume + location matched openings",
         icon: Briefcase,
-        color: "text-emerald-400",
+        color: "emerald",
         badges: ["Sign-in"],
     },
     {
@@ -87,7 +87,7 @@ const ITEMS: {
         title: "Coding lab",
         desc: "Progressive hidden tests + saved progress",
         icon: Code2,
-        color: "text-amber-400",
+        color: "amber",
         badges: ["Sign-in", "Beta"],
     },
     {
@@ -95,7 +95,7 @@ const ITEMS: {
         title: "Coach marketplace",
         desc: "Book + pay + Jitsi video room",
         icon: Video,
-        color: "text-pink-400",
+        color: "pink",
         badges: ["New", "Sign-in"],
     },
     {
@@ -103,7 +103,7 @@ const ITEMS: {
         title: "ATS match",
         desc: "JD vs resume % + rewrite tips",
         icon: FileSearch,
-        color: "text-sky-400",
+        color: "sky",
         badges: ["Sign-in"],
     },
     {
@@ -111,7 +111,7 @@ const ITEMS: {
         title: "Domain packs",
         desc: "ML, DevOps, Android…",
         icon: Layers,
-        color: "text-lime-400",
+        color: "lime",
         badges: ["Public"],
     },
     {
@@ -119,7 +119,7 @@ const ITEMS: {
         title: "Referrals",
         desc: "Invite & compare scorecards",
         icon: Share2,
-        color: "text-orange-400",
+        color: "orange",
         badges: ["Public"],
     },
     {
@@ -127,7 +127,7 @@ const ITEMS: {
         title: "Salary intel",
         desc: "Inside Negotiate tool",
         icon: Wallet,
-        color: "text-teal-400",
+        color: "teal",
         badges: ["Sign-in"],
     },
     {
@@ -135,7 +135,7 @@ const ITEMS: {
         title: "Language / Sarvam",
         desc: "Hindi + regional voice (Sarvam TTS/chat)",
         icon: Globe2,
-        color: "text-fuchsia-400",
+        color: "indigo",
         badges: ["New", "Sign-in"],
     },
     {
@@ -143,7 +143,7 @@ const ITEMS: {
         title: "Prep + Gmail",
         desc: "Invites, aptitude, mocks",
         icon: Mic2,
-        color: "text-rose-400",
+        color: "rose",
         badges: ["Sign-in"],
     },
 ];
@@ -153,6 +153,86 @@ const BADGE_CLASS: Record<Badge, string> = {
     Beta: "border-amber-400/40 bg-amber-500/15 text-amber-300",
     "Sign-in": "border-sky-400/40 bg-sky-500/15 text-sky-300",
     Public: "border-white/20 bg-white/10 text-white/60",
+};
+
+const colorThemes: Record<string, {
+    bgLight: string;
+    bgDark: string;
+    textLight: string;
+    textDark: string;
+}> = {
+    indigo: {
+        bgLight: "bg-indigo-50 border border-indigo-100",
+        bgDark: "bg-indigo-500/10 border border-indigo-500/20",
+        textLight: "text-indigo-600",
+        textDark: "text-indigo-400"
+    },
+    violet: {
+        bgLight: "bg-violet-50 border border-violet-100",
+        bgDark: "bg-violet-500/10 border border-violet-500/20",
+        textLight: "text-violet-600",
+        textDark: "text-violet-400"
+    },
+    orange: {
+        bgLight: "bg-orange-50 border border-orange-100",
+        bgDark: "bg-orange-500/10 border border-orange-500/20",
+        textLight: "text-orange-600",
+        textDark: "text-orange-400"
+    },
+    cyan: {
+        bgLight: "bg-cyan-50 border border-cyan-100",
+        bgDark: "bg-cyan-500/10 border border-cyan-500/20",
+        textLight: "text-cyan-600",
+        textDark: "text-cyan-400"
+    },
+    fuchsia: {
+        bgLight: "bg-fuchsia-50 border border-fuchsia-100",
+        bgDark: "bg-fuchsia-500/10 border border-fuchsia-500/20",
+        textLight: "text-fuchsia-600",
+        textDark: "text-fuchsia-400"
+    },
+    emerald: {
+        bgLight: "bg-emerald-50 border border-emerald-100",
+        bgDark: "bg-emerald-500/10 border border-emerald-500/20",
+        textLight: "text-emerald-600",
+        textDark: "text-emerald-400"
+    },
+    amber: {
+        bgLight: "bg-amber-50 border border-amber-100",
+        bgDark: "bg-amber-500/10 border border-amber-500/20",
+        textLight: "text-amber-600",
+        textDark: "text-amber-400"
+    },
+    pink: {
+        bgLight: "bg-pink-50 border border-pink-100",
+        bgDark: "bg-pink-500/10 border border-pink-500/20",
+        textLight: "text-pink-600",
+        textDark: "text-pink-400"
+    },
+    sky: {
+        bgLight: "bg-sky-50 border border-sky-100",
+        bgDark: "bg-sky-500/10 border border-sky-500/20",
+        textLight: "text-sky-600",
+        textDark: "text-sky-400"
+    },
+    lime: {
+        bgLight: "bg-lime-50 border border-lime-100",
+        bgDark: "bg-lime-500/10 border border-lime-500/20",
+        textLight: "text-lime-700",
+        textDark: "text-lime-400"
+    },
+    teal: {
+        bgLight: "bg-teal-50 border border-teal-100",
+        bgDark: "bg-teal-500/10 border border-teal-500/20",
+        textLight: "text-teal-600",
+        textDark: "text-teal-400"
+    },
+    rose: {
+        bgLight: "bg-rose-50 border border-rose-100",
+        bgDark: "bg-rose-500/10 border border-rose-500/20",
+        textLight: "text-rose-600",
+        textDark: "text-rose-400"
+    }
 };
 
 export default function LabsPage() {
@@ -287,34 +367,49 @@ export default function LabsPage() {
                 </div>
 
                 {/* Labs Cards Grid */}
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5 sm:gap-4 w-full z-10">
                     {ITEMS.map((item) => {
                         const Icon = item.icon;
+                        const themeInfo = colorThemes[item.color] || colorThemes.indigo;
+                        const iconBg = isLight ? themeInfo.bgLight : themeInfo.bgDark;
+                        const iconText = isLight ? themeInfo.textLight : themeInfo.textDark;
+
                         return (
                             <Link
                                 key={item.href + item.title}
                                 href={item.href}
-                                className={`rounded-2xl border transition p-4 flex flex-col justify-between ${
+                                className={`rounded-2xl border p-3.5 transition-all duration-300 flex flex-row gap-3 items-start ${
                                     theme === "light"
-                                        ? "bg-white border-slate-200 hover:border-indigo-500 hover:shadow-md text-slate-900"
+                                        ? "bg-white border-slate-100 hover:border-indigo-500 hover:shadow-[0_8px_30px_rgb(241,245,249)] text-slate-900 shadow-sm shadow-slate-100/50"
                                         : theme === "eyeprotect"
-                                        ? "bg-[#fffcf5] border-[#8c8578] hover:border-teal-700 hover:shadow-md text-[#1c1917]"
-                                        : "bg-[#0b1329] border-white/10 hover:border-indigo-500/50 hover:bg-[#111c3a] text-white shadow-lg shadow-black/20"
+                                        ? "bg-[#fffcf5] border-[#8c8578]/20 hover:border-teal-700 hover:shadow-[0_8px_30px_rgb(230,225,215)] text-[#1c1917] shadow-sm shadow-stone-200/20"
+                                        : "bg-[#0b1329] border-white/5 hover:border-indigo-500/50 hover:bg-[#111c3a] text-white shadow-lg shadow-black/20"
                                 }`}
                             >
-                                <div>
-                                    <div className="flex items-center justify-between gap-2 mb-2">
-                                        <Icon className={`w-5 h-5 ${item.color}`} />
-                                        <div className="flex flex-wrap gap-1">
+                                {/* Left: Rounded Icon Container */}
+                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                                    <Icon className={`w-5 h-5 ${iconText}`} />
+                                </div>
+
+                                {/* Right: Title, Badges, and Description */}
+                                <div className="flex-1 min-w-0 flex flex-col">
+                                    <div className="flex items-start justify-between gap-1.5 w-full">
+                                        <h2 className={`font-bold text-[12.5px] sm:text-base tracking-tight truncate text-left transition-colors duration-300 ${
+                                            theme === "light" ? "text-slate-800" : theme === "eyeprotect" ? "text-stone-800" : "text-white"
+                                        }`}>
+                                            {item.title}
+                                        </h2>
+                                        
+                                        <div className="flex flex-wrap justify-end gap-1 shrink-0">
                                             {item.badges.map((b) => (
                                                 <span
                                                     key={b}
-                                                    className={`rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${
+                                                    className={`rounded px-1 py-0.5 text-[7.5px] sm:text-[9.5px] font-black border tracking-tight ${
                                                         isLight
-                                                            ? (b === "New" ? "border-emerald-300 bg-emerald-100 text-emerald-800"
-                                                                : b === "Beta" ? "border-amber-300 bg-amber-100 text-amber-800"
-                                                                : b === "Sign-in" ? "border-sky-300 bg-sky-100 text-sky-800"
-                                                                : "border-slate-300 bg-slate-100 text-slate-700")
+                                                            ? (b === "New" ? "border-emerald-250 bg-emerald-50 text-emerald-800"
+                                                                : b === "Beta" ? "border-amber-250 bg-amber-50 text-amber-800"
+                                                                : b === "Sign-in" ? "border-sky-250 bg-sky-50 text-sky-800"
+                                                                : "border-slate-200 bg-slate-50 text-slate-700")
                                                             : BADGE_CLASS[b]
                                                     }`}
                                                 >
@@ -323,8 +418,12 @@ export default function LabsPage() {
                                             ))}
                                         </div>
                                     </div>
-                                    <h2 className="font-semibold text-base">{item.title}</h2>
-                                    <p className={`text-xs mt-1 ${isLight ? "text-slate-600" : "text-white/50"}`}>{item.desc}</p>
+                                    
+                                    <p className={`text-[9.5px] sm:text-xs mt-1 leading-relaxed text-left font-medium transition-colors duration-300 ${
+                                        isLight ? "text-slate-500" : "text-white/50"
+                                    }`}>
+                                        {item.desc}
+                                    </p>
                                 </div>
                             </Link>
                         );
