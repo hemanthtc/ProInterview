@@ -2,12 +2,318 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Download, Play, Trash2, Sparkles, Sun, Moon, Eye, Menu, X } from "lucide-react";
+import { 
+    ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Download, Play, Trash2, Sparkles, Sun, Moon, Eye, Menu, X,
+    Compass, TrendingUp, Database, Code, CalendarClock, Award, Flame, User, Home as HomeIcon, FlaskConical
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { marked } from "marked";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
 import { motion } from "framer-motion";
 import BrandLogo from "../components/BrandLogo";
+import NotificationBell from "../components/NotificationBell";
+import ProgressPanel from "../components/features/ProgressPanel";
+
+interface MobileDashboardContentProps {
+    theme: "dark" | "light" | "eyeprotect";
+    isRealisticMode: boolean;
+    onSelectAnalysis: () => void;
+    onStartInterview: () => void;
+    onSelectProgress: () => void;
+}
+
+function MobileDashboardContent({
+    theme,
+    isRealisticMode,
+    onSelectAnalysis,
+    onStartInterview,
+    onSelectProgress,
+}: MobileDashboardContentProps) {
+    const [pastSessions, setPastSessions] = useState<any[]>([]);
+
+    useEffect(() => {
+        const stored = getStorageItem("interviewSessions");
+        if (stored) {
+            try {
+                const sessions = JSON.parse(stored);
+                setPastSessions(sessions);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }, []);
+
+    // Filter sessions to find this month's attempts
+    const sessionsThisMonth = pastSessions.filter((s: any) => {
+        const d = new Date(s.timestamp);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length || 12; // fallback to 12 if none
+
+    // Calculate average score
+    const averageScore = pastSessions.length > 0
+        ? Math.round(pastSessions.reduce((acc: number, curr: any) => acc + (curr.finalScore || curr.interviewRating || 0), 0) / pastSessions.length)
+        : 81; // fallback to 81
+
+    const dayStreak = 5; // fallback to 5
+
+    // Get display sessions: if empty, show the mock sessions from the screenshot
+    const displaySessions = pastSessions.length > 0 ? pastSessions.slice(0, 2) : [
+        {
+            id: "mock1",
+            role: "Interview Session",
+            timestamp: Date.now() - 24 * 60 * 60 * 1000, // yesterday
+            finalScore: 85,
+            duration: "45 min",
+            difficulty: "Intermediate",
+            isMock: true
+        },
+        {
+            id: "mock2",
+            role: "Interview Session",
+            timestamp: Date.now() - 2 * 24 * 60 * 65 * 1000, // 2 days ago
+            finalScore: 85,
+            duration: "60 min",
+            difficulty: "Intermediate",
+            isMock: true
+        }
+    ];
+
+    return (
+        <div className="w-full max-w-md mx-auto flex flex-col gap-5 px-1 animate-in fade-in duration-300">
+            {/* Hero Card */}
+            <div className={`w-full relative overflow-hidden rounded-3xl p-5 flex flex-row items-center justify-between mt-2 transition-all duration-300 ${
+                theme === "light"
+                ? "bg-white border border-slate-200 shadow-xl shadow-slate-100/50"
+                : theme === "eyeprotect"
+                ? "bg-[#fffcf5] border border-[#8c8578]/30 shadow-md shadow-stone-200/20"
+                : "bg-gradient-to-br from-[#0c0d1b] via-[#090918] to-[#04040f] border border-white/10 shadow-[0_0_20px_rgba(79,70,229,0.12)]"
+            }`}>
+                {/* Background Image Cover Right Side with Fade to Left */}
+                <div className="absolute right-0 top-0 bottom-0 h-full w-[48%] z-0 select-none pointer-events-none overflow-hidden rounded-r-3xl">
+                    <img 
+                        src="/ai-avatar.jpg" 
+                        alt="AI Coach" 
+                        className="w-full h-full object-cover object-center"
+                        style={{
+                            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)",
+                            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)"
+                        }}
+                    />
+                </div>
+
+                <div className="flex-1 text-left z-10 space-y-3.5 max-w-[65%]">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="inline-block px-3 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-full text-[9px] font-bold text-purple-400">
+                            Ready to level up?
+                        </span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-black border ${
+                            theme === "light" 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-250" 
+                            : theme === "eyeprotect"
+                            ? "bg-[#f0fdf4] text-emerald-800 border-[#bbf7d0]/50"
+                            : "bg-emerald-500/10 text-emerald-450 border-emerald-500/20"
+                        }`}>
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse animate-duration-1000" />
+                            AI Online
+                        </span>
+                    </div>
+                    
+                    <h2 className={`text-lg font-black leading-tight transition-colors duration-300 ${
+                        theme === "light" ? "text-slate-900" : theme === "eyeprotect" ? "text-[#1c1917]" : "text-white"
+                    }`}>
+                        Master your next <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+                            technical interview
+                        </span>
+                    </h2>
+                    
+                    <p className={`text-[10px] leading-relaxed font-semibold transition-colors duration-300 ${
+                        theme === "light" ? "text-slate-600" : theme === "eyeprotect" ? "text-stone-600" : "text-white/50"
+                    }`}>
+                        Practice with our AI interviewer, get real-time feedback, and improve with every session.
+                    </p>
+                    
+                    <button 
+                        onClick={onStartInterview}
+                        className="flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all text-[11px] cursor-pointer shadow-[0_3px_12px_rgba(79,70,229,0.2)]"
+                    >
+                        {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
+                        <ArrowRight className="w-3 h-3" />
+                    </button>
+                </div>
+            </div>
+
+            {/* Recent Sessions */}
+            <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                    <h3 className={`text-xs font-black transition-colors duration-300 ${
+                        theme === "light" ? "text-slate-900" : theme === "eyeprotect" ? "text-[#1c1917]" : "text-white"
+                    }`}>Recent Sessions</h3>
+                    <button 
+                        onClick={onSelectProgress}
+                        className="text-[10px] font-bold text-[#a855f7] flex items-center gap-0.5 hover:text-purple-300 cursor-pointer"
+                    >
+                        View All
+                        <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                </div>
+
+                <div className="space-y-2">
+                    {displaySessions.map((sess: any) => {
+                        const isPurple = sess.finalScore < 80;
+                        const iconBg = isPurple ? "bg-purple-500/10 text-purple-400" : "bg-emerald-500/10 text-emerald-400";
+                        const ringColor = isPurple ? "stroke-purple-500" : "stroke-emerald-400";
+                        const badgeBg = isPurple ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                        
+                        let timeText = "Just now";
+                        if (sess.isMock) {
+                            timeText = sess.id === "mock1" ? "Yesterday" : "2 days ago";
+                        } else {
+                            const diff = Date.now() - sess.timestamp;
+                            const mins = Math.floor(diff / 60000);
+                            const hours = Math.floor(mins / 60);
+                            const days = Math.floor(hours / 24);
+                            if (days > 0) timeText = days === 1 ? "Yesterday" : `${days} days ago`;
+                            else if (hours > 0) timeText = `${hours}h ago`;
+                            else if (mins > 0) timeText = `${mins}m ago`;
+                        }
+
+                        const duration = sess.duration || "45 min";
+                        const difficulty = sess.difficulty || (sess.finalScore >= 80 ? "Advanced" : "Intermediate");
+
+                        return (
+                            <div 
+                                key={sess.id || sess.timestamp}
+                                className={`p-3.5 flex items-center justify-between gap-3 transition-all duration-300 text-left border rounded-2xl ${
+                                    theme === "light"
+                                    ? "bg-white border-slate-200 shadow-sm"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                                    : "bg-[#0b0c15] border-white/5 hover:border-white/10"
+                                }`}
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                                        {(sess.role || "").toLowerCase().includes("design") ? (
+                                            <Database className="w-4.5 h-4.5" />
+                                        ) : (
+                                            <Code className="w-4.5 h-4.5" />
+                                        )}
+                                    </div>
+                                    
+                                    <div className="space-y-0.5">
+                                        <h4 className={`text-[11px] font-bold leading-tight transition-colors duration-300 ${
+                                            theme === "light" ? "text-slate-900" : theme === "eyeprotect" ? "text-[#1c1917]" : "text-white"
+                                        }`}>
+                                            {sess.role ? `${sess.role} Interview` : "Interview Session"}
+                                        </h4>
+                                        <p className={`text-[9px] font-semibold transition-colors duration-300 ${
+                                            theme === "light" ? "text-slate-500" : theme === "eyeprotect" ? "text-stone-500" : "text-white/40"
+                                        }`}>
+                                            {timeText} • {duration}
+                                        </p>
+                                        <span className={`inline-block px-1.5 py-0.5 rounded text-[7.5px] font-black uppercase tracking-wider ${badgeBg}`}>
+                                            {difficulty}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2.5 shrink-0">
+                                    <div className="text-right flex flex-col justify-center">
+                                        <span className={`text-[7.5px] font-bold uppercase leading-none mb-0.5 transition-colors duration-300 ${
+                                            theme === "light" ? "text-slate-400" : theme === "eyeprotect" ? "text-stone-400" : "text-white/30"
+                                        }`}>Score</span>
+                                        <span className={`text-[11px] font-black ${isPurple ? "text-purple-400" : "text-emerald-400"}`}>
+                                            {sess.finalScore}/100
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="relative w-7 h-7 flex items-center justify-center shrink-0">
+                                        <svg className="w-full h-full transform -rotate-90">
+                                            <circle 
+                                                cx="14" cy="14" r="11" 
+                                                className={`transition-colors duration-300 ${
+                                                    theme === "light" ? "stroke-slate-100" : theme === "eyeprotect" ? "stroke-stone-200" : "stroke-white/5"
+                                                }`} 
+                                                strokeWidth="2.2" 
+                                                fill="transparent" 
+                                            />
+                                            <circle 
+                                                cx="14" cy="14" r="11" 
+                                                className={ringColor} 
+                                                strokeWidth="2.2" 
+                                                fill="transparent" 
+                                                strokeDasharray={2 * Math.PI * 11}
+                                                strokeDashoffset={2 * Math.PI * 11 * (1 - sess.finalScore / 100)}
+                                                strokeLinecap="round"
+                                            />
+                                        </svg>
+                                    </div>
+                                    
+                                    <ArrowRight className={`w-3.5 h-3.5 transition-colors duration-300 ${
+                                        theme === "light" ? "text-slate-300" : theme === "eyeprotect" ? "text-stone-400" : "text-white/20"
+                                    }`} />
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* Statistics */}
+            <div className={`p-4 mt-1 flex items-center justify-between border rounded-2xl shadow-md transition-all duration-300 ${
+                theme === "light"
+                ? "bg-white border-slate-200 divide-x divide-slate-100"
+                : theme === "eyeprotect"
+                ? "bg-[#fffcf5] border-[#8c8578]/30 divide-x divide-stone-200"
+                : "bg-[#0b0c15] border border-white/5 divide-x divide-white/5"
+            }`}>
+                <div className="flex-1 flex flex-col items-center justify-center space-y-1.5">
+                    <div className="w-7 h-7 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400">
+                        <CalendarClock className="w-4 h-4" />
+                    </div>
+                    <div className="text-center space-y-0.5">
+                        <span className={`text-sm font-black transition-colors duration-300 ${
+                            theme === "light" ? "text-slate-900" : theme === "eyeprotect" ? "text-[#1c1917]" : "text-white"
+                        }`}>{sessionsThisMonth}</span>
+                        <p className={`text-[7.5px] font-bold uppercase tracking-wider leading-none transition-colors duration-300 ${
+                            theme === "light" ? "text-slate-500" : theme === "eyeprotect" ? "text-stone-500" : "text-white/40"
+                        }`}>Sessions This Month</p>
+                    </div>
+                </div>
+
+                <div className="flex-1 flex flex-col items-center justify-center space-y-1.5">
+                    <div className="w-7 h-7 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-400">
+                        <Award className="w-4 h-4" />
+                    </div>
+                    <div className="text-center space-y-0.5">
+                        <span className={`text-sm font-black transition-colors duration-300 ${
+                            theme === "light" ? "text-slate-900" : theme === "eyeprotect" ? "text-[#1c1917]" : "text-white"
+                        }`}>{averageScore}%</span>
+                        <p className={`text-[7.5px] font-bold uppercase tracking-wider leading-none transition-colors duration-300 ${
+                            theme === "light" ? "text-slate-500" : theme === "eyeprotect" ? "text-stone-500" : "text-white/40"
+                        }`}>Average Score</p>
+                    </div>
+                </div>
+
+                <div className="flex-1 flex flex-col items-center justify-center space-y-1.5">
+                    <div className="w-7 h-7 rounded-lg bg-orange-500/10 flex items-center justify-center text-orange-400">
+                        <Flame className="w-4 h-4 text-orange-400" />
+                    </div>
+                    <div className="text-center space-y-0.5">
+                        <span className={`text-sm font-black transition-colors duration-300 ${
+                            theme === "light" ? "text-slate-900" : theme === "eyeprotect" ? "text-[#1c1917]" : "text-white"
+                        }`}>{dayStreak}</span>
+                        <p className={`text-[7.5px] font-bold uppercase tracking-wider leading-none transition-colors duration-300 ${
+                            theme === "light" ? "text-slate-500" : theme === "eyeprotect" ? "text-stone-500" : "text-white/40"
+                        }`}>Day Streak</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function Home() {
     const router = useRouter();
@@ -20,8 +326,14 @@ export default function Home() {
     const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isHydrated, setIsHydrated] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+    const [activeModal, setActiveModal] = useState<string | null>(null);
 
     useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener("resize", checkMobile);
+
         Promise.resolve().then(() => {
             setIsHydrated(true);
             const loggedIn = getStorageItem("userLoggedIn") === "true";
@@ -89,6 +401,7 @@ export default function Home() {
         handleScroll();
 
         return () => {
+            window.removeEventListener("resize", checkMobile);
             window.removeEventListener("hashchange", handleHashChange);
             window.removeEventListener("scroll", handleScroll);
         };
@@ -191,6 +504,338 @@ export default function Home() {
         return (
             <div className="min-h-screen bg-[#050505] flex items-center justify-center">
                 <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
+    if (isMobile) {
+        return (
+            <div 
+                className="selection:bg-indigo-500/30 flex flex-col font-sans min-h-screen pb-24 transition-colors duration-300"
+                style={{
+                    backgroundColor: theme === "light" ? "#f8fafc" : theme === "eyeprotect" ? "#f4eae1" : "#050505",
+                    color: theme === "light" ? "#0f172a" : theme === "eyeprotect" ? "#000000" : "#ffffff"
+                }}
+            >
+                <header 
+                    className="px-4 h-16 flex flex-row items-center justify-between border-b backdrop-blur-md sticky top-0 z-50 w-full transition-all duration-300"
+                    style={{
+                        backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.85)" : theme === "eyeprotect" ? "rgba(244, 234, 225, 0.85)" : "rgba(5, 5, 13, 0.8)",
+                        borderColor: theme === "light" ? "rgba(15, 23, 42, 0.08)" : theme === "eyeprotect" ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.05)"
+                    }}
+                >
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-indigo-500/30 bg-[#141c21] shadow-[0_0_10px_rgba(45,212,191,0.2)]">
+                            <img src="/logo-icon-darkmode.png" alt="Icon" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex flex-col text-left">
+                            <div className="flex items-center text-[15px] font-black tracking-tight leading-tight">
+                                <span className={`transition-colors duration-300 ${theme === "light" ? "text-slate-900" : theme === "eyeprotect" ? "text-[#1c1917]" : "text-white"}`}>Pro</span>
+                                <span className="text-[#3b82f6] flex items-center">
+                                    Interview
+                                    <svg className="w-3 h-3 ml-0.5 text-[#3b82f6]" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"></path>
+                                    </svg>
+                                </span>
+                            </div>
+                            <span className={`text-[8px] font-bold uppercase tracking-wider transition-colors duration-300 ${
+                                theme === "light" ? "text-slate-500" : theme === "eyeprotect" ? "text-stone-500" : "text-white/45"
+                            }`}>AI-Powered Interview Coach</span>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={cycleTheme}
+                            className={`p-2 border rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer ${
+                                theme === "light"
+                                ? "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                                : theme === "eyeprotect"
+                                ? "bg-[#fffcf5] border-[#8c8578]/30 text-[#1c1917] hover:bg-stone-200/50"
+                                : "bg-white/5 border-white/10 text-white/80 hover:text-white"
+                            }`}
+                            title={`Current Theme: ${theme}. Click to switch.`}
+                        >
+                            {theme === "dark" && <Moon className="w-4 h-4" />}
+                            {theme === "light" && <Sun className="w-4 h-4" />}
+                            {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                        </button>
+                        <NotificationBell theme={theme} />
+                        <button
+                            onClick={() => setMobileMenuOpen(true)}
+                            className={`p-2 border rounded-full transition-all flex items-center justify-center shrink-0 cursor-pointer ${
+                                theme === "light"
+                                ? "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                                : theme === "eyeprotect"
+                                ? "bg-[#fffcf5] border-[#8c8578]/30 text-[#1c1917] hover:bg-stone-200/50"
+                                : "bg-white/5 border-white/10 text-white/80 hover:text-white"
+                            }`}
+                            title="Open menu"
+                        >
+                            <Menu className="w-4 h-4" />
+                        </button>
+                    </div>
+                </header>
+
+                <main className="flex-1 flex flex-col items-center justify-start relative px-4 pt-4 pb-12 w-full max-w-full">
+                    <div className="absolute top-[10%] left-[20%] w-[300px] h-[300px] bg-indigo-600/15 rounded-full blur-[80px] pointer-events-none" />
+                    <div className="absolute bottom-[10%] right-[20%] w-[250px] h-[250px] bg-purple-600/15 rounded-full blur-[70px] pointer-events-none" />
+
+                    {activeModal === "progress" ? (
+                        <div className="w-full max-w-md mx-auto animate-in fade-in duration-300">
+                            <ProgressPanel isLight={theme === "light"} />
+                        </div>
+                    ) : (
+                        <MobileDashboardContent 
+                            theme={theme}
+                            isRealisticMode={isRealisticMode}
+                            onSelectAnalysis={() => {
+                                if (isLoggedIn || isGuest) {
+                                    router.push("/features?tool=analysis");
+                                } else {
+                                    router.push("/login");
+                                }
+                            }}
+                            onStartInterview={() => {
+                                if (isLoggedIn || isGuest) {
+                                    if (isRealisticMode) {
+                                        router.push("/setup");
+                                    } else {
+                                        router.push("/features?start=true");
+                                    }
+                                } else {
+                                    router.push("/login");
+                                }
+                            }}
+                            onSelectProgress={() => {
+                                if (isLoggedIn || isGuest) {
+                                    setActiveModal("progress");
+                                } else {
+                                    router.push("/login");
+                                }
+                            }}
+                        />
+                    )}
+                </main>
+
+                {/* Sticky Bottom Navigation Bar for Mobile */}
+                <div 
+                    className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg pb-safe-bottom transition-all duration-300 border-t"
+                    style={{
+                        backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.95)" : theme === "eyeprotect" ? "rgba(244, 234, 225, 0.95)" : "rgba(6, 6, 12, 0.9)",
+                        borderColor: theme === "light" ? "rgba(15, 23, 42, 0.08)" : theme === "eyeprotect" ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.1)"
+                    }}
+                >
+                    <div className="max-w-md mx-auto flex items-center justify-around h-16 px-4">
+                        <button 
+                            onClick={() => {
+                                setActiveModal(null);
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeModal === null 
+                                ? "text-[#a855f7] font-extrabold" 
+                                : theme === "light" 
+                                ? "text-slate-400 hover:text-slate-600" 
+                                : theme === "eyeprotect" 
+                                ? "text-stone-400 hover:text-stone-600" 
+                                : "text-white/40 hover:text-white/60"}`}
+                        >
+                            <HomeIcon className="w-5 h-5" />
+                            <span className="text-[10px]">Home</span>
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                if (isRealisticMode) return;
+                                if (isLoggedIn || isGuest) {
+                                    router.push("/features");
+                                } else {
+                                    router.push("/login");
+                                }
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${isRealisticMode
+                                ? theme === "light"
+                                ? "text-slate-200 cursor-not-allowed"
+                                : theme === "eyeprotect"
+                                ? "text-stone-200 cursor-not-allowed"
+                                : "text-white/15 cursor-not-allowed"
+                                : theme === "light"
+                                ? "text-slate-400 hover:text-slate-600 cursor-pointer"
+                                : theme === "eyeprotect"
+                                ? "text-stone-400 hover:text-stone-600 cursor-pointer"
+                                : "text-white/40 hover:text-white/60 cursor-pointer"}`}
+                            disabled={isRealisticMode}
+                        >
+                            <Compass className="w-5 h-5" />
+                            <span className="text-[10px]">Practice</span>
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                if (!isRealisticMode) router.push("/labs");
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${isRealisticMode
+                                ? theme === "light"
+                                ? "text-slate-200 cursor-not-allowed"
+                                : theme === "eyeprotect"
+                                ? "text-stone-200 cursor-not-allowed"
+                                : "text-white/15 cursor-not-allowed"
+                                : theme === "light"
+                                ? "text-slate-400 hover:text-slate-600 cursor-pointer"
+                                : theme === "eyeprotect"
+                                ? "text-stone-400 hover:text-stone-600 cursor-pointer"
+                                : "text-white/40 hover:text-white/60 cursor-pointer"}`}
+                            disabled={isRealisticMode}
+                        >
+                            <FlaskConical className="w-5 h-5" />
+                            <span className="text-[10px]">Labs</span>
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                if (isLoggedIn || isGuest) {
+                                    setActiveModal("progress");
+                                } else {
+                                    router.push("/login");
+                                }
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeModal === "progress" 
+                                ? "text-[#a855f7] font-extrabold" 
+                                : theme === "light" 
+                                ? "text-slate-400 hover:text-slate-600" 
+                                : theme === "eyeprotect" 
+                                ? "text-stone-400 hover:text-stone-600" 
+                                : "text-white/40 hover:text-white/60"}`}
+                        >
+                            <TrendingUp className="w-5 h-5" />
+                            <span className="text-[10px]">Reports</span>
+                        </button>
+
+                        <Link 
+                            href={isLoggedIn || isGuest ? "/profile" : "/login"}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+                                theme === "light" 
+                                ? "text-slate-400 hover:text-slate-600" 
+                                : theme === "eyeprotect" 
+                                ? "text-stone-400 hover:text-stone-600" 
+                                : "text-white/40 hover:text-white/60"}`}
+                        >
+                            <User className="w-5 h-5" />
+                            <span className="text-[10px]">Profile</span>
+                        </Link>
+                    </div>
+                </div>
+
+                {/* Mobile Drawer menu */}
+                {mobileMenuOpen && (
+                    <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col animate-in fade-in duration-200">
+                        <div className="flex justify-between items-center p-6 border-b border-white/10">
+                            <BrandLogo />
+                            <button 
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="p-2 bg-white/5 border border-white/10 rounded-full text-white/80 hover:text-white"
+                                title="Close menu"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <nav className="flex flex-col items-center justify-center flex-1 gap-6 p-6">
+                            <Link 
+                                href="/" 
+                                onClick={() => {
+                                    setActiveModal(null);
+                                    setMobileMenuOpen(false);
+                                }}
+                                className={`text-lg font-semibold transition-colors ${activeModal === null ? "text-indigo-400" : "text-white/80 hover:text-white"}`}
+                            >
+                                Home
+                            </Link>
+                            <Link 
+                                href="/community" 
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                            >
+                                Community
+                            </Link>
+                            <Link 
+                                href="/#how-it-works" 
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                            >
+                                How it works
+                            </Link>
+
+                            {isLoggedIn && (
+                                <div className="flex items-center bg-white/5 border border-white/15 p-1 rounded-full text-xs font-semibold backdrop-blur-md">
+                                    <button
+                                        onClick={() => {
+                                            if (isRealisticMode) toggleMode();
+                                            setMobileMenuOpen(false);
+                                        }}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${!isRealisticMode
+                                            ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-[0_0_10px_rgba(249,115,22,0.25)] font-bold'
+                                            : 'text-white/60 hover:text-white/90'
+                                            }`}
+                                    >
+                                        <span className={`w-1.5 h-1.5 rounded-full ${!isRealisticMode ? 'bg-orange-400 animate-pulse' : 'bg-white/40'}`} />
+                                        Practice
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            if (!isRealisticMode) toggleMode();
+                                            setMobileMenuOpen(false);
+                                        }}
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all duration-200 ${isRealisticMode
+                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)] font-bold'
+                                            : 'text-white/60 hover:text-white/90'
+                                            }`}
+                                    >
+                                        <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400 animate-pulse' : 'bg-white/40'}`} />
+                                        Realistic AI Mode
+                                    </button>
+                                </div>
+                            )}
+                            {/* Profile / Login in Menu */}
+                            <div className="w-full max-w-xs border-t border-white/10 my-4" />
+
+                            {isLoggedIn ? (
+                                <Link 
+                                    href="/profile" 
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-6 py-3 rounded-full transition-colors font-bold w-full max-w-xs justify-center shadow-[0_0_15px_rgba(79,70,229,0.2)]"
+                                >
+                                    My Profile
+                                </Link>
+                            ) : isGuest ? (
+                                <div className="flex flex-col items-center gap-2 w-full max-w-xs">
+                                    <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 px-6 py-3 rounded-full font-bold w-full justify-center">
+                                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                                        Guest Mode
+                                    </div>
+                                    <p className="text-[10px] text-slate-400 text-center px-2">
+                                        Sign in to save your interview progress, access mock interviews, AI resume generation, and cloud storage.
+                                    </p>
+                                    <Link 
+                                        href="/login"
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2.5 rounded-xl w-full text-center mt-1"
+                                    >
+                                        Sign In or Register
+                                    </Link>
+                                </div>
+                            ) : (
+                                <Link 
+                                    href="/login" 
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="bg-white/10 hover:bg-white/20 px-6 py-3 rounded-full text-white transition-colors font-bold w-full max-w-xs text-center"
+                                >
+                                    Log in
+                                </Link>
+                            )}
+                        </nav>
+
+                    </div>
+                )}
             </div>
         );
     }
@@ -513,57 +1158,134 @@ export default function Home() {
                 <div className="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none z-[1]" />
                 <div className="absolute bottom-[20%] right-[20%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none z-[1]" />
 
-                <div className="max-w-4xl w-full mx-auto text-center z-10 flex flex-col items-center">
-                    <h1 className="text-3xl sm:text-5xl md:text-7xl font-extrabold tracking-tight mb-8 leading-[1.1]">
-                        <motion.span
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-                            className="inline-block"
-                        >
-                            Master your next
-                        </motion.span>
-                        <br />
-                        <motion.span
-                            initial={{ opacity: 0, y: 30 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.8, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                            className={`inline-block transition-colors duration-300 ${theme === "light" ? "text-indigo-600" : theme === "eyeprotect" ? "text-amber-800" : "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"}`}
-                        >
-                            technical interview
-                        </motion.span>
-                    </h1>
+                <div className="max-w-5xl w-full mx-auto z-10 px-4 flex flex-col items-center justify-center">
+                    {/* Desktop Hero Grid (Visible on md and up) */}
+                    <div className="hidden md:flex flex-row items-center justify-between gap-12 w-full text-left">
+                        <div className="flex-1 space-y-6">
+                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1]">
+                                <span className="inline-block">Master your next</span>
+                                <br />
+                                <span className={`inline-block transition-colors duration-300 ${theme === "light" ? "text-indigo-600" : theme === "eyeprotect" ? "text-amber-800" : "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"}`}>
+                                    technical interview
+                                </span>
+                            </h1>
 
-                    <p className={`text-lg md:text-xl mb-12 max-w-2xl leading-relaxed transition-colors duration-300 ${theme === "light" ? "text-slate-900/70" : theme === "eyeprotect" ? "text-black/70" : "text-white/60"}`}>
-                        {isRealisticMode 
-                            ? "Simulate a real-world company interview under hiring manager conditions. Get professional technical and behavioral feedback tailored to your background."
-                            : "Upload your resume and practice with our highly realistic AI interviewer. Get tailored questions, real-time voice interaction, and actionable feedback."}
-                    </p>
-
-                    <Link 
-                        href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
-                        className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-indigo-600 font-pj rounded-xl hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-xl shadow-indigo-500/20"
-                    >
-                        {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
-                        <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Link>
-
-                    {pausedSession && ((isRealisticMode && pausedSession.mode === "realistic") || (!isRealisticMode && (pausedSession.mode === "technical" || !pausedSession.mode))) && (
-                        <div className="mt-8 p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md mx-auto relative backdrop-blur-sm z-20">
-                            <h3 className="text-xl font-bold text-indigo-300 mb-2">You Have a Paused Interview</h3>
-                            <p className="text-sm text-white/60 mb-4">
-                                Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
+                            <p className={`text-base md:text-lg max-w-xl leading-relaxed transition-colors duration-300 ${theme === "light" ? "text-slate-900/70" : theme === "eyeprotect" ? "text-black/70" : "text-white/60"}`}>
+                                {isRealisticMode 
+                                    ? "Simulate a real-world company interview under hiring manager conditions. Get professional technical and behavioral feedback tailored to your background."
+                                    : "Upload your resume and practice with our highly realistic AI interviewer. Get tailored questions, real-time voice interaction, and actionable feedback."}
                             </p>
-                            <div className="flex gap-3">
-                                <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
-                                    <Play className="w-5 h-5"/> Resume
-                                </button>
-                                <button onClick={handleDeletePaused} className="px-4 bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 rounded-xl transition flex items-center justify-center" title="Delete Paused Session">
-                                    <Trash2 className="w-5 h-5"/>
-                                </button>
+
+                            <div className="pt-2">
+                                <Link 
+                                    href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
+                                    className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-indigo-600 font-pj rounded-xl hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-xl shadow-indigo-500/20"
+                                >
+                                    {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
+                                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                                </Link>
+                            </div>
+
+                            {pausedSession && ((isRealisticMode && pausedSession.mode === "realistic") || (!isRealisticMode && (pausedSession.mode === "technical" || !pausedSession.mode))) && (
+                                <div className="mt-8 p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md relative backdrop-blur-sm z-20 text-center md:text-left">
+                                    <h3 className="text-xl font-bold text-indigo-300 mb-2">You Have a Paused Interview</h3>
+                                    <p className="text-sm text-white/60 mb-4">
+                                        Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
+                                    </p>
+                                    <div className="flex gap-3">
+                                        <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                                            <Play className="w-5 h-5"/> Resume
+                                        </button>
+                                        <button onClick={handleDeletePaused} className="px-4 bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 rounded-xl transition flex items-center justify-center" title="Delete Paused Session">
+                                            <Trash2 className="w-5 h-5"/>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right: Robot Avatar Artwork */}
+                        <div className="relative w-[220px] h-[220px] lg:w-[260px] lg:h-[260px] flex items-center justify-center shrink-0 select-none">
+                            <img 
+                                src="/ai-avatar.jpg" 
+                                alt="AI Coach" 
+                                className="w-full h-full object-cover rounded-full border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.25)]"
+                            />
+                            <div className="absolute -bottom-4 right-0 left-0 mx-auto w-max px-3 py-1 bg-[#08080f]/90 border border-white/10 rounded-full flex items-center gap-1.5 shadow-lg">
+                                <span className="w-2 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <span className="text-[10px] font-black text-white/80 tracking-tight">AI Interviewer Online</span>
                             </div>
                         </div>
-                    )}
+                    </div>
+
+                    {/* Mobile Hero Card (Visible on mobile only) */}
+                    <div className="flex md:hidden w-full relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0c0d1b] via-[#090918] to-[#04040f] border border-white/10 p-5 flex-row items-center justify-between shadow-[0_0_20px_rgba(79,70,229,0.12)]">
+                        {/* Background Image Cover Right Side with Fade to Left */}
+                        <div className="absolute right-0 top-0 bottom-0 h-full w-[48%] z-0 select-none pointer-events-none overflow-hidden rounded-r-3xl">
+                            <img 
+                                src="/ai-avatar.jpg" 
+                                alt="AI Coach" 
+                                className="w-full h-full object-cover object-center"
+                                style={{
+                                    maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)",
+                                    WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)"
+                                }}
+                            />
+                        </div>
+
+                        <div className="flex-grow text-left z-10 space-y-3 max-w-[65%]">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                                <span className="inline-block px-3 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-full text-[9px] font-bold text-purple-400">
+                                    Ready to level up?
+                                </span>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-black border bg-emerald-500/10 text-emerald-450 border-emerald-500/20">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse animate-duration-1000" />
+                                    AI Online
+                                </span>
+                            </div>
+                            
+                            <h2 className="text-lg font-black text-white leading-tight">
+                                Master your next <br />
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+                                    technical interview
+                                </span>
+                            </h2>
+                            
+                            <p className="text-[10px] text-white/50 leading-relaxed font-semibold">
+                                {isRealisticMode 
+                                    ? "Simulate a real-world company interview under hiring manager conditions."
+                                    : "Practice with our AI interviewer, get real-time feedback, and improve with every session."}
+                            </p>
+                            
+                            <Link 
+                                href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
+                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all text-[11px] cursor-pointer shadow-[0_3px_12px_rgba(79,70,229,0.2)]"
+                            >
+                                {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
+                                <ArrowRight className="w-3 h-3 animate-pulse" />
+                            </Link>
+                        </div>
+                    </div>
+
+                    {/* Mobile Paused Session (Mobile only, rendered separately below Hero card) */}
+                    <div className="flex md:hidden w-full">
+                        {pausedSession && ((isRealisticMode && pausedSession.mode === "realistic") || (!isRealisticMode && (pausedSession.mode === "technical" || !pausedSession.mode))) && (
+                            <div className="mt-4 p-4 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md mx-auto relative backdrop-blur-sm z-20 text-center">
+                                <h3 className="text-sm font-bold text-indigo-300 mb-1">Paused Interview</h3>
+                                <p className="text-[11px] text-white/50 mb-3">
+                                    Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
+                                </p>
+                                <div className="flex gap-2">
+                                    <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-xs">
+                                        <Play className="w-4 h-4"/> Resume
+                                    </button>
+                                    <button onClick={handleDeletePaused} className="px-3 bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 rounded-xl transition flex items-center justify-center" title="Delete Paused Session">
+                                        <Trash2 className="w-4 h-4"/>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </main>
 

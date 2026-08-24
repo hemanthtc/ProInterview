@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database } from "lucide-react";
+import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
@@ -26,11 +26,140 @@ import { offCampusMCQs, offCampusCodingQuestions, MCQQuestion, CodingQuestion } 
 import { onCampusMCQs, onCampusCodingQuestions } from "../../data/onCampusMockTestData";
 import { interviewPrepLogic, aptitudeQuestions } from "../../data/aptitudeQuestions";
 import BrandLogo from "../../components/BrandLogo";
+import NotificationBell from "../../components/NotificationBell";
 import { triggerSelfHealing } from "../../utils/offlineSync";
 
 import type { SavedResume, SavedRoadmap, PortfolioAnalysisCache, RoadmapData, PausedInterviewSession } from "../../types/features";
 import type { EmailAnalysisResult } from "../../types/analysis";
 
+interface MobileDashboardContentProps {
+    isRealisticMode: boolean;
+    onSelectAnalysis: () => void;
+    onStartInterview: () => void;
+    onSelectProgress: () => void;
+}
+
+function MobileDashboardContent({
+    isRealisticMode,
+    onSelectAnalysis,
+    onStartInterview,
+    onSelectProgress,
+}: MobileDashboardContentProps) {
+    const [pastSessions, setPastSessions] = useState<any[]>([]);
+
+    useEffect(() => {
+        const stored = getStorageItem("interviewSessions");
+        if (stored) {
+            try {
+                const sessions = JSON.parse(stored);
+                setPastSessions(sessions);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }, []);
+
+    // Filter sessions to find this month's attempts
+    const sessionsThisMonth = pastSessions.filter((s: any) => {
+        const d = new Date(s.timestamp);
+        const now = new Date();
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    }).length || 12; // fallback to 12 if none
+
+    // Calculate average score
+    const averageScore = pastSessions.length > 0
+        ? Math.round(pastSessions.reduce((acc: number, curr: any) => acc + (curr.finalScore || curr.interviewRating || 0), 0) / pastSessions.length)
+        : 81; // fallback to 81
+
+    const dayStreak = 5; // fallback to 5
+
+    // Get display sessions: if empty, show the mock sessions from the screenshot
+    const displaySessions = pastSessions.length > 0 ? pastSessions.slice(0, 2) : [
+        {
+            id: "mock1",
+            role: "Frontend Developer",
+            timestamp: Date.now() - 24 * 60 * 65 * 1000, // yesterday
+            finalScore: 78,
+            duration: "45 min",
+            difficulty: "Advanced",
+            isMock: true
+        },
+        {
+            id: "mock2",
+            role: "System Design",
+            timestamp: Date.now() - 2 * 24 * 60 * 65 * 1000, // 2 days ago
+            finalScore: 85,
+            duration: "60 min",
+            difficulty: "Intermediate",
+            isMock: true
+        }
+    ];
+
+    return (
+        <div className="w-full max-w-md mx-auto flex flex-col gap-4 px-1 animate-in fade-in duration-300">
+            <h3 className="text-xs font-black text-white/50 uppercase tracking-wider text-left mb-1">
+                Select an Option
+            </h3>
+            <div className="grid grid-cols-2 gap-3 w-full">
+                {/* Action 1: Upload Resume */}
+                <div 
+                    onClick={onSelectAnalysis}
+                    className="bg-[#0b0c15] border border-indigo-500/20 rounded-2xl p-4 flex flex-col justify-between text-left h-[130px] hover:border-purple-500/50 transition-all cursor-pointer shadow-[0_0_15px_rgba(79,70,229,0.05)]"
+                >
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                        <FileText className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className="text-[11px] font-bold text-white leading-tight">Upload Resume</h4>
+                        <p className="text-[8px] text-white/40 leading-tight">Get AI feedback & tailored prep</p>
+                    </div>
+                </div>
+
+                {/* Action 2: Choose Topics */}
+                <div 
+                    onClick={onStartInterview}
+                    className="bg-[#0b0c15] border border-sky-500/20 rounded-2xl p-4 flex flex-col justify-between text-left h-[130px] hover:border-blue-500/50 transition-all cursor-pointer shadow-[0_0_15px_rgba(14,165,233,0.05)]"
+                >
+                    <div className="w-8 h-8 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                        <Compass className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className="text-[11px] font-bold text-white leading-tight">Choose Topics</h4>
+                        <p className="text-[8px] text-white/40 leading-tight">DSA, System Design & Behavioral</p>
+                    </div>
+                </div>
+
+                {/* Action 3: Real-time Interview */}
+                <div 
+                    onClick={onStartInterview}
+                    className="bg-[#0b0c15] border border-emerald-500/20 rounded-2xl p-4 flex flex-col justify-between text-left h-[130px] hover:border-emerald-500/50 transition-all cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.05)]"
+                >
+                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-400">
+                        <Video className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className="text-[11px] font-bold text-white leading-tight">Real-time Interview</h4>
+                        <p className="text-[8px] text-white/40 leading-tight">Interactive voice practice with AI</p>
+                    </div>
+                </div>
+
+                {/* Action 4: Feedback & Score */}
+                <div 
+                    onClick={onSelectProgress}
+                    className="bg-[#0b0c15] border border-purple-500/20 rounded-2xl p-4 flex flex-col justify-between text-left h-[130px] hover:border-purple-500/50 transition-all cursor-pointer shadow-[0_0_15px_rgba(168,85,247,0.05)]"
+                >
+                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                        <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <div className="space-y-1">
+                        <h4 className="text-[11px] font-bold text-white leading-tight">Feedback & Score</h4>
+                        <p className="text-[8px] text-white/40 leading-tight">Detailed session analytics & history</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 function FeaturesContent() {
     const router = useRouter();
@@ -46,6 +175,7 @@ function FeaturesContent() {
     const [isGuest, setIsGuest] = useState(false);
     const [pausedSession, setPausedSession] = useState<PausedInterviewSession | null>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const isLight = theme === "light" || theme === "eyeprotect";
     const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack">("analysis");
@@ -422,6 +552,12 @@ function FeaturesContent() {
         // Trigger offline self-healing sync
         void triggerSelfHealing();
 
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        handleResize();
+        window.addEventListener("resize", handleResize);
+
         const params = new URLSearchParams(window.location.search);
         const toolFromUrl = params.get("tool") as typeof activeTool | null;
 
@@ -442,6 +578,8 @@ function FeaturesContent() {
                 setIsMounted(true);
             });
         }
+
+        return () => window.removeEventListener("resize", handleResize);
     }, []);
 
     useEffect(() => {
@@ -1705,7 +1843,7 @@ function FeaturesContent() {
                 throw new Error(pollData.error || "Failed while polling Happenstance research");
             }
             if (pollData.status === "RUNNING") {
-                setHrResearchMessage(pollData.message || "Still researching this person on Happenstance…");
+                setHrResearchMessage(pollData.message || "Still researching this person on Happenstanceâ€¦");
                 continue;
             }
             setHrResearchResult(pollData);
@@ -1735,7 +1873,7 @@ function FeaturesContent() {
         setHrResearchStatus("running");
         setHrResearchResult(null);
         setHrHappenstanceUrl(null);
-        setHrResearchMessage(`Looking up ${hrName} on Happenstance…`);
+        setHrResearchMessage(`Looking up ${hrName} on Happenstanceâ€¦`);
 
         try {
             const startRes = await fetch("/api/research-hr", {
@@ -1771,7 +1909,7 @@ function FeaturesContent() {
                 throw new Error("Happenstance did not return a research id");
             }
 
-            setHrResearchMessage(startData.message || "Happenstance research running…");
+            setHrResearchMessage(startData.message || "Happenstance research runningâ€¦");
             await pollHrResearch(startData.researchId, {
                 hrName,
                 company: details?.company,
@@ -2711,7 +2849,7 @@ function FeaturesContent() {
                                 onClick={() => setIsMockTestMode(false)}
                                 className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer font-sans"
                             >
-                                ← Exit Mock Results
+                                â† Exit Mock Results
                             </button>
                             <h3 className="text-lg font-bold text-white font-sans">
                                 Off-Campus Mock Test Results
@@ -2755,7 +2893,7 @@ function FeaturesContent() {
                                     : "border-transparent text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                📝 MCQ Solutions Review
+                                ðŸ“ MCQ Solutions Review
                             </button>
                             <button
                                 type="button"
@@ -2765,7 +2903,7 @@ function FeaturesContent() {
                                     : "border-transparent text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                💻 Coding Solutions Review
+                                ðŸ’» Coding Solutions Review
                             </button>
                         </div>
 
@@ -2858,7 +2996,7 @@ function FeaturesContent() {
                                         <div key={q.id} className="border border-white/5 bg-[#0d0d12]/30 rounded-xl p-6 space-y-4 font-sans">
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
                                                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                                                    💻 {q.title}
+                                                    ðŸ’» {q.title}
                                                     <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
                                                         {lang}
                                                     </span>
@@ -2893,10 +3031,10 @@ function FeaturesContent() {
                                                                     Status: {grading.status}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
-                                                                    ⏱ Time: {grading.timeComplexity}
+                                                                    â± Time: {grading.timeComplexity}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
-                                                                    💾 Space: {grading.spaceComplexity}
+                                                                    ðŸ’¾ Space: {grading.spaceComplexity}
                                                                 </span>
                                                             </div>
                                                             <div className="space-y-1">
@@ -2967,21 +3105,21 @@ function FeaturesContent() {
                     <div className="flex flex-wrap items-center gap-3 font-sans">
                         {mockProctorWarnings > 0 && (
                             <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
-                                ⚠️ Proctor: {mockProctorWarnings}/3
+                                âš ï¸ Proctor: {mockProctorWarnings}/3
                             </span>
                         )}
                         <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold border ${isTimerWarning
                             ? "bg-red-500/10 border-red-500/20 text-red-400 animate-pulse"
                             : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
                             }`}>
-                            ⏱ {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
+                            â± {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
                         </span>
                         <button
                             type="button"
                             onClick={triggerSubmitMockTestConfirmation}
                             className="px-4.5 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 border border-green-500/20 text-white font-extrabold text-[10px] rounded-lg tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.15)]"
                         >
-                            ✓ Submit Test
+                            âœ“ Submit Test
                         </button>
                     </div>
                 </div>
@@ -3000,7 +3138,7 @@ function FeaturesContent() {
                                     : "text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                📝 MCQs
+                                ðŸ“ MCQs
                             </button>
                             <button
                                 type="button"
@@ -3013,7 +3151,7 @@ function FeaturesContent() {
                                     : "text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                💻 Coding
+                                ðŸ’» Coding
                             </button>
                         </div>
 
@@ -3180,7 +3318,7 @@ function FeaturesContent() {
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        ← Previous
+                                        â† Previous
                                     </button>
 
                                     <button
@@ -3194,7 +3332,7 @@ function FeaturesContent() {
                                             : "bg-white/5 border-white/5 text-white/50 hover:text-white"
                                             }`}
                                     >
-                                        ⭐ {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
+                                        â­ {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
                                     </button>
 
                                     <button
@@ -3209,7 +3347,7 @@ function FeaturesContent() {
                                         }}
                                         className="px-4.5 py-2.5 bg-pink-650 hover:bg-pink-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)] flex items-center gap-1.5"
                                     >
-                                        {currentMockQuestionIndex < 24 ? "Next MCQ →" : "Proceed to Coding C1 →"}
+                                        {currentMockQuestionIndex < 24 ? "Next MCQ â†’" : "Proceed to Coding C1 â†’"}
                                     </button>
                                 </div>
                             </div>
@@ -3316,7 +3454,7 @@ function FeaturesContent() {
                                                         </>
                                                     ) : (
                                                         <>
-                                                            ⚙ Run AI Code Grade
+                                                            âš™ Run AI Code Grade
                                                         </>
                                                     )}
                                                 </button>
@@ -3342,10 +3480,10 @@ function FeaturesContent() {
                                                         Score: {out.score} / 10 Points
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                                                        ⏱ Time: {out.timeComplexity}
+                                                        â± Time: {out.timeComplexity}
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                                                        💾 Space: {out.spaceComplexity}
+                                                        ðŸ’¾ Space: {out.spaceComplexity}
                                                     </span>
                                                 </div>
                                                 <div className="space-y-1 leading-relaxed">
@@ -3371,7 +3509,7 @@ function FeaturesContent() {
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        ← Previous Coding
+                                        â† Previous Coding
                                     </button>
 
                                     <button
@@ -3385,7 +3523,7 @@ function FeaturesContent() {
                                         }}
                                         className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(79,70,229,0.15)] flex items-center gap-1.5"
                                     >
-                                        {currentMockQuestionIndex < 2 ? "Next Coding →" : "✓ Finish & Review Test"}
+                                        {currentMockQuestionIndex < 2 ? "Next Coding â†’" : "âœ“ Finish & Review Test"}
                                     </button>
                                 </div>
                             </div>
@@ -3395,155 +3533,186 @@ function FeaturesContent() {
             </div>
         );
     };
-
-    if (!isAuthChecked) return null;
+if (!isAuthChecked) return null;
 
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials" || activeModal === "synthetic_data") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
             {activeModal !== "study_materials" && activeModal !== "synthetic_data" && (activeModal !== "prointerviewer" || builderMobileView !== "preview") && (
                 <>
-                    <header className="px-4 sm:px-8 h-20 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
-                        <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
-                            <div className="flex items-center gap-3">
-                                <BrandLogo />
-                                {studyMaterialsProgress && (
-                                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 animate-pulse ml-2">
-                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                        <span className="text-[11px] font-bold">
-                                            Generating: "{studyMaterialsProgress.topicName}" ({studyMaterialsProgress.current}/{studyMaterialsProgress.total})
+                    {isMobile && (activeModal === null || activeModal === "progress") ? (
+                        <header className="px-4 h-16 flex flex-row items-center justify-between border-b border-white/5 backdrop-blur-md sticky top-0 z-50 bg-[#05050d]/80">
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl overflow-hidden flex items-center justify-center shrink-0 border border-indigo-500/30 bg-[#141c21] shadow-[0_0_10px_rgba(45,212,191,0.2)]">
+                                    <img src="/logo-icon-darkmode.png" alt="Icon" className="w-full h-full object-cover" />
+                                </div>
+                                <div className="flex flex-col text-left">
+                                    <div className="flex items-center text-[15px] font-black tracking-tight leading-tight">
+                                        <span className="text-white">Pro</span>
+                                        <span className="text-[#3b82f6] flex items-center">
+                                            Interview
+                                            <svg className="w-3 h-3 ml-0.5 text-[#3b82f6]" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 19.5l15-15m0 0H8.25m11.25 0v11.25"></path>
+                                            </svg>
                                         </span>
+                                    </div>
+                                    <span className="text-[8px] text-white/45 font-bold uppercase tracking-wider">AI-Powered Interview Coach</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={cycleTheme}
+                                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                                    title={`Current Theme: ${theme}. Click to switch.`}
+                                >
+                                    {theme === "dark" && <Moon className="w-4 h-4" />}
+                                    {theme === "light" && <Sun className="w-4 h-4" />}
+                                    {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                                </button>
+                                <NotificationBell theme="dark" />
+                                <button
+                                    onClick={() => setMobileMenuOpen(true)}
+                                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                                    title="Open menu"
+                                >
+                                    <Menu className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </header>
+                    ) : (
+                        <header className="px-4 sm:px-8 h-20 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
+                            <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
+                                <div className="flex items-center gap-3">
+                                    <BrandLogo />
+                                    {studyMaterialsProgress && (
+                                        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 animate-pulse ml-2">
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                            <span className="text-[11px] font-bold">
+                                                Generating: "{studyMaterialsProgress.topicName}" ({studyMaterialsProgress.current}/{studyMaterialsProgress.total})
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                                {activeModal === "prointerviewer" && isAtsWarningActive && (
+                                    <div
+                                        className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg lg:ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)] w-fit"
+                                        style={{
+                                            fontSize: '0.82rem',
+                                            fontWeight: 600,
+                                            color: isLight ? (theme === "eyeprotect" ? "#000000" : "#1e1b4b") : "#e0e7ff",
+                                            backgroundColor: isLight ? (theme === "eyeprotect" ? "rgba(245, 158, 11, 0.15)" : "rgba(79, 70, 229, 0.08)") : "rgba(99, 102, 241, 0.12)",
+                                            border: `1.5px solid ${isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "rgba(99, 102, 241, 0.3)"}`
+                                        }}
+                                    >
+                                        <AlertTriangle
+                                            size={14}
+                                            color={isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "#818cf8"}
+                                            style={{ flexShrink: 0 }}
+                                        />
+                                        <span>If you are a fresher or a college student, then select ATS templates.</span>
                                     </div>
                                 )}
                             </div>
-                            {activeModal === "prointerviewer" && isAtsWarningActive && (
-                                <div
-                                    className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg lg:ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)] w-fit"
-                                    style={{
-                                        fontSize: '0.82rem',
-                                        fontWeight: 600,
-                                        color: isLight ? (theme === "eyeprotect" ? "#000000" : "#1e1b4b") : "#e0e7ff",
-                                        backgroundColor: isLight ? (theme === "eyeprotect" ? "rgba(245, 158, 11, 0.15)" : "rgba(79, 70, 229, 0.08)") : "rgba(99, 102, 241, 0.12)",
-                                        border: `1.5px solid ${isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "rgba(99, 102, 241, 0.3)"}`
-                                    }}
-                                >
-                                    <AlertTriangle
-                                        size={14}
-                                        color={isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "#818cf8"}
-                                        style={{ flexShrink: 0 }}
-                                    />
-                                    <span>If you are a fresher or a college student, then select ATS templates.</span>
-                                </div>
-                            )}
-                        </div>
 
-                        {/* Desktop Navigation */}
-                        <nav className="hidden md:flex justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-white/70 items-center">
-                            {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
-                            {isLoggedIn && (
-                                <div className="flex items-center bg-white/5 border border-white/15 p-0.5 sm:p-1 rounded-full text-[10px] sm:text-xs font-semibold backdrop-blur-md" title="Switch between Practice Mode and Realistic AI Mode">
-                                    <button
-                                        onClick={() => {
-                                            if (isRealisticMode) toggleMode();
-                                        }}
-                                        className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full transition-all duration-200 ${!isRealisticMode
-                                            ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-[0_0_10px_rgba(249,115,22,0.25)] font-bold'
-                                            : 'text-white/60 hover:text-white/90'
-                                            }`}
-                                    >
-                                        <span className={`w-1.5 h-1.5 rounded-full ${!isRealisticMode ? 'bg-orange-400 animate-pulse' : 'bg-white/40'}`} />
-                                        Practice
-                                    </button>
-
-                                    <button
-                                        onClick={() => {
-                                            if (!isRealisticMode) toggleMode();
-                                        }}
-                                        className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full transition-all duration-200 ${isRealisticMode
-                                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)] font-bold'
-                                            : 'text-white/60 hover:text-white/90'
-                                            }`}
-                                    >
-                                        <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400 animate-pulse' : 'bg-white/40'}`} />
-                                        Realistic AI Mode
-                                    </button>
-                                </div>
-                            )}
-                            {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
-                            <Link href="/labs" className="hover:text-white transition-colors">
-                                Labs
-                            </Link>
-                            {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
-
-
-                            {/* Theme Toggle Button */}
-                            <button
-                                onClick={cycleTheme}
-                                className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
-                                title={`Current Theme: ${theme}. Click to switch.`}
-                            >
-                                {theme === "dark" && <Moon className="w-4 h-4" />}
-
-                                {theme === "light" && <Sun className="w-4 h-4" />}
-                                {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
-                            </button>
-
-
-                            {isLoggedIn ? (
-                                <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
-                                    <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
-                                    My Profile
-                                </Link>
-                            ) : isGuest ? (
-                                <div className="relative group shrink-0 ml-2">
-                                    <button className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 px-5 py-2 rounded-full transition-all font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)] cursor-pointer">
-                                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
-                                        Guest Mode
-                                    </button>
-                                    <div className="absolute right-0 mt-2 w-72 p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left">
-                                        <p className="text-xs font-bold text-white mb-1 flex items-center gap-1">
-                                            💡 Exploring as Guest
-                                        </p>
-                                        <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
-                                            You are in Guest Mode. To save your progress, use AI resume editing, unlock realistic mock interviews, and access cloud storage, please create an account.
-                                        </p>
-                                        <Link 
-                                            href="/login" 
-                                            className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
+                            <nav className="hidden md:flex justify-center gap-3 sm:gap-6 text-xs sm:text-sm font-medium text-white/70 items-center">
+                                {!isRealisticMode && <Link href="/" className="hover:text-white transition-colors">Home</Link>}
+                                {isLoggedIn && (
+                                    <div className="flex items-center bg-white/5 border border-white/15 p-0.5 sm:p-1 rounded-full text-[10px] sm:text-xs font-semibold backdrop-blur-md" title="Switch between Practice Mode and Realistic AI Mode">
+                                        <button
+                                            onClick={() => {
+                                                if (isRealisticMode) toggleMode();
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full transition-all duration-200 ${!isRealisticMode
+                                                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-[0_0_10px_rgba(249,115,22,0.25)] font-bold'
+                                                : 'text-white/60 hover:text-white/90'
+                                                }`}
                                         >
-                                            Sign In or Register
-                                        </Link>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${!isRealisticMode ? 'bg-orange-400 animate-pulse' : 'bg-white/40'}`} />
+                                            Practice
+                                        </button>
+
+                                        <button
+                                            onClick={() => {
+                                                if (!isRealisticMode) toggleMode();
+                                            }}
+                                            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full transition-all duration-200 ${isRealisticMode
+                                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)] font-bold'
+                                                : 'text-white/60 hover:text-white/90'
+                                                }`}
+                                        >
+                                            <span className={`w-1.5 h-1.5 rounded-full ${isRealisticMode ? 'bg-emerald-400 animate-pulse' : 'bg-white/40'}`} />
+                                            Realistic AI Mode
+                                        </button>
                                     </div>
-                                </div>
-                            ) : (
-                                <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
-                            )}
-                        </nav>
+                                )}
+                                {!isRealisticMode && <Link href="/features" className="text-white transition-colors border-b border-indigo-500 pb-1">Features</Link>}
+                                <Link href="/labs" className="hover:text-white transition-colors">
+                                    Labs
+                                </Link>
+                                {!isRealisticMode && <Link href="/#how-it-works" className="hover:text-white transition-colors">How it works</Link>}
 
-                        {/* Mobile Navigation Header Buttons */}
-                        <div className="flex md:hidden items-center gap-2">
-                            {/* Theme Toggle Button directly accessible on Mobile */}
-                            <button
-                                onClick={cycleTheme}
-                                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
-                                title={`Current Theme: ${theme}. Click to switch.`}
-                            >
-                                {theme === "dark" && <Moon className="w-3.5 h-3.5" />}
-                                {theme === "light" && <Sun className="w-3.5 h-3.5" />}
-                                {theme === "eyeprotect" && <Eye className="w-3.5 h-3.5 text-amber-400" />}
-                            </button>
+                                <button
+                                    onClick={cycleTheme}
+                                    className="p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                                    title={`Current Theme: ${theme}. Click to switch.`}
+                                >
+                                    {theme === "dark" && <Moon className="w-4 h-4" />}
+                                    {theme === "light" && <Sun className="w-4 h-4" />}
+                                    {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                                </button>
 
-                            {/* Hamburger Button */}
-                            <button
-                                onClick={() => setMobileMenuOpen(true)}
-                                className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0"
-                                title="Open menu"
-                            >
-                                <Menu className="w-5 h-5" />
-                            </button>
-                        </div>
-                    </header>
+                                {isLoggedIn ? (
+                                    <Link href="/profile" className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-5 flex-shrink-0 relative py-2 rounded-full transition-colors font-bold ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
+                                        <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
+                                        My Profile
+                                    </Link>
+                                ) : isGuest ? (
+                                    <div className="relative group shrink-0 ml-2">
+                                        <button className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 px-5 py-2 rounded-full transition-all font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)] cursor-pointer">
+                                            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                                            Guest Mode
+                                        </button>
+                                        <div className="absolute right-0 mt-2 w-72 p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 text-left">
+                                            <p className="text-xs font-bold text-white mb-1 flex items-center gap-1">
+                                                ðŸ’¡ Exploring as Guest
+                                            </p>
+                                            <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
+                                                You are in Guest Mode. To save your progress, use AI resume editing, unlock realistic mock interviews, and access cloud storage, please create an account.
+                                            </p>
+                                            <Link 
+                                                href="/login" 
+                                                className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
+                                            >
+                                                Sign In or Register
+                                            </Link>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <Link href="/login" className="bg-white/10 hover:bg-white/20 px-5 py-2 rounded-full text-white transition-colors font-bold ml-2">Log in</Link>
+                                )}
+                            </nav>
 
-                    {/* Mobile Menu Drawer Overlay */}
+                            <div className="flex md:hidden items-center gap-2">
+                                <button
+                                    onClick={cycleTheme}
+                                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                                    title={`Current Theme: ${theme}. Click to switch.`}
+                                >
+                                    {theme === "dark" && <Moon className="w-3.5 h-3.5" />}
+                                    {theme === "light" && <Sun className="w-3.5 h-3.5" />}
+                                    {theme === "eyeprotect" && <Eye className="w-3.5 h-3.5 text-amber-400" />}
+                                </button>
+
+                                <button
+                                    onClick={() => setMobileMenuOpen(true)}
+                                    className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0"
+                                    title="Open menu"
+                                >
+                                    <Menu className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </header>
+                    )}
                     {mobileMenuOpen && (
                         <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col md:hidden animate-in fade-in duration-200">
                             {/* Close header inside mobile overlay */}
@@ -3569,6 +3738,13 @@ function FeaturesContent() {
                                         Home
                                     </Link>
                                 )}
+                                <Link
+                                    href="/community"
+                                    onClick={() => setMobileMenuOpen(false)}
+                                    className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                                >
+                                    Community
+                                </Link>
                                 {isLoggedIn && (
                                     <div className="flex items-center bg-white/5 border border-white/15 p-1 rounded-full text-xs font-semibold backdrop-blur-md">
                                         <button
@@ -3599,15 +3775,6 @@ function FeaturesContent() {
                                             Realistic AI Mode
                                         </button>
                                     </div>
-                                )}
-                                {!isRealisticMode && (
-                                    <Link
-                                        href="/features"
-                                        onClick={() => setMobileMenuOpen(false)}
-                                        className="text-lg font-semibold text-indigo-400"
-                                    >
-                                        Features
-                                    </Link>
                                 )}
                                 {!isRealisticMode && (
                                     <Link
@@ -3696,9 +3863,9 @@ function FeaturesContent() {
                 </div>
             ) : (
 
-                <main className={`flex-1 flex flex-col items-center justify-center relative ${activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : activeModal ? "px-2 sm:px-4 py-4 w-full max-w-full" : "px-6 py-12 overflow-hidden"}`}>
-                    {activeModal === null && (
-                        <div className="w-full max-w-4xl mb-6">
+                <main className={`flex-1 flex flex-col items-center justify-center relative ${isMobile && (activeModal === null || activeModal === "progress") ? "px-4 pt-4 pb-24 w-full max-w-full" : activeModal === "negotiate" ? "px-1 sm:px-4 py-2 sm:py-6 w-full max-w-full overflow-x-hidden" : activeModal ? "px-2 sm:px-4 py-4 w-full max-w-full" : "px-6 py-12 overflow-hidden"}`}>
+                    {!isMobile && activeModal === null && (
+                                        <div className="w-full max-w-4xl mb-6">
                             <LabsBanner isLight={isLight} />
                         </div>
                     )}
@@ -3709,6 +3876,7 @@ function FeaturesContent() {
                         <FeatureToolsGrid
                             isLight={isLight}
                             isRealisticMode={isRealisticMode}
+                            theme={theme}
                             onSelectAnalysis={() => {
                                 setActiveModal("analysis");
                                 setActiveTool("analysis");
@@ -3958,7 +4126,7 @@ function FeaturesContent() {
 
                                                     {fetchLinksError && (
                                                         <div className="text-[10px] font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-lg px-2.5 py-1.5 font-sans leading-snug">
-                                                            ⚠️ {fetchLinksError}
+                                                            âš ï¸ {fetchLinksError}
                                                         </div>
                                                     )}
 
@@ -4121,10 +4289,10 @@ function FeaturesContent() {
                                                                             return <h5 key={i} className="text-xs font-black text-indigo-300 mt-3 mb-1 uppercase tracking-wider">{line.replace("### ", "")}</h5>;
                                                                         }
 
-                                                                        if (line.startsWith("- ") || line.startsWith("• ")) {
+                                                                        if (line.startsWith("- ") || line.startsWith("â€¢ ")) {
                                                                             return (
-                                                                                <p key={i} className="pl-3 before:content-['•'] before:text-indigo-400 before:mr-2 flex items-start text-[11px] leading-relaxed font-medium">
-                                                                                    <span>{cleaned.replace(/^[-•]\s*/, "")}</span>
+                                                                                <p key={i} className="pl-3 before:content-['â€¢'] before:text-indigo-400 before:mr-2 flex items-start text-[11px] leading-relaxed font-medium">
+                                                                                    <span>{cleaned.replace(/^[-â€¢]\s*/, "")}</span>
                                                                                 </p>
                                                                             );
                                                                         }
@@ -4464,7 +4632,7 @@ function FeaturesContent() {
                                                             <div className="flex items-center gap-3 text-[10px] text-white/25 pt-0.5">
                                                                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full border border-white/20" /> Empty</span>
                                                                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500 border border-purple-400" /> Filled</span>
-                                                                <span className="ml-auto">1=Basic · 5=Native</span>
+                                                                <span className="ml-auto">1=Basic Â· 5=Native</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -4799,9 +4967,9 @@ function FeaturesContent() {
                                                                 </h1>
                                                                 <div className={`flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] mt-1 text-neutral-500 justify-start ${selectedTemplateId === "classic" ? "justify-center" : ""}`}>
                                                                     {resEmail && <span>Email: {resEmail}</span>}
-                                                                    {resPhone && <span>• Phone: {resPhone}</span>}
-                                                                    {github && <span>• GitHub: {github.replace('https://', '')}</span>}
-                                                                    {linkedin && <span>• LinkedIn: {linkedin.replace('https://', '')}</span>}
+                                                                    {resPhone && <span>â€¢ Phone: {resPhone}</span>}
+                                                                    {github && <span>â€¢ GitHub: {github.replace('https://', '')}</span>}
+                                                                    {linkedin && <span>â€¢ LinkedIn: {linkedin.replace('https://', '')}</span>}
                                                                 </div>
                                                             </div>
 
@@ -4962,7 +5130,7 @@ function FeaturesContent() {
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-bold text-white">AI Email Analyser</h3>
-                                                <p className="text-xs text-white/50">Paste or import an interview email — extract details, research the HR contact on Happenstance, and prep for their likely questions &amp; tone</p>
+                                                <p className="text-xs text-white/50">Paste or import an interview email â€” extract details, research the HR contact on Happenstance, and prep for their likely questions &amp; tone</p>
                                             </div>
                                         </div>
 
@@ -5128,11 +5296,11 @@ function FeaturesContent() {
                                                             ).map((line: string, i: number) => {
                                                                 const cleaned = line.replace(/^\*\*/g, "").replace(/\*\*/g, "").trim();
                                                                 if (!cleaned) return <div key={i} className="h-1" />;
-                                                                if (line.startsWith("- ") || line.startsWith("• ")) {
+                                                                if (line.startsWith("- ") || line.startsWith("â€¢ ")) {
                                                                     return (
-                                                                        <p key={i} className={`pl-4 before:content-['•'] before:mr-2 flex items-start ${isLight ? "before:text-teal-600 text-slate-700 font-medium" : "before:text-teal-400 text-white/70"
+                                                                        <p key={i} className={`pl-4 before:content-['â€¢'] before:mr-2 flex items-start ${isLight ? "before:text-teal-600 text-slate-700 font-medium" : "before:text-teal-400 text-white/70"
                                                                             }`}>
-                                                                            <span>{cleaned.replace(/^[-•]\s*/, "")}</span>
+                                                                            <span>{cleaned.replace(/^[-â€¢]\s*/, "")}</span>
                                                                         </p>
                                                                     );
                                                                 }
@@ -5487,7 +5655,7 @@ function FeaturesContent() {
                                                                     {hrResearchStatus === "running" && (
                                                                         <div className={`flex items-center gap-2 text-xs ${isLight ? "text-slate-600" : "text-white/70"}`}>
                                                                             <Loader2 className="w-4 h-4 animate-spin text-teal-500" />
-                                                                            Pulling public profile, writings, and career signals…
+                                                                            Pulling public profile, writings, and career signalsâ€¦
                                                                         </div>
                                                                     )}
 
@@ -5512,11 +5680,11 @@ function FeaturesContent() {
                                                                                 <p className={`text-[11px] font-sans italic ${isLight ? "text-slate-600" : "text-white/60"}`}>
                                                                                     {hrResearchResult.profile.fullName || hrResearchResult.intel.interviewerName}
                                                                                     {hrResearchResult.profile.currentRoles?.[0]
-                                                                                        ? ` · ${hrResearchResult.profile.currentRoles[0].title || ""} @ ${hrResearchResult.profile.currentRoles[0].company || ""}`
+                                                                                        ? ` Â· ${hrResearchResult.profile.currentRoles[0].title || ""} @ ${hrResearchResult.profile.currentRoles[0].company || ""}`
                                                                                         : hrResearchResult.intel.titleGuess
-                                                                                            ? ` · ${hrResearchResult.intel.titleGuess}`
+                                                                                            ? ` Â· ${hrResearchResult.intel.titleGuess}`
                                                                                             : ""}
-                                                                                    {" — "}
+                                                                                    {" â€” "}
                                                                                     {hrResearchResult.profile.tagline}
                                                                                 </p>
                                                                             )}
@@ -5571,7 +5739,7 @@ function FeaturesContent() {
                                                                                                         <p className={`font-semibold font-sans ${isLight ? "text-slate-800" : "text-white"}`}>{q.question}</p>
                                                                                                         <p className={`mt-0.5 font-sans ${isLight ? "text-slate-500" : "text-white/45"}`}>
                                                                                                             <span className="font-bold uppercase tracking-wide text-[9px]">{q.category}</span>
-                                                                                                            {q.why ? ` · ${q.why}` : ""}
+                                                                                                            {q.why ? ` Â· ${q.why}` : ""}
                                                                                                         </p>
                                                                                                     </div>
                                                                                                 </div>
@@ -5617,14 +5785,14 @@ function FeaturesContent() {
                                                                                 <div className={`rounded-lg px-2.5 py-2 border text-[11px] ${isLight ? "bg-amber-50 border-amber-200 text-amber-900" : "bg-amber-500/10 border-amber-500/20 text-amber-100"
                                                                                     }`}>
                                                                                     <span className="font-bold">Watch outs: </span>
-                                                                                    {hrResearchResult.intel.watchOuts.join(" · ")}
+                                                                                    {hrResearchResult.intel.watchOuts.join(" Â· ")}
                                                                                 </div>
                                                                             )}
 
                                                                             <p className={`text-[10px] font-sans ${isLight ? "text-slate-400" : "text-white/35"}`}>
                                                                                 Confidence {Math.round(hrResearchResult.intel.confidence || 0)}%
-                                                                                {hrResearchResult.intel.source === "gemini_fallback" ? " · Happenstance profile unavailable (fallback guidance)" : " · grounded in Happenstance research"}
-                                                                                {hrResearchResult.intel.disclaimer ? ` · ${hrResearchResult.intel.disclaimer}` : ""}
+                                                                                {hrResearchResult.intel.source === "gemini_fallback" ? " Â· Happenstance profile unavailable (fallback guidance)" : " Â· grounded in Happenstance research"}
+                                                                                {hrResearchResult.intel.disclaimer ? ` Â· ${hrResearchResult.intel.disclaimer}` : ""}
                                                                             </p>
 
                                                                             <button
@@ -6468,11 +6636,11 @@ function FeaturesContent() {
                                                     <div className="flex items-center gap-3">
                                                         {proctorWarnings > 0 && (
                                                             <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
-                                                                ⚠️ Warning: {proctorWarnings}/3
+                                                                âš ï¸ Warning: {proctorWarnings}/3
                                                             </span>
                                                         )}
                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-extrabold bg-pink-500/15 border border-pink-500/20 text-pink-400">
-                                                            ⏱ {quizTimeRemaining}s
+                                                            â± {quizTimeRemaining}s
                                                         </span>
                                                     </div>
                                                 </div>
@@ -6574,7 +6742,7 @@ function FeaturesContent() {
                                                                 }}
                                                                 className="px-6 py-2.5 bg-pink-650 hover:bg-pink-500 disabled:bg-white/5 disabled:text-white/20 disabled:border-transparent text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)]"
                                                             >
-                                                                {currentQuizQuestionIndex + 1 < quizQuestionsList.length ? "Submit Answer →" : "✓ Finish Quiz"}
+                                                                {currentQuizQuestionIndex + 1 < quizQuestionsList.length ? "Submit Answer â†’" : "âœ“ Finish Quiz"}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -6593,7 +6761,7 @@ function FeaturesContent() {
                                                             onClick={() => setAptitudePath(null)}
                                                             className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
                                                         >
-                                                            ← Change Path
+                                                            â† Change Path
                                                         </button>
                                                     )}
                                                     <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -6641,7 +6809,7 @@ function FeaturesContent() {
                                                                         }`}>
                                                                         {data.label} Path
                                                                     </h4>
-                                                                    <p className={`text-[11px] font-bold ${isLight ? "text-slate-500" : "text-white/40"} uppercase tracking-wider`}>{data.difficulty} • {data.duration}</p>
+                                                                    <p className={`text-[11px] font-bold ${isLight ? "text-slate-500" : "text-white/40"} uppercase tracking-wider`}>{data.difficulty} â€¢ {data.duration}</p>
                                                                     <p className={`text-xs ${isLight ? "text-slate-700" : "text-white/55"} leading-relaxed font-semibold`}>{data.evaluation.whatTheyJudge}</p>
                                                                 </div>
                                                             </div>
@@ -6656,7 +6824,7 @@ function FeaturesContent() {
                                                             <div className="space-y-2 text-left z-10">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="px-2.5 py-1 rounded bg-pink-500/10 border border-pink-500/20 text-pink-400 text-[9px] font-black uppercase tracking-wider">PLACEMENT READY</span>
-                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">⏱ 60 MINUTES TEST</span>
+                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">â± 60 MINUTES TEST</span>
                                                                 </div>
                                                                 <h4 className="text-base font-extrabold text-white">On-Campus Placement Mock Assessment Simulator</h4>
                                                                 <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
@@ -6675,7 +6843,7 @@ function FeaturesContent() {
                                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
                                                                     </span>
                                                                 ) : (
-                                                                    "⚡ Launch Mock Test"
+                                                                    "âš¡ Launch Mock Test"
                                                                 )}
                                                             </button>
                                                             <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-pink-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -6688,7 +6856,7 @@ function FeaturesContent() {
                                                             <div className="space-y-2 text-left z-10">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="px-2.5 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-wider">OFF-CAMPUS CHALLENGE</span>
-                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">⏱ 60 MINUTES TEST</span>
+                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">â± 60 MINUTES TEST</span>
                                                                 </div>
                                                                 <h4 className="text-base font-extrabold text-white">Off-Campus Placement Mock Assessment Simulator</h4>
                                                                 <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
@@ -6707,7 +6875,7 @@ function FeaturesContent() {
                                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
                                                                     </span>
                                                                 ) : (
-                                                                    "⚡ Launch Mock Test"
+                                                                    "âš¡ Launch Mock Test"
                                                                 )}
                                                             </button>
                                                             <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -6801,7 +6969,7 @@ function FeaturesContent() {
                                                                     {(selectedPathData as any)?.finalStage && (
                                                                         <div className="flex gap-3 text-left">
                                                                             <div className="w-5 h-5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 font-extrabold text-[11px] flex items-center justify-center shrink-0 mt-0.5">
-                                                                                ★
+                                                                                â˜…
                                                                             </div>
                                                                             <p className={`text-xs font-semibold leading-relaxed ${isLight ? "text-slate-750" : "text-white/80"}`}>
                                                                                 <span className="text-indigo-400 font-extrabold font-sans">Final Stage: </span>{(selectedPathData as any).finalStage}
@@ -7111,6 +7279,108 @@ function FeaturesContent() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            {/* Sticky Bottom Navigation Bar for Mobile */}
+            {isMobile && (activeModal === null || activeModal === "progress") && (
+                <div 
+                    className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg pb-safe-bottom transition-all duration-300 border-t"
+                    style={{
+                        backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.95)" : theme === "eyeprotect" ? "rgba(244, 234, 225, 0.95)" : "rgba(6, 6, 12, 0.9)",
+                        borderColor: theme === "light" ? "rgba(15, 23, 42, 0.08)" : theme === "eyeprotect" ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.1)"
+                    }}
+                >
+                    <div className="max-w-md mx-auto flex items-center justify-around h-16 px-4">
+                        <button 
+                            onClick={() => {
+                                router.push("/");
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                                theme === "light" 
+                                ? "text-slate-400 hover:text-slate-600" 
+                                : theme === "eyeprotect" 
+                                ? "text-stone-400 hover:text-stone-600" 
+                                : "text-white/40 hover:text-white/60"}`}
+                        >
+                            <Home className="w-5 h-5" />
+                            <span className="text-[10px]">Home</span>
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                if (!isRealisticMode) setActiveModal(null);
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${isRealisticMode
+                                ? theme === "light"
+                                ? "text-slate-200 cursor-not-allowed"
+                                : theme === "eyeprotect"
+                                ? "text-stone-200 cursor-not-allowed"
+                                : "text-white/15 cursor-not-allowed"
+                                : `cursor-pointer ${activeModal === null 
+                                    ? "text-[#a855f7] font-extrabold" 
+                                    : theme === "light" 
+                                    ? "text-slate-400 hover:text-slate-600" 
+                                    : theme === "eyeprotect" 
+                                    ? "text-stone-400 hover:text-stone-600" 
+                                    : "text-white/40 hover:text-white/60"}`}`}
+                            disabled={isRealisticMode}
+                        >
+                            <Compass className="w-5 h-5" />
+                            <span className="text-[10px]">Practice</span>
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                if (!isRealisticMode) router.push("/labs");
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${isRealisticMode
+                                ? theme === "light"
+                                ? "text-slate-200 cursor-not-allowed"
+                                : theme === "eyeprotect"
+                                ? "text-stone-200 cursor-not-allowed"
+                                : "text-white/15 cursor-not-allowed"
+                                : theme === "light"
+                                ? "text-slate-400 hover:text-slate-600 cursor-pointer"
+                                : theme === "eyeprotect"
+                                ? "text-stone-400 hover:text-stone-600 cursor-pointer"
+                                : "text-white/40 hover:text-white/60 cursor-pointer"}`}
+                            disabled={isRealisticMode}
+                        >
+                            <FlaskConical className="w-5 h-5" />
+                            <span className="text-[10px]">Labs</span>
+                        </button>
+
+                        <button 
+                            onClick={() => {
+                                setActiveModal("progress");
+                                setActiveTool("progress");
+                            }}
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeModal === "progress" 
+                                ? "text-[#a855f7] font-extrabold" 
+                                : theme === "light" 
+                                ? "text-slate-400 hover:text-slate-600" 
+                                : theme === "eyeprotect" 
+                                ? "text-stone-400 hover:text-stone-600" 
+                                : "text-white/40 hover:text-white/60"}`}
+                        >
+                            <TrendingUp className="w-5 h-5" />
+                            <span className="text-[10px]">Reports</span>
+                        </button>
+
+                        <Link 
+                            href="/profile"
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${
+                                theme === "light" 
+                                ? "text-slate-400 hover:text-slate-600" 
+                                : theme === "eyeprotect" 
+                                ? "text-stone-400 hover:text-stone-600" 
+                                : "text-white/40 hover:text-white/60"}`}
+                        >
+                            <User className="w-5 h-5" />
+                            <span className="text-[10px]">Profile</span>
+                        </Link>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
