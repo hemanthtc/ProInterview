@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
+import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
 import { checkAndIncrementUsage } from "@/utils/usageMeter";
@@ -62,7 +63,9 @@ Return JSON:
   "improvedStory": "...",
   "retakePrompt": "...",
   "tips": ["..."]
-}`;
+}
+
+${ANTI_LEAK_SUFFIX}`;
 
         const raw = await cachedGenerate(
             promptCacheKey("star", mode, company, role, question, weakSpot, story),

@@ -9,6 +9,7 @@ import {
 } from "@/utils/interviewHelper";
 import { getSarvamKey, sarvamChatCompletion } from "@/utils/sarvam";
 import { getVerifiedSession } from "@/utils/auth";
+import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -104,7 +105,9 @@ PRACTICAL QUESTION RULES:
 - If you decide to end the interview, prepend "[TERMINATE] " to your final response.
 - If the conversation history is NOT empty and the candidate says "I am back," do NOT re-welcome them. Just jump straight into the next question.
 
-${profileSection}`;
+${profileSection}
+
+${ANTI_LEAK_SUFFIX}`;
 
         if (useSarvam && getSarvamKey()) {
             const hist = (history as { role: string; content: string }[]).map((h) => ({

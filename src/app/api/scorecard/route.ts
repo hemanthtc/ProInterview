@@ -155,6 +155,19 @@ export async function GET(req: NextRequest) {
             scorecardData = doc;
         }
 
+        // Validate expiration (30 days limit)
+        if (scorecardData.createdAt) {
+            const created = new Date(scorecardData.createdAt).getTime();
+            const ageMs = Date.now() - created;
+            const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+            if (ageMs > THIRTY_DAYS_MS) {
+                return NextResponse.json(
+                    { error: "This scorecard has expired. Shareable links are valid for 30 days only." },
+                    { status: 410 }
+                );
+            }
+        }
+
         return NextResponse.json({
             shareId: scorecardData.shareId,
             candidateName: scorecardData.candidateName,

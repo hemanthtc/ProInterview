@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemini";
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
+import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
 
 const PANELISTS = [
     { id: "tech_lead", name: "Alex Chen", role: "Tech Lead", style: "Deep technical architecture, code quality, edge cases, data structures, and framework internals" },
@@ -228,7 +229,9 @@ Return JSON:
   "reply": "<your dynamic persona-driven question>",
   "passTo": "${nextPanelist.id}",
   "terminate": false
-}`;
+}
+
+${ANTI_LEAK_SUFFIX}`;
 
         const raw = await cachedGenerate(
             promptCacheKey("panel_gen", panelist.id, company, role, level, String(assistantTurns), transcript.slice(-300), message),

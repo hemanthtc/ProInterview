@@ -173,6 +173,16 @@ export async function POST(req: NextRequest) {
             );
         }
 
+        // Reject dangerous executable extensions
+        const DANGEROUS_EXTENSIONS = /\.(exe|bat|sh|cmd|ps1|dll|msi|com|scr|pif|vbs|wsf)$/i;
+        const dangerousFile = files.find((f) => DANGEROUS_EXTENSIONS.test(f.name));
+        if (dangerousFile) {
+            return NextResponse.json(
+                { error: `File type not allowed: "${dangerousFile.name}". Executable files are blocked for security.` },
+                { status: 400 }
+            );
+        }
+
         const oversized = files.find((f) => f.size > MAX_FILE_SIZE_BYTES);
         if (oversized) {
             return NextResponse.json(

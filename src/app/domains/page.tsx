@@ -57,8 +57,8 @@ export default function DomainsPage() {
                             {theme === "light" && <><Sun className="w-3.5 h-3.5 text-amber-500" /> <span className="hidden sm:inline">Light</span></>}
                             {theme === "eyeprotect" && <><Eye className="w-3.5 h-3.5 text-teal-600" /> <span className="hidden sm:inline">Eye Comfort</span></>}
                         </button>
-                        <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
-                            Prep dashboard
+                        <Link href="/" className="text-xs font-bold text-indigo-400 hover:underline">
+                            Home dashboard
                         </Link>
                         <Link
                             href="/labs"

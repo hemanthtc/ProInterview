@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import ErrorBoundary from "../components/ErrorBoundary";
 import PwaRegister from "../components/PwaRegister";
 import RateLimitToaster from "../components/RateLimitToaster";
@@ -50,6 +51,7 @@ export default function RootLayout({
         <html lang="en" suppressHydrationWarning>
             <head>
                 <script
+                    id="theme-initializer"
                     dangerouslySetInnerHTML={{
                         __html: `
                              try {
@@ -71,7 +73,7 @@ export default function RootLayout({
                     }}
                 />
             </head>
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`} suppressHydrationWarning>
+            <body className={`${geistSans.variable} ${geistMono.variable} antialiased w-full max-w-full overflow-x-hidden`} suppressHydrationWarning>
                 <ErrorBoundary fallbackTitle="ProInterview hit an unexpected error">
                     {children}
                 </ErrorBoundary>

@@ -449,12 +449,83 @@
       box-shadow: 0 8px 32px rgba(67, 52, 34, 0.08) !important;
     }
 
-    /* Shift top bar to prevent close cross overlap with logo */
-    html.theme-light .top-bar {
-      padding-left: 100px !important;
+    /* Top bar layout normalization & search icon overlap prevention */
+    .top-bar {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: space-between !important;
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+      gap: 8px !important;
+      overflow: visible !important;
     }
+
+    html.theme-light .top-bar,
     html.theme-eyeprotect .top-bar {
-      padding-left: 100px !important;
+      padding-left: 12px !important;
+      padding-right: 12px !important;
+    }
+
+    .brand-section {
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      flex-shrink: 0 !important;
+    }
+
+    .brand-name {
+      white-space: nowrap !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      font-weight: 900 !important;
+    }
+
+    .right-actions-container {
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      margin-left: auto !important;
+      flex-shrink: 0 !important;
+    }
+
+    .global-search-container {
+      position: relative !important;
+      width: 170px !important;
+      max-width: 220px !important;
+      flex-shrink: 1 !important;
+    }
+
+    @media (max-width: 640px) {
+      .global-search-container {
+        width: 120px !important;
+      }
+    }
+
+    .global-search-input-wrapper {
+      position: relative !important;
+      display: flex !important;
+      align-items: center !important;
+      width: 100% !important;
+    }
+
+    .global-search-icon {
+      position: absolute !important;
+      left: 10px !important;
+      top: 50% !important;
+      transform: translateY(-50%) !important;
+      width: 14px !important;
+      height: 14px !important;
+      pointer-events: none !important;
+      z-index: 2 !important;
+    }
+
+    #global-search-input {
+      width: 100% !important;
+      padding-left: 30px !important;
+      padding-right: 20px !important;
+      height: 34px !important;
+      border-radius: 9999px !important;
+      font-size: 0.75rem !important;
     }
 
     /* Catalog Sidebar styling */
@@ -1032,31 +1103,35 @@
       }
       .global-search-container {
         display: block !important;
-        position: absolute !important;
-        right: 164px !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        width: 36px !important;
-        height: 36px !important;
-        border-radius: 18px !important;
+        position: relative !important;
+        right: auto !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+        width: 34px !important;
+        height: 34px !important;
+        border-radius: 17px !important;
         overflow: hidden !important;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         background: transparent !important;
         border: none !important;
         z-index: 60 !important;
+        flex-shrink: 0 !important;
       }
-      .global-search-container.expanded {
-        width: calc(100% - 176px) !important;
-        right: 164px !important;
+      .global-search-container.expanded,
+      .global-search-container:focus-within {
+        width: 150px !important;
         background: #0a0e17 !important;
         border: 1px solid var(--panel-border) !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35) !important;
-        border-radius: 20px !important;
+        border-radius: 17px !important;
       }
-      html.theme-light .global-search-container.expanded {
+      html.theme-light .global-search-container.expanded,
+      html.theme-light .global-search-container:focus-within {
         background: #ffffff !important;
       }
-      html.theme-eyeprotect .global-search-container.expanded {
+      html.theme-eyeprotect .global-search-container.expanded,
+      html.theme-eyeprotect .global-search-container:focus-within {
         background: #f4f3ee !important;
       }
       html.theme-light #global-search-input::placeholder {
@@ -1070,11 +1145,12 @@
         width: 0 !important;
         pointer-events: none !important;
         transition: opacity 0.2s, width 0.3s !important;
-        padding: 8px 12px 8px 34px !important;
+        padding: 6px 10px 6px 28px !important;
         background: transparent !important;
         border: none !important;
       }
-      .global-search-container.expanded #global-search-input {
+      .global-search-container.expanded #global-search-input,
+      .global-search-container:focus-within #global-search-input {
         opacity: 1 !important;
         width: 100% !important;
         pointer-events: auto !important;
@@ -1082,11 +1158,11 @@
       .global-search-icon {
         cursor: pointer !important;
         pointer-events: auto !important;
-        left: 9px !important;
+        left: 8px !important;
         top: 50% !important;
         transform: translateY(-50%) !important;
-        width: 18px !important;
-        height: 18px !important;
+        width: 16px !important;
+        height: 16px !important;
       }
       .global-search-results {
         width: 100% !important;
@@ -1592,13 +1668,6 @@
           <svg id="theme-btn-icon" class="theme-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></svg>
         </button>
 
-        <!-- Refresh Button -->
-        <button id="main-refresh-btn" class="theme-btn-hud" title="Refresh Study Lab" onclick="window.location.reload();">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M23 4v6h-6"></path>
-            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-          </svg>
-        </button>
 
         <!-- Back to Features Button -->
         <button id="back-to-features-btn" class="back-to-features-btn" title="Back to features selection page">

@@ -634,8 +634,8 @@ export default function AtsMatchPage() {
                                     Ready — start a mock interview →
                                 </Link>
                             )}
-                            <Link href="/prep" className="text-indigo-300 underline">
-                                Prep dashboard →
+                            <Link href="/" className="text-indigo-300 underline">
+                                Home dashboard →
                             </Link>
                             {(result.keywordGaps || []).length > 0 && (
                                 <Link

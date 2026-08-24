@@ -2,6 +2,7 @@ import {
     S3Client,
     PutObjectCommand,
     DeleteObjectCommand,
+    DeleteObjectsCommand,
     HeadBucketCommand,
     GetObjectCommand,
     CopyObjectCommand,
@@ -198,7 +199,17 @@ export function getLegacyS3ResumesKey(identifier: string): string {
 
 export function getS3SessionsKey(identifier: string): string {
     const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `interview_history_and_performance_records/${safeUser}/session_data.json`;
+}
+
+export function getLegacyS3SessionsKey(identifier: string): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
     return `sessions/${safeUser}/session_data.json`;
+}
+
+export function getS3FilmRoomKey(identifier: string, timestamp: number): string {
+    const safeUser = identifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
+    return `interview_history_and_performance_records/${safeUser}/film_room_${timestamp}.json`;
 }
 
 export function getS3PrepPacksKey(identifier: string): string {
@@ -237,5 +248,34 @@ export async function createPresignedDownloadUrl(key: string, expiresInSec = 48 
         Key: key,
     });
     return getSignedUrl(getS3Client(), command, { expiresIn: expiresInSec });
+}
+
+export async function listS3ObjectsWithDetails(prefix: string): Promise<{ key: string; lastModified?: Date; size?: number }[]> {
+    const bucket = getS3Bucket();
+    const command = new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+    });
+    const response = await getS3Client().send(command);
+    return (response.Contents || [])
+        .map(obj => ({
+            key: obj.Key || "",
+            lastModified: obj.LastModified,
+            size: obj.Size,
+        }))
+        .filter(obj => !!obj.key);
+}
+
+export async function deleteS3ObjectsBulk(keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    const bucket = getS3Bucket();
+    const command = new DeleteObjectsCommand({
+        Bucket: bucket,
+        Delete: {
+            Objects: keys.map(k => ({ Key: k })),
+            Quiet: true,
+        },
+    });
+    await getS3Client().send(command);
 }
 

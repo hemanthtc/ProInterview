@@ -398,8 +398,8 @@ function StarCoachInner() {
                             </p>
                         </div>
                         <div className="flex items-center gap-3">
-                            <Link href="/prep" className="text-xs font-bold text-indigo-400 hover:underline">
-                                Prep dashboard →
+                            <Link href="/" className="text-xs font-bold text-indigo-400 hover:underline">
+                                Home dashboard →
                             </Link>
                         </div>
                     </div>

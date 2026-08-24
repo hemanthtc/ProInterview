@@ -1,531 +1,404 @@
 "use client";
 
+import Link from "next/link";
 import {
-    BookOpen,
-    CalendarClock,
-    Code,
-    Database,
-    Dumbbell,
-    Handshake,
-    ListTodo,
-    Mail,
-    Map,
+    Briefcase,
+    Code2,
+    FileSearch,
+    PenTool,
+    Target,
+    Users,
+    Video,
     Play,
     Sparkles,
-    TrendingUp,
+    FileText,
     ArrowRight,
 } from "lucide-react";
+
+type Badge = "New" | "Beta" | "Sign-in" | "Public";
 
 interface FeatureToolsGridProps {
     isLight: boolean;
     isRealisticMode: boolean;
     theme?: "dark" | "light" | "eyeprotect";
+    hiddenTools?: string[];
     onSelectAnalysis: () => void;
     onStartInterview: () => void;
-    onSelectAptitude: () => void;
-    onSelectEmailAnalyser: () => void;
-    onSelectPrepPack: () => void;
-    onSelectDrills: () => void;
-    onSelectNegotiate: () => void;
-    onSelectRoadmap: () => void;
     onSelectProInterviewer: () => void;
-    onSelectStudyMaterials: () => void;
-    onSelectSyntheticData: () => void;
-    onSelectProgress: () => void;
+    onSelectAptitude?: () => void;
+    onSelectEmailAnalyser?: () => void;
+    onSelectPrepPack?: () => void;
+    onSelectDrills?: () => void;
+    onSelectNegotiate?: () => void;
+    onSelectRoadmap?: () => void;
+    onSelectStudyMaterials?: () => void;
+    onSelectSyntheticData?: () => void;
+    onSelectProgress?: () => void;
 }
 
-const cardThemes: Record<string, {
-    eyeprotect: string;
-    light: string;
-    dark: string;
+interface ToolItem {
+    id: string;
+    href?: string;
+    onClick?: () => void;
+    title: string;
+    desc: string;
+    icon: any;
+    color: string;
+    badges: Badge[];
+}
+
+interface Category {
+    id: string;
+    label: string;
+    description: string;
+    icon: any;
+    color: string;
+    items: ToolItem[];
+}
+
+const colorThemes: Record<string, {
+    bgLight: string;
+    bgDark: string;
+    textLight: string;
+    textDark: string;
 }> = {
     indigo: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-indigo-600 max-md:border-indigo-600 bg-[#fffcf5] md:hover:bg-indigo-50 max-md:bg-indigo-50 shadow-sm",
-        light: "border-indigo-500/45 md:hover:border-indigo-600 max-md:border-indigo-600 bg-white md:hover:bg-indigo-50 max-md:bg-indigo-50 shadow-[0_0_30px_rgba(79,70,229,0.05)] md:hover:shadow-[0_0_40px_rgba(79,70,229,0.15)] max-md:shadow-[0_0_40px_rgba(79,70,229,0.15)]",
-        dark: "border-indigo-500/20 md:hover:border-indigo-500/50 max-md:border-indigo-500/50 bg-[#0d0d12]/60 md:hover:bg-[#12121a]/80 max-md:bg-[#12121a]/80 shadow-[0_0_30px_rgba(79,70,229,0.05)] md:hover:shadow-[0_0_40px_rgba(79,70,229,0.15)] max-md:shadow-[0_0_40px_rgba(79,70,229,0.15)]"
+        bgLight: "bg-indigo-50 border border-indigo-100",
+        bgDark: "bg-indigo-500/10 border border-indigo-500/20",
+        textLight: "text-indigo-600",
+        textDark: "text-indigo-400"
     },
-    sky: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-sky-600 max-md:border-sky-600 bg-[#fffcf5] md:hover:bg-sky-50 max-md:bg-sky-50 shadow-sm",
-        light: "border-sky-500/45 md:hover:border-sky-600 max-md:border-sky-600 bg-white md:hover:bg-sky-50 max-md:bg-sky-50 shadow-[0_0_30px_rgba(14,165,233,0.05)] md:hover:shadow-[0_0_40px_rgba(14,165,233,0.15)] max-md:shadow-[0_0_40px_rgba(14,165,233,0.15)]",
-        dark: "border-sky-500/20 md:hover:border-sky-500/50 max-md:border-sky-500/50 bg-[#0d0d12]/60 md:hover:bg-[#12151a]/80 max-md:bg-[#12151a]/80 shadow-[0_0_30px_rgba(14,165,233,0.05)] md:hover:shadow-[0_0_40px_rgba(14,165,233,0.15)] max-md:shadow-[0_0_40px_rgba(14,165,233,0.15)]"
-    },
-    pink: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-pink-600 max-md:border-pink-600 bg-[#fffcf5] md:hover:bg-pink-50 max-md:bg-pink-50 shadow-sm",
-        light: "border-pink-500/45 md:hover:border-pink-600 max-md:border-pink-600 bg-white md:hover:bg-pink-50 max-md:bg-pink-50 shadow-[0_0_30px_rgba(236,72,153,0.05)] md:hover:shadow-[0_0_40px_rgba(236,72,153,0.15)] max-md:shadow-[0_0_40px_rgba(236,72,153,0.15)]",
-        dark: "border-pink-500/20 md:hover:border-pink-500/50 max-md:border-pink-500/50 bg-[#0d0d12]/60 md:hover:bg-[#1a1215]/80 max-md:bg-[#1a1215]/80 shadow-[0_0_30px_rgba(236,72,153,0.05)] md:hover:shadow-[0_0_40px_rgba(236,72,153,0.15)] max-md:shadow-[0_0_40px_rgba(236,72,153,0.15)]"
-    },
-    teal: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-teal-600 max-md:border-teal-600 bg-[#fffcf5] md:hover:bg-teal-50 max-md:bg-teal-50 shadow-sm",
-        light: "border-teal-500/45 md:hover:border-teal-600 max-md:border-teal-600 bg-white md:hover:bg-teal-50 max-md:bg-teal-50 shadow-[0_0_30px_rgba(15,118,110,0.05)] md:hover:shadow-[0_0_40px_rgba(15,118,110,0.15)] max-md:shadow-[0_0_40px_rgba(15,118,110,0.15)]",
-        dark: "border-teal-500/20 md:hover:border-teal-500/50 max-md:border-teal-500/50 bg-[#0d0d12]/60 md:hover:bg-[#121a18]/80 max-md:bg-[#121a18]/80 shadow-[0_0_30px_rgba(15,118,110,0.05)] md:hover:shadow-[0_0_40px_rgba(15,118,110,0.15)] max-md:shadow-[0_0_40px_rgba(15,118,110,0.15)]"
+    violet: {
+        bgLight: "bg-violet-50 border border-violet-100",
+        bgDark: "bg-violet-500/10 border border-violet-500/20",
+        textLight: "text-violet-600",
+        textDark: "text-violet-400"
     },
     orange: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-orange-600 max-md:border-orange-600 bg-[#fffcf5] md:hover:bg-orange-50 max-md:bg-orange-50 shadow-sm",
-        light: "border-orange-500/45 md:hover:border-orange-600 max-md:border-orange-600 bg-white md:hover:bg-orange-50 max-md:bg-orange-50 shadow-[0_0_30px_rgba(249,115,22,0.05)] md:hover:shadow-[0_0_40px_rgba(249,115,22,0.15)] max-md:shadow-[0_0_40px_rgba(249,115,22,0.15)]",
-        dark: "border-orange-500/20 md:hover:border-orange-500/50 max-md:border-orange-500/50 bg-[#0d0d12]/60 md:hover:bg-[#1a1512]/80 max-md:bg-[#1a1512]/80 shadow-[0_0_30px_rgba(249,115,22,0.05)] md:hover:shadow-[0_0_40px_rgba(249,115,22,0.15)] max-md:shadow-[0_0_40px_rgba(249,115,22,0.15)]"
+        bgLight: "bg-orange-50 border border-orange-100",
+        bgDark: "bg-orange-500/10 border border-orange-500/20",
+        textLight: "text-orange-600",
+        textDark: "text-orange-400"
     },
-    green: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-green-600 max-md:border-green-600 bg-[#fffcf5] md:hover:bg-green-50 max-md:bg-green-50 shadow-sm",
-        light: "border-green-500/45 md:hover:border-green-600 max-md:border-green-600 bg-white md:hover:bg-green-50 max-md:bg-green-50 shadow-[0_0_30px_rgba(34,197,94,0.05)] md:hover:shadow-[0_0_40px_rgba(34,197,94,0.15)] max-md:shadow-[0_0_40px_rgba(34,197,94,0.15)]",
-        dark: "border-green-500/20 md:hover:border-green-500/50 max-md:border-green-500/50 bg-[#0d0d12]/60 md:hover:bg-[#121a14]/80 max-md:bg-[#121a14]/80 shadow-[0_0_30px_rgba(34,197,94,0.05)] md:hover:shadow-[0_0_40px_rgba(34,197,94,0.15)] max-md:shadow-[0_0_40px_rgba(34,197,94,0.15)]"
+    cyan: {
+        bgLight: "bg-cyan-50 border border-cyan-100",
+        bgDark: "bg-cyan-500/10 border border-cyan-500/20",
+        textLight: "text-cyan-600",
+        textDark: "text-cyan-400"
     },
     emerald: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-emerald-600 max-md:border-emerald-600 bg-[#fffcf5] md:hover:bg-emerald-50 max-md:bg-emerald-50 shadow-sm",
-        light: "border-emerald-500/45 md:hover:border-emerald-600 max-md:border-emerald-600 bg-white md:hover:bg-emerald-50 max-md:bg-emerald-50 shadow-[0_0_30px_rgba(16,185,129,0.05)] md:hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] max-md:shadow-[0_0_40px_rgba(16,185,129,0.15)]",
-        dark: "border-emerald-500/20 md:hover:border-emerald-500/50 max-md:border-emerald-500/50 bg-[#0d0d12]/60 md:hover:bg-[#121a14]/80 max-md:bg-[#121a14]/80 shadow-[0_0_30px_rgba(16,185,129,0.05)] md:hover:shadow-[0_0_40px_rgba(16,185,129,0.15)] max-md:shadow-[0_0_40px_rgba(16,185,129,0.15)]"
+        bgLight: "bg-emerald-50 border border-emerald-100",
+        bgDark: "bg-emerald-500/10 border border-emerald-500/20",
+        textLight: "text-emerald-600",
+        textDark: "text-emerald-400"
     },
     amber: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-amber-600 max-md:border-amber-600 bg-[#fffcf5] md:hover:bg-amber-50 max-md:bg-amber-50 shadow-sm",
-        light: "border-amber-500/45 md:hover:border-amber-600 max-md:border-amber-600 bg-white md:hover:bg-amber-50 max-md:bg-amber-50 shadow-[0_0_30px_rgba(245,158,11,0.05)] md:hover:shadow-[0_0_40px_rgba(245,158,11,0.15)] max-md:shadow-[0_0_40px_rgba(245,158,11,0.15)]",
-        dark: "border-amber-500/20 md:hover:border-amber-500/50 max-md:border-amber-500/50 bg-[#0d0d12]/60 md:hover:bg-[#1a1812]/80 max-md:bg-[#1a1812]/80 shadow-[0_0_30px_rgba(245,158,11,0.05)] md:hover:shadow-[0_0_40px_rgba(245,158,11,0.15)] max-md:shadow-[0_0_40px_rgba(245,158,11,0.15)]"
+        bgLight: "bg-amber-50 border border-amber-100",
+        bgDark: "bg-amber-500/10 border border-amber-500/20",
+        textLight: "text-amber-600",
+        textDark: "text-amber-400"
     },
-    purple: {
-        eyeprotect: "border-[#8c8578]/40 md:hover:border-purple-600 max-md:border-purple-600 bg-[#fffcf5] md:hover:bg-purple-50 max-md:bg-purple-50 shadow-sm",
-        light: "border-purple-500/45 md:hover:border-purple-600 max-md:border-purple-600 bg-white md:hover:bg-purple-50 max-md:bg-purple-50 shadow-[0_0_30px_rgba(168,85,247,0.05)] md:hover:shadow-[0_0_40px_rgba(168,85,247,0.15)] max-md:shadow-[0_0_40px_rgba(168,85,247,0.15)]",
-        dark: "border-purple-500/20 md:hover:border-purple-500/50 max-md:border-purple-500/50 bg-[#0d0d12]/60 md:hover:bg-[#18121a]/80 max-md:bg-[#18121a]/80 shadow-[0_0_30px_rgba(168,85,247,0.05)] md:hover:shadow-[0_0_40px_rgba(168,85,247,0.15)] max-md:shadow-[0_0_40px_rgba(168,85,247,0.15)]"
-    }
+    pink: {
+        bgLight: "bg-pink-50 border border-pink-100",
+        bgDark: "bg-pink-500/10 border border-pink-500/20",
+        textLight: "text-pink-600",
+        textDark: "text-pink-400"
+    },
+    sky: {
+        bgLight: "bg-sky-50 border border-sky-100",
+        bgDark: "bg-sky-500/10 border border-sky-500/20",
+        textLight: "text-sky-600",
+        textDark: "text-sky-400"
+    },
+    lime: {
+        bgLight: "bg-lime-50 border border-lime-100",
+        bgDark: "bg-lime-500/10 border border-lime-500/20",
+        textLight: "text-lime-700",
+        textDark: "text-lime-400"
+    },
+    teal: {
+        bgLight: "bg-teal-50 border border-teal-100",
+        bgDark: "bg-teal-500/10 border border-teal-500/20",
+        textLight: "text-teal-600",
+        textDark: "text-teal-400"
+    },
+    rose: {
+        bgLight: "bg-rose-50 border border-rose-100",
+        bgDark: "bg-rose-500/10 border border-rose-500/20",
+        textLight: "text-rose-600",
+        textDark: "text-rose-400"
+    },
 };
 
-const headingColors: Record<string, {
-    eyeprotect: string;
-    light: string;
-    dark: string;
+const categoryHeaderColors: Record<string, {
+    light: { bg: string; border: string; text: string; desc: string; iconBg: string };
+    dark: { bg: string; border: string; text: string; desc: string; iconBg: string };
+    eyeprotect: { bg: string; border: string; text: string; desc: string; iconBg: string };
 }> = {
     indigo: {
-        eyeprotect: "text-stone-800 md:group-hover:text-indigo-700 max-md:text-indigo-700",
-        light: "text-slate-800 md:group-hover:text-indigo-700 max-md:text-indigo-700",
-        dark: "text-white md:group-hover:text-indigo-400 max-md:text-indigo-400"
+        dark: { bg: "bg-indigo-500/5", border: "border-indigo-500/15", text: "text-indigo-400", desc: "text-indigo-300/40", iconBg: "bg-indigo-500/15 text-indigo-400" },
+        light: { bg: "bg-indigo-50/50", border: "border-indigo-100", text: "text-indigo-700", desc: "text-indigo-500/60", iconBg: "bg-indigo-100 text-indigo-600" },
+        eyeprotect: { bg: "bg-indigo-50/30", border: "border-[#8c8578]/20", text: "text-indigo-800", desc: "text-stone-500", iconBg: "bg-indigo-100/80 text-indigo-700" },
     },
     sky: {
-        eyeprotect: "text-stone-800 md:group-hover:text-sky-700 max-md:text-sky-700",
-        light: "text-slate-800 md:group-hover:text-sky-700 max-md:text-sky-700",
-        dark: "text-white md:group-hover:text-sky-400 max-md:text-sky-400"
+        dark: { bg: "bg-sky-500/5", border: "border-sky-500/15", text: "text-sky-400", desc: "text-sky-300/40", iconBg: "bg-sky-500/15 text-sky-400" },
+        light: { bg: "bg-sky-50/50", border: "border-sky-100", text: "text-sky-700", desc: "text-sky-500/60", iconBg: "bg-sky-100 text-sky-600" },
+        eyeprotect: { bg: "bg-sky-50/30", border: "border-[#8c8578]/20", text: "text-sky-800", desc: "text-stone-500", iconBg: "bg-sky-100/80 text-sky-700" },
     },
-    pink: {
-        eyeprotect: "text-stone-800 md:group-hover:text-pink-700 max-md:text-pink-700",
-        light: "text-slate-800 md:group-hover:text-pink-700 max-md:text-pink-700",
-        dark: "text-white md:group-hover:text-pink-400 max-md:text-pink-400"
-    },
-    teal: {
-        eyeprotect: "text-stone-800 md:group-hover:text-teal-700 max-md:text-teal-700",
-        light: "text-slate-800 md:group-hover:text-teal-700 max-md:text-teal-700",
-        dark: "text-white md:group-hover:text-teal-400 max-md:text-teal-400"
-    },
-    orange: {
-        eyeprotect: "text-stone-800 md:group-hover:text-orange-700 max-md:text-orange-700",
-        light: "text-slate-800 md:group-hover:text-orange-700 max-md:text-orange-700",
-        dark: "text-white md:group-hover:text-orange-400 max-md:text-orange-400"
-    },
-    green: {
-        eyeprotect: "text-stone-800 md:group-hover:text-green-700 max-md:text-green-700",
-        light: "text-slate-800 md:group-hover:text-green-700 max-md:text-green-700",
-        dark: "text-white md:group-hover:text-green-400 max-md:text-green-400"
-    },
-    emerald: {
-        eyeprotect: "text-stone-800 md:group-hover:text-emerald-700 max-md:text-emerald-700",
-        light: "text-slate-800 md:group-hover:text-emerald-700 max-md:text-emerald-700",
-        dark: "text-white md:group-hover:text-emerald-400 max-md:text-emerald-400"
-    },
-    amber: {
-        eyeprotect: "text-stone-800 md:group-hover:text-amber-700 max-md:text-amber-700",
-        light: "text-slate-800 md:group-hover:text-amber-700 max-md:text-amber-700",
-        dark: "text-white md:group-hover:text-amber-400 max-md:text-amber-400"
-    },
-    purple: {
-        eyeprotect: "text-stone-800 md:group-hover:text-purple-700 max-md:text-purple-700",
-        light: "text-slate-800 md:group-hover:text-purple-700 max-md:text-purple-700",
-        dark: "text-white md:group-hover:text-purple-400 max-md:text-purple-400"
-    }
 };
 
-const arrowThemes: Record<string, {
-    eyeprotect: string;
-    light: string;
-    dark: string;
-}> = {
-    indigo: {
-        eyeprotect: "bg-indigo-100 text-indigo-700 md:group-hover:bg-indigo-600 md:group-hover:text-white max-md:bg-indigo-600 max-md:text-white border border-indigo-200/50",
-        light: "bg-indigo-50 text-indigo-600 md:group-hover:bg-indigo-600 md:group-hover:text-white max-md:bg-indigo-600 max-md:text-white",
-        dark: "bg-indigo-500/10 text-indigo-400 md:group-hover:bg-indigo-500 md:group-hover:text-white max-md:bg-indigo-500 max-md:text-white"
-    },
-    sky: {
-        eyeprotect: "bg-sky-100 text-sky-700 md:group-hover:bg-sky-600 md:group-hover:text-white max-md:bg-sky-600 max-md:text-white border border-sky-200/50",
-        light: "bg-sky-50 text-sky-600 md:group-hover:bg-sky-600 md:group-hover:text-white max-md:bg-sky-600 max-md:text-white",
-        dark: "bg-sky-500/10 text-sky-400 md:group-hover:bg-sky-500 md:group-hover:text-white max-md:bg-sky-500 max-md:text-white"
-    },
-    pink: {
-        eyeprotect: "bg-pink-100 text-pink-700 md:group-hover:bg-pink-600 md:group-hover:text-white max-md:bg-pink-600 max-md:text-white border border-pink-200/50",
-        light: "bg-pink-50 text-pink-600 md:group-hover:bg-pink-600 md:group-hover:text-white max-md:bg-pink-600 max-md:text-white",
-        dark: "bg-pink-500/10 text-pink-400 md:group-hover:bg-pink-500 md:group-hover:text-white max-md:bg-pink-500 max-md:text-white"
-    },
-    teal: {
-        eyeprotect: "bg-teal-100 text-teal-700 md:group-hover:bg-teal-600 md:group-hover:text-white max-md:bg-teal-600 max-md:text-white border border-teal-200/50",
-        light: "bg-teal-50 text-teal-600 md:group-hover:bg-teal-600 md:group-hover:text-white max-md:bg-teal-600 max-md:text-white",
-        dark: "bg-teal-500/10 text-teal-400 md:group-hover:bg-teal-500 md:group-hover:text-white max-md:bg-teal-500 max-md:text-white"
-    },
-    orange: {
-        eyeprotect: "bg-orange-100 text-orange-700 md:group-hover:bg-orange-600 md:group-hover:text-white max-md:bg-orange-600 max-md:text-white border border-orange-200/50",
-        light: "bg-orange-50 text-orange-600 md:group-hover:bg-orange-600 md:group-hover:text-white max-md:bg-orange-600 max-md:text-white",
-        dark: "bg-orange-500/10 text-orange-400 md:group-hover:bg-orange-500 md:group-hover:text-white max-md:bg-orange-500 max-md:text-white"
-    },
-    green: {
-        eyeprotect: "bg-green-100 text-green-700 md:group-hover:bg-green-600 md:group-hover:text-white max-md:bg-green-600 max-md:text-white border border-green-200/50",
-        light: "bg-green-50 text-green-600 md:group-hover:bg-green-600 md:group-hover:text-white max-md:bg-green-600 max-md:text-white",
-        dark: "bg-green-500/10 text-green-400 md:group-hover:bg-green-500 md:group-hover:text-white max-md:bg-green-500 max-md:text-white"
-    },
-    emerald: {
-        eyeprotect: "bg-emerald-100 text-emerald-700 md:group-hover:bg-emerald-600 md:group-hover:text-white max-md:bg-emerald-600 max-md:text-white border border-emerald-200/50",
-        light: "bg-emerald-50 text-emerald-600 md:group-hover:bg-emerald-600 md:group-hover:text-white max-md:bg-emerald-600 max-md:text-white",
-        dark: "bg-emerald-500/10 text-emerald-400 md:group-hover:bg-emerald-500 md:group-hover:text-white max-md:bg-emerald-500 max-md:text-white"
-    },
-    amber: {
-        eyeprotect: "bg-amber-100 text-amber-700 md:group-hover:bg-amber-600 md:group-hover:text-white max-md:bg-amber-600 max-md:text-white border border-amber-200/50",
-        light: "bg-amber-50 text-amber-600 md:group-hover:bg-amber-600 md:group-hover:text-white max-md:bg-amber-600 max-md:text-white",
-        dark: "bg-amber-500/10 text-amber-400 md:group-hover:bg-amber-500 md:group-hover:text-white max-md:bg-amber-500 max-md:text-white"
-    },
-    purple: {
-        eyeprotect: "bg-purple-100 text-purple-700 md:group-hover:bg-purple-600 md:group-hover:text-white max-md:bg-purple-600 max-md:text-white border border-purple-200/50",
-        light: "bg-purple-50 text-purple-600 md:group-hover:bg-purple-600 md:group-hover:text-white max-md:bg-purple-600 max-md:text-white",
-        dark: "bg-purple-500/10 text-purple-400 md:group-hover:bg-purple-500 md:group-hover:text-white max-md:bg-purple-500 max-md:text-white"
-    }
+const BADGE_CLASS: Record<Badge, string> = {
+    New: "border-emerald-400/40 bg-emerald-500/15 text-emerald-300",
+    Beta: "border-amber-400/40 bg-amber-500/15 text-amber-300",
+    "Sign-in": "border-sky-400/40 bg-sky-500/15 text-sky-300",
+    Public: "border-white/20 bg-white/10 text-white/60",
 };
 
 export default function FeatureToolsGrid({
     isLight,
     isRealisticMode,
     theme,
+    hiddenTools = [],
     onSelectAnalysis,
     onStartInterview,
-    onSelectAptitude,
-    onSelectEmailAnalyser,
-    onSelectPrepPack,
-    onSelectDrills,
-    onSelectNegotiate,
-    onSelectRoadmap,
     onSelectProInterviewer,
-    onSelectStudyMaterials,
-    onSelectSyntheticData,
-    onSelectProgress,
 }: FeatureToolsGridProps) {
     const activeTheme = theme || (isLight ? "light" : "dark");
     const descColor = activeTheme === "eyeprotect" ? "text-stone-600 font-semibold" : activeTheme === "light" ? "text-slate-500 font-semibold" : "text-white/50";
 
+    const CATEGORIES: Category[] = [
+        {
+            id: "interview_practice",
+            label: "Interview Practice",
+            description: "Simulate real interviews and build confidence",
+            icon: Target,
+            color: "indigo",
+            items: [
+                {
+                    id: "start_interview",
+                    onClick: onStartInterview,
+                    title: "Start Interview",
+                    desc: "Real-time AI mock interview",
+                    icon: Play,
+                    color: "sky",
+                    badges: ["Sign-in"],
+                },
+                {
+                    id: "panel_interview",
+                    href: "/panel-interview",
+                    title: "Panel Interviews",
+                    desc: "Multi-interviewer rounds + end score",
+                    icon: Users,
+                    color: "orange",
+                    badges: ["Sign-in", "Beta"],
+                },
+                {
+                    id: "star_coach",
+                    href: "/star-coach",
+                    title: "STAR Coach",
+                    desc: "Generate/custom Q, history, Film Room",
+                    icon: Target,
+                    color: "violet",
+                    badges: ["New", "Sign-in"],
+                },
+                {
+                    id: "system_design",
+                    href: "/system-design",
+                    title: "System Design Lab",
+                    desc: "Shapes, freestyle, export, online eval",
+                    icon: PenTool,
+                    color: "cyan",
+                    badges: ["New", "Sign-in"],
+                },
+                {
+                    id: "coding_lab",
+                    href: "/coding-lab",
+                    title: "Coding Lab",
+                    desc: "Progressive hidden tests + saved progress",
+                    icon: Code2,
+                    color: "amber",
+                    badges: ["Sign-in", "Beta"],
+                },
+            ],
+        },
+        {
+            id: "resume_profile",
+            label: "Resume & Profile",
+            description: "Craft winning resumes and optimize your profile",
+            icon: FileText,
+            color: "sky",
+            items: [
+                {
+                    id: "pre_interview_analysis",
+                    onClick: onSelectAnalysis,
+                    title: "Pre-Interview Analysis",
+                    desc: "AI resume & skills feedback",
+                    icon: Sparkles,
+                    color: "indigo",
+                    badges: ["Sign-in"],
+                },
+                {
+                    id: "resume_builder",
+                    onClick: onSelectProInterviewer,
+                    title: "Resume Builder",
+                    desc: "ATS-optimized premium resumes",
+                    icon: FileText,
+                    color: "amber",
+                    badges: ["Sign-in"],
+                },
+                {
+                    id: "ats_match",
+                    href: "/ats-match",
+                    title: "ATS Match",
+                    desc: "JD vs resume % + rewrite tips",
+                    icon: FileSearch,
+                    color: "sky",
+                    badges: ["Sign-in"],
+                },
+            ],
+        },
+    ];
+
+    // Filter out hidden tools
+    const visibleCategories = CATEGORIES.map((cat) => ({
+        ...cat,
+        items: cat.items.filter((item) => !hiddenTools.includes(item.id)),
+    })).filter((cat) => cat.items.length > 0);
+
     return (
-        <>
-            <div className="text-center mb-12 z-10 flex flex-col items-center">
-                <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white/95 to-white/60 mb-6">
+        <div className="w-full max-w-4xl mx-auto space-y-8 px-2 md:px-4 z-10">
+            {/* Header Title */}
+            <div className="text-center mb-6">
+                <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-white/95 to-white/60 mb-3">
                     Features
                 </h1>
-                <p className={`text-sm md:text-base max-w-xl mx-auto ${descColor}`}>
-                    Select a tool below to configure target roles, analyze portfolios, or build premium resumes tailored for interviews.
+                <p className={`text-sm max-w-xl mx-auto ${descColor}`}>
+                    Select an option below to simulate real-time AI mock interviews, practice system design, build premium ATS resumes, or analyze your skills.
                 </p>
             </div>
 
-            <div className={`grid ${isRealisticMode ? 'grid-cols-1 max-w-2xl' : 'grid-cols-2 md:grid-cols-2 max-w-4xl'} gap-3 md:gap-6 w-full z-10 px-2 md:px-4`}>
-                {/* Card A: Pre-Interview Analysis */}
-                <div
-                    onClick={onSelectAnalysis}
-                    className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.indigo[activeTheme]}`}
-                >
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-indigo-500/20 text-indigo-750 border border-indigo-500/30" : isLight ? "bg-indigo-500/20 text-indigo-700 border border-indigo-500/30" : "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"}`}>
-                                <Sparkles className="w-4 h-4" />
-                            </div>
-                            <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.indigo[activeTheme]}`}>
-                                Pre-Interview Analysis
-                            </h3>
-                        </div>
-                        <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                            Analyze your resume, skills and target role to personalize your interview experience.
-                        </p>
-                    </div>
-                    <div className="flex justify-end mt-2">
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.indigo[activeTheme]}`}>
-                            <ArrowRight className="w-2.5 h-2.5" />
-                        </div>
-                    </div>
-                </div>
+            {/* Categorized Tools Grid */}
+            <div className="space-y-6 sm:space-y-8">
+                {visibleCategories.map((category) => {
+                    const CatIcon = category.icon;
+                    const headerColors = categoryHeaderColors[category.color] || categoryHeaderColors.indigo;
+                    const hc = headerColors[activeTheme];
 
-                {/* Card B: Start Interview Session */}
-                <div
-                    onClick={onStartInterview}
-                    className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.sky[activeTheme]}`}
-                >
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-sky-500/20 text-sky-750 border border-sky-500/30" : isLight ? "bg-sky-500/20 text-sky-700 border border-sky-500/30" : "bg-sky-500/10 text-sky-400 border border-sky-500/20"}`}>
-                                <Play className="w-4 h-4" />
+                    return (
+                        <section key={category.id} className="space-y-3">
+                            {/* Category Title */}
+                            <div className="flex items-center gap-2.5 px-1">
+                                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center shrink-0 ${hc.iconBg}`}>
+                                    <CatIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                                </div>
+                                <div className="text-left">
+                                    <h2 className={`text-sm sm:text-base font-bold tracking-tight ${hc.text}`}>
+                                        {category.label}
+                                    </h2>
+                                    <p className={`text-[10px] sm:text-xs ${hc.desc}`}>
+                                        {category.description}
+                                    </p>
+                                </div>
                             </div>
-                            <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.sky[activeTheme]}`}>
-                                Start Interview Session
-                            </h3>
-                        </div>
-                        <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                            Begin a real-time AI interview with dynamic questions and instant feedback.
-                        </p>
-                    </div>
-                    <div className="flex justify-end mt-2">
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.sky[activeTheme]}`}>
-                            <ArrowRight className="w-2.5 h-2.5" />
-                        </div>
-                    </div>
-                </div>
 
-                {!isRealisticMode && (
-                    <>
-                        {/* Card C: Aptitude & On-Campus Prep */}
-                        <div
-                            onClick={onSelectAptitude}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.pink[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-pink-500/20 text-pink-750 border border-pink-500/30" : isLight ? "bg-pink-500/20 text-pink-700 border border-pink-500/30" : "bg-pink-500/10 text-pink-400 border border-pink-500/20"}`}>
-                                        <ListTodo className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.pink[activeTheme]}`}>
-                                        Mock Aptitude
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Practice aptitude questions with timed tests and detailed explanations.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.pink[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
+                            {/* Options Grid */}
+                            <div className={`grid ${isRealisticMode && category.id === 'interview_practice' ? 'grid-cols-1 max-w-xl' : 'grid-cols-2 md:grid-cols-2 lg:grid-cols-3'} gap-3 sm:gap-4 w-full`}>
+                                {category.items.map((item) => {
+                                    const Icon = item.icon;
+                                    const themeInfo = colorThemes[item.color] || colorThemes.indigo;
+                                    const iconBg = isLight ? themeInfo.bgLight : themeInfo.bgDark;
+                                    const iconText = isLight ? themeInfo.textLight : themeInfo.textDark;
 
-                        {/* Card D: Email Analyser */}
-                        <div
-                            onClick={onSelectEmailAnalyser}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.teal[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-teal-500/20 text-teal-750 border border-teal-500/30" : isLight ? "bg-teal-500/20 text-teal-700 border border-teal-500/30" : "bg-teal-500/10 text-teal-400 border border-teal-500/20"}`}>
-                                        <Mail className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.teal[activeTheme]}`}>
-                                        AI Email Analyser
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Analyze emails and drafts for clarity, tone, grammar and professionalism.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.teal[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
+                                    const CardContent = (
+                                        <div className="flex flex-col gap-3 w-full h-full justify-between">
+                                            <div className="flex flex-col gap-2.5">
+                                                {/* Top Row: Icon and Badges */}
+                                                <div className="flex items-center justify-between gap-2 w-full">
+                                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
+                                                        <Icon className={`w-4.5 h-4.5 ${iconText}`} />
+                                                    </div>
+                                                    
+                                                    <div className="flex flex-wrap justify-end gap-1">
+                                                        {item.badges.map((b) => (
+                                                            <span
+                                                                key={b}
+                                                                className={`rounded px-1.5 py-0.5 text-[8px] sm:text-[9px] font-black border tracking-tight ${
+                                                                    isLight
+                                                                        ? (b === "New" ? "border-emerald-250 bg-emerald-50 text-emerald-700"
+                                                                            : b === "Beta" ? "border-amber-250 bg-amber-50 text-amber-800"
+                                                                            : b === "Sign-in" ? "border-sky-250 bg-sky-50 text-sky-800"
+                                                                            : "border-slate-200 bg-slate-50 text-slate-700")
+                                                                        : BADGE_CLASS[b]
+                                                                }`}
+                                                            >
+                                                                {b}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Bottom Stack: Title and Description */}
+                                                <div className="space-y-1">
+                                                    <h3 className={`font-bold text-xs sm:text-sm tracking-tight text-left transition-colors duration-300 ${
+                                                        activeTheme === "light" ? "text-slate-800" : activeTheme === "eyeprotect" ? "text-stone-800" : "text-white group-hover:text-indigo-400"
+                                                    }`}>
+                                                        {item.title}
+                                                    </h3>
+                                                    
+                                                    <p className={`text-[9.5px] sm:text-xs leading-relaxed text-left font-medium transition-colors duration-300 ${
+                                                        isLight ? "text-slate-500" : "text-white/50"
+                                                    }`}>
+                                                        {item.desc}
+                                                    </p>
+                                                </div>
+                                            </div>
 
-                        {/* Card: Prep Packs */}
-                        <div
-                            onClick={onSelectPrepPack}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.sky[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-sky-500/20 text-sky-750 border border-sky-500/30" : isLight ? "bg-sky-500/20 text-sky-700 border border-sky-500/30" : "bg-sky-500/10 text-sky-400 border border-sky-500/20"}`}>
-                                        <CalendarClock className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.sky[activeTheme]}`}>
-                                        Prep Packs
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Curated interview prep packs for different roles and experience levels.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.sky[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
+                                            {/* Bottom indicator */}
+                                            <div className="flex justify-end pt-1">
+                                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
+                                                    isLight ? "bg-slate-100 text-slate-600" : "bg-white/5 text-white/50"
+                                                } group-hover:bg-indigo-600 group-hover:text-white`}>
+                                                    <ArrowRight className="w-3 h-3" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
 
-                        {/* Card: Spaced Drills */}
-                        <div
-                            onClick={onSelectDrills}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.orange[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-orange-500/20 text-orange-750 border border-orange-500/30" : isLight ? "bg-orange-500/20 text-orange-700 border border-orange-500/30" : "bg-orange-500/10 text-orange-400 border border-orange-500/20"}`}>
-                                        <Dumbbell className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.orange[activeTheme]}`}>
-                                        Spaced Drills
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Smart spaced repetition drills to strengthen your weak areas effectively.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.orange[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
+                                    const className = `group rounded-2xl border p-4 transition-all duration-300 flex flex-col justify-between h-full ${
+                                        activeTheme === "light"
+                                            ? "bg-white border-slate-150 hover:border-indigo-500 hover:shadow-[0_8px_30px_rgb(241,245,249)] text-slate-900 shadow-sm"
+                                            : activeTheme === "eyeprotect"
+                                            ? "bg-[#fffcf5] border-[#8c8578]/20 hover:border-teal-700 hover:shadow-[0_8px_30px_rgb(230,225,215)] text-[#1c1917] shadow-sm"
+                                            : "bg-[#0b1329]/80 border-white/5 hover:border-indigo-500/50 hover:bg-[#111c3a]/90 text-white shadow-lg shadow-black/20"
+                                    } cursor-pointer`;
 
-                        {/* Card E: Offer Negotiation */}
-                        <div
-                            onClick={onSelectNegotiate}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.green[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-green-500/20 text-green-750 border border-green-500/30" : isLight ? "bg-green-500/20 text-green-700 border border-green-500/30" : "bg-green-500/10 text-green-400 border border-green-500/20"}`}>
-                                        <Handshake className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.green[activeTheme]}`}>
-                                        Offer Negotiation
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Learn strategies and get AI simulations to negotiate your best offer.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.green[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
+                                    if (item.href) {
+                                        return (
+                                            <Link
+                                                key={item.id}
+                                                href={item.href}
+                                                className={className}
+                                            >
+                                                {CardContent}
+                                            </Link>
+                                        );
+                                    }
 
-                        {/* Card F: Roadmap Generator */}
-                        <div
-                            onClick={onSelectRoadmap}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.emerald[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-emerald-500/20 text-emerald-750 border border-emerald-500/30" : isLight ? "bg-emerald-500/20 text-emerald-700 border border-emerald-500/30" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"}`}>
-                                        <Map className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.emerald[activeTheme]}`}>
-                                        Roadmap Generator
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Get a personalized learning roadmap to reach your dream role faster.
-                                </p>
+                                    return (
+                                        <div
+                                            key={item.id}
+                                            onClick={item.onClick}
+                                            className={className}
+                                        >
+                                            {CardContent}
+                                        </div>
+                                    );
+                                })}
                             </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.emerald[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card G: Resume Builder */}
-                        <div
-                            onClick={onSelectProInterviewer}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.amber[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-amber-500/20 text-amber-750 border border-amber-500/30" : isLight ? "bg-amber-500/20 text-amber-700 border border-amber-500/30" : "bg-amber-500/10 text-amber-400 border border-amber-500/20"}`}>
-                                        <Code className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.amber[activeTheme]}`}>
-                                        Resume Builder
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Build premium, ATS-optimized resumes with real-time score feedback.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.amber[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card: Study Materials */}
-                        <div
-                            onClick={onSelectStudyMaterials}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.purple[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-purple-500/20 text-purple-750 border border-purple-500/30" : isLight ? "bg-purple-500/20 text-purple-700 border border-purple-500/30" : "bg-purple-500/10 text-purple-400 border border-purple-500/20"}`}>
-                                        <BookOpen className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.purple[activeTheme]}`}>
-                                        Study Materials
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Access notes, cheatsheets and resources to master key concepts.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.purple[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card: Synthetic Data Generator */}
-                        <div
-                            onClick={onSelectSyntheticData}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.teal[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-teal-500/20 text-teal-750 border border-teal-500/30" : isLight ? "bg-teal-500/20 text-teal-700 border border-teal-500/30" : "bg-teal-500/10 text-teal-400 border border-teal-500/20"}`}>
-                                        <Database className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.teal[activeTheme]}`}>
-                                        Synthetic Data Generator
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Generate mock datasets for practice, testing and interviews.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.teal[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Card H: My Progress */}
-                        <div
-                            onClick={onSelectProgress}
-                            className={`group transition-all duration-300 flex flex-col justify-between cursor-pointer h-full rounded-2xl p-3 md:p-4.5 border backdrop-blur-sm ${cardThemes.sky[activeTheme]}`}
-                        >
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${activeTheme === "eyeprotect" ? "bg-sky-500/20 text-sky-750 border border-sky-500/30" : isLight ? "bg-sky-500/20 text-sky-700 border border-sky-500/30" : "bg-sky-500/10 text-sky-400 border border-sky-500/20"}`}>
-                                        <TrendingUp className="w-4 h-4" />
-                                    </div>
-                                    <h3 className={`text-[10.5px] md:text-sm font-extrabold transition-colors leading-tight text-left ${headingColors.sky[activeTheme]}`}>
-                                        My Progress
-                                    </h3>
-                                </div>
-                                <p className={`text-[8.5px] md:text-[11px] text-left leading-relaxed mt-2 ${descColor}`}>
-                                    Track your progress, strengths, weaknesses and improvement over time.
-                                </p>
-                            </div>
-                            <div className="flex justify-end mt-2">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-colors ${arrowThemes.sky[activeTheme]}`}>
-                                    <ArrowRight className="w-2.5 h-2.5" />
-                                </div>
-                            </div>
-                        </div>
-                    </>
-                )}
+                        </section>
+                    );
+                })}
             </div>
-        </>
+        </div>
     );
 }

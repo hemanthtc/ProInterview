@@ -13,6 +13,7 @@ import { getVerifiedSession } from "@/utils/auth";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
 import { checkAndIncrementUsage } from "@/utils/usageMeter";
+import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -129,7 +130,9 @@ ${companyCloneBlock}
 ${domainBlock}
 ${languageBlock}
 ${hrPersonaBlock}
-${candidateProfileInfo}`;
+${candidateProfileInfo}
+
+${ANTI_LEAK_SUFFIX}`;
 
         if (useSarvam && getSarvamKey()) {
             const hist = (history as { role: string; content: string }[]).map((h) => ({

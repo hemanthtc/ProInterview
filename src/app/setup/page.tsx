@@ -28,6 +28,7 @@ export default function SetupPage() {
     const [hrPersonaPreview, setHrPersonaPreview] = useState<{ name?: string; title?: string } | null>(null);
     const [voiceLanguage, setVoiceLanguage] = useState("en-IN");
     const [campusPath, setCampusPath] = useState("onCampus");
+    const [hideLanguageOptions, setHideLanguageOptions] = useState(false);
     const router = useRouter();
 
     const [hasAccountPortfolio, setHasAccountPortfolio] = useState(false);
@@ -110,6 +111,15 @@ export default function SetupPage() {
         setCompanyCloneMode(getStorageItem("companyCloneMode") !== "false");
         const savedPath = getStorageItem("campusPath");
         setCampusPath(savedPath === "onCampus" || savedPath === "offCampus" ? savedPath : "onCampus");
+
+        const searchParams = new URLSearchParams(window.location.search);
+        const mode = searchParams.get("mode");
+        setHideLanguageOptions(mode !== "language_sarvam");
+
+        const savedProvider = getStorageItem("aiProvider") || "gemini";
+        setProvider(savedProvider);
+        const savedLang = getStorageItem("voiceLanguage") || "en-IN";
+        setVoiceLanguage(savedLang);
 
         const fetchUserProfile = async () => {
             try {
@@ -634,71 +644,73 @@ export default function SetupPage() {
                             </p>
                         </div>
 
-                        <div className="mt-8">
-                            <label className={`font-semibold mb-3 flex items-center gap-2 text-sm ${isLight ? "text-slate-800" : "text-white/80"}`}>
-                                <Cpu className={`w-4 h-4 ${isLight ? "text-indigo-600" : "text-indigo-400"}`}/> Select AI Provider
-                            </label>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                {[
-                                    { id: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
-                                    { id: "sarvam", label: "Sarvam AI", desc: "Indic TTS + chat (needs SARVAM_API_KEY). Falls back to Gemini if needed." }
-                                ].map((prov) => (
-                                    <button
-                                        key={prov.id}
-                                        type="button"
-                                        onClick={() => setProvider(prov.id)}
-                                        className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
-                                            provider === prov.id
-                                                ? (theme === "eyeprotect"
-                                                    ? "bg-[#0b5f58]/20 border-[#0b5f58] shadow-lg"
-                                                    : isLight
-                                                    ? "bg-indigo-50 border-indigo-600 shadow-lg"
-                                                    : "bg-indigo-600/20 border-indigo-500 shadow-lg")
-                                                : (theme === "light"
-                                                    ? "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100 shadow-sm"
-                                                    : theme === "eyeprotect"
-                                                    ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
-                                                    : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white")
+                        {!hideLanguageOptions && (
+                            <div className="mt-8">
+                                <label className={`font-semibold mb-3 flex items-center gap-2 text-sm ${isLight ? "text-slate-800" : "text-white/80"}`}>
+                                    <Cpu className={`w-4 h-4 ${isLight ? "text-indigo-600" : "text-indigo-400"}`}/> Select AI Provider
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                                    {[
+                                        { id: "gemini", label: "Google Gemini", desc: "Fast, highly capable." },
+                                        { id: "sarvam", label: "Sarvam AI", desc: "Indic TTS + chat (needs SARVAM_API_KEY). Falls back to Gemini if needed." }
+                                    ].map((prov) => (
+                                        <button
+                                            key={prov.id}
+                                            type="button"
+                                            onClick={() => setProvider(prov.id)}
+                                            className={`p-4 rounded-xl border text-left transition-all cursor-pointer ${
+                                                provider === prov.id
+                                                    ? (theme === "eyeprotect"
+                                                        ? "bg-[#0b5f58]/20 border-[#0b5f58] shadow-lg"
+                                                        : isLight
+                                                        ? "bg-indigo-50 border-indigo-600 shadow-lg"
+                                                        : "bg-indigo-600/20 border-indigo-500 shadow-lg")
+                                                    : (theme === "light"
+                                                        ? "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100 shadow-sm"
+                                                        : theme === "eyeprotect"
+                                                        ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                        : "bg-white/5 border-white/10 text-white/50 hover:bg-white/10 hover:text-white")
+                                            }`}
+                                        >
+                                            <span className={`block font-bold mb-1 ${
+                                                provider === prov.id
+                                                    ? (theme === "eyeprotect" ? "text-[#0b5f58]" : isLight ? "text-indigo-700" : "text-indigo-300")
+                                                    : (isLight ? "text-slate-900" : "text-white")
+                                            }`}>{prov.label}</span>
+                                            <span className={`text-xs leading-relaxed block ${isLight ? "text-slate-600" : "opacity-70"}`}>{prov.desc}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                                <div className="mt-4">
+                                    <label className={`text-sm font-medium mb-2 block ${isLight ? "text-slate-700 font-semibold" : "text-white/70"}`}>
+                                        Interview language / voice locale
+                                    </label>
+                                    <select
+                                        value={voiceLanguage}
+                                        onChange={(e) => setVoiceLanguage(e.target.value)}
+                                        className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none transition cursor-pointer font-medium ${
+                                            theme === "light"
+                                                ? "bg-white border-slate-300 text-slate-900 focus:border-indigo-600 shadow-sm"
+                                                : theme === "eyeprotect"
+                                                ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] focus:border-teal-700"
+                                                : "bg-slate-900 border-white/20 text-white focus:border-indigo-500"
                                         }`}
                                     >
-                                        <span className={`block font-bold mb-1 ${
-                                            provider === prov.id
-                                                ? (theme === "eyeprotect" ? "text-[#0b5f58]" : isLight ? "text-indigo-700" : "text-indigo-300")
-                                                : (isLight ? "text-slate-900" : "text-white")
-                                        }`}>{prov.label}</span>
-                                        <span className={`text-xs leading-relaxed block ${isLight ? "text-slate-600" : "opacity-70"}`}>{prov.desc}</span>
-                                    </button>
-                                ))}
+                                        <option value="en-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>English (India)</option>
+                                        <option value="en-US" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>English (US)</option>
+                                        <option value="hi-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Hindi (हिन्दी)</option>
+                                        <option value="ta-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Tamil</option>
+                                        <option value="te-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Telugu</option>
+                                        <option value="kn-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Kannada</option>
+                                        <option value="mr-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Marathi</option>
+                                        <option value="bn-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Bengali</option>
+                                    </select>
+                                    <p className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-white/40"}`}>
+                                        With Sarvam selected, interview replies use Sarvam TTS when configured; mic recognition uses this locale. Chat falls back to Gemini if Sarvam is unavailable.
+                                    </p>
+                                </div>
                             </div>
-                            <div className="mt-4">
-                                <label className={`text-sm font-medium mb-2 block ${isLight ? "text-slate-700 font-semibold" : "text-white/70"}`}>
-                                    Interview language / voice locale
-                                </label>
-                                <select
-                                    value={voiceLanguage}
-                                    onChange={(e) => setVoiceLanguage(e.target.value)}
-                                    className={`w-full rounded-xl border px-3 py-2.5 text-sm focus:outline-none transition cursor-pointer font-medium ${
-                                        theme === "light"
-                                            ? "bg-white border-slate-300 text-slate-900 focus:border-indigo-600 shadow-sm"
-                                            : theme === "eyeprotect"
-                                            ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] focus:border-teal-700"
-                                            : "bg-slate-900 border-white/20 text-white focus:border-indigo-500"
-                                    }`}
-                                >
-                                    <option value="en-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>English (India)</option>
-                                    <option value="en-US" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>English (US)</option>
-                                    <option value="hi-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Hindi (हिन्दी)</option>
-                                    <option value="ta-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Tamil</option>
-                                    <option value="te-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Telugu</option>
-                                    <option value="kn-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Kannada</option>
-                                    <option value="mr-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Marathi</option>
-                                    <option value="bn-IN" className={theme === "light" ? "bg-white text-slate-900" : theme === "eyeprotect" ? "bg-[#fffcf5] text-[#1c1917]" : "bg-slate-900 text-white"}>Bengali</option>
-                                </select>
-                                <p className={`text-[11px] mt-1 ${isLight ? "text-slate-600" : "text-white/40"}`}>
-                                    With Sarvam selected, interview replies use Sarvam TTS when configured; mic recognition uses this locale. Chat falls back to Gemini if Sarvam is unavailable.
-                                </p>
-                            </div>
-                        </div>
+                        )}
                     </>
                 )}
 

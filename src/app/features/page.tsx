@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical } from "lucide-react";
+import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical, Code2, Clapperboard, FileSearch } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { buildPrepSnapshot } from "../../utils/labProgress";
 import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
 import CompanySelect from "../../components/CompanySelect";
@@ -46,6 +47,7 @@ function MobileDashboardContent({
     onSelectProgress,
 }: MobileDashboardContentProps) {
     const [pastSessions, setPastSessions] = useState<any[]>([]);
+    const [snap, setSnap] = useState<any>(null);
 
     useEffect(() => {
         const stored = getStorageItem("interviewSessions");
@@ -57,6 +59,7 @@ function MobileDashboardContent({
                 console.error(e);
             }
         }
+        setSnap(buildPrepSnapshot());
     }, []);
 
     // Filter sessions to find this month's attempts
@@ -200,6 +203,18 @@ function FeaturesContent() {
     const [isAtsWarningActive, setIsAtsWarningActive] = useState<boolean>(false);
     const [builderMobileView, setBuilderMobileView] = useState<'editor' | 'preview'>('editor');
     const [mobileNegotiateTab, setMobileNegotiateTab] = useState<"levers" | "calculator" | "redlines">("calculator");
+    const [hiddenTools, setHiddenTools] = useState<string[]>([]);
+
+    useEffect(() => {
+        fetch("/api/admin/labs-visibility")
+            .then((r) => r.json())
+            .then((d) => {
+                if (d.hiddenTools) {
+                    setHiddenTools(d.hiddenTools);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     // Aptitude states
     const [aptitudePath, setAptitudePath] = useState<"onCampus" | "offCampus" | null>(null);
@@ -747,63 +762,61 @@ function FeaturesContent() {
     };
 
     useEffect(() => {
-        Promise.resolve().then(() => {
-            const loggedIn = getStorageItem("userLoggedIn") === "true";
-            const guest = getStorageItem("userLoggedIn") === "guest";
-            setIsLoggedIn(loggedIn);
-            setIsGuest(guest);
-            if (!loggedIn && !guest) {
-                router.push("/login");
-                return;
-            }
-            setIsAuthChecked(true);
+        const loggedIn = getStorageItem("userLoggedIn") === "true";
+        const guest = getStorageItem("userLoggedIn") === "guest";
+        setIsLoggedIn(loggedIn);
+        setIsGuest(guest);
+        if (!loggedIn && !guest) {
+            router.push("/login");
+            return;
+        }
+        setIsAuthChecked(true);
 
-            if (!isGuest) {
-                void pullSessionsFromCloud();
-            }
+        if (!guest) {
+            void pullSessionsFromCloud();
+        }
 
-            const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
-            setIsRealisticMode(isRealistic);
-            syncAccountDetailsFromStorage();
+        const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
+        setIsRealisticMode(isRealistic);
+        syncAccountDetailsFromStorage();
 
-            const savedTheme = localStorage.getItem("globalTheme") as any;
-            if (savedTheme) {
-                setTheme(savedTheme);
-                document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-                document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-            }
+        const savedTheme = localStorage.getItem("globalTheme") as any;
+        if (savedTheme) {
+            setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
+        }
 
-            const stored = getStorageItem("interviewSessions");
-            if (stored) {
-                try {
-                    const sessions = JSON.parse(stored);
-                    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-                    const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
-                    setPastSessions(recentSessions);
-                } catch (e) {
-                    console.error("Failed to parse sessions", e);
-                }
+        const stored = getStorageItem("interviewSessions");
+        if (stored) {
+            try {
+                const sessions = JSON.parse(stored);
+                const oneHourAgo = Date.now() - 60 * 60 * 1000;
+                const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
+                setPastSessions(recentSessions);
+            } catch (e) {
+                console.error("Failed to parse sessions", e);
             }
+        }
 
-            const storedPaused = getStorageItem("pausedInterviewSession");
-            if (storedPaused) {
-                try {
-                    setPausedSession(JSON.parse(storedPaused));
-                } catch (e) {
-                    console.error(e);
-                }
+        const storedPaused = getStorageItem("pausedInterviewSession");
+        if (storedPaused) {
+            try {
+                setPausedSession(JSON.parse(storedPaused));
+            } catch (e) {
+                console.error(e);
             }
+        }
 
-            // Auto-open analysis tool if redirected from Home page
-            const searchParams = new URLSearchParams(window.location.search);
-            const tool = searchParams.get("tool");
-            if (tool === "analysis") {
-                setActiveModal("analysis");
-                setActiveTool("analysis");
-                setShowAnalysis(false);
-                setShowResume(false);
-            }
-        });
+        // Auto-open analysis tool if redirected from Home page
+        const searchParams = new URLSearchParams(window.location.search);
+        const tool = searchParams.get("tool");
+        if (tool === "analysis") {
+            setActiveModal("analysis");
+            setActiveTool("analysis");
+            setShowAnalysis(false);
+            setShowResume(false);
+        }
     }, []);
 
     // Global countdown timer for Aptitude Quiz Simulator
@@ -2849,7 +2862,7 @@ function FeaturesContent() {
                                 onClick={() => setIsMockTestMode(false)}
                                 className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer font-sans"
                             >
-                                â† Exit Mock Results
+                                â†  Exit Mock Results
                             </button>
                             <h3 className="text-lg font-bold text-white font-sans">
                                 Off-Campus Mock Test Results
@@ -2893,7 +2906,7 @@ function FeaturesContent() {
                                     : "border-transparent text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                ðŸ“ MCQ Solutions Review
+                                ðŸ“  MCQ Solutions Review
                             </button>
                             <button
                                 type="button"
@@ -3031,7 +3044,7 @@ function FeaturesContent() {
                                                                     Status: {grading.status}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
-                                                                    â± Time: {grading.timeComplexity}
+                                                                    â ± Time: {grading.timeComplexity}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
                                                                     ðŸ’¾ Space: {grading.spaceComplexity}
@@ -3105,14 +3118,14 @@ function FeaturesContent() {
                     <div className="flex flex-wrap items-center gap-3 font-sans">
                         {mockProctorWarnings > 0 && (
                             <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
-                                âš ï¸ Proctor: {mockProctorWarnings}/3
+                                âš ï¸  Proctor: {mockProctorWarnings}/3
                             </span>
                         )}
                         <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold border ${isTimerWarning
                             ? "bg-red-500/10 border-red-500/20 text-red-400 animate-pulse"
                             : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
                             }`}>
-                            â± {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
+                            â ± {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
                         </span>
                         <button
                             type="button"
@@ -3138,7 +3151,7 @@ function FeaturesContent() {
                                     : "text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                ðŸ“ MCQs
+                                ðŸ“  MCQs
                             </button>
                             <button
                                 type="button"
@@ -3318,7 +3331,7 @@ function FeaturesContent() {
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        â† Previous
+                                        â†  Previous
                                     </button>
 
                                     <button
@@ -3332,7 +3345,7 @@ function FeaturesContent() {
                                             : "bg-white/5 border-white/5 text-white/50 hover:text-white"
                                             }`}
                                     >
-                                        â­ {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
+                                        â­  {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
                                     </button>
 
                                     <button
@@ -3480,7 +3493,7 @@ function FeaturesContent() {
                                                         Score: {out.score} / 10 Points
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                                                        â± Time: {out.timeComplexity}
+                                                        â ± Time: {out.timeComplexity}
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
                                                         ðŸ’¾ Space: {out.spaceComplexity}
@@ -3509,7 +3522,7 @@ function FeaturesContent() {
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        â† Previous Coding
+                                        â†  Previous Coding
                                     </button>
 
                                     <button
@@ -3536,7 +3549,7 @@ function FeaturesContent() {
 if (!isAuthChecked) return null;
 
     return (
-        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans ${(activeModal === "prointerviewer" || activeModal === "study_materials" || activeModal === "synthetic_data") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
+        <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans w-full max-w-full overflow-x-hidden ${(activeModal === "prointerviewer" || activeModal === "study_materials" || activeModal === "synthetic_data") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
             {activeModal !== "study_materials" && activeModal !== "synthetic_data" && (activeModal !== "prointerviewer" || builderMobileView !== "preview") && (
                 <>
                     {isMobile && (activeModal === null || activeModal === "progress") ? (
@@ -3877,6 +3890,7 @@ if (!isAuthChecked) return null;
                             isLight={isLight}
                             isRealisticMode={isRealisticMode}
                             theme={theme}
+                            hiddenTools={hiddenTools}
                             onSelectAnalysis={() => {
                                 setActiveModal("analysis");
                                 setActiveTool("analysis");

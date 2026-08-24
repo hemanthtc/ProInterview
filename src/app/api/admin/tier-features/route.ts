@@ -89,8 +89,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized access: Please sign in as an Administrator." }, { status: 401 });
+        if (!session || session.role !== "admin") {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in as an Administrator." }, { status: 403 });
         }
 
         await connectDB();

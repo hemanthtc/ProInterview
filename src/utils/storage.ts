@@ -28,6 +28,7 @@ export function getScopedKey(key: string): string {
 
 export function getStorageItem(key: string): string | null {
     if (typeof window === "undefined") return null;
+
     if (key === "userLoggedIn") {
         const fromLocal = localStorage.getItem("userLoggedIn");
         if (fromLocal === "true") return "true";
@@ -35,15 +36,29 @@ export function getStorageItem(key: string): string | null {
         const fromTemp = tempMemory["userLoggedIn"];
         if (fromTemp === "true") return "true";
         if (fromTemp === "guest") return "guest";
-        if (document.cookie.includes("userLoggedIn=true")) return "true";
-        if (document.cookie.includes("userLoggedIn=guest")) return "guest";
+        if (typeof document !== "undefined" && document.cookie) {
+            if (document.cookie.includes("userLoggedIn=true")) return "true";
+            if (document.cookie.includes("userLoggedIn=guest")) return "guest";
+        }
         return null;
     }
-    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true" || document.cookie.includes("userLoggedIn=true");
+
+    // Global un-scoped keys (userName, userIdentifier, userType, userRole, etc.)
+    if (GLOBAL_KEYS.includes(key)) {
+        const val = localStorage.getItem(key) || tempMemory[key];
+        if (val !== null && val !== undefined) return val;
+    }
+
+    const isLoggedIn =
+        localStorage.getItem("userLoggedIn") === "true" ||
+        tempMemory["userLoggedIn"] === "true" ||
+        (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+
+    const scopedKey = getScopedKey(key);
     if (isLoggedIn) {
-        return localStorage.getItem(getScopedKey(key)) || tempMemory[getScopedKey(key)] || null;
+        return localStorage.getItem(scopedKey) || tempMemory[scopedKey] || localStorage.getItem(key) || null;
     } else {
-        return tempMemory[getScopedKey(key)] || null;
+        return tempMemory[scopedKey] || localStorage.getItem(key) || null;
     }
 }
 
@@ -66,7 +81,19 @@ export function setStorageItem(key: string, value: string): void {
         emitStorageChange(key);
         return;
     }
-    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true" || document.cookie.includes("userLoggedIn=true");
+
+    if (GLOBAL_KEYS.includes(key)) {
+        localStorage.setItem(key, value);
+        tempMemory[key] = value;
+        emitStorageChange(key);
+        return;
+    }
+
+    const isLoggedIn =
+        localStorage.getItem("userLoggedIn") === "true" ||
+        tempMemory["userLoggedIn"] === "true" ||
+        (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+
     if (isLoggedIn) {
         localStorage.setItem(getScopedKey(key), value);
     } else {

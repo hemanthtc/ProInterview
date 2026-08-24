@@ -2,9 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import CloudSession from "@/models/CloudSession";
 import { isS3Configured, listS3Objects, deleteS3Object, getJSON, uploadJSON } from "@/utils/s3";
+import { getVerifiedSession } from "@/utils/auth";
 
 export async function GET(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session || session.role !== "admin") {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in as an Administrator." }, { status: 403 });
+        }
+
         await connectDB();
         
         // 1. Inspect all MongoDB documents
@@ -22,7 +28,7 @@ export async function GET(req: NextRequest) {
         }
 
         // 2. Inspect S3 objects
-        let s3Results: any[] = [];
+        const s3Results: any[] = [];
         if (isS3Configured()) {
             try {
                 const prepPackFiles = await listS3Objects("prep-packs/");
@@ -66,6 +72,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
+        const session = await getVerifiedSession();
+        if (!session || session.role !== "admin") {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in as an Administrator." }, { status: 403 });
+        }
+
         await connectDB();
         
         // 1. Purge ALL MongoDB prepPacks across ALL documents
@@ -75,7 +86,7 @@ export async function POST(req: NextRequest) {
         );
 
         // 2. Purge ALL S3 prep-packs objects & legacy prepPacks in sessions
-        let s3PurgedKeys: string[] = [];
+        const s3PurgedKeys: string[] = [];
         if (isS3Configured()) {
             const prepPackFiles = await listS3Objects("prep-packs/");
             for (const key of prepPackFiles.contents) {

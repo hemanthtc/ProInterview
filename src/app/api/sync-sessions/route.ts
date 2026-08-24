@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import CloudSession from "@/models/CloudSession";
 import { getVerifiedSession } from "@/utils/auth";
-import { isS3Configured, getJSON, uploadJSON, deleteS3Object, pingS3, getS3SessionsKey, getS3PrepPacksKey } from "@/utils/s3";
+import { isS3Configured, getJSON, uploadJSON, deleteS3Object, pingS3, getS3SessionsKey, getLegacyS3SessionsKey, getS3PrepPacksKey } from "@/utils/s3";
 
 function sessionKey(s: any): string | null {
     if (!s || typeof s.timestamp !== "number") return null;
@@ -52,6 +52,38 @@ async function getOrCreateBlob(identifier: string) {
         });
     }
     return blob;
+}
+
+// Auto-migration helper: reconciles legacy S3 sessions from the old folder key to the new folder key
+async function migrateLegacyS3Sessions(userIdentifier: string, newKey: string, currentS3Data: any): Promise<any> {
+    try {
+        if (!isS3Configured()) return currentS3Data;
+        const legacyKey = getLegacyS3SessionsKey(userIdentifier);
+        let legacyData: any = null;
+        try {
+            legacyData = await getJSON<any>(legacyKey);
+        } catch (err: any) {
+            if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                console.error("Failed to fetch legacy S3 sessions:", err);
+            }
+        }
+
+        if (legacyData) {
+            console.log(`Migrating legacy S3 sessions to new folder for ${userIdentifier}...`);
+            const merged = {
+                sessions: mergeByTimestamp(currentS3Data.sessions || [], legacyData.sessions || []),
+                prepPacks: [],
+                spacedDrills: mergeById(currentS3Data.spacedDrills || [], legacyData.spacedDrills || []),
+            };
+            await uploadJSON(newKey, merged);
+            await deleteS3Object(legacyKey);
+            console.log("Successfully migrated legacy S3 sessions and deleted old file.");
+            return merged;
+        }
+    } catch (err) {
+        console.error("Failed in migrateLegacyS3Sessions:", err);
+    }
+    return currentS3Data;
 }
 
 // Auto-migration helper: reconciles offline MongoDB sessions cache into S3 and deletes it from MongoDB
@@ -153,6 +185,7 @@ export async function GET() {
                         throw err;
                     }
                 }
+                s3Data = await migrateLegacyS3Sessions(session.identifier, sessionsKey, s3Data);
                 data = await migrateMongoSessionsToS3(session.identifier, sessionsKey, s3Data);
             }
         }
@@ -233,6 +266,7 @@ export async function POST(req: NextRequest) {
                         throw err;
                     }
                 }
+                s3Data = await migrateLegacyS3Sessions(session.identifier, sessionsKey, s3Data);
                 s3Data = await migrateMongoSessionsToS3(session.identifier, sessionsKey, s3Data);
                 const mergedSessions = mergeByTimestamp(s3Data.sessions || [], incomingSessions);
                 const mergedDrills = incomingDrills.length > 0 ? mergeById(s3Data.spacedDrills || [], incomingDrills) : s3Data.spacedDrills || [];

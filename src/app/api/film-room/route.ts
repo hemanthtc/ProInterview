@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
+import { isS3Configured, getJSON, uploadJSON, pingS3, getS3FilmRoomKey } from "@/utils/s3";
 
 export interface FilmAnnotation {
     t: number;
@@ -104,6 +105,48 @@ function fallbackFilm(transcript: string, summary?: string, scores?: any): FilmR
     };
 }
 
+export async function GET(req: NextRequest) {
+    try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(req.url);
+        const timestampStr = searchParams.get("timestamp");
+        if (!timestampStr) {
+            return NextResponse.json({ error: "Missing timestamp parameter" }, { status: 400 });
+        }
+
+        const timestamp = Number(timestampStr);
+        if (!Number.isFinite(timestamp)) {
+            return NextResponse.json({ error: "Invalid timestamp parameter" }, { status: 400 });
+        }
+
+        if (isS3Configured()) {
+            const ping = await pingS3();
+            if (ping.ok) {
+                const key = getS3FilmRoomKey(session.identifier, timestamp);
+                try {
+                    const cached = await getJSON<any>(key);
+                    if (cached) {
+                        return NextResponse.json(cached);
+                    }
+                } catch (err: any) {
+                    if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                        console.error("Failed to fetch S3 cached film-room:", err);
+                    }
+                }
+            }
+        }
+
+        return NextResponse.json({ error: "Film room report not cached" }, { status: 404 });
+    } catch (error: any) {
+        console.error("GET /api/film-room error:", error);
+        return NextResponse.json({ error: error.message || "Failed to fetch film room cache" }, { status: 500 });
+    }
+}
+
 export async function POST(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
@@ -115,6 +158,7 @@ export async function POST(req: NextRequest) {
         const transcript = typeof body.transcript === "string" ? body.transcript : "";
         const summary = typeof body.summary === "string" ? body.summary : "";
         const scores = body.scores || {};
+        const timestamp = typeof body.timestamp === "number" ? body.timestamp : null;
 
         if (!transcript.trim()) {
             return NextResponse.json({ error: "transcript is required" }, { status: 400 });
@@ -122,7 +166,16 @@ export async function POST(req: NextRequest) {
 
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
-            return NextResponse.json(fallbackFilm(transcript, summary, scores));
+            const fallback = fallbackFilm(transcript, summary, scores);
+            if (timestamp && isS3Configured()) {
+                try {
+                    const key = getS3FilmRoomKey(session.identifier, timestamp);
+                    await uploadJSON(key, fallback);
+                } catch (err) {
+                    console.error("Failed saving S3 fallback film:", err);
+                }
+            }
+            return NextResponse.json(fallback);
         }
 
         const genAI = new GoogleGenerativeAI(API_KEY);
@@ -188,13 +241,31 @@ Rules:
                     await new Promise((r) => setTimeout(r, (attempt + 1) * 3000));
                 } else {
                     console.warn("Film-room Gemini failed; using fallback.", retryErr?.message || retryErr);
-                    return NextResponse.json(fallbackFilm(transcript, summary, scores));
+                    const fallback = fallbackFilm(transcript, summary, scores);
+                    if (timestamp && isS3Configured()) {
+                        try {
+                            const key = getS3FilmRoomKey(session.identifier, timestamp);
+                            await uploadJSON(key, fallback);
+                        } catch (err) {
+                            console.error("Failed saving S3 fallback film:", err);
+                        }
+                    }
+                    return NextResponse.json(fallback);
                 }
             }
         }
 
         if (!result) {
-            return NextResponse.json(fallbackFilm(transcript, summary, scores));
+            const fallback = fallbackFilm(transcript, summary, scores);
+            if (timestamp && isS3Configured()) {
+                try {
+                    const key = getS3FilmRoomKey(session.identifier, timestamp);
+                    await uploadJSON(key, fallback);
+                } catch (err) {
+                    console.error("Failed saving S3 fallback film:", err);
+                }
+            }
+            return NextResponse.json(fallback);
         }
 
         try {
@@ -218,14 +289,23 @@ Rules:
                 : [];
 
             if (annotations.length === 0) {
-                return NextResponse.json(fallbackFilm(transcript, summary, scores));
+                const fallback = fallbackFilm(transcript, summary, scores);
+                if (timestamp && isS3Configured()) {
+                    try {
+                        const key = getS3FilmRoomKey(session.identifier, timestamp);
+                        await uploadJSON(key, fallback);
+                    } catch (err) {
+                        console.error("Failed saving S3 fallback film:", err);
+                    }
+                }
+                return NextResponse.json(fallback);
             }
 
             const retakePrompts = Array.isArray(parsed.retakePrompts)
                 ? parsed.retakePrompts.map(String).slice(0, 4)
                 : annotations.map((a) => a.retakePrompt).filter(Boolean).slice(0, 4);
 
-            return NextResponse.json({
+            const finalResult: FilmRoomResult = {
                 title: String(parsed.title || "Film Room Replay"),
                 overallTake: String(parsed.overallTake || summary || ""),
                 annotations,
@@ -236,10 +316,30 @@ Rules:
                     ? parsed.practiceFocus.map(String).slice(0, 4)
                     : [],
                 retakePrompts,
-            } satisfies FilmRoomResult);
+            };
+
+            if (timestamp && isS3Configured()) {
+                try {
+                    const key = getS3FilmRoomKey(session.identifier, timestamp);
+                    await uploadJSON(key, finalResult);
+                } catch (err) {
+                    console.error("Failed saving S3 generated film:", err);
+                }
+            }
+
+            return NextResponse.json(finalResult);
         } catch (parseErr) {
             console.error("Film-room JSON parse failed:", parseErr);
-            return NextResponse.json(fallbackFilm(transcript, summary, scores));
+            const fallback = fallbackFilm(transcript, summary, scores);
+            if (timestamp && isS3Configured()) {
+                try {
+                    const key = getS3FilmRoomKey(session.identifier, timestamp);
+                    await uploadJSON(key, fallback);
+                } catch (err) {
+                    console.error("Failed saving S3 fallback film:", err);
+                }
+            }
+            return NextResponse.json(fallback);
         }
     } catch (error: any) {
         console.error("Film-room error:", error);

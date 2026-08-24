@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { 
     ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Download, Play, Trash2, Sparkles, Sun, Moon, Eye, Menu, X,
-    Compass, TrendingUp, Database, Code, CalendarClock, Award, Flame, User, Home as HomeIcon, FlaskConical
+    Compass, TrendingUp, Database, Code, CalendarClock, Award, Flame, User, Home as HomeIcon, FlaskConical,
+    Code2, Clapperboard, FileSearch
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { buildPrepSnapshot } from "../utils/labProgress";
 import { marked } from "marked";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
 import { motion } from "framer-motion";
@@ -30,6 +32,7 @@ function MobileDashboardContent({
     onSelectProgress,
 }: MobileDashboardContentProps) {
     const [pastSessions, setPastSessions] = useState<any[]>([]);
+    const [snap, setSnap] = useState<any>(null);
 
     useEffect(() => {
         const stored = getStorageItem("interviewSessions");
@@ -41,6 +44,7 @@ function MobileDashboardContent({
                 console.error(e);
             }
         }
+        setSnap(buildPrepSnapshot());
     }, []);
 
     // Filter sessions to find this month's attempts
@@ -147,6 +151,112 @@ function MobileDashboardContent({
                         {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
                         <ArrowRight className="w-3 h-3" />
                     </button>
+                </div>
+            </div>
+
+            {/* Quick Stats Grid (4 Boxes + My Progress) */}
+            <div className="grid grid-cols-2 gap-3.5">
+                <Link
+                    href="/features?tool=star"
+                    className={`p-3.5 flex flex-col items-start gap-2 border rounded-2xl text-left transition-all duration-200 cursor-pointer ${
+                        theme === "light"
+                            ? "bg-white border-slate-200 hover:border-purple-500 shadow-sm"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffcf5] border-[#8c8578]/30 hover:border-purple-500 shadow-sm"
+                            : "bg-[#0b0c15] border border-white/5 hover:border-purple-500/50 hover:bg-[#111222]"
+                    }`}
+                >
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-400 shrink-0">
+                        <Sparkles className="w-4.5 h-4.5" />
+                    </div>
+                    <div className="space-y-0.5">
+                        <span className={`text-[12px] font-black transition-colors ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                            {snap?.starStories ?? 0}
+                        </span>
+                        <span className={`text-[7.5px] font-bold uppercase tracking-wider block text-white/30`}>Star Stories Saved</span>
+                    </div>
+                </Link>
+
+                <Link
+                    href="/coding-lab"
+                    className={`p-3.5 flex flex-col items-start gap-2 border rounded-2xl text-left transition-all duration-200 cursor-pointer ${
+                        theme === "light"
+                            ? "bg-white border-slate-200 hover:border-amber-500 shadow-sm"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                            : "bg-[#0b0c15] border border-white/5 hover:border-amber-500/50 hover:bg-[#1c1a22]"
+                    }`}
+                >
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 flex items-center justify-center text-amber-400 shrink-0">
+                        <Code2 className="w-4.5 h-4.5" />
+                    </div>
+                    <div className="space-y-0.5">
+                        <span className={`text-[12px] font-black transition-colors ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                            {snap?.codingSolved ?? 0}
+                        </span>
+                        <span className={`text-[7.5px] font-bold uppercase tracking-wider block text-white/30`}>Coding Unlocked</span>
+                    </div>
+                </Link>
+
+                <Link
+                    href="/ats-match"
+                    className={`p-3.5 flex flex-col items-start gap-2 border rounded-2xl text-left transition-all duration-200 cursor-pointer ${
+                        theme === "light"
+                            ? "bg-white border-slate-200 hover:border-sky-500 shadow-sm"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                            : "bg-[#0b0c15] border border-white/5 hover:border-sky-500/50 hover:bg-[#111622]"
+                    }`}
+                >
+                    <div className="w-8 h-8 rounded-lg bg-sky-500/10 flex items-center justify-center text-sky-400 shrink-0">
+                        <FileSearch className="w-4.5 h-4.5" />
+                    </div>
+                    <div className="space-y-0.5">
+                        <span className={`text-[12px] font-black transition-colors ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                            {snap?.atsMatch != null ? `${snap.atsMatch}%` : "0%"}
+                        </span>
+                        <span className={`text-[7.5px] font-bold uppercase tracking-wider block text-white/30`}>Ats Match</span>
+                    </div>
+                </Link>
+
+                <Link
+                    href="/film-room"
+                    className={`p-3.5 flex flex-col items-start gap-2 border rounded-2xl text-left transition-all duration-200 cursor-pointer ${
+                        theme === "light"
+                            ? "bg-white border-slate-200 hover:border-rose-500 shadow-sm"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                            : "bg-[#0b0c15] border border-white/5 hover:border-rose-500/50 hover:bg-[#1c121e]"
+                    }`}
+                >
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400 shrink-0">
+                        <Clapperboard className="w-4.5 h-4.5" />
+                    </div>
+                    <div className="space-y-0.5">
+                        <span className={`text-[12px] font-black transition-colors ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                            {snap?.filmRoomGaps?.length ?? 0}
+                        </span>
+                        <span className={`text-[7.5px] font-bold uppercase tracking-wider block text-white/30`}>Film Gaps</span>
+                    </div>
+                </Link>
+
+                <div
+                    onClick={onSelectProgress}
+                    className={`col-span-2 p-3 flex items-center justify-between border rounded-2xl text-left transition-all duration-200 cursor-pointer ${
+                        theme === "light"
+                            ? "bg-white border-slate-200 hover:border-indigo-500 shadow-sm"
+                            : theme === "eyeprotect"
+                            ? "bg-[#fffcf5] border-[#8c8578]/30 hover:border-indigo-500 shadow-sm"
+                            : "bg-[#0b0c15] border border-white/5 hover:border-indigo-500/50 hover:bg-[#111622]"
+                    }`}
+                >
+                    <div className="flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4 text-sky-400" />
+                        <span className={`text-[9.5px] font-black uppercase tracking-wider transition-colors ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                            Dashboard
+                        </span>
+                    </div>
+                    <span className="text-[9px] font-bold text-sky-450">View Reports →</span>
                 </div>
             </div>
 
@@ -334,53 +444,55 @@ export default function Home() {
     const [isHydrated, setIsHydrated] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
+    const [snap, setSnap] = useState<any>(null);
+    const [progressActiveTab, setProgressActiveTab] = useState<"filmroom" | "interview" | "aptitude">("interview");
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
         window.addEventListener("resize", checkMobile);
 
-        Promise.resolve().then(() => {
-            setIsHydrated(true);
-            const loggedIn = getStorageItem("userLoggedIn") === "true";
-            const guest = getStorageItem("userLoggedIn") === "guest";
-            const role = localStorage.getItem("userRole");
-            if (loggedIn && role === "admin") {
-                router.push("/admin");
-                return;
-            }
+        setIsHydrated(true);
+        const loggedIn = getStorageItem("userLoggedIn") === "true";
+        const guest = getStorageItem("userLoggedIn") === "guest";
+        const role = localStorage.getItem("userRole");
+        if (loggedIn && role === "admin") {
+            router.push("/admin");
+            return;
+        }
 
-            const savedTheme = localStorage.getItem("globalTheme") as any;
-            setIsLoggedIn(loggedIn);
-            setIsGuest(guest);
-            setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
-            if (savedTheme) {
-                setTheme(savedTheme);
-                document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-                document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-            }
+        const savedTheme = localStorage.getItem("globalTheme") as any;
+        setIsLoggedIn(loggedIn);
+        setIsGuest(guest);
+        setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
+        if (savedTheme) {
+            setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
+        }
 
-            const stored = getStorageItem("interviewSessions");
-            if (stored) {
-                try {
-                    const sessions = JSON.parse(stored);
-                    const oneHourAgo = Date.now() - 60 * 60 * 1000;
-                    const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
-                    setPastSessions(recentSessions);
-                } catch (e) {
-                    console.error("Failed to parse sessions", e);
-                }
+        const stored = getStorageItem("interviewSessions");
+        if (stored) {
+            try {
+                const sessions = JSON.parse(stored);
+                const oneHourAgo = Date.now() - 60 * 60 * 1000;
+                const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
+                setPastSessions(recentSessions);
+            } catch (e) {
+                console.error("Failed to parse sessions", e);
             }
+        }
 
-            const storedPaused = getStorageItem("pausedInterviewSession");
-            if (storedPaused) {
-                try {
-                    setPausedSession(JSON.parse(storedPaused));
-                } catch (e) {
-                    console.error(e);
-                }
+        const storedPaused = getStorageItem("pausedInterviewSession");
+        if (storedPaused) {
+            try {
+                setPausedSession(JSON.parse(storedPaused));
+            } catch (e) {
+                console.error(e);
             }
-        });
+        }
+
+        setSnap(buildPrepSnapshot());
 
         // Dynamic scrollspy active indicators
         const handleHashChange = () => {
@@ -517,7 +629,7 @@ export default function Home() {
     if (isMobile) {
         return (
             <div 
-                className="selection:bg-indigo-500/30 flex flex-col font-sans min-h-screen pb-24 transition-colors duration-300"
+                className="selection:bg-indigo-500/30 flex flex-col font-sans min-h-screen pb-24 transition-colors duration-300 w-full max-w-full overflow-x-hidden"
                 style={{
                     backgroundColor: theme === "light" ? "#f8fafc" : theme === "eyeprotect" ? "#f4eae1" : "#050505",
                     color: theme === "light" ? "#0f172a" : theme === "eyeprotect" ? "#000000" : "#ffffff"
@@ -848,7 +960,7 @@ export default function Home() {
 
     return (
         <div 
-            className="min-h-screen selection:bg-indigo-500/30 flex flex-col font-sans transition-colors duration-300"
+            className="min-h-screen selection:bg-indigo-500/30 flex flex-col font-sans transition-colors duration-300 w-full max-w-full overflow-x-hidden"
             style={{
                 backgroundColor: theme === "light" ? "#f8fafc" : theme === "eyeprotect" ? "#f4eae1" : "#050505",
                 color: theme === "light" ? "#0f172a" : theme === "eyeprotect" ? "#000000" : "#ffffff"
@@ -868,8 +980,14 @@ export default function Home() {
                     {!isRealisticMode && (
                         <Link 
                             href="/" 
+                            onClick={(e) => {
+                                if (window.location.pathname === "/") {
+                                    e.preventDefault();
+                                    setActiveModal(null);
+                                }
+                            }}
                             className={`transition-colors pb-1 ${
-                                activeSection === "home" 
+                                (activeSection === "home" && activeModal === null) 
                                     ? "text-white border-b border-indigo-500" 
                                     : "hover:text-white text-white/70"
                             }`}
@@ -1160,186 +1278,330 @@ export default function Home() {
                     />
                 </div>
 
-                {/* Abstract shapes */}
                 <div className="absolute top-[20%] left-[20%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] pointer-events-none z-[1]" />
                 <div className="absolute bottom-[20%] right-[20%] w-[400px] h-[400px] bg-purple-600/20 rounded-full blur-[100px] pointer-events-none z-[1]" />
+                <div className="max-w-6xl w-full mx-auto z-10 px-4 flex flex-col items-center justify-center">
+                    {activeModal === "progress" ? (
+                        <div className="w-full max-w-6xl mx-auto animate-in fade-in duration-300">
+                            <ProgressPanel isLight={theme === "light"} defaultTab={progressActiveTab} onClose={() => setActiveModal(null)} />
+                        </div>
+                    ) : (isMobile && (isLoggedIn || isGuest)) ? (
+                        <MobileDashboardContent 
+                            theme={theme}
+                            isRealisticMode={isRealisticMode}
+                            onSelectAnalysis={() => {
+                                router.push("/features?tool=analysis");
+                            }}
+                            onStartInterview={() => {
+                                if (isRealisticMode) {
+                                    router.push("/setup");
+                                } else {
+                                    router.push("/features?start=true");
+                                }
+                            }}
+                            onSelectProgress={() => {
+                                setProgressActiveTab("interview");
+                                setActiveModal("progress");
+                            }}
+                        />
+                    ) : (
+                        <>
+                            {/* Desktop Hero Grid (Visible on md and up) */}
+                            <div className="hidden md:flex flex-row items-center justify-between gap-12 w-full text-left">
+                                <div className="flex-1 space-y-6">
+                                    <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1]">
+                                        <span className="inline-block">Master your next</span>
+                                        <br />
+                                        <span className={`inline-block transition-colors duration-300 ${theme === "light" ? "text-indigo-600" : theme === "eyeprotect" ? "text-amber-800" : "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"}`}>
+                                            technical interview
+                                        </span>
+                                    </h1>
 
-                <div className="max-w-5xl w-full mx-auto z-10 px-4 flex flex-col items-center justify-center">
-                    {/* Desktop Hero Grid (Visible on md and up) */}
-                    <div className="hidden md:flex flex-row items-center justify-between gap-12 w-full text-left">
-                        <div className="flex-1 space-y-6">
-                            <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight leading-[1.1]">
-                                <span className="inline-block">Master your next</span>
-                                <br />
-                                <span className={`inline-block transition-colors duration-300 ${theme === "light" ? "text-indigo-600" : theme === "eyeprotect" ? "text-amber-800" : "text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400"}`}>
-                                    technical interview
-                                </span>
-                            </h1>
-
-                            <p className={`text-base md:text-lg max-w-xl leading-relaxed transition-colors duration-300 ${theme === "light" ? "text-slate-900/70" : theme === "eyeprotect" ? "text-black/70" : "text-white/60"}`}>
-                                {isRealisticMode 
-                                    ? "Simulate a real-world company interview under hiring manager conditions. Get professional technical and behavioral feedback tailored to your background."
-                                    : "Upload your resume and practice with our highly realistic AI interviewer. Get tailored questions, real-time voice interaction, and actionable feedback."}
-                            </p>
-
-                            <div className="pt-2">
-                                <Link 
-                                    href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
-                                    className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-indigo-600 font-pj rounded-xl hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-xl shadow-indigo-500/20"
-                                >
-                                    {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
-                                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
-                                </Link>
-                            </div>
-
-                            {pausedSession && ((isRealisticMode && pausedSession.mode === "realistic") || (!isRealisticMode && (pausedSession.mode === "technical" || !pausedSession.mode))) && (
-                                <div className="mt-8 p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md relative backdrop-blur-sm z-20 text-center md:text-left">
-                                    <h3 className="text-xl font-bold text-indigo-300 mb-2">You Have a Paused Interview</h3>
-                                    <p className="text-sm text-white/60 mb-4">
-                                        Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
+                                    <p className={`text-base md:text-lg max-w-xl leading-relaxed transition-colors duration-300 ${theme === "light" ? "text-slate-900/70" : theme === "eyeprotect" ? "text-black/70" : "text-white/60"}`}>
+                                        {isRealisticMode 
+                                            ? "Simulate a real-world company interview under hiring manager conditions. Get professional technical and behavioral feedback tailored to your background."
+                                            : "Upload your resume and practice with our highly realistic AI interviewer. Get tailored questions, real-time voice interaction, and actionable feedback."}
                                     </p>
-                                    <div className="flex gap-3">
-                                        <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
-                                            <Play className="w-5 h-5"/> Resume
-                                        </button>
-                                        <button onClick={handleDeletePaused} className="px-4 bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 rounded-xl transition flex items-center justify-center" title="Delete Paused Session">
-                                            <Trash2 className="w-5 h-5"/>
-                                        </button>
+
+                                    <div className="pt-2">
+                                        <Link 
+                                            href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
+                                            className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-indigo-600 font-pj rounded-xl hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-xl shadow-indigo-500/20"
+                                        >
+                                            {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
+                                            <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                                        </Link>
+                                    </div>
+
+                                    {/* 4 Stats Cards + Full-Width Dashboard Bar */}
+                                    {(isLoggedIn || isGuest) && (
+                                        <div className="pt-4 w-full space-y-3 font-sans">
+                                            {/* 4 Compact Stats Cards in Grid */}
+                                            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 w-full">
+                                                {/* STAR Stories Saved */}
+                                                <Link
+                                                    href="/features?tool=star"
+                                                    className={`p-3.5 flex flex-col justify-between border rounded-2xl text-left transition-all duration-200 hover:border-purple-500/50 cursor-pointer ${
+                                                        theme === "light"
+                                                            ? "bg-white border-slate-200 shadow-sm"
+                                                            : theme === "eyeprotect"
+                                                            ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                                                            : "bg-[#0b0c15] border border-white/5 hover:bg-[#111222]"
+                                                    }`}
+                                                >
+                                                    <div className="w-8 h-8 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-400 mb-2">
+                                                        <Sparkles className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <span className={`text-xl font-black block leading-none ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                                                            {snap?.starStories ?? 0}
+                                                        </span>
+                                                        <span className="text-[7.5px] uppercase tracking-wider font-extrabold text-white/30 mt-1 block">STAR Stories Saved</span>
+                                                    </div>
+                                                </Link>
+
+                                                {/* Coding Unlocked */}
+                                                <Link
+                                                    href="/coding-lab"
+                                                    className={`p-3.5 flex flex-col justify-between border rounded-2xl text-left transition-all duration-200 hover:border-amber-500/50 cursor-pointer ${
+                                                        theme === "light"
+                                                            ? "bg-white border-slate-200 shadow-sm"
+                                                            : theme === "eyeprotect"
+                                                            ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                                                            : "bg-[#0b0c15] border border-white/5 hover:bg-[#1c1a22]"
+                                                    }`}
+                                                >
+                                                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-400 mb-2">
+                                                        <Code2 className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <span className={`text-xl font-black block leading-none ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                                                            {snap?.codingSolved ?? 0}
+                                                        </span>
+                                                        <span className="text-[7.5px] uppercase tracking-wider font-extrabold text-white/30 mt-1 block">Coding Unlocked</span>
+                                                    </div>
+                                                </Link>
+
+                                                {/* ATS Match */}
+                                                <Link
+                                                    href="/ats-match"
+                                                    className={`p-3.5 flex flex-col justify-between border rounded-2xl text-left transition-all duration-200 hover:border-sky-500/50 cursor-pointer ${
+                                                        theme === "light"
+                                                            ? "bg-white border-slate-200 shadow-sm"
+                                                            : theme === "eyeprotect"
+                                                            ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                                                            : "bg-[#0b0c15] border border-white/5 hover:bg-[#111622]"
+                                                    }`}
+                                                >
+                                                    <div className="w-8 h-8 rounded-xl bg-sky-500/10 flex items-center justify-center text-sky-400 mb-2">
+                                                        <FileSearch className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <span className={`text-xl font-black block leading-none ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                                                            {snap?.atsMatch != null ? `${snap.atsMatch}%` : "0%"}
+                                                        </span>
+                                                        <span className="text-[7.5px] uppercase tracking-wider font-extrabold text-white/30 mt-1 block">ATS Match</span>
+                                                    </div>
+                                                </Link>
+
+                                                {/* Film Gaps */}
+                                                <Link
+                                                    href="/film-room"
+                                                    className={`p-3.5 flex flex-col justify-between border rounded-2xl text-left transition-all duration-200 hover:border-rose-500/50 cursor-pointer ${
+                                                        theme === "light"
+                                                            ? "bg-white border-slate-200 shadow-sm"
+                                                            : theme === "eyeprotect"
+                                                            ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                                                            : "bg-[#0b0c15] border border-white/5 hover:bg-[#1c121e]"
+                                                    }`}
+                                                >
+                                                    <div className="w-8 h-8 rounded-xl bg-rose-500/10 flex items-center justify-center text-rose-400 mb-2">
+                                                        <Clapperboard className="w-4 h-4" />
+                                                    </div>
+                                                    <div>
+                                                        <span className={`text-xl font-black block leading-none ${theme === "light" ? "text-slate-800" : "text-white"}`}>
+                                                            {snap?.filmRoomGaps?.length ?? 0}
+                                                        </span>
+                                                        <span className="text-[7.5px] uppercase tracking-wider font-extrabold text-white/30 mt-1 block">Film Gaps</span>
+                                                    </div>
+                                                </Link>
+                                            </div>
+
+                                            {/* Full-Width Dashboard Card below stats grid */}
+                                            <div
+                                                onClick={() => {
+                                                    setProgressActiveTab("interview");
+                                                    setActiveModal("progress");
+                                                }}
+                                                className={`w-full p-3.5 sm:p-4 flex items-center justify-between border rounded-2xl text-left transition-all duration-200 hover:border-indigo-500/50 cursor-pointer group ${
+                                                    theme === "light"
+                                                        ? "bg-white border-slate-200 shadow-sm"
+                                                        : theme === "eyeprotect"
+                                                        ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-sm"
+                                                        : "bg-[#0b0c15] border border-white/10 hover:bg-[#111622]"
+                                                }`}
+                                            >
+                                                <div className="flex items-center gap-2.5">
+                                                    <TrendingUp className="w-4.5 h-4.5 text-sky-400" />
+                                                    <span className="text-xs sm:text-sm font-extrabold uppercase tracking-wider text-white">Dashboard</span>
+                                                </div>
+                                                <span className="text-xs font-bold text-sky-400 flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                                                    View Reports &rarr;
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {pausedSession && ((isRealisticMode && pausedSession.mode === "realistic") || (!isRealisticMode && (pausedSession.mode === "technical" || !pausedSession.mode))) && (
+                                        <div className="mt-8 p-6 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md relative backdrop-blur-sm z-20 text-center md:text-left">
+                                            <h3 className="text-xl font-bold text-indigo-300 mb-2">You Have a Paused Interview</h3>
+                                            <p className="text-sm text-white/60 mb-4">
+                                                Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
+                                            </p>
+                                            <div className="flex gap-3">
+                                                <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                                                    <Play className="w-5 h-5"/> Resume
+                                                </button>
+                                                <button onClick={handleDeletePaused} className="px-4 bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 rounded-xl transition flex items-center justify-center" title="Delete Paused Session">
+                                                    <Trash2 className="w-5 h-5"/>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Right: Robot Avatar Artwork */}
+                                <div className="relative w-[220px] h-[220px] lg:w-[260px] lg:h-[260px] flex items-center justify-center shrink-0 select-none">
+                                    <img 
+                                        src={
+                                            theme === "light" 
+                                                ? "/ai-avatar-light.jpg" 
+                                                : theme === "eyeprotect" 
+                                                ? "/ai-avatar-eyeprotect.jpg" 
+                                                : "/ai-avatar.jpg"
+                                        } 
+                                        alt="AI Coach" 
+                                        className="w-full h-full object-cover rounded-full border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.25)]"
+                                    />
+                                    <div className={`absolute -bottom-4 right-0 left-0 mx-auto w-max px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg border transition-all duration-300 ${
+                                        theme === "light"
+                                        ? "bg-white border-slate-200/80"
+                                        : theme === "eyeprotect"
+                                        ? "bg-[#fffcf5] border-[#8c8578]/30"
+                                        : "bg-[#08080f]/90 border-white/10"
+                                    }`}>
+                                        <span className="w-2 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span className={`text-[10px] font-black tracking-tight transition-colors duration-300 ${
+                                            theme === "light"
+                                            ? "text-slate-700"
+                                            : theme === "eyeprotect"
+                                            ? "text-[#57534e]"
+                                            : "text-white/80"
+                                        }`}>AI Interviewer Online</span>
                                     </div>
                                 </div>
-                            )}
-                        </div>
+                            </div>
 
-                        {/* Right: Robot Avatar Artwork */}
-                        <div className="relative w-[220px] h-[220px] lg:w-[260px] lg:h-[260px] flex items-center justify-center shrink-0 select-none">
-                            <img 
-                                src={
-                                    theme === "light" 
-                                        ? "/ai-avatar-light.jpg" 
-                                        : theme === "eyeprotect" 
-                                        ? "/ai-avatar-eyeprotect.jpg" 
-                                        : "/ai-avatar.jpg"
-                                } 
-                                alt="AI Coach" 
-                                className="w-full h-full object-cover rounded-full border border-purple-500/30 shadow-[0_0_30px_rgba(168,85,247,0.25)]"
-                            />
-                            <div className={`absolute -bottom-4 right-0 left-0 mx-auto w-max px-3 py-1 rounded-full flex items-center gap-1.5 shadow-lg border transition-all duration-300 ${
+                            {/* Mobile Hero Card (Visible on mobile only) */}
+                            <div className={`flex md:hidden w-full relative overflow-hidden rounded-3xl p-5 flex-row items-center justify-between transition-all duration-300 ${
                                 theme === "light"
-                                ? "bg-white border-slate-200/80"
+                                ? "bg-white border border-slate-200/80 shadow-md shadow-slate-100/10"
                                 : theme === "eyeprotect"
-                                ? "bg-[#fffcf5] border-[#8c8578]/30"
-                                : "bg-[#08080f]/90 border-white/10"
+                                ? "bg-[#fffcf5] border border-[#8c8578]/30 shadow-md shadow-stone-200/10"
+                                : "bg-gradient-to-br from-[#0c0d1b] via-[#090918] to-[#04040f] border border-white/10 shadow-[0_0_20px_rgba(79,70,229,0.12)]"
                             }`}>
-                                <span className="w-2 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                                <span className={`text-[10px] font-black tracking-tight transition-colors duration-300 ${
-                                    theme === "light"
-                                    ? "text-slate-700"
-                                    : theme === "eyeprotect"
-                                    ? "text-[#57534e]"
-                                    : "text-white/80"
-                                }`}>AI Interviewer Online</span>
-                            </div>
-                        </div>
-                    </div>
+                                {/* Background Image Cover Right Side with Fade to Left */}
+                                <div className="absolute right-0 top-0 bottom-0 h-full w-[48%] z-0 select-none pointer-events-none overflow-hidden rounded-r-3xl">
+                                    <img 
+                                        src={
+                                            theme === "light" 
+                                                ? "/ai-avatar-light.jpg" 
+                                                : theme === "eyeprotect" 
+                                                ? "/ai-avatar-eyeprotect.jpg" 
+                                                : "/ai-avatar.jpg"
+                                        } 
+                                        alt="AI Coach" 
+                                        className="w-full h-full object-cover object-center"
+                                        style={{
+                                            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)",
+                                            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)"
+                                        }}
+                                    />
+                                </div>
 
-                    {/* Mobile Hero Card (Visible on mobile only) */}
-                    <div className={`flex md:hidden w-full relative overflow-hidden rounded-3xl p-5 flex-row items-center justify-between transition-all duration-300 ${
-                        theme === "light"
-                        ? "bg-white border border-slate-200/80 shadow-md shadow-slate-100/10"
-                        : theme === "eyeprotect"
-                        ? "bg-[#fffcf5] border border-[#8c8578]/30 shadow-md shadow-stone-200/10"
-                        : "bg-gradient-to-br from-[#0c0d1b] via-[#090918] to-[#04040f] border border-white/10 shadow-[0_0_20px_rgba(79,70,229,0.12)]"
-                    }`}>
-                        {/* Background Image Cover Right Side with Fade to Left */}
-                        <div className="absolute right-0 top-0 bottom-0 h-full w-[48%] z-0 select-none pointer-events-none overflow-hidden rounded-r-3xl">
-                            <img 
-                                src={
-                                    theme === "light" 
-                                        ? "/ai-avatar-light.jpg" 
+                                <div className="flex-grow text-left z-10 space-y-3 max-w-[65%]">
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <span className="inline-block px-3 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-full text-[9px] font-bold text-purple-400">
+                                            Ready to level up?
+                                        </span>
+                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-black border bg-emerald-500/10 text-emerald-450 border-emerald-500/20">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse animate-duration-1000" />
+                                            AI Online
+                                        </span>
+                                    </div>
+
+                                    <h2 className={`text-lg font-black leading-tight transition-colors duration-300 ${
+                                        theme === "light" 
+                                        ? "text-slate-900" 
                                         : theme === "eyeprotect" 
-                                        ? "/ai-avatar-eyeprotect.jpg" 
-                                        : "/ai-avatar.jpg"
-                                } 
-                                alt="AI Coach" 
-                                className="w-full h-full object-cover object-center"
-                                style={{
-                                    maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)",
-                                    WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,0.3) 30%, black 100%)"
-                                }}
-                            />
-                        </div>
+                                        ? "text-[#1c1917]" 
+                                        : "text-white"
+                                    }`}>
+                                        Master your next <br />
+                                        <span className={`transition-colors duration-300 ${
+                                            theme === "light" 
+                                            ? "text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600" 
+                                            : theme === "eyeprotect" 
+                                            ? "text-amber-800" 
+                                            : "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400"
+                                        }`}>
+                                            technical interview
+                                        </span>
+                                    </h2>
 
-                        <div className="flex-grow text-left z-10 space-y-3 max-w-[65%]">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                                <span className="inline-block px-3 py-0.5 bg-purple-500/10 border border-purple-500/20 rounded-full text-[9px] font-bold text-purple-400">
-                                    Ready to level up?
-                                </span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8.5px] font-black border bg-emerald-500/10 text-emerald-450 border-emerald-500/20">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse animate-duration-1000" />
-                                    AI Online
-                                </span>
-                            </div>
-                            
-                            <h2 className={`text-lg font-black leading-tight transition-colors duration-300 ${
-                                theme === "light" 
-                                ? "text-slate-900" 
-                                : theme === "eyeprotect" 
-                                ? "text-[#1c1917]" 
-                                : "text-white"
-                            }`}>
-                                Master your next <br />
-                                <span className={`transition-colors duration-300 ${
-                                    theme === "light" 
-                                    ? "text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600" 
-                                    : theme === "eyeprotect" 
-                                    ? "text-amber-800" 
-                                    : "text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400"
-                                }`}>
-                                    technical interview
-                                </span>
-                            </h2>
-                            
-                            <p className={`text-[10px] leading-relaxed font-semibold transition-colors duration-300 ${
-                                theme === "light" 
-                                ? "text-slate-700" 
-                                : theme === "eyeprotect" 
-                                ? "text-[#57534e]" 
-                                : "text-white/50"
-                            }`}>
-                                {isRealisticMode 
-                                    ? "Simulate a real-world company interview under hiring manager conditions."
-                                    : "Practice with our AI interviewer, get real-time feedback, and improve with every session."}
-                            </p>
-                            
-                            <Link 
-                                href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
-                                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all text-[11px] cursor-pointer shadow-[0_3px_12px_rgba(79,70,229,0.2)]"
-                            >
-                                {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
-                                <ArrowRight className="w-3 h-3 animate-pulse" />
-                            </Link>
-                        </div>
-                    </div>
+                                    <p className={`text-[10px] leading-relaxed font-semibold transition-colors duration-300 ${
+                                        theme === "light" 
+                                        ? "text-slate-700" 
+                                        : theme === "eyeprotect" 
+                                        ? "text-[#57534e]" 
+                                        : "text-white/50"
+                                    }`}>
+                                        {isRealisticMode 
+                                            ? "Simulate a real-world company interview under hiring manager conditions."
+                                            : "Practice with our AI interviewer, get real-time feedback, and improve with every session."}
+                                    </p>
 
-                    {/* Mobile Paused Session (Mobile only, rendered separately below Hero card) */}
-                    <div className="flex md:hidden w-full">
-                        {pausedSession && ((isRealisticMode && pausedSession.mode === "realistic") || (!isRealisticMode && (pausedSession.mode === "technical" || !pausedSession.mode))) && (
-                            <div className="mt-4 p-4 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md mx-auto relative backdrop-blur-sm z-20 text-center">
-                                <h3 className="text-sm font-bold text-indigo-300 mb-1">Paused Interview</h3>
-                                <p className="text-[11px] text-white/50 mb-3">
-                                    Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
-                                </p>
-                                <div className="flex gap-2">
-                                    <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-xs">
-                                        <Play className="w-4 h-4"/> Resume
-                                    </button>
-                                    <button onClick={handleDeletePaused} className="px-3 bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 rounded-xl transition flex items-center justify-center" title="Delete Paused Session">
-                                        <Trash2 className="w-4 h-4"/>
-                                    </button>
+                                    <Link 
+                                        href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
+                                        className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all text-[11px] cursor-pointer shadow-[0_3px_12px_rgba(79,70,229,0.2)]"
+                                    >
+                                        {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
+                                        <ArrowRight className="w-3 h-3 animate-pulse" />
+                                    </Link>
                                 </div>
                             </div>
-                        )}
-                    </div>
+
+                            {/* Mobile Paused Session (Mobile only, rendered separately below Hero card) */}
+                            <div className="flex md:hidden w-full">
+                                {pausedSession && ((isRealisticMode && pausedSession.mode === "realistic") || (!isRealisticMode && (pausedSession.mode === "technical" || !pausedSession.mode))) && (
+                                    <div className="mt-4 p-4 bg-indigo-900/20 border border-indigo-500/30 rounded-xl w-full max-w-md mx-auto relative backdrop-blur-sm z-20 text-center">
+                                        <h3 className="text-sm font-bold text-indigo-300 mb-1">Paused Interview</h3>
+                                        <p className="text-[11px] text-white/50 mb-3">
+                                            Paused on {pausedSession.savedAt ? new Date(pausedSession.savedAt).toLocaleString() : "Unknown Date"}
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <button onClick={handleResume} className="flex-1 bg-indigo-600 hover:bg-indigo-500 py-2.5 rounded-xl font-bold transition flex items-center justify-center gap-2 text-xs">
+                                                <Play className="w-4 h-4"/> Resume
+                                            </button>
+                                            <button onClick={handleDeletePaused} className="px-3 bg-white/5 hover:bg-red-500/20 hover:text-red-400 border border-white/10 rounded-xl transition flex items-center justify-center" title="Delete Paused Session">
+                                                <Trash2 className="w-4 h-4"/>
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    )}
                 </div>
             </main>
 

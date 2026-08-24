@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import { getVerifiedSession } from "@/utils/auth";
 import RateLimitConfig from "@/models/RateLimitConfig";
+import { invalidateTierConfigCache } from "@/utils/rateLimit";
 
 const DEFAULT_TIER_CONFIGS = [
     { tier: "free", tierLabel: "Free Tier", mode: "customized", maxRequests: 15, windowMinutes: 15, isEnabled: true },
@@ -13,6 +14,11 @@ const DEFAULT_TIER_CONFIGS = [
 
 export async function GET() {
     try {
+        const session = await getVerifiedSession();
+        if (!session || session.role !== "admin") {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in as an Administrator." }, { status: 403 });
+        }
+
         await connectDB();
         let configs = await RateLimitConfig.find({}).sort({ maxRequests: 1 }).lean();
 
@@ -34,8 +40,8 @@ export async function GET() {
 export async function POST(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
-        if (!session) {
-            return NextResponse.json({ error: "Unauthorized access: Please sign in as an Administrator." }, { status: 401 });
+        if (!session || session.role !== "admin") {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in as an Administrator." }, { status: 403 });
         }
 
         await connectDB();
@@ -63,6 +69,9 @@ export async function POST(req: NextRequest) {
             },
             { upsert: true, new: true }
         );
+
+        // Invalidate the in-memory cache so new limits take effect immediately
+        invalidateTierConfigCache();
 
         return NextResponse.json({ success: true, config: updated });
     } catch (error: any) {

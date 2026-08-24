@@ -5,6 +5,7 @@ import {
     getS3ResumesKey,
     getLegacyS3ResumesKey,
     getS3SessionsKey,
+    getLegacyS3SessionsKey,
     getS3ScorecardKey,
     getS3SyntheticKey
 } from "@/utils/s3";
@@ -29,7 +30,11 @@ describe("offline healing keys", () => {
     });
 
     it("builds correct sessions key", () => {
-        expect(getS3SessionsKey(user)).toBe("sessions/test-user_domain.com/session_data.json");
+        expect(getS3SessionsKey(user)).toBe("interview_history_and_performance_records/test-user_domain.com/session_data.json");
+    });
+
+    it("builds correct legacy sessions key", () => {
+        expect(getLegacyS3SessionsKey(user)).toBe("sessions/test-user_domain.com/session_data.json");
     });
 
     it("builds correct scorecard key", () => {

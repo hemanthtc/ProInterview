@@ -10,7 +10,6 @@ import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData 
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
 import BrandLogo from "../../components/BrandLogo";
 import PhotoCropperModal from "../../components/profile/PhotoCropperModal";
-import SessionHistoryPanel from "../../components/profile/SessionHistoryPanel";
 import { uploadFileToS3 } from "../../utils/s3ClientUpload";
 
 function dataUrlToFile(dataUrl: string, filename: string): File {
@@ -39,6 +38,7 @@ export default function ProfilePage() {
     const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
     const [userIdentifier, setUserIdentifier] = useState("");
     const [memberSince, setMemberSince] = useState("");
+    const [mounted, setMounted] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [editNameValue, setEditNameValue] = useState("");
 
@@ -159,25 +159,25 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        Promise.resolve().then(() => {
-            const savedTheme = localStorage.getItem("globalTheme") as any;
-            if (savedTheme) {
-                setTheme(savedTheme);
-                document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-                document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-            }
-            setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
+        setMounted(true);
+        const savedTheme = localStorage.getItem("globalTheme") as any;
+        if (savedTheme) {
+            setTheme(savedTheme);
+            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
+            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
+        }
+        setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
 
-            if (getStorageItem("userLoggedIn") !== "true") {
-                router.push("/login");
-                return;
-            }
+        if (getStorageItem("userLoggedIn") !== "true") {
+            router.push("/login");
+            return;
+        }
 
-            const exactUser = getStorageItem("userName") || "Guest";
-            const identifier = getStorageItem("userIdentifier") || "";
-            setUserName(exactUser);
-            setEditNameValue(exactUser);
-            setUserIdentifier(identifier);
+        const exactUser = getStorageItem("userName") || "Guest";
+        const identifier = getStorageItem("userIdentifier") || "";
+        setUserName(exactUser);
+        setEditNameValue(exactUser);
+        setUserIdentifier(identifier);
 
             const storedPhoto = getStorageItem("userProfilePhoto") || "";
             setProfilePhoto(storedPhoto);
@@ -322,7 +322,6 @@ export default function ProfilePage() {
                 loadSessions(exactUser);
             };
             void hydrateSessions();
-        });
     }, [router]);
 
     // Dynamically load Razorpay script on mount
@@ -1048,7 +1047,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
             try {
                 await navigator.clipboard.writeText(url);
             } catch { /* ignore */ }
-            setToast({ show: true, message: `Scorecard link copied: ${url}`, type: "success" });
+            setToast({ show: true, message: `Scorecard link copied (expires in 30 days): ${url}`, type: "success" });
             setTimeout(() => setToast((prev) => ({ ...prev, show: false })), 4000);
         } catch (e) {
             setToast({ show: true, message: (e as Error).message || "Failed to share scorecard", type: "error" });
@@ -1166,14 +1165,14 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                 </div>
             </header>
 
-            <main className="flex-1 max-w-5xl w-full mx-auto p-6 md:p-8 relative z-10">
+            <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-4 sm:py-6 relative z-10">
 
                 {/* Expiry Warning Banner */}
                 {subscriptionPlan !== "Free Tier" && subscriptionExpiresAt && (() => {
                     const daysLeft = getDaysRemaining();
                     if (daysLeft !== null && daysLeft <= 2) {
                         return (
-                            <div className="mb-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between gap-4 animate-pulse">
+                            <div className="mb-4 sm:mb-6 bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 p-4 rounded-2xl flex items-center justify-between gap-4 animate-pulse">
                                 <div className="flex items-center gap-3">
                                     <div className="w-9 h-9 bg-amber-500/20 rounded-xl flex items-center justify-center text-amber-400 shrink-0">
                                         <AlertTriangle className="w-5 h-5 animate-bounce" />
@@ -1199,7 +1198,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
 
                 {/* Degradation Warning Banner */}
                 {showDegradedBanner && (
-                    <div className="mb-6 bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/30 p-4 rounded-2xl flex items-center justify-between gap-4 animate-fade-in">
+                    <div className="mb-4 sm:mb-6 bg-gradient-to-r from-red-500/10 to-rose-500/10 border border-red-500/30 p-4 rounded-2xl flex items-center justify-between gap-4 animate-fade-in">
                         <div className="flex items-center gap-3">
                             <div className="w-9 h-9 bg-red-500/20 rounded-xl flex items-center justify-center text-red-400 shrink-0">
                                 <AlertTriangle className="w-5 h-5 animate-pulse" />
@@ -1224,7 +1223,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                 )}
 
                 {/* Profile Header */}
-                <div className="bg-[#0e1017]/90 border border-white/10 rounded-3xl p-6 sm:p-8 mb-8 shadow-2xl backdrop-blur-xl relative overflow-hidden">
+                <div className="bg-[#0e1017]/90 border border-white/10 rounded-2xl sm:rounded-3xl p-4 sm:p-6 mb-4 sm:mb-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
                     {/* Decorative background glow */}
                     <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
@@ -1247,6 +1246,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         strokeDashoffset={circleOffset}
                                         transform="rotate(-90 50 50)"
                                         style={{ transition: "stroke-dashoffset 0.6s ease" }}
+                                        suppressHydrationWarning
                                     />
                                 </svg>
                                 <div 
@@ -1257,7 +1257,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                     {profilePhoto ? (
                                         <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
                                     ) : (
-                                        <span className="text-3xl font-extrabold text-white">{userName.charAt(0).toUpperCase()}</span>
+                                        <span className="text-3xl font-extrabold text-white" suppressHydrationWarning>{userName.charAt(0).toUpperCase()}</span>
                                     )}
                                     <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity duration-200">
                                         <Camera className="w-5 h-5 text-white/80" />
@@ -1382,75 +1382,83 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                     </div>
                 </div>
 
-                {/* Compact collapsible Account Details */}
-                <div className="mb-8 bg-[#111] border border-white/10 rounded-2xl overflow-hidden">
-                    <button
-                        onClick={() => setAccountDetailsOpen(o => !o)}
-                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-white/5 transition-colors"
-                    >
-                        <div className="flex items-center gap-3 text-sm font-semibold text-white/70">
-                            <User className="w-4 h-4 text-indigo-400" />
-                            Account Details
-                        </div>
-                        <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-200 ${accountDetailsOpen ? "rotate-180" : ""}`} />
-                    </button>
-
-                    {accountDetailsOpen && (
-                        <div className="border-t border-white/10 px-6 py-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {/* Editable Display Name row */}
-                            <div className="flex flex-col">
-                                <span className="text-xs text-white/40 uppercase tracking-wider font-bold mb-1">Display Name</span>
-                                {editingName ? (
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            autoFocus
-                                            type="text"
-                                            value={editNameValue}
-                                            onChange={e => setEditNameValue(e.target.value)}
-                                            onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setEditingName(false); setEditNameValue(userName); } }}
-                                            className="flex-1 bg-black/50 border border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
-                                        />
-                                        <button onClick={saveName} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors" title="Save">
-                                            <Check className="w-3.5 h-3.5" />
-                                        </button>
-                                        <button onClick={() => { setEditingName(false); setEditNameValue(userName); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors" title="Cancel">
-                                            <X className="w-3.5 h-3.5" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2 group">
-                                        <span className="text-sm font-semibold text-white/80">{userName}</span>
-                                        <button
-                                            onClick={() => { setEditingName(true); setEditNameValue(userName); }}
-                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
-                                            title="Edit name"
-                                        >
-                                            <Pencil className="w-3 h-3" />
-                                        </button>
-                                    </div>
-                                )}
+                {/* Account Details Card (Permanent Non-Collapsible Section) */}
+                <div className="mb-4 sm:mb-6 bg-[#111] border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl p-4 sm:p-6 space-y-6">
+                    <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shrink-0">
+                                <User className="w-5 h-5" />
                             </div>
+                            <div>
+                                <h3 className="text-lg font-extrabold text-white tracking-tight">Account Details</h3>
+                                <p className="text-xs text-white/40">Manage your profile, contact details, resume, and educational background</p>
+                            </div>
+                        </div>
+                    </div>
 
-                            {/* Static detail rows */}
-                            {[
-                                { label: "Account ID", value: userIdentifier || "Google / Guest" },
-                                { label: "Member Since", value: memberSince || new Date().toLocaleDateString() },
-                                { label: "Login Method", value: userIdentifier?.includes("@") ? "Email" : userIdentifier?.startsWith("+") ? "Phone" : "Google" },
-                                { label: "Total Sessions", value: `${totalInterviews} interview${totalInterviews !== 1 ? "s" : ""}` },
-                                { label: "Weighted Avg Score", value: `${avgScore} / 100` },
-                            ].map((item, i) => (
-                                <div key={i} className="flex flex-col">
-                                    <span className="text-xs text-white/40 uppercase tracking-wider font-bold mb-0.5">{item.label}</span>
-                                    <span className="text-sm font-semibold text-white/80 truncate">{item.value}</span>
+                    {/* Primary User Metadata Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {/* Editable Display Name row */}
+                        <div className="flex flex-col">
+                            <span className="text-xs text-white/40 uppercase tracking-wider font-bold mb-1">Display Name</span>
+                            {editingName ? (
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        value={editNameValue}
+                                        onChange={e => setEditNameValue(e.target.value)}
+                                        onKeyDown={e => { if (e.key === "Enter") saveName(); if (e.key === "Escape") { setEditingName(false); setEditNameValue(userName); } }}
+                                        className="flex-1 bg-black/50 border border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
+                                    />
+                                    <button onClick={saveName} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors cursor-pointer" title="Save">
+                                        <Check className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button onClick={() => { setEditingName(false); setEditNameValue(userName); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer" title="Cancel">
+                                        <X className="w-3.5 h-3.5" />
+                                    </button>
                                 </div>
-                            ))}
+                            ) : (
+                                <div className="flex items-center gap-2 group">
+                                    <span className="text-sm font-bold text-white">{userName}</span>
+                                    <button
+                                        onClick={() => { setEditingName(true); setEditNameValue(userName); }}
+                                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all cursor-pointer"
+                                        title="Edit name"
+                                    >
+                                        <Pencil className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
 
+                        {/* Static detail rows */}
+                        {[
+                            { label: "Account ID", value: userIdentifier || "Google / Guest" },
+                            { label: "Member Since", value: memberSince || (mounted ? new Date().toLocaleDateString("en-US") : "7/1/2026") },
+                            { label: "Login Method", value: userIdentifier?.includes("@") ? "Email" : userIdentifier?.startsWith("+") ? "Phone" : "Google" },
+                            { label: "Total Sessions", value: `${totalInterviews} interview${totalInterviews !== 1 ? "s" : ""}` },
+                            { label: "Weighted Avg Score", value: `${avgScore} / 100` },
+                        ].map((item, i) => (
+                            <div key={i} className="flex flex-col">
+                                <span className="text-xs text-white/40 uppercase tracking-wider font-bold mb-0.5">{item.label}</span>
+                                <span className="text-sm font-semibold text-white/90 truncate">{item.value}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Resume & Social Links Grid */}
+                    <div className="pt-6 border-t border-white/10 space-y-6">
+                        <h4 className="text-xs font-black text-indigo-300 uppercase tracking-wider">Resume & Online Presence</h4>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            {/* Resume / CV Section */}
                             <div className="flex flex-col sm:col-span-2">
                                 <span className="text-xs text-white/40 uppercase tracking-wider font-bold mb-1">Resume / CV</span>
                                 {resumeCvName ? (
-                                    <div className="flex items-center gap-2 justify-between bg-white/5 border border-white/10 rounded-lg px-3 py-2">
+                                    <div className="flex items-center gap-2 justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                                         <div className="min-w-0">
-                                            <p className="text-sm font-semibold text-white/80 truncate">{resumeCvName}</p>
+                                            <p className="text-sm font-semibold text-white truncate">{resumeCvName}</p>
                                             <p className="text-[11px] text-white/40">Uploaded resume/CV is saved to your account</p>
                                         </div>
                                         <div className="flex items-center gap-2 shrink-0">
@@ -1458,14 +1466,14 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 type="button"
                                                 onClick={() => { setResumeSourceModalOpen(true); void loadBuilderResumes(); }}
                                                 disabled={resumeCvUploading}
-                                                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/20 disabled:opacity-50"
+                                                className="text-xs font-bold px-3.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/20 disabled:opacity-50 cursor-pointer"
                                             >
                                                 {resumeCvUploading ? "Uploading..." : "Replace"}
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={handleRemoveResumeCv}
-                                                className="text-xs font-bold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-red-400 border border-white/10"
+                                                className="text-xs font-bold px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-red-500/10 text-red-400 border border-white/10 cursor-pointer"
                                             >
                                                 Remove
                                             </button>
@@ -1476,10 +1484,10 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         type="button"
                                         onClick={() => { setResumeSourceModalOpen(true); void loadBuilderResumes(); }}
                                         disabled={resumeCvUploading}
-                                        className="w-full flex items-center justify-between gap-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/15 rounded-lg px-3 py-3 text-left transition-colors disabled:opacity-50"
+                                        className="w-full flex items-center justify-between gap-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/15 rounded-xl px-4 py-3.5 text-left transition-colors disabled:opacity-50 cursor-pointer"
                                     >
                                         <div className="min-w-0">
-                                            <p className="text-sm font-semibold text-white/80">Upload Resume / CV</p>
+                                            <p className="text-sm font-semibold text-white">Upload Resume / CV</p>
                                             <p className="text-[11px] text-white/40">PDF, TXT, DOC, or DOCX</p>
                                         </div>
                                         <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
@@ -1504,10 +1512,10 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             placeholder="https://github.com/username"
                                             className="flex-1 bg-black/50 border border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                         />
-                                        <button onClick={saveGithub} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors" title="Save">
+                                        <button onClick={saveGithub} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors cursor-pointer" title="Save">
                                             <Check className="w-3.5 h-3.5" />
                                         </button>
-                                        <button onClick={() => { setEditingGithub(false); setEditGithubValue(github); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors" title="Cancel">
+                                        <button onClick={() => { setEditingGithub(false); setEditGithubValue(github); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer" title="Cancel">
                                             <X className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
@@ -1516,7 +1524,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{github || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingGithub(true); setEditGithubValue(github); }}
-                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all cursor-pointer"
                                             title="Edit GitHub URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1539,10 +1547,10 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             placeholder="https://linkedin.com/in/username"
                                             className="flex-1 bg-black/50 border border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                         />
-                                        <button onClick={saveLinkedin} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors" title="Save">
+                                        <button onClick={saveLinkedin} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors cursor-pointer" title="Save">
                                             <Check className="w-3.5 h-3.5" />
                                         </button>
-                                        <button onClick={() => { setEditingLinkedin(false); setEditLinkedinValue(linkedin); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors" title="Cancel">
+                                        <button onClick={() => { setEditingLinkedin(false); setEditLinkedinValue(linkedin); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer" title="Cancel">
                                             <X className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
@@ -1551,7 +1559,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{linkedin || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingLinkedin(true); setEditLinkedinValue(linkedin); }}
-                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all cursor-pointer"
                                             title="Edit LinkedIn URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1574,10 +1582,10 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             placeholder="https://myportfolio.com"
                                             className="flex-1 bg-black/50 border border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                         />
-                                        <button onClick={savePortfolio} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors" title="Save">
+                                        <button onClick={savePortfolio} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors cursor-pointer" title="Save">
                                             <Check className="w-3.5 h-3.5" />
                                         </button>
-                                        <button onClick={() => { setEditingPortfolio(false); setEditPortfolioValue(portfolioUrl); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors" title="Cancel">
+                                        <button onClick={() => { setEditingPortfolio(false); setEditPortfolioValue(portfolioUrl); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer" title="Cancel">
                                             <X className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
@@ -1586,7 +1594,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{portfolioUrl || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingPortfolio(true); setEditPortfolioValue(portfolioUrl); }}
-                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all cursor-pointer"
                                             title="Edit Portfolio URL"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1609,10 +1617,10 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             placeholder="e.g. +1 555-0199"
                                             className="flex-1 bg-black/50 border border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                         />
-                                        <button onClick={savePhone} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors" title="Save">
+                                        <button onClick={savePhone} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors cursor-pointer" title="Save">
                                             <Check className="w-3.5 h-3.5" />
                                         </button>
-                                        <button onClick={() => { setEditingPhone(false); setEditPhoneValue(phone); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors" title="Cancel">
+                                        <button onClick={() => { setEditingPhone(false); setEditPhoneValue(phone); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer" title="Cancel">
                                             <X className="w-3.5 h-3.5" />
                                         </button>
                                     </div>
@@ -1621,7 +1629,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{phone || "Not specified"}</span>
                                         <button
                                             onClick={() => { setEditingPhone(true); setEditPhoneValue(phone); }}
-                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                            className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all cursor-pointer"
                                             title="Edit Phone"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
@@ -1645,10 +1653,10 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 placeholder="name@company.com"
                                                 className="flex-1 bg-black/50 border border-indigo-500/50 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-1 focus:ring-indigo-500 transition-all"
                                             />
-                                            <button onClick={saveAdditionalEmail} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors" title="Save">
+                                            <button onClick={saveAdditionalEmail} className="w-7 h-7 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 flex items-center justify-center transition-colors cursor-pointer" title="Save">
                                                 <Check className="w-3.5 h-3.5" />
                                             </button>
-                                            <button onClick={() => { setEditingAdditionalEmail(false); setEditAdditionalEmailValue(additionalEmail); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors" title="Cancel">
+                                            <button onClick={() => { setEditingAdditionalEmail(false); setEditAdditionalEmailValue(additionalEmail); }} className="w-7 h-7 rounded-lg bg-white/5 text-white/40 hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer" title="Cancel">
                                                 <X className="w-3.5 h-3.5" />
                                             </button>
                                         </div>
@@ -1657,7 +1665,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             <span className="text-sm font-semibold text-white/80 truncate max-w-xs">{additionalEmail || "Not specified"}</span>
                                             <button
                                                 onClick={() => { setEditingAdditionalEmail(true); setEditAdditionalEmailValue(additionalEmail); }}
-                                                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all"
+                                                className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 w-6 h-6 rounded-md bg-white/5 hover:bg-indigo-500/20 hover:text-indigo-400 text-white/40 flex items-center justify-center transition-all cursor-pointer"
                                                 title="Edit Email"
                                             >
                                                 <Pencil className="w-3.5 h-3.5" />
@@ -1666,357 +1674,257 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                     )}
                                 </div>
                             )}
+                        </div>
+                    </div>
 
-                            {/* Education Details — structured button + form */}
-                            <div className="col-span-1 sm:col-span-2">
-                                <button
-                                    onClick={() => setEduOpen(o => !o)}
-                                    className="w-full flex items-center justify-between bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-xl px-4 py-3 transition-colors group"
-                                >
-                                    <div className="flex items-center gap-2.5">
-                                        <GraduationCap className="w-4.5 h-4.5 text-indigo-400" />
-                                        <span className="text-sm font-bold text-white">Education Details</span>
+                    {/* Education Details Section (Collapsible Card) */}
+                    <div className="pt-6 border-t border-white/10 space-y-4">
+                        <button
+                            type="button"
+                            onClick={() => setEduOpen(o => !o)}
+                            className="w-full flex items-center justify-between bg-white/[0.03] hover:bg-white/[0.06] border border-white/10 rounded-2xl p-4 transition-all cursor-pointer group"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-400/30 flex items-center justify-center text-indigo-400 shrink-0">
+                                    <GraduationCap className="w-5 h-5" />
+                                </div>
+                                <div className="text-left">
+                                    <h4 className="text-sm font-extrabold text-white flex items-center gap-2">
+                                        Education Details
                                         {(edu10thInstitution || edu12thInstitution || eduUGInstitution || eduPGInstitution) && (
-                                            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/20 px-2 py-0.5 rounded-full font-bold">
+                                            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full font-bold">
                                                 {[edu10thInstitution, edu12thInstitution, eduUGInstitution, eduPGInstitution].filter(Boolean).length} Added
                                             </span>
                                         )}
-                                    </div>
-                                    <ChevronDown className={`w-4 h-4 text-white/40 transition-transform duration-200 ${eduOpen ? "rotate-180" : ""}`} />
-                                </button>
-
-                                {eduOpen && (
-                                    <div className="mt-3 space-y-5 bg-white/[0.02] border border-white/5 rounded-xl p-4">
-                                        {/* 10th */}
-                                        <div>
-                                            <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded bg-indigo-500/20 text-indigo-400 text-[10px] font-black flex items-center justify-center">10</span>
-                                                10th Standard / SSC
-                                            </h5>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={edu10thInstitution}
-                                                    onChange={e => { setEdu10thInstitution(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="School name"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={edu10thBoard}
-                                                    onChange={e => { setEdu10thBoard(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="Board (e.g. CBSE, ICSE, State)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={edu10thMarks}
-                                                    onChange={e => { setEdu10thMarks(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="Marks / CGPA (e.g. 92%)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* 12th */}
-                                        <div>
-                                            <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded bg-purple-500/20 text-purple-400 text-[10px] font-black flex items-center justify-center">12</span>
-                                                12th Standard / HSC
-                                            </h5>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={edu12thInstitution}
-                                                    onChange={e => { setEdu12thInstitution(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="School / College name"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={edu12thBoard}
-                                                    onChange={e => { setEdu12thBoard(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="Board (e.g. CBSE, ICSE, State)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={edu12thMarks}
-                                                    onChange={e => { setEdu12thMarks(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="Marks / CGPA (e.g. 88%)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* UG */}
-                                        <div>
-                                            <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded bg-teal-500/20 text-teal-400 text-[10px] font-black flex items-center justify-center">UG</span>
-                                                Under Graduate (B.Tech / B.Sc / BCA etc.)
-                                            </h5>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={eduUGInstitution}
-                                                    onChange={e => { setEduUGInstitution(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="College / University name"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={eduUGCourse}
-                                                    onChange={e => { setEduUGCourse(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="Course (e.g. B.Tech CSE, BCA)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={eduUGMarks}
-                                                    onChange={e => { setEduUGMarks(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="CGPA / Percentage (e.g. 8.5)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        {/* PG */}
-                                        <div>
-                                            <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
-                                                <span className="w-5 h-5 rounded bg-pink-500/20 text-pink-400 text-[10px] font-black flex items-center justify-center">PG</span>
-                                                Post Graduate (M.Tech / M.Sc / MCA etc.)
-                                            </h5>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={eduPGInstitution}
-                                                    onChange={e => { setEduPGInstitution(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="College / University name"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={eduPGCourse}
-                                                    onChange={e => { setEduPGCourse(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="Course (e.g. M.Tech AI, MCA)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={eduPGMarks}
-                                                    onChange={e => { setEduPGMarks(e.target.value); }}
-                                                    onBlur={saveEducationData}
-                                                    placeholder="CGPA / Percentage (e.g. 9.0)"
-                                                    className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
-                                                />
-                                            </div>
-                                        </div>
-
-                                        <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                                            <span className="text-[10px] text-white/30 italic">Changes auto-save when you click away</span>
-                                            <button
-                                                onClick={() => { saveEducationData(); setEduOpen(false); }}
-                                                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1.5"
-                                            >
-                                                <Check className="w-3 h-3" /> Done
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Danger Zone */}
-                            <div className="border-t border-white/10 pt-6 mt-4 col-span-1 sm:col-span-2 flex flex-col items-stretch gap-4">
-                                <p className="text-sm font-extrabold text-red-500 uppercase tracking-wider">Danger Zone</p>
-                                
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-bold text-white/80">Wipe Generated Data</p>
-                                        <p className="text-xs text-white/40">Erase all generated resume settings, educational details, social links, and uploaded files. Keep your account login credentials.</p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setDeleteConfirmMode('data_only'); setDeleteConfirmOpen(true); }}
-                                        className="flex items-center gap-2 bg-orange-500/10 hover:bg-orange-600 text-orange-400 hover:text-white border border-orange-500/20 hover:border-orange-600 px-5 py-2.5 rounded-xl transition-all font-bold text-xs shadow-lg shrink-0"
-                                    >
-                                        <X className="w-3.5 h-3.5" /> Wipe Generated Data
-                                    </button>
-                                </div>
-
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-t border-white/5 pt-4">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-bold text-white/80">Delete Account</p>
-                                        <p className="text-xs text-white/40">Permanently delete your profile registration, login credentials, subscription plan, and all saved items forever.</p>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => { setDeleteConfirmMode('account'); setDeleteConfirmOpen(true); }}
-                                        className="flex items-center gap-2 bg-red-500/10 hover:bg-red-600 text-red-400 hover:text-white border border-red-500/20 hover:border-red-600 px-5 py-2.5 rounded-xl transition-all font-bold text-xs shadow-lg shrink-0"
-                                    >
-                                        <Trash2 className="w-3.5 h-3.5" /> Delete Account
-                                    </button>
+                                    </h4>
+                                    <p className="text-[11px] text-white/40">Add your school and university academic history</p>
                                 </div>
                             </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Stats Grid - 3 High-End Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-                    {/* Stat Card 1: Total Interviews */}
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-indigo-950/40 via-[#0e1017] to-[#0e1017] border border-indigo-500/25 hover:border-indigo-500/50 p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/20 transition-all" />
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
-                                <h3 className="text-indigo-300 font-extrabold text-[11px] tracking-wider uppercase">Total Interviews</h3>
-                            </div>
-                            <div className="w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-center text-indigo-300 shrink-0 group-hover:scale-110 transition-transform">
-                                <Activity className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="flex items-baseline justify-between">
-                            <p className="text-4xl font-black text-white group-hover:text-indigo-200 transition-colors tracking-tight">{totalInterviews}</p>
-                            <span className="text-[10px] font-semibold text-indigo-300/80 bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                                Last 12 mos
-                            </span>
-                        </div>
-                        <p className="text-[11px] text-white/40 mt-2 font-medium">Logged & synced attempts</p>
-                    </div>
-
-                    {/* Stat Card 2: Weighted Avg Score */}
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-purple-950/40 via-[#0e1017] to-[#0e1017] border border-purple-500/25 hover:border-purple-500/50 p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/20 transition-all" />
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
-                                <h3 className="text-purple-300 font-extrabold text-[11px] tracking-wider uppercase">Weighted Avg Score</h3>
-                            </div>
-                            <div className="w-9 h-9 rounded-xl bg-purple-500/15 border border-purple-400/30 flex items-center justify-center text-purple-300 shrink-0 group-hover:scale-110 transition-transform">
-                                <TrendingUp className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="flex items-baseline justify-between mb-2">
-                            <p className="text-4xl font-black text-white group-hover:text-purple-200 transition-colors tracking-tight">
-                                {avgScore} <span className="text-sm font-bold text-white/30">/ 100</span>
-                            </p>
-                            <span className="text-[10px] font-semibold text-purple-300/80 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
-                                Recency weighted
-                            </span>
-                        </div>
-                        {/* Mini score progress track */}
-                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-2">
-                            <div
-                                className="h-full bg-gradient-to-r from-purple-500 to-pink-400 rounded-full transition-all duration-500"
-                                style={{ width: `${Math.min(100, Math.max(0, avgScore))}%` }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Stat Card 3: Benchmark Rating */}
-                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-b from-emerald-950/30 via-[#0e1017] to-[#0e1017] border border-emerald-500/25 hover:border-emerald-500/50 p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/20 transition-all" />
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                                <h3 className="text-emerald-300 font-extrabold text-[11px] tracking-wider uppercase">Hiring Benchmark</h3>
-                            </div>
-                            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-400/30 flex items-center justify-center text-emerald-300 shrink-0 group-hover:scale-110 transition-transform">
-                                <Award className="w-4 h-4" />
-                            </div>
-                        </div>
-                        <div className="flex items-center justify-between min-h-[40px]">
-                            {benchmark === "No Data Yet" ? (
-                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/50 font-bold text-xs">
-                                    Pending Session Data
-                                </span>
-                            ) : (
-                                <p className={`text-xl font-extrabold tracking-tight ${benchmarkColor}`}>{benchmark}</p>
-                            )}
-                        </div>
-                        <p className="text-[11px] text-white/40 mt-2 font-medium">Industry hiring bar evaluation</p>
-                    </div>
-                </div>
-
-                {/* AI Career Coach Panel */}
-                <div className="mb-8 bg-gradient-to-r from-indigo-950/40 via-purple-950/20 to-[#0e1017] border border-indigo-500/30 rounded-2xl overflow-hidden shadow-[0_0_25px_rgba(79,70,229,0.12)] backdrop-blur-xl">
-                    <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div className="flex items-center gap-3.5 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center shrink-0">
-                                <Sparkles className="w-5 h-5 text-indigo-400" />
-                            </div>
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <h2 className="font-extrabold text-base sm:text-lg text-white">AI Career Coach</h2>
-                                    <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 text-[10px] font-bold uppercase tracking-wider border border-indigo-500/30">
-                                        Personalized
-                                    </span>
-                                </div>
-                                <p className="text-xs sm:text-sm text-white/60 line-clamp-1">Get custom guidance & action plan based on your interview history</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={guidanceOpen ? () => setGuidanceOpen(false) : fetchGuidance}
-                            disabled={loadingGuidance || sessions.length === 0}
-                            className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 transition-all px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-lg shadow-indigo-500/25 shrink-0 whitespace-nowrap w-full sm:w-auto"
-                        >
-                            {loadingGuidance ? (
-                                <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
-                            ) : guidanceOpen ? (
-                                "Close Plan"
-                            ) : (
-                                "Get My Plan"
-                            )}
+                            <ChevronDown className={`w-5 h-5 text-white/40 transition-transform duration-200 group-hover:text-white ${eduOpen ? "rotate-180" : ""}`} />
                         </button>
-                    </div>
 
-                    {guidanceOpen && (
-                        <div className="border-t border-white/10 p-5 sm:p-6 bg-black/30">
-                            {loadingGuidance ? (
-                                <div className="flex flex-col items-center justify-center py-8 gap-3 text-white/50">
-                                    <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
-                                    <p className="text-sm font-medium">Analyzing your sessions and crafting your personalized plan...</p>
+                        {eduOpen && (
+                            <div className="space-y-5 bg-white/[0.02] border border-white/5 rounded-2xl p-5 animate-in fade-in duration-200">
+                                {/* 10th */}
+                                <div>
+                                    <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                        <span className="w-5 h-5 rounded bg-indigo-500/20 text-indigo-400 text-[10px] font-black flex items-center justify-center">10</span>
+                                        10th Standard / SSC
+                                    </h5>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            value={edu10thInstitution}
+                                            onChange={e => { setEdu10thInstitution(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="School name"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={edu10thBoard}
+                                            onChange={e => { setEdu10thBoard(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="Board (e.g. CBSE, ICSE, State)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={edu10thMarks}
+                                            onChange={e => { setEdu10thMarks(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="Marks / CGPA (e.g. 92%)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                    </div>
                                 </div>
-                            ) : (
-                                <div className="prose prose-invert max-w-none space-y-2">
-                                    {guidance.split("\n").map((line, i) => {
-                                        const isBold = /^\*\*.+\*\*/.test(line);
-                                        const cleaned = line.replace(/\*\*/g, "").replace(/^#+\s*/, "");
-                                        if (!cleaned.trim()) return <div key={i} className="h-2" />;
-                                        if (isBold) return <p key={i} className="font-extrabold text-indigo-300 text-base mt-4 mb-1">{cleaned}</p>;
-                                        if (line.startsWith("- ") || line.startsWith("• ")) return <p key={i} className="text-white/80 text-sm pl-4 before:content-['•'] before:text-indigo-400 before:mr-2">{cleaned.replace(/^[-•]\s*/, "")}</p>;
-                                        return <p key={i} className="text-white/70 text-sm leading-relaxed">{cleaned}</p>;
-                                    })}
+
+                                {/* 12th */}
+                                <div>
+                                    <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                        <span className="w-5 h-5 rounded bg-purple-500/20 text-purple-400 text-[10px] font-black flex items-center justify-center">12</span>
+                                        12th Standard / HSC
+                                    </h5>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            value={edu12thInstitution}
+                                            onChange={e => { setEdu12thInstitution(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="School / College name"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={edu12thBoard}
+                                            onChange={e => { setEdu12thBoard(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="Board (e.g. CBSE, ICSE, State)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={edu12thMarks}
+                                            onChange={e => { setEdu12thMarks(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="Marks / CGPA (e.g. 88%)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                    </div>
                                 </div>
-                            )}
-                        </div>
-                    )}
+
+                                {/* UG */}
+                                <div>
+                                    <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                        <span className="w-5 h-5 rounded bg-teal-500/20 text-teal-400 text-[10px] font-black flex items-center justify-center">UG</span>
+                                        Under Graduate (B.Tech / B.Sc / BCA etc.)
+                                    </h5>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            value={eduUGInstitution}
+                                            onChange={e => { setEduUGInstitution(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="College / University name"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={eduUGCourse}
+                                            onChange={e => { setEduUGCourse(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="Course (e.g. B.Tech CSE, BCA)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={eduUGMarks}
+                                            onChange={e => { setEduUGMarks(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="CGPA / Percentage (e.g. 8.5)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* PG */}
+                                <div>
+                                    <h5 className="text-xs font-extrabold text-white/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                        <span className="w-5 h-5 rounded bg-pink-500/20 text-pink-400 text-[10px] font-black flex items-center justify-center">PG</span>
+                                        Post Graduate (M.Tech / M.Sc / MCA etc.)
+                                    </h5>
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            value={eduPGInstitution}
+                                            onChange={e => { setEduPGInstitution(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="College / University name"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={eduPGCourse}
+                                            onChange={e => { setEduPGCourse(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="Course (e.g. M.Tech AI, MCA)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                        <input
+                                            type="text"
+                                            value={eduPGMarks}
+                                            onChange={e => { setEduPGMarks(e.target.value); }}
+                                            onBlur={saveEducationData}
+                                            placeholder="CGPA / Percentage (e.g. 9.0)"
+                                            className="bg-black/50 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 transition-all placeholder:text-white/25"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-3 border-t border-white/5 flex items-center justify-between text-[11px] text-white/40">
+                                    <span className="italic">Changes auto-save when you click away</span>
+                                    <button
+                                        onClick={() => { saveEducationData(); setEduOpen(false); }}
+                                        className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                                    >
+                                        <Check className="w-3.5 h-3.5" /> Done
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
+                {/* Separate Standalone Danger Zone Card */}
+                <div className={`mb-4 sm:mb-6 rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl p-4 sm:p-6 space-y-5 border ${
+                    theme === "light" || theme === "eyeprotect"
+                        ? "bg-red-50/60 border-red-200"
+                        : "bg-gradient-to-b from-red-950/20 via-[#111] to-[#111] border-red-500/20"
+                }`}>
+                    <div className={`flex items-center gap-3 border-b pb-4 ${theme === "light" || theme === "eyeprotect" ? "border-red-200" : "border-red-500/10"}`}>
+                        <div className="w-9 h-9 rounded-xl bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-500 shrink-0">
+                            <AlertTriangle className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-black text-red-600 dark:text-red-400 tracking-tight uppercase">Danger Zone</h3>
+                            <p className={`text-xs font-medium ${theme === "light" || theme === "eyeprotect" ? "text-slate-600 font-semibold" : "text-white/40"}`}>
+                                Irreversible actions regarding your account storage and membership
+                            </p>
+                        </div>
+                    </div>
 
-                {/* Session Logs Section */}
-                <SessionHistoryPanel
-                    sessions={sessions}
-                    selectedIds={selectedIds}
-                    expandedIds={expandedIds}
-                    onToggleSelect={toggleSelect}
-                    onToggleSelectAll={toggleSelectAll}
-                    onToggleExpand={toggleExpand}
-                    onDeleteSelected={deleteSelected}
-                    onDownloadTranscript={downloadTranscript}
-                    onShareScorecard={(session) => void shareSessionScorecard(session)}
-                />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
+                        {/* Wipe Generated Data */}
+                        <div className={`rounded-2xl p-5 flex flex-col justify-between gap-4 border ${
+                            theme === "light" || theme === "eyeprotect"
+                                ? "bg-white border-amber-300 shadow-sm"
+                                : "bg-orange-500/5 border-orange-500/15"
+                        }`}>
+                            <div className="space-y-1">
+                                <p className={`text-sm font-black ${theme === "light" || theme === "eyeprotect" ? "text-amber-950" : "text-white"}`}>Wipe Generated Data</p>
+                                <p className={`text-xs leading-relaxed ${theme === "light" || theme === "eyeprotect" ? "text-slate-700 font-semibold" : "text-white/50"}`}>
+                                    Erase all generated resume settings, educational details, social links, and uploaded files. Keep your account login credentials.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { setDeleteConfirmMode('data_only'); setDeleteConfirmOpen(true); }}
+                                className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl transition-all font-bold text-xs shadow-lg cursor-pointer ${
+                                    theme === "light" || theme === "eyeprotect"
+                                        ? "bg-amber-600 hover:bg-amber-700 text-white border border-amber-600"
+                                        : "bg-orange-500/15 hover:bg-orange-600 text-orange-300 hover:text-white border border-orange-500/30 hover:border-orange-600"
+                                }`}
+                            >
+                                <X className="w-4 h-4" /> Wipe Generated Data
+                            </button>
+                        </div>
+
+                        {/* Delete Account */}
+                        <div className={`rounded-2xl p-5 flex flex-col justify-between gap-4 border ${
+                            theme === "light" || theme === "eyeprotect"
+                                ? "bg-white border-red-300 shadow-sm"
+                                : "bg-red-500/5 border-red-500/15"
+                        }`}>
+                            <div className="space-y-1">
+                                <p className={`text-sm font-black ${theme === "light" || theme === "eyeprotect" ? "text-red-950" : "text-white"}`}>Delete Account</p>
+                                <p className={`text-xs leading-relaxed ${theme === "light" || theme === "eyeprotect" ? "text-slate-700 font-semibold" : "text-white/50"}`}>
+                                    Permanently delete your profile registration, login credentials, subscription plan, and all saved items forever.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => { setDeleteConfirmMode('account'); setDeleteConfirmOpen(true); }}
+                                className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl transition-all font-bold text-xs shadow-lg cursor-pointer ${
+                                    theme === "light" || theme === "eyeprotect"
+                                        ? "bg-red-600 hover:bg-red-700 text-white border border-red-600"
+                                        : "bg-red-500/15 hover:bg-red-600 text-red-300 hover:text-white border border-red-500/30 hover:border-red-600"
+                                }`}
+                            >
+                                <Trash2 className="w-4 h-4" /> Delete Account
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </main>
 
             {/* Manage Subscription Plan Modal */}
@@ -2467,20 +2375,24 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             initial={{ scale: 0.95, y: 20 }}
                             animate={{ scale: 1, y: 0 }}
                             exit={{ scale: 0.95, y: 20 }}
-                            className="bg-gradient-to-b from-[#1a1111] to-[#0f0a0a] border border-red-500/20 rounded-3xl p-6 md:p-8 max-w-md w-full shadow-[0_20px_50px_rgba(220,38,38,0.15)] relative overflow-hidden"
+                            className={`rounded-3xl p-6 md:p-8 max-w-md w-full border relative overflow-hidden ${
+                                theme === "light" || theme === "eyeprotect"
+                                    ? "bg-white border-red-200 shadow-2xl text-slate-900"
+                                    : "bg-gradient-to-b from-[#1a1111] to-[#0f0a0a] border-red-500/20 shadow-[0_20px_50px_rgba(220,38,38,0.15)]"
+                            }`}
                         >
                             <div className="absolute -top-32 -right-32 w-64 h-64 bg-red-500/5 rounded-full blur-[80px] pointer-events-none" />
                             <div className="absolute -bottom-32 -left-32 w-64 h-64 bg-red-500/5 rounded-full blur-[80px] pointer-events-none" />
  
                             <div className="flex flex-col items-center text-center relative z-10">
-                                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 mb-5 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
+                                <div className="w-16 h-16 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-500 mb-5 shadow-[0_0_30px_rgba(239,68,68,0.2)]">
                                     <Trash2 className="w-8 h-8 animate-pulse" />
                                 </div>
  
-                                <h2 className="text-xl font-extrabold text-white mb-2">
+                                <h2 className={`text-xl font-black mb-2 ${theme === "light" || theme === "eyeprotect" ? "text-slate-900" : "text-white"}`}>
                                     {deleteConfirmMode === 'data_only' ? 'Wipe All Generated Data?' : 'Delete Account Permanently?'}
                                 </h2>
-                                <p className="text-sm text-white/60 leading-relaxed mb-6">
+                                <p className={`text-sm leading-relaxed mb-6 ${theme === "light" || theme === "eyeprotect" ? "text-slate-700 font-semibold" : "text-white/60"}`}>
                                     {deleteConfirmMode === 'data_only' 
                                         ? 'This action is irreversible. All of your contact profile settings, educational history, social links, and resume assets will be cleared. Your login credentials will remain active.'
                                         : 'This action is irreversible. All of your profile details, education records, subscriptions, and interview transcripts will be deleted forever.'}
@@ -2492,7 +2404,11 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         value={confirmPassword}
                                         onChange={e => setConfirmPassword(e.target.value)}
                                         placeholder="Confirm account password"
-                                        className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white mb-4 placeholder:text-white/20 focus:outline-none focus:border-indigo-500 transition-all text-center"
+                                        className={`w-full rounded-xl px-4 py-2.5 text-sm mb-4 focus:outline-none focus:border-red-500 transition-all text-center border ${
+                                            theme === "light" || theme === "eyeprotect"
+                                                ? "bg-slate-50 border-slate-300 text-slate-900 placeholder:text-slate-400 font-semibold"
+                                                : "bg-black/40 border-white/10 text-white placeholder:text-white/20"
+                                        }`}
                                     />
                                     {confirmError && (
                                         <p className="text-xs text-red-500 font-bold mb-3">{confirmError}</p>
@@ -2504,7 +2420,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         type="button"
                                         disabled={isDeleting}
                                         onClick={handleDeleteAccount}
-                                        className="flex-1 h-12 bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors rounded-xl font-bold text-white flex items-center justify-center gap-2 text-sm shadow-lg shadow-red-600/20 order-2 sm:order-1"
+                                        className="flex-1 h-12 bg-red-600 hover:bg-red-500 disabled:opacity-50 transition-colors rounded-xl font-bold text-white flex items-center justify-center gap-2 text-sm shadow-lg shadow-red-600/20 order-2 sm:order-1 cursor-pointer"
                                     >
                                         {isDeleting ? (
                                             <>
@@ -2523,7 +2439,11 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                             setConfirmPassword("");
                                             setConfirmError("");
                                         }}
-                                        className="flex-1 h-12 bg-white/5 hover:bg-white/10 disabled:opacity-50 transition-colors border border-white/10 rounded-xl font-bold text-white text-sm order-1 sm:order-2"
+                                        className={`flex-1 h-12 disabled:opacity-50 transition-colors border rounded-xl font-bold text-sm order-1 sm:order-2 cursor-pointer ${
+                                            theme === "light" || theme === "eyeprotect"
+                                                ? "bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800"
+                                                : "bg-white/5 hover:bg-white/10 border-white/10 text-white"
+                                        }`}
                                     >
                                         Cancel
                                     </button>
