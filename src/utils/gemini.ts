@@ -105,8 +105,6 @@ export async function generateWithFallback(
         "gemini-flash-lite-latest",
         "gemini-2.5-flash-lite",
         "gemini-2.5-flash",
-        "gemini-3.5-flash-lite",
-        "gemini-3.5-flash",
         ...detectedKeyModels,
         ...ADVANCED_CANDIDATE_MODELS,
     ].filter(m => 
@@ -117,7 +115,7 @@ export async function generateWithFallback(
         m !== "gemini-2.0-flash-lite" &&
         m !== "gemini-2.0-pro-exp-02-05" &&
         m !== "gemini-2.0-flash-thinking-exp-01-21"
-    )));
+    ))).slice(0, 4);
 
     let lastErr: unknown;
     let rateLimitCount = 0;
@@ -125,29 +123,28 @@ export async function generateWithFallback(
 
     for (const modelName of modelsToTry) {
         try {
-            const model = genAI.getGenerativeModel({ model: modelName, generationConfig: options.generationConfig });
+            const model = genAI.getGenerativeModel(
+                { model: modelName, generationConfig: options.generationConfig },
+                { timeout: 30000 }
+            );
             const result = await model.generateContent(prompt);
             return result.response.text();
         } catch (err: any) {
             lastErr = err;
             const isRateLimit = err?.status === 429 || (err?.message && (err.message.includes("429") || err.message.includes("Quota") || err.message.includes("quota") || err.message.includes("rate") || err.message.includes("limit") || err.message.includes("exceeded")));
-            const isNotFound = err?.status === 404 || (err?.message && err.message.includes("404"));
 
             if (isRateLimit) {
                 rateLimitCount++;
                 if (rateLimitCount >= maxRateLimitRetries) {
-                    console.log("[Gemini API] Rate-limited across models, activating fallback mode.");
+                    console.log("[Gemini API] Rate-limited across models.");
                     throw new Error("Gemini API rate limit reached. Utilizing fallback mode.");
                 }
                 await new Promise(r => setTimeout(r, 200));
                 continue;
             }
 
-            if (isNotFound) {
-                continue;
-            }
-
-            throw err;
+            console.warn(`[Gemini API] Transient error with model ${modelName}:`, err?.message || err);
+            continue;
         }
     }
     throw lastErr;

@@ -148,7 +148,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     return () => observer.disconnect();
   }, [isManualZoom]);
   const [showAIModal, setShowAIModal] = useState<boolean>(false);
-  const [aiModalStep, setAiModalStep] = useState<'choice' | 'upload' | 'notes' | 'portfolio_input'>('choice');
+  const [aiModalStep, setAiModalStep] = useState<'choice' | 'upload' | 'notes' | 'portfolio_input' | 'both_input'>('choice');
   const [resumeUploadFile, setResumeUploadFile] = useState<File | null>(null);
   const [savedResumes, setSavedResumes] = useState<any[]>([]);
   const [activeResumeId, setActiveResumeId] = useState<string | null>(null);
@@ -244,6 +244,22 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         setSavedResumes(finalList);
         setStorageItem("proSavedResumes", JSON.stringify(finalList));
+
+        // Keep the editor state in sync with the latest merged active resume if S3 version is newer
+        const activeId = getStorageItem("proActiveResumeId") || activeResumeId;
+        if (activeId) {
+          const activeItem = finalList.find((r: any) => r.id === activeId);
+          let localListParsed: any[] = [];
+          if (storedResumes) {
+            try { localListParsed = JSON.parse(storedResumes); } catch (e) {}
+          }
+          const localActiveItem = localListParsed.find((r: any) => r.id === activeId);
+          if (activeItem && (!localActiveItem || activeItem.updatedAt > (localActiveItem.updatedAt || 0))) {
+            setResumeData(activeItem.data);
+            setCurrentStyle(activeItem.style);
+            setActiveTemplateId(activeItem.templateId);
+          }
+        }
       } else {
         console.warn("Resumes S3 API returned non-OK status. Using local storage.");
         setSavedResumes(localList);
@@ -263,6 +279,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     const saved = getStorageItem("proResumeState");
 
     const timer = setTimeout(() => {
+      let stateLoaded = false;
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -270,18 +287,35 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             setResumeData(parsed.data);
             setCurrentStyle(parsed.style);
             setActiveTemplateId(parsed.templateId);
+            stateLoaded = true;
           }
         } catch (e) {
           console.error("Failed to parse saved resume state safely", e);
         }
       }
 
-      loadResumesList();
-
       const activeId = getStorageItem("proActiveResumeId");
       if (activeId) {
         setActiveResumeId(activeId);
+
+        // Fallback: If proResumeState was empty/missing, load from proSavedResumes
+        if (!stateLoaded) {
+          const storedResumes = getStorageItem("proSavedResumes");
+          if (storedResumes) {
+            try {
+              const list = JSON.parse(storedResumes);
+              const activeItem = list.find((r: any) => r.id === activeId);
+              if (activeItem) {
+                setResumeData(activeItem.data);
+                setCurrentStyle(activeItem.style);
+                setActiveTemplateId(activeItem.templateId);
+              }
+            } catch {}
+          }
+        }
       }
+
+      loadResumesList();
 
       const savedPortfolio = getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || "";
       if (savedPortfolio && savedPortfolio.trim()) {
@@ -583,7 +617,31 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
   const handleSave = () => {
     if (activeResumeId) {
-      const active = savedResumes.find(r => r.id === activeResumeId);
+      const list = savedResumes.map(r => {
+        if (r.id === activeResumeId) {
+          return {
+            ...r,
+            updatedAt: Date.now(),
+            data: resumeData,
+            style: currentStyle,
+            templateId: activeTemplateId
+          };
+        }
+        return r;
+      });
+
+      setSavedResumes(list);
+      setStorageItem("proSavedResumes", JSON.stringify(list));
+      syncResumesList(list);
+
+      const stateToSave = {
+        data: resumeData,
+        style: currentStyle,
+        templateId: activeTemplateId
+      };
+      setStorageItem("proResumeState", JSON.stringify(stateToSave));
+
+      const active = list.find(r => r.id === activeResumeId);
       const title = active ? active.title : "Resume";
       triggerToast(`Changes saved successfully to "${title}"!`);
     } else {
@@ -1315,6 +1373,36 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                           Provide your portfolio website URL. AI will extract work experience, projects, and skills to generate your resume.
                         </span>
                       </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAiSourceMode('both');
+                          setMissingSectionsList(["summary", "workExperience", "education", "projects", "skills", "languages", "certifications"]);
+                          if (accountResumeText) {
+                            setIsUsingAccountResume(true);
+                            const textFileName = (accountResumeName || 'Account_Resume.pdf').replace(/\.[^/.]+$/, "") + ".txt";
+                            const file = new File([accountResumeText], textFileName, { type: 'text/plain' });
+                            setResumeUploadFile(file);
+                          } else {
+                            setIsUsingAccountResume(false);
+                            setResumeUploadFile(null);
+                          }
+                          setAiModalStep('both_input');
+                        }}
+                        className="ai-modal-choice-btn-accent"
+                        style={{ textAlign: 'left', padding: '0.85rem 1rem' }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                          <Sparkles size={16} color="#34d399" />
+                          <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#34d399' }}>
+                            Resume + Web Portfolio (Both)
+                          </span>
+                        </div>
+                        <span className="ai-modal-desc" style={{ fontSize: '0.75rem', display: 'block', margin: 0 }}>
+                          Provide BOTH your resume file and web portfolio URL. AI will compare, cross-reference, and merge the best sections of both.
+                        </span>
+                      </button>
                     </div>
                   </div>
                 )}
@@ -1411,6 +1499,130 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                         onClick={() => {
                           if (!resumeUploadFile) {
                             alert("Please upload a resume file first.");
+                            return;
+                          }
+                          setAiModalStep('notes');
+                        }}
+                        style={{
+                          padding: '0.5rem 1.25rem', fontSize: '0.8rem', fontWeight: 700,
+                          background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                          border: 'none', borderRadius: '0.5rem', color: '#fff',
+                          cursor: 'pointer'
+                        }}
+                      >Next: Preferences</button>
+                    </div>
+                  </div>
+                )}
+
+                {aiModalStep === 'both_input' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    <p className="ai-modal-desc">
+                      Upload your resume and enter your web portfolio URL. AI will cross-reference and merge information from both documents.
+                    </p>
+
+                    {/* Resume Upload Box (reused from upload step) */}
+                    <div>
+                      <label className="ai-modal-label" style={{ marginBottom: '0.4rem', display: 'block' }}>Resume / CV Document</label>
+                      {isUsingAccountResume ? (
+                        <div style={{
+                          padding: '1rem',
+                          borderRadius: '0.5rem',
+                          background: 'rgba(139, 92, 246, 0.08)',
+                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.6rem'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <Check size={16} color="#a78bfa" />
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
+                              Fetched Resume from Account
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            Using saved resume: <strong style={{ color: '#a78bfa' }}>{accountResumeName}</strong>
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsUsingAccountResume(false);
+                              setResumeUploadFile(null);
+                            }}
+                            style={{
+                              alignSelf: 'flex-start',
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#ef4444',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                              padding: '0.25rem 0',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                          >
+                            <Trash2 size={12} />
+                            <span>Use another resume instead</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div 
+                          className="ai-modal-upload-box"
+                          onClick={() => document.getElementById('ai-resume-file-input-both')?.click()}
+                          style={{ padding: '0.85rem 0.5rem', minHeight: '80px' }}
+                        >
+                          <input
+                            type="file"
+                            id="ai-resume-file-input-both"
+                            accept=".pdf,.txt,.doc,.docx"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                setResumeUploadFile(file);
+                                setIsUsingAccountResume(false);
+                              }
+                            }}
+                            style={{ display: 'none' }}
+                          />
+                          <FileText size={24} color="#8b5cf6" style={{ opacity: 0.8, marginBottom: '0.25rem' }} />
+                          <span className="ai-modal-upload-text" style={{ fontSize: '0.8rem' }}>
+                            {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
+                          </span>
+                          <span className="ai-modal-upload-sub" style={{ fontSize: '0.7rem' }}>
+                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 2MB'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Portfolio Input (reused from portfolio_input step) */}
+                    <div>
+                      <label className="ai-modal-label" style={{ marginBottom: '0.4rem', display: 'block' }}>Portfolio Website URL</label>
+                      <input
+                        type="url"
+                        value={portfolioInputUrl}
+                        onChange={(e) => setPortfolioInputUrl(e.target.value)}
+                        placeholder="e.g. https://yourportfolio.com"
+                        className="ai-modal-input"
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setAiModalStep('choice')}
+                        className="ai-modal-back-btn"
+                      >Back</button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!resumeUploadFile) {
+                            alert("Please upload or fetch a resume file first.");
+                            return;
+                          }
+                          if (!portfolioInputUrl.trim()) {
+                            alert("Please enter your portfolio URL.");
                             return;
                           }
                           setAiModalStep('notes');
@@ -1754,7 +1966,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                       <button
                         type="button"
                         onClick={() => {
-                          if (resumeUploadFile) {
+                          if (aiSourceMode === 'both') {
+                            setAiModalStep('both_input');
+                          } else if (resumeUploadFile) {
                             setAiModalStep('upload');
                           } else {
                             setAiModalStep('choice');

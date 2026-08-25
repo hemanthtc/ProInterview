@@ -49,7 +49,17 @@ async function fetchUrlText(url: string) {
     if (!url) return "";
     try {
         if (!url.startsWith("http")) url = "https://" + url;
-        const res = await fetch(url);
+        const res = await fetch(url, {
+            headers: {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+                "Accept-Language": "en-US,en;q=0.5"
+            },
+            signal: AbortSignal.timeout(15000)
+        });
+        if (!res.ok) {
+            throw new Error(`HTTP ${res.status}`);
+        }
         const html = await res.text();
         const cleanText = html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
@@ -57,7 +67,8 @@ async function fetchUrlText(url: string) {
             .replace(/\s+/g, ' ')
             .trim();
         return `\n--- [Website: ${url}] ---\n${cleanText.substring(0, 5000)}\n`;
-    } catch (e) {
+    } catch (e: any) {
+        console.error(`Failed to fetch website ${url}:`, e.message || e);
         return `\n--- [Failed to fetch website: ${url}] ---\n`;
     }
 }
@@ -253,7 +264,12 @@ CRITICAL ATS OPTIMIZATION RULES:
 `;
         }
 
-        const rawText = (await generateWithFallback(systemPrompt, { generationConfig: { temperature: 0.7 } })).trim();
+        const rawText = (await generateWithFallback(systemPrompt, { 
+            generationConfig: { 
+                temperature: 0.7,
+                responseMimeType: "application/json"
+            } 
+        })).trim();
         let parsedJson: unknown = {};
         try {
             parsedJson = parseJsonFromModel(rawText);

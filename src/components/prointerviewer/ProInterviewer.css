@@ -2015,9 +2015,41 @@ html.theme-light .ai-modal-choice-btn-secondary {
   color: #0f172a;
 }
 
-html.theme-light .ai-modal-choice-btn-secondary:hover {
-  background: rgba(15, 23, 42, 0.05);
-  border-color: rgba(15, 23, 42, 0.4) !important;
+.ai-modal-choice-btn-accent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  align-items: flex-start;
+  padding: 1rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 0.75rem;
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+.ai-modal-choice-btn-accent:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+html.theme-light .ai-modal-choice-btn-accent {
+  background: rgba(5, 150, 105, 0.1) !important;
+  border: 2px solid #059669 !important;
+  color: #059669 !important;
+}
+
+html.theme-light .ai-modal-choice-btn-accent:hover {
+  background: rgba(5, 150, 105, 0.15) !important;
+  border-color: #047857 !important;
+}
+
+html.theme-eyeprotect .ai-modal-choice-btn-accent {
+  background: rgba(16, 185, 129, 0.05);
+  border-color: rgba(16, 185, 129, 0.2);
 }
 
 /* 9. Back Button */
