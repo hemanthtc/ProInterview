@@ -35,6 +35,7 @@ export interface Education {
   percentage?: string;
   description: string;
   hidden?: boolean;
+  degreeType?: string;
 }
 
 export interface Project {

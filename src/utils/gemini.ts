@@ -90,7 +90,7 @@ export async function fetchKeySupportedModels(apiKey?: string): Promise<string[]
 }
 
 export async function generateWithFallback(
-    prompt: string,
+    prompt: string | Array<any>,
     options: { model?: string; generationConfig?: any } = {}
 ): Promise<string> {
     const key = process.env.GEMINI_API_KEY;

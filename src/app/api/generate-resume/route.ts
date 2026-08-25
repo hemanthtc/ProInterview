@@ -8,15 +8,30 @@ async function extractTextFromFile(file: File): Promise<string> {
 
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
         try {
+            const fs = await import("fs");
+            const path = await import("path");
+            const logPath = path.resolve(process.cwd(), "pdf-debug.log");
+            fs.appendFileSync(logPath, `[PDF Debug] Starting parse for file: ${file.name}, size: ${file.size}\n`);
+
             // @ts-expect-error pdf-parse does not have default type definitions
             const pdfParseModule = await import("pdf-parse");
             const pdfParse = pdfParseModule.default ?? pdfParseModule;
+            fs.appendFileSync(logPath, `[PDF Debug] Imported pdf-parse successfully.\n`);
+
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const data = await pdfParse(buffer);
             const textContent = data.text || "";
+            fs.appendFileSync(logPath, `[PDF Debug] Extraction successful. Text length: ${textContent.length}\n`);
+
             return `--- [File: ${file.name}] ---\n${textContent}\n`;
-        } catch(e) {
+        } catch(e: any) {
+            try {
+                const fs = await import("fs");
+                const path = await import("path");
+                const logPath = path.resolve(process.cwd(), "pdf-debug.log");
+                fs.appendFileSync(logPath, `[PDF Debug] Extraction failed: ${e.message || e}\n${e.stack || ""}\n`);
+            } catch {}
             console.error("PDF extraction failed for " + file.name + ":", e);
             return "";
         }
@@ -41,7 +56,7 @@ async function extractTextFromFile(file: File): Promise<string> {
     if (file.size > 2000000) return "";
     try {
         const text = await file.text();
-        return `--- [File: ${file.name}] ---\n${text.substring(0, 3000)}\n`;
+        return `--- [File: ${file.name}] ---\n${text}\n`;
     } catch (e) { return ""; }
 }
 
@@ -95,10 +110,81 @@ export async function POST(req: NextRequest) {
         const sourceMode = (formData.get("sourceMode") as string) || "resume";
         const optimizeAts = formData.get("optimizeAts") as string;
         const targetPages = formData.get("targetPages") as string || "1";
+        const resumeUrl = formData.get("resumeUrl") as string;
 
         let resumeFileText = "";
+        let resumePart: any = null;
+
+        if (resumeUrl) {
+            try {
+                const response = await fetch(resumeUrl, { signal: AbortSignal.timeout(15000) });
+                if (response.ok) {
+                    const arrayBuffer = await response.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+                    const base64 = buffer.toString("base64");
+                    
+                    // Create visual part for Gemini layout analysis
+                    resumePart = {
+                        inlineData: {
+                            data: base64,
+                            mimeType: "application/pdf"
+                        }
+                    };
+
+                    // Extract exact text characters to prevent spelling/transcription gaps
+                    try {
+                        // @ts-expect-error pdf-parse does not have default type definitions
+                        const pdfParseModule = await import("pdf-parse");
+                        const pdfParse = pdfParseModule.default ?? pdfParseModule;
+                        const data = await pdfParse(buffer);
+                        resumeFileText = `--- [File: Account_Resume.pdf] ---\n${data.text || ""}\n`;
+                    } catch (parseErr) {
+                        console.warn("Failed to parse text from fetched account resume:", parseErr);
+                    }
+                } else {
+                    console.warn("Failed to fetch account resume from URL, falling back to uploaded file.");
+                }
+            } catch (err) {
+                console.warn("Failed to fetch/parse account resume from S3 URL:", err);
+            }
+        }
+
         if (resumeFile) {
-            resumeFileText = await extractTextFromFile(resumeFile);
+            if (resumeFile.name.toLowerCase().endsWith(".pdf") || resumeFile.type === "application/pdf") {
+                try {
+                    const arrayBuffer = await resumeFile.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
+                    const base64 = buffer.toString("base64");
+                    
+                    // Visual PDF part (takes precedence only if not already fetched from S3)
+                    if (!resumePart) {
+                        resumePart = {
+                            inlineData: {
+                                data: base64,
+                                mimeType: "application/pdf"
+                            }
+                        };
+                    }
+
+                    // Always extract raw text characters to back it up
+                    if (!resumeFileText) {
+                        // @ts-expect-error pdf-parse does not have default type definitions
+                        const pdfParseModule = await import("pdf-parse");
+                        const pdfParse = pdfParseModule.default ?? pdfParseModule;
+                        const data = await pdfParse(buffer);
+                        resumeFileText = `--- [File: ${resumeFile.name}] ---\n${data.text || ""}\n`;
+                    }
+                } catch (err) {
+                    console.error("Failed to read/parse PDF file as buffer, falling back to standard extraction:", err);
+                    if (!resumeFileText) {
+                        resumeFileText = await extractTextFromFile(resumeFile);
+                    }
+                }
+            } else {
+                if (!resumeFileText) {
+                    resumeFileText = await extractTextFromFile(resumeFile);
+                }
+            }
         }
 
         let projectText = "";
@@ -154,6 +240,9 @@ Use the candidate's Portfolio Website as the primary source of truth. Extract al
 
 ${resumeFileText ? `Uploaded Resume / CV Document:
 ${resumeFileText}
+` : ""}
+${resumePart ? `Uploaded Resume / CV Document:
+[Refer to the attached PDF document part]
 ` : ""}
 
 ${portfolioText ? `Portfolio Website Content (${portfolioUrl}):
@@ -264,7 +353,12 @@ CRITICAL ATS OPTIMIZATION RULES:
 `;
         }
 
-        const rawText = (await generateWithFallback(systemPrompt, { 
+        const promptParts: Array<any> = [systemPrompt];
+        if (resumePart) {
+            promptParts.push(resumePart);
+        }
+
+        const rawText = (await generateWithFallback(promptParts, { 
             generationConfig: { 
                 temperature: 0.7,
                 responseMimeType: "application/json"

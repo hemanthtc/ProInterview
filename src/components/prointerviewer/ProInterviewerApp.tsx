@@ -51,6 +51,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     title: string;
     message: string;
     onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    type?: 'danger' | 'warning' | 'info';
   }>({ isOpen: false, title: "", message: "", onConfirm: () => {} });
 
   const [promptDialog, setPromptDialog] = useState<{
@@ -172,6 +175,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const [isUsingAccountResume, setIsUsingAccountResume] = useState<boolean>(false);
   const [accountResumeName, setAccountResumeName] = useState<string>('');
   const [accountResumeText, setAccountResumeText] = useState<string>('');
+  const [accountResumeUrl, setAccountResumeUrl] = useState<string>('');
   const [portfolioInputUrl, setPortfolioInputUrl] = useState<string>('');
   const [showOfflineAlert, setShowOfflineAlert] = useState<boolean>(false);
   const [s3ErrorMsg, setS3ErrorMsg] = useState<string>('');
@@ -468,6 +472,23 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
   // --- MULTI-RESUME MANAGER FUNCTIONS ---
   const handleCreateBlankResume = () => {
+    if (savedResumes.length >= 3) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "Saved Resumes Limit Reached",
+        message: "You can save a maximum of 3 resumes. Please delete one of your existing resumes to create a new one.",
+        confirmText: showSavedResumesModal ? "Close" : "Manage Resumes",
+        cancelText: "Cancel",
+        type: "info",
+        onConfirm: () => {
+          if (!showSavedResumesModal) {
+            setShowSavedResumesModal(true);
+          }
+        }
+      });
+      return;
+    }
+
     setPromptDialog({
       isOpen: true,
       title: "New Resume",
@@ -583,6 +604,23 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   };
 
   const handleSaveCurrentAsCopy = () => {
+    if (savedResumes.length >= 3) {
+      setConfirmDialog({
+        isOpen: true,
+        title: "Saved Resumes Limit Reached",
+        message: "You can save a maximum of 3 resumes. Please delete one of your existing resumes to save this copy.",
+        confirmText: showSavedResumesModal ? "Close" : "Manage Resumes",
+        cancelText: "Cancel",
+        type: "info",
+        onConfirm: () => {
+          if (!showSavedResumesModal) {
+            setShowSavedResumesModal(true);
+          }
+        }
+      });
+      return;
+    }
+
     const defaultVal = resumeData.personalInfo.name ? `${resumeData.personalInfo.name}'s Resume Copy` : "My Resume Copy";
     setPromptDialog({
       isOpen: true,
@@ -668,6 +706,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     let fetchedPortfolio = storedPortfolio;
     let fetchedResumeText = "";
     let fetchedResumeName = "";
+    let fetchedResumeUrl = "";
 
     // Fetch latest user profile details from backend
     if (storedEmail) {
@@ -685,6 +724,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           fetchedPortfolio = u.portfolioUrl || storedPortfolio;
           fetchedResumeText = u.resumeCvText || "";
           fetchedResumeName = u.resumeCvName || "";
+          fetchedResumeUrl = u.resumeCvUrl || "";
 
           // Update local storage to keep it in sync
           if (u.displayName) setStorageItem("userName", u.displayName);
@@ -700,6 +740,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             setStorageItem("userResumeCvText", u.resumeCvText);
             setStorageItem("userResumeCvName", u.resumeCvName || "Account_Resume.pdf");
           }
+          if (u.resumeCvUrl) {
+            setStorageItem("userResumeCvUrl", u.resumeCvUrl);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch fresh profile details:", err);
@@ -713,9 +756,13 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       fetchedResumeText = getStorageItem("userResumeCvText") || "";
       fetchedResumeName = getStorageItem("userResumeCvName") || "";
     }
+    if (!fetchedResumeUrl) {
+      fetchedResumeUrl = getStorageItem("userResumeCvUrl") || "";
+    }
 
     setAccountResumeText(fetchedResumeText);
     setAccountResumeName(fetchedResumeName || "Account_Resume.pdf");
+    setAccountResumeUrl(fetchedResumeUrl);
     setPortfolioInputUrl(fetchedPortfolio);
 
     const updatedPersonal = {
@@ -890,6 +937,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('missingSections', missingSectionsList.join(','));
       if (resumeUploadFile) {
         formData.append('resumeFile', resumeUploadFile);
+      }
+      if (isUsingAccountResume && accountResumeUrl) {
+        formData.append('resumeUrl', accountResumeUrl);
       }
 
       const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
@@ -2012,10 +2062,15 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
                   <div style={{
                     width: '2rem', height: '2rem', borderRadius: '0.5rem',
-                    background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)',
+                    background: confirmDialog.type === 'info' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                    border: confirmDialog.type === 'info' ? '1px solid rgba(59, 130, 246, 0.2)' : '1px solid rgba(239, 68, 68, 0.2)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                   }}>
-                    <AlertTriangle size={16} color="#ef4444" />
+                    {confirmDialog.type === 'info' ? (
+                      <Info size={16} color="#3b82f6" />
+                    ) : (
+                      <AlertTriangle size={16} color="#ef4444" />
+                    )}
                   </div>
                   <div>
                     <h3 className="ai-modal-title" style={{ fontSize: '1rem', fontWeight: 800 }}>{confirmDialog.title}</h3>
@@ -2029,7 +2084,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
                     className="ai-modal-back-btn"
                     style={{ fontSize: '0.75rem', padding: '0.4rem 0.85rem' }}
-                  >Cancel</button>
+                  >
+                    {confirmDialog.cancelText || "Cancel"}
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -2038,10 +2095,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     }}
                     style={{
                       padding: '0.4rem 1rem', fontSize: '0.75rem', fontWeight: 700,
-                      background: 'rgb(220, 38, 38)', border: 'none', borderRadius: '0.5rem', color: '#fff',
-                      cursor: 'pointer', boxShadow: '0 0 15px rgba(220, 38, 38, 0.2)'
+                      background: confirmDialog.type === 'info' ? 'rgba(59, 130, 246, 1)' : 'rgb(220, 38, 38)',
+                      border: 'none', borderRadius: '0.5rem', color: '#fff',
+                      cursor: 'pointer',
+                      boxShadow: confirmDialog.type === 'info' ? '0 0 15px rgba(59, 130, 246, 0.2)' : '0 0 15px rgba(220, 38, 38, 0.2)'
                     }}
-                  >Confirm</button>
+                  >
+                    {confirmDialog.confirmText || "Confirm"}
+                  </button>
                 </div>
               </div>
             </>
@@ -2836,11 +2897,15 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
                   <div style={{
                     width: '2.5rem', height: '2.5rem', borderRadius: '50%',
-                    background: 'rgba(239, 68, 68, 0.15)',
+                    background: confirmDialog.type === 'info' ? 'rgba(59, 130, 246, 0.15)' : 'rgba(239, 68, 68, 0.15)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#ef4444', flexShrink: 0
+                    color: confirmDialog.type === 'info' ? '#3b82f6' : '#ef4444', flexShrink: 0
                   }}>
-                    <AlertTriangle size={20} />
+                    {confirmDialog.type === 'info' ? (
+                      <Info size={20} />
+                    ) : (
+                      <AlertTriangle size={20} />
+                    )}
                   </div>
                   <div>
                     <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 700, color: 'var(--text-main)' }}>
@@ -2859,7 +2924,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     onClick={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
                     style={{ padding: '0.45rem 0.9rem', fontSize: '0.8rem', fontWeight: 600 }}
                   >
-                    Cancel
+                    {confirmDialog.cancelText || "Cancel"}
                   </button>
                   <button
                     type="button"
@@ -2870,11 +2935,12 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     }}
                     style={{
                       padding: '0.45rem 0.9rem', fontSize: '0.8rem', fontWeight: 700,
-                      background: '#ef4444', color: '#fff', border: 'none', borderRadius: '0.5rem',
+                      background: confirmDialog.type === 'info' ? 'var(--primary-color, #3b82f6)' : '#ef4444',
+                      color: '#fff', border: 'none', borderRadius: '0.5rem',
                       cursor: 'pointer'
                     }}
                   >
-                    Delete
+                    {confirmDialog.confirmText || "Delete"}
                   </button>
                 </div>
               </div>

@@ -324,6 +324,19 @@ export default function ProfilePage() {
             void hydrateSessions();
     }, [router]);
 
+    // Prompt user before navigating/refreshing during active upload
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (resumeCvUploading) {
+                e.preventDefault();
+                e.returnValue = "Resume upload is in progress. Are you sure you want to leave?";
+                return e.returnValue;
+            }
+        };
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+    }, [resumeCvUploading]);
+
     // Dynamically load Razorpay script on mount
     useEffect(() => {
         const script = document.createElement("script");
@@ -843,18 +856,35 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         const p = data.personalInfo || {};
         if (p.name) text += `${p.name}\n`;
         if (p.title) text += `${p.title}\n`;
-        if (p.email || p.phone) text += `${p.email || ""} | ${p.phone || ""}\n`;
-        if (p.github || p.linkedin || p.website) {
-            text += `${p.linkedin || ""} | ${p.github || ""} | ${p.website || ""}\n`;
+        
+        const contactParts: string[] = [];
+        if (p.email) contactParts.push(p.email);
+        if (p.phone) contactParts.push(p.phone);
+        if (p.location) contactParts.push(p.location);
+        if (contactParts.length > 0) {
+            text += contactParts.join(" | ") + "\n";
         }
+        
+        const socialParts: string[] = [];
+        if (p.linkedin) socialParts.push(p.linkedin);
+        if (p.github) socialParts.push(p.github);
+        if (p.website) socialParts.push(p.website);
+        if (socialParts.length > 0) {
+            text += socialParts.join(" | ") + "\n";
+        }
+        
         if (p.summary) text += `\nProfessional Summary:\n${p.summary}\n`;
         
         // Experience
-        const exp = data.experience || [];
+        const exp = data.workExperience || data.experience || [];
         if (exp.length > 0) {
             text += `\nWork Experience:\n`;
             exp.forEach((e: any) => {
-                text += `- ${e.position} at ${e.company} (${e.startDate || ""} - ${e.endDate || "Present"})\n`;
+                const dateStr = e.startDate || e.endDate 
+                    ? ` (${e.startDate || ""} - ${e.endDate || (e.current ? "Present" : "")})` 
+                    : "";
+                const locStr = e.location ? ` - ${e.location}` : "";
+                text += `- ${e.position || "Role"} at ${e.company || "Company"}${dateStr}${locStr}\n`;
                 if (e.description) text += `  ${e.description}\n`;
             });
         }
@@ -864,7 +894,17 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         if (edu.length > 0) {
             text += `\nEducation:\n`;
             edu.forEach((e: any) => {
-                text += `- ${e.degree || ""} in ${e.fieldOfStudy || ""} from ${e.school || ""} (${e.startDate || ""} - ${e.endDate || ""})\n`;
+                const schoolName = e.institution || e.school || "";
+                const dateStr = e.startDate || e.endDate 
+                    ? ` (${e.startDate || ""} - ${e.endDate || ""})` 
+                    : "";
+                const scoreParts: string[] = [];
+                if (e.cgpa) scoreParts.push(`CGPA: ${e.cgpa}`);
+                if (e.percentage) scoreParts.push(`Percentage: ${e.percentage}`);
+                const scoreStr = scoreParts.length > 0 ? ` [${scoreParts.join(", ")}]` : "";
+                const locStr = e.location ? ` - ${e.location}` : "";
+                
+                text += `- ${e.degree || "Degree"} in ${e.fieldOfStudy || "Field"} from ${schoolName}${dateStr}${locStr}${scoreStr}\n`;
                 if (e.description) text += `  ${e.description}\n`;
             });
         }
@@ -873,8 +913,14 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         const skills = data.skills || [];
         if (skills.length > 0) {
             text += `\nSkills:\n`;
-            const skillList = skills.map((s: any) => typeof s === "string" ? s : s.name).filter(Boolean);
-            text += skillList.join(", ") + "\n";
+            const skillList = skills.map((s: any) => {
+                if (typeof s === "string") return s;
+                if (s.name) {
+                    return s.level ? `${s.name} (${s.level})` : s.name;
+                }
+                return "";
+            }).filter(Boolean);
+            text += skillList.join(" | ") + "\n";
         }
         
         // Projects
@@ -882,8 +928,55 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         if (projects.length > 0) {
             text += `\nProjects:\n`;
             projects.forEach((pr: any) => {
-                text += `- ${pr.name} ${pr.url ? `(${pr.url})` : ""}\n`;
+                const projectUrl = pr.link || pr.url || "";
+                const techStr = Array.isArray(pr.technologies) && pr.technologies.length > 0 
+                    ? ` [Tech: ${pr.technologies.join(", ")}]` 
+                    : "";
+                const roleStr = pr.role ? ` (Role: ${pr.role})` : "";
+                
+                text += `- ${pr.name || "Project"}${roleStr}${techStr}${projectUrl ? ` (${projectUrl})` : ""}\n`;
                 if (pr.description) text += `  ${pr.description}\n`;
+            });
+        }
+        
+        // Languages
+        const languages = data.languages || [];
+        if (languages.length > 0) {
+            text += `\nLanguages:\n`;
+            const langList = languages.map((l: any) => {
+                if (typeof l === "string") return l;
+                if (l.name) {
+                    return l.proficiency ? `${l.name} (${l.proficiency})` : l.name;
+                }
+                return "";
+            }).filter(Boolean);
+            text += langList.join(" | ") + "\n";
+        }
+        
+        // Certifications
+        const certifications = data.certifications || [];
+        if (certifications.length > 0) {
+            text += `\nCertifications:\n`;
+            certifications.forEach((c: any) => {
+                const dateStr = c.date ? ` (${c.date})` : "";
+                const urlStr = c.link || c.url ? ` - Link: ${c.link || c.url}` : "";
+                text += `- ${c.name || "Certification"} by ${c.issuer || "Issuer"}${dateStr}${urlStr}\n`;
+            });
+        }
+        
+        // Custom Sections
+        const custom = data.customSections || [];
+        if (custom.length > 0) {
+            custom.forEach((sect: any) => {
+                if (sect.title && sect.items && sect.items.length > 0) {
+                    text += `\n${sect.title}:\n`;
+                    sect.items.forEach((item: any) => {
+                        const dateStr = item.date ? ` (${item.date})` : "";
+                        const subStr = item.subtitle ? ` - ${item.subtitle}` : "";
+                        text += `- ${item.title || "Item"}${subStr}${dateStr}\n`;
+                        if (item.description) text += `  ${item.description}\n`;
+                    });
+                }
             });
         }
         
@@ -1455,7 +1548,23 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                             {/* Resume / CV Section */}
                             <div className="flex flex-col sm:col-span-2">
                                 <span className="text-xs text-white/40 uppercase tracking-wider font-bold mb-1">Resume / CV</span>
-                                {resumeCvName ? (
+                                {resumeCvUploading ? (
+                                    <div className="w-full flex flex-col gap-3 bg-indigo-500/5 border border-indigo-500/30 rounded-xl px-4 py-5 transition-colors relative overflow-hidden select-none">
+                                        <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse" />
+                                        <div className="flex items-center justify-between gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <Loader2 className="w-5 h-5 text-indigo-400 animate-spin shrink-0" />
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-extrabold text-white">Uploading & transcribing resume...</p>
+                                                    <p className="text-[11px] text-white/45">Extracting details with Gemini AI (this may take a few seconds)</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] uppercase font-black px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 tracking-wider">
+                                                Active
+                                            </span>
+                                        </div>
+                                    </div>
+                                ) : resumeCvName ? (
                                     <div className="flex items-center gap-2 justify-between bg-white/5 border border-white/10 rounded-xl px-4 py-3">
                                         <div className="min-w-0">
                                             <p className="text-sm font-semibold text-white truncate">{resumeCvName}</p>
@@ -1468,7 +1577,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 disabled={resumeCvUploading}
                                                 className="text-xs font-bold px-3.5 py-1.5 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/20 disabled:opacity-50 cursor-pointer"
                                             >
-                                                {resumeCvUploading ? "Uploading..." : "Replace"}
+                                                Replace
                                             </button>
                                             <button
                                                 type="button"
@@ -2612,6 +2721,34 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                         >
                             <X className="w-4 h-4" />
                         </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Uploading Fullscreen Lock Overlay */}
+            <AnimatePresence>
+                {resumeCvUploading && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/85 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 select-none pointer-events-auto"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="bg-[#121215] border border-white/10 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl relative overflow-hidden text-center"
+                        >
+                            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse" />
+                            <div className="w-16 h-16 mx-auto rounded-2xl bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center text-indigo-400 mb-5 shadow-[0_0_35px_rgba(79,70,229,0.15)]">
+                                <Loader2 className="w-8 h-8 animate-spin" />
+                            </div>
+                            <h3 className="text-lg font-black text-white mb-2">Analyzing Resume</h3>
+                            <p className="text-xs text-white/50 leading-relaxed">
+                                Gemini AI is transcribing your resume layout verbatim. Please do not close, refresh, or navigate away from this page until parsing is complete.
+                            </p>
+                        </motion.div>
                     </motion.div>
                 )}
             </AnimatePresence>

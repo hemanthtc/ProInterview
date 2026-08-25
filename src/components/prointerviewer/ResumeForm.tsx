@@ -70,7 +70,8 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           cgpa: scores.cgpa,
           percentage: scores.percentage,
           location: "",
-          description: ""
+          description: "",
+          degreeType: "ug"
         });
       }
       if (storedEdu.pg?.institution) {
@@ -85,7 +86,8 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           cgpa: scores.cgpa,
           percentage: scores.percentage,
           location: "",
-          description: ""
+          description: "",
+          degreeType: "pg"
         });
       }
       if (storedEdu.twelfth?.institution) {
@@ -100,7 +102,8 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           cgpa: scores.cgpa,
           percentage: scores.percentage,
           location: "",
-          description: ""
+          description: "",
+          degreeType: "12th"
         });
       }
       if (storedEdu.tenth?.institution) {
@@ -115,7 +118,8 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
           cgpa: scores.cgpa,
           percentage: scores.percentage,
           location: "",
-          description: ""
+          description: "",
+          degreeType: "10th"
         });
       }
 
@@ -624,131 +628,249 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
 
         {expandedSection === 'education' && (
           <div className="accordion-content">
-            {data.education.map((edu, index) => (
-              <div key={edu.id} className="list-item-card">
-                <div className="list-item-header">
-                  <span className="list-item-title">{edu.degree || 'New Degree'} in {edu.fieldOfStudy || 'New Field'}</span>
-                  <div className="list-item-actions">
-                    <button 
-                      className="list-item-btn" 
-                      onClick={() => reorderListItem('education', index, 'up')}
-                      disabled={index === 0}
-                    >
-                      <ArrowUp size={14} />
-                    </button>
-                    <button 
-                      className="list-item-btn" 
-                      onClick={() => reorderListItem('education', index, 'down')}
-                      disabled={index === data.education.length - 1}
-                    >
-                      <ArrowDown size={14} />
-                    </button>
-                    <button 
-                      className="list-item-btn btn-delete" 
-                      onClick={() => removeListItem('education', edu.id)}
-                    >
-                      <Trash2 size={14} />
-                    </button>
+            {data.education.map((edu, index) => {
+              const degreeType = edu.degreeType || "";
+              const degreeLower = (edu.degree || "").toLowerCase();
+              const is10th = degreeType === "10th" || 
+                            (!degreeType && (degreeLower.includes("10th") || degreeLower.includes("secondary")));
+              const is12th = degreeType === "12th" || 
+                            (!degreeType && (degreeLower.includes("12th") || degreeLower.includes("high school")));
+              const isSchoolLevel = is10th || is12th;
+
+              return (
+                <div key={edu.id} className="list-item-card">
+                  <div className="list-item-header">
+                    <span className="list-item-title">
+                      {edu.degree || 'New Degree'}{edu.fieldOfStudy ? ` in ${edu.fieldOfStudy}` : ''}
+                    </span>
+                    <div className="list-item-actions">
+                      <button 
+                        className="list-item-btn" 
+                        onClick={() => reorderListItem('education', index, 'up')}
+                        disabled={index === 0}
+                      >
+                        <ArrowUp size={14} />
+                      </button>
+                      <button 
+                        className="list-item-btn" 
+                        onClick={() => reorderListItem('education', index, 'down')}
+                        disabled={index === data.education.length - 1}
+                      >
+                        <ArrowDown size={14} />
+                      </button>
+                      <button 
+                        className="list-item-btn btn-delete" 
+                        onClick={() => removeListItem('education', edu.id)}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
 
-                <div className="form-group">
-                  <label className="form-label">Institution / School</label>
-                  <input
-                    type="text"
-                    className="form-input"
-                    value={edu.institution}
-                    onChange={(e) => updateListField('education', edu.id, 'institution', e.target.value)}
-                  />
-                </div>
+                  <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginBottom: '0.85rem', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginRight: '0.2rem' }}>Quick Presets:</span>
+                    {[
+                      { label: '10th Class', degreeType: '10th', degree: 'Secondary School (10th)', field: '' },
+                      { label: '12th Class', degreeType: '12th', degree: 'High School (12th)', field: 'Science' },
+                      { label: 'Undergraduate (UG)', degreeType: 'ug', degree: "Bachelor of Engineering (B.E.)", field: 'Computer Science' },
+                      { label: 'Graduate (PG)', degreeType: 'pg', degree: "Master of Technology (M.Tech.)", field: 'Computer Science' }
+                    ].map((preset) => {
+                      const isSelected = (() => {
+                        if (edu.degreeType) {
+                          return edu.degreeType === preset.degreeType;
+                        }
+                        const deg = (edu.degree || "").toLowerCase();
+                        if (preset.label === '10th Class') {
+                          return deg.includes("10th") || deg.includes("secondary");
+                        }
+                        if (preset.label === '12th Class') {
+                          return deg.includes("12th") || deg.includes("high school");
+                        }
+                        if (preset.label === 'Undergraduate (UG)') {
+                          return deg.includes("bachelor") || deg.includes("ug") || deg.includes("b.e.") || deg.includes("b.tech");
+                        }
+                        if (preset.label === 'Graduate (PG)') {
+                          return deg.includes("master") || deg.includes("pg") || deg.includes("m.e.") || deg.includes("m.tech");
+                        }
+                        return false;
+                      })();
 
-                <div className="form-row">
+                      return (
+                        <button
+                          key={preset.label}
+                          type="button"
+                          onClick={() => {
+                            const updatedList = data.education.map(item =>
+                              item.id === edu.id ? { ...item, degreeType: preset.degreeType, degree: preset.degree, fieldOfStudy: preset.field } : item
+                            );
+                            onChangeData({
+                              ...data,
+                              education: updatedList
+                            });
+                          }}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            fontSize: '0.65rem',
+                            fontWeight: 700,
+                            background: isSelected ? 'rgba(59, 130, 246, 0.15)' : 'rgba(255,255,255,0.04)',
+                            border: isSelected ? '1px solid #3b82f6' : '1px solid rgba(255,255,255,0.08)',
+                            color: isSelected ? '#60a5fa' : 'var(--text-muted)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.color = '#3b82f6';
+                              e.currentTarget.style.borderColor = 'rgba(59,130,246,0.3)';
+                              e.currentTarget.style.background = 'rgba(59,130,246,0.05)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.color = 'var(--text-muted)';
+                              e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+                              e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                            }
+                          }}
+                        >
+                          {preset.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
                   <div className="form-group">
-                    <label className="form-label">Degree (e.g. B.S., M.A.)</label>
+                    <label className="form-label">Institution / School</label>
                     <input
                       type="text"
                       className="form-input"
-                      value={edu.degree}
-                      onChange={(e) => updateListField('education', edu.id, 'degree', e.target.value)}
+                      value={edu.institution}
+                      onChange={(e) => updateListField('education', edu.id, 'institution', e.target.value)}
                     />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Field of Study</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={edu.fieldOfStudy}
-                      onChange={(e) => updateListField('education', edu.id, 'fieldOfStudy', e.target.value)}
-                    />
-                  </div>
-                </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Start Date</label>
-                    <input
-                      type="month"
-                      className="form-input"
-                      value={edu.startDate}
-                      onChange={(e) => updateListField('education', edu.id, 'startDate', e.target.value)}
-                    />
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">
+                        {isSchoolLevel ? "Board (e.g. CBSE, ICSE, State Board)" : "Degree (e.g. B.S., M.A.)"}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={edu.degree}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const valLower = val.toLowerCase();
+                          let newType = edu.degreeType;
+                          if (valLower.includes("10th") || valLower.includes("secondary")) {
+                            newType = "10th";
+                          } else if (valLower.includes("12th") || valLower.includes("high school")) {
+                            newType = "12th";
+                          } else if (
+                            valLower.includes("bachelor") || valLower.includes("master") ||
+                            valLower.includes("degree") || valLower.includes("b.e.") ||
+                            valLower.includes("b.tech") || valLower.includes("m.tech") ||
+                            valLower.includes("phd") || valLower.includes("doctorate") ||
+                            valLower.includes("ug") || valLower.includes("pg")
+                          ) {
+                            newType = "";
+                          }
+                          const updatedList = data.education.map(item =>
+                            item.id === edu.id ? { ...item, degree: val, degreeType: newType } : item
+                          );
+                          onChangeData({ ...data, education: updatedList });
+                        }}
+                      />
+                    </div>
+                    {!is10th && (
+                      <div className="form-group">
+                        <label className="form-label">
+                          {is12th ? "Stream (e.g. Science, Commerce)" : "Field of Study"}
+                        </label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={edu.fieldOfStudy}
+                          onChange={(e) => updateListField('education', edu.id, 'fieldOfStudy', e.target.value)}
+                        />
+                      </div>
+                    )}
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">End/Graduation Date</label>
-                    <input
-                      type="month"
-                      className="form-input"
-                      value={edu.endDate}
-                      onChange={(e) => updateListField('education', edu.id, 'endDate', e.target.value)}
-                    />
-                  </div>
-                </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">CGPA</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={edu.cgpa || ''}
-                      placeholder="e.g. 9.2 / 10"
-                      onChange={(e) => updateListField('education', edu.id, 'cgpa', e.target.value)}
-                    />
+                  <div className="form-row">
+                    {!is10th && (
+                      <div className="form-group">
+                        <label className="form-label">Start Date</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="e.g. June 2018"
+                          value={edu.startDate}
+                          onChange={(e) => updateListField('education', edu.id, 'startDate', e.target.value)}
+                        />
+                      </div>
+                    )}
+                    <div className="form-group">
+                      <label className="form-label">
+                        {is10th ? "Passing Year" : "End/Graduation Date"}
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={is10th ? "e.g. 2018" : "e.g. May 2022 or 2018 (Passing Year)"}
+                        value={edu.endDate}
+                        onChange={(e) => updateListField('education', edu.id, 'endDate', e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Percentage</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={edu.percentage || ''}
-                      placeholder="e.g. 88%"
-                      onChange={(e) => updateListField('education', edu.id, 'percentage', e.target.value)}
-                    />
-                  </div>
-                </div>
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label className="form-label">Location</label>
-                    <input
-                      type="text"
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">CGPA</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={edu.cgpa || ''}
+                        placeholder="e.g. 9.2 / 10"
+                        onChange={(e) => updateListField('education', edu.id, 'cgpa', e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Percentage</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={edu.percentage || ''}
+                        placeholder="e.g. 88%"
+                        onChange={(e) => updateListField('education', edu.id, 'percentage', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Location</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={edu.location}
+                        onChange={(e) => updateListField('education', edu.id, 'location', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label className="form-label">Additional Description</label>
+                    <textarea
                       className="form-input"
-                      value={edu.location}
-                      onChange={(e) => updateListField('education', edu.id, 'location', e.target.value)}
+                      value={edu.description}
+                      onChange={(e) => updateListField('education', edu.id, 'description', e.target.value)}
                     />
                   </div>
                 </div>
-
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Additional Description</label>
-                  <textarea
-                    className="form-input"
-                    value={edu.description}
-                    onChange={(e) => updateListField('education', edu.id, 'description', e.target.value)}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             <button 
               className="btn-add"

@@ -31,6 +31,27 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // Position calculation variables
+  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+  const popupWidth = 450;
+  const popupHeight = 420;
+
+  let leftPos = isMobile ? (window.innerWidth - Math.min(window.innerWidth - 32, 450)) / 2 : right + 10;
+  let topPos = isMobile ? (window.innerHeight - popupHeight) / 2 : top;
+
+  if (!isMobile) {
+    if (leftPos + popupWidth > window.innerWidth) {
+      leftPos = Math.max(10, left - popupWidth - 10);
+    }
+    if (topPos + popupHeight > window.innerHeight) {
+      topPos = Math.max(10, window.innerHeight - popupHeight - 20);
+    }
+  }
+
+  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef<{ clientX: number; clientY: number; posX: number; posY: number } | null>(null);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setMounted(true);
@@ -39,9 +60,82 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
   }, []);
 
   useEffect(() => {
+    if (isOpen) {
+      // eslint-disable-next-line
+      setPosition({ x: leftPos, y: topPos });
+    } else {
+      setPosition(null);
+    }
+  }, [isOpen, leftPos, topPos]);
+
+  const handleDragStart = (e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('button')) return;
+
+    let clientX = 0;
+    let clientY = 0;
+    if ('touches' in e) {
+      if (e.touches.length === 0) return;
+      clientX = e.touches[0].clientX;
+      clientY = e.touches[0].clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+
+    const currentX = position ? position.x : leftPos;
+    const currentY = position ? position.y : topPos;
+
+    dragStartRef.current = {
+      clientX,
+      clientY,
+      posX: currentX,
+      posY: currentY
+    };
+    setIsDragging(true);
+
+    const handleDragMove = (moveEvent: MouseEvent | TouchEvent) => {
+      if (!dragStartRef.current) return;
+      let moveClientX = 0;
+      let moveClientY = 0;
+      if ('touches' in moveEvent) {
+        if (moveEvent.touches.length === 0) return;
+        moveClientX = moveEvent.touches[0].clientX;
+        moveClientY = moveEvent.touches[0].clientY;
+      } else {
+        moveClientX = moveEvent.clientX;
+        moveClientY = moveEvent.clientY;
+      }
+
+      const dx = moveClientX - dragStartRef.current.clientX;
+      const dy = moveClientY - dragStartRef.current.clientY;
+
+      setPosition({
+        x: dragStartRef.current.posX + dx,
+        y: dragStartRef.current.posY + dy
+      });
+    };
+
+    const handleDragEnd = () => {
+      dragStartRef.current = null;
+      setIsDragging(false);
+      document.removeEventListener('mousemove', handleDragMove);
+      document.removeEventListener('mouseup', handleDragEnd);
+      document.removeEventListener('touchmove', handleDragMove);
+      document.removeEventListener('touchend', handleDragEnd);
+    };
+
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchmove', handleDragMove);
+    document.addEventListener('touchend', handleDragEnd);
+  };
+
+  useEffect(() => {
     if (!isOpen) return;
 
     const handleOutsideClick = (e: MouseEvent) => {
+      if (dragStartRef.current || isDragging) return;
       const target = e.target as HTMLElement | null;
       if (cardRef.current && target && !cardRef.current.contains(target)) {
         onClose();
@@ -56,7 +150,7 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
       clearTimeout(timer);
       document.removeEventListener('click', handleOutsideClick);
     };
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, isDragging]);
 
   const recognitionRef = useRef<any>(null);
   const speechTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -263,22 +357,6 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
 
   if (!isOpen || !mounted) return null;
 
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const popupWidth = 450;
-  const popupHeight = 420;
-
-  let leftPos = isMobile ? (window.innerWidth - Math.min(window.innerWidth - 32, 450)) / 2 : right + 10;
-  let topPos = isMobile ? (window.innerHeight - popupHeight) / 2 : top;
-
-  if (!isMobile) {
-    if (leftPos + popupWidth > window.innerWidth) {
-      leftPos = Math.max(10, left - popupWidth - 10);
-    }
-    if (topPos + popupHeight > window.innerHeight) {
-      topPos = Math.max(10, window.innerHeight - popupHeight - 20);
-    }
-  }
-
   return createPortal(
     <div 
       style={{
@@ -295,8 +373,8 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
         ref={cardRef}
         style={{
           position: 'fixed',
-          top: `${topPos}px`,
-          left: `${leftPos}px`,
+          top: position ? `${position.y}px` : `${topPos}px`,
+          left: position ? `${position.x}px` : `${leftPos}px`,
           backgroundColor: '#ffffff',
           borderRadius: '16px',
           width: isMobile ? `calc(100% - 32px)` : `${popupWidth}px`,
@@ -309,14 +387,20 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
         }}
       >
         {/* Header */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '1.25rem 1.5rem',
-          borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
-          background: 'linear-gradient(135deg, #f9fafb, #f3f4f6)'
-        }}>
+        <div 
+          onMouseDown={handleDragStart}
+          onTouchStart={handleDragStart}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '1.25rem 1.5rem',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+            background: 'linear-gradient(135deg, #f9fafb, #f3f4f6)',
+            cursor: isDragging ? 'grabbing' : 'grab',
+            userSelect: 'none'
+          }}
+        >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={18} style={{ color: '#8b5cf6' }} />
             <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#111827' }}>Write with AI Voice</span>

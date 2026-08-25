@@ -58,6 +58,10 @@ async function extractTextFromFile(file: File): Promise<string> {
     }
 
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
+        let extractedText = "";
+        let pdfParseFailed = false;
+
+        // 1. Try local pdf-parse first (instant for text-based PDFs)
         try {
             // @ts-expect-error pdf-parse does not have default type definitions
             const pdfParseModule = await import("pdf-parse");
@@ -65,12 +69,51 @@ async function extractTextFromFile(file: File): Promise<string> {
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const data = await pdfParse(buffer);
-            const textContent = data.text || "";
-            return `--- [File: ${file.name}] ---\n${textContent}\n`;
+            extractedText = (data.text || "").trim();
         } catch (e) {
-            console.error("PDF extraction failed for " + file.name + ":", e);
-            return "";
+            console.warn("Local PDF extraction failed for " + file.name + ", will try Gemini:", e);
+            pdfParseFailed = true;
         }
+
+        // 2. If it is a scanned PDF (little to no text extracted, less than 350 chars) or pdf-parse failed, use Gemini multimodal OCR
+        if (pdfParseFailed || extractedText.length < 350) {
+            try {
+                const apiKey = process.env.GEMINI_API_KEY;
+                if (apiKey && apiKey !== "dummy") {
+                    const genAI = new GoogleGenerativeAI(apiKey);
+                    const modelsToTry = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
+                    const arrayBuffer = await file.arrayBuffer();
+                    const base64Data = Buffer.from(arrayBuffer).toString("base64");
+                    
+                    let text = "";
+                    for (const modelName of modelsToTry) {
+                        try {
+                            const model = genAI.getGenerativeModel({ model: modelName }, { timeout: 30000 });
+                            const result = await model.generateContent([
+                                {
+                                    inlineData: {
+                                        data: base64Data,
+                                        mimeType: "application/pdf"
+                                    }
+                                },
+                                "Extract and transcribe all text from this PDF document verbatim. Keep all details, work history, education, skills, and contact info. Return only the extracted text without conversational wrapper."
+                            ]);
+                            text = result.response.text() || "";
+                            if (text.trim()) break;
+                        } catch (mErr) {
+                            console.warn(`Gemini PDF parse model ${modelName} failed for ${file.name}:`, mErr);
+                        }
+                    }
+                    if (text.trim()) {
+                        extractedText = text.trim();
+                    }
+                }
+            } catch (e) {
+                console.error("Gemini PDF extraction fallback failed for " + file.name + ":", e);
+            }
+        }
+
+        return `--- [File: ${file.name}] ---\n${extractedText}\n`;
     }
 
     if (name.endsWith(".docx") || file.type.includes("wordprocessingml") || name.endsWith(".doc")) {

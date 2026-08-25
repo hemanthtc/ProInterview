@@ -235,7 +235,32 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
   const handleUpdateEdu = (id: string, field: keyof Education, value: any) => {
     onChangeData({
       ...data,
-      education: data.education.map(item => item.id === id ? { ...item, [field]: value } : item)
+      education: data.education.map(item => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          if (field === 'degree') {
+            const val = String(value);
+            const valLower = val.toLowerCase();
+            let newType = item.degreeType;
+            if (valLower.includes("10th") || valLower.includes("secondary")) {
+              newType = "10th";
+            } else if (valLower.includes("12th") || valLower.includes("high school")) {
+              newType = "12th";
+            } else if (
+              valLower.includes("bachelor") || valLower.includes("master") ||
+              valLower.includes("degree") || valLower.includes("b.e.") ||
+              valLower.includes("b.tech") || valLower.includes("m.tech") ||
+              valLower.includes("phd") || valLower.includes("doctorate") ||
+              valLower.includes("ug") || valLower.includes("pg")
+            ) {
+              newType = "";
+            }
+            updated.degreeType = newType;
+          }
+          return updated;
+        }
+        return item;
+      })
     });
   };
 
@@ -1092,8 +1117,12 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
                 <div className="resume-item-top">
                   <span className="resume-item-role">
                     <EditableText value={edu.degree} onChange={(val) => handleUpdateEdu(edu.id, 'degree', val)} placeholder="Degree" />
-                    {' in '}
-                    <EditableText value={edu.fieldOfStudy} onChange={(val) => handleUpdateEdu(edu.id, 'fieldOfStudy', val)} placeholder="Field of Study" />
+                    {edu.fieldOfStudy && edu.fieldOfStudy.trim() ? (
+                      <>
+                        {' in '}
+                        <EditableText value={edu.fieldOfStudy} onChange={(val) => handleUpdateEdu(edu.id, 'fieldOfStudy', val)} placeholder="Field of Study" />
+                      </>
+                    ) : null}
                   </span>
                   <span className="resume-item-date" style={{ fontWeight: 400, fontSize: '0.85em', color: 'var(--secondary-color)' }}>
                     <EditableText value={edu.startDate} onChange={(val) => handleUpdateEdu(edu.id, 'startDate', val)} placeholder="YYYY-MM" />
@@ -1233,7 +1262,15 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
                     placeholder="Your Role"
                   />
                   <span style={{ fontSize: '0.95em', color: 'var(--text-color)', opacity: 0.8 }}>
-                    Tech: {proj.technologies.join(', ')}
+                    Tech: <EditableText 
+                      tagName="span"
+                      value={proj.technologies.join(', ')}
+                      onChange={(val) => {
+                        const arrayVal = val.split(',').map(s => s.trim()).filter(Boolean);
+                        handleUpdateProj(proj.id, 'technologies', arrayVal);
+                      }}
+                      placeholder="React, TypeScript, etc."
+                    />
                   </span>
                 </div>
                 <EditableText 
