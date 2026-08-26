@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { rateLimit, clearRateLimits, rateLimitWithTier, invalidateTierConfigCache } from "../src/utils/rateLimit";
 
 describe("rateLimit (hardcoded)", () => {
@@ -57,7 +57,17 @@ describe("rateLimit (hardcoded)", () => {
 });
 
 describe("rateLimitWithTier (tier-aware)", () => {
-    beforeEach(() => clearRateLimits());
+    const originalEnv = { ...process.env };
+
+    beforeEach(() => {
+        clearRateLimits();
+        // Delete MONGODB_URI to force connectDB to fail immediately instead of attempting connection
+        delete process.env.MONGODB_URI;
+    });
+
+    afterEach(() => {
+        process.env = { ...originalEnv };
+    });
 
     it("falls back to hardcoded free-tier defaults when DB is unavailable", async () => {
         // No MongoDB running in test — loadTierConfigs should catch and use HARDCODED_DEFAULTS

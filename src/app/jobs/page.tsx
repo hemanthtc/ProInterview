@@ -124,6 +124,60 @@ export default function JobsPage() {
     const [workModeFilter, setWorkModeFilter] = useState<WorkModeFilter>("all");
     const [customExpYears, setCustomExpYears] = useState("");
 
+    // Filter jobs based on selected experience and work mode filters
+    const filteredJobs = jobs.filter((job) => {
+        // Experience filter
+        if (experienceFilter !== "all") {
+            const desc = (job.description + " " + job.role + " " + job.tags.join(" ")).toLowerCase();
+            if (experienceFilter === "fresher") {
+                if (!desc.match(/\b(fresher|freshers|entry[\s-]?level|0[\s-]?year|graduate|junior)\b/i)) return false;
+            } else if (experienceFilter === "intern") {
+                if (job.type !== "intern" && !desc.match(/\b(intern|internship|trainee)\b/i)) return false;
+            } else if (experienceFilter === "1year") {
+                if (!desc.match(/\b(0\s*-\s*1|1\s*[\+\-]?|1\s*year|1\s*yr|entry)\b/i) && !desc.match(/\b(fresher|freshers)\b/i)) return false;
+            } else if (experienceFilter === "2year") {
+                if (!desc.match(/\b([0-2]\s*-\s*[2-3]|2\s*[\+\-]?|2\s*year|2\s*yr)\b/i) && !desc.match(/\b(1\s*-\s*2|0\s*-\s*2)\b/i)) return false;
+            } else if (experienceFilter === "custom" && customExpYears) {
+                const yrs = parseInt(customExpYears);
+                if (!isNaN(yrs)) {
+                    const matches = Array.from(desc.matchAll(/(\d+)\s*(?:\+|plus)?\s*(?:-|to|or)\s*(\d+)\s*(?:\+|plus)?\s*(?:year|yr)s?/gi));
+                    const singles = Array.from(desc.matchAll(/(\d+)\s*(\+|plus)?\s*(?:year|yr)s?/gi));
+                    const allMatches = [...matches, ...singles];
+                    if (allMatches.length > 0) {
+                        let hasMatchedRange = false;
+                        for (const m of allMatches) {
+                            const low = parseInt(m[1]);
+                            let high = low;
+                            if (m[2] && /^\d+$/.test(m[2])) {
+                                high = parseInt(m[2]);
+                            } else if (m[2] === "+" || m[2] === "plus" || m[0].includes("+")) {
+                                high = 99;
+                            }
+                            if (yrs >= low && yrs <= high) {
+                                hasMatchedRange = true;
+                                break;
+                            }
+                        }
+                        if (!hasMatchedRange) return false;
+                    }
+                }
+            }
+        }
+        // Work mode filter
+        if (workModeFilter !== "all") {
+            const loc = (job.location + " " + job.description).toLowerCase();
+            if (workModeFilter === "remote") {
+                if (!job.remote && !loc.match(/\bremote\b/)) return false;
+            } else if (workModeFilter === "onsite") {
+                const hasNegativeRemote = loc.match(/\b(no|not|non|zero)\s+remote\b/) || loc.match(/\bremote\s+(not\s+allowed|no\b)/);
+                if (job.remote || (loc.match(/\bremote\b/) && !hasNegativeRemote)) return false;
+            } else if (workModeFilter === "offsite") {
+                if (!loc.match(/\b(hybrid|off[\s-]?site|work from home|wfh)\b/)) return false;
+            }
+        }
+        return true;
+    });
+
     useEffect(() => {
         async function init() {
             if (getStorageItem("userLoggedIn") !== "true") {
@@ -888,7 +942,7 @@ export default function JobsPage() {
                     <div className="space-y-3 w-full max-w-full">
                     <div className="flex items-center justify-between">
                         <h2 className="text-base font-bold flex items-center gap-2 flex-wrap">
-                            <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" /> Matched job openings ({jobs.length})
+                            <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" /> Matched job openings ({filteredJobs.length})
                             {location && (
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                                     isLight
@@ -1058,63 +1112,15 @@ export default function JobsPage() {
                                 No strong matches yet. Try entering a broader location (e.g. Remote) or updating the resume details.
                             </p>
                         </div>
+                    ) : filteredJobs.length === 0 ? (
+                        <div className={`p-6 rounded-2xl border text-center ${isLight ? "bg-white border-slate-200" : "bg-white/5 border-white/10"}`}>
+                            <p className={`text-sm ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                                No job openings match your selected filters. Try clearing your filters or choosing a different combination.
+                            </p>
+                        </div>
                     ) : (
                         <div className="grid gap-3 w-full max-w-full">
-                            {jobs.filter((job) => {
-                                // Experience filter
-                                if (experienceFilter !== "all") {
-                                    const desc = (job.description + " " + job.role + " " + job.tags.join(" ")).toLowerCase();
-                                    if (experienceFilter === "fresher") {
-                                        if (!desc.match(/\b(fresher|entry[\s-]?level|0[\s-]?year|graduate|junior)\b/i)) return false;
-                                    } else if (experienceFilter === "intern") {
-                                        if (job.type !== "intern" && !desc.match(/\b(intern|internship|trainee)\b/i)) return false;
-                                    } else if (experienceFilter === "1year") {
-                                        if (!desc.match(/\b(0\s*-\s*1|1\s*[\+\-]?|1\s*year|1\s*yr|entry)\b/i) && !desc.match(/\bfresher\b/i)) return false;
-                                    } else if (experienceFilter === "2year") {
-                                        if (!desc.match(/\b([0-2]\s*-\s*[2-3]|2\s*[\+\-]?|2\s*year|2\s*yr)\b/i) && !desc.match(/\b(1\s*-\s*2|0\s*-\s*2)\b/i)) return false;
-                                    } else if (experienceFilter === "custom" && customExpYears) {
-                                        const yrs = parseInt(customExpYears);
-                                        if (!isNaN(yrs)) {
-                                            // Match patterns: "2+ years", "1-3 years", "2 to 4 yrs", "3 years", "5+yrs"
-                                            const matches = Array.from(desc.matchAll(/(\d+)\s*(?:\+|plus)?\s*(?:-|to|or)\s*(\d+)\s*(?:\+|plus)?\s*(?:year|yr)s?/gi));
-                                            // Also match single: "2+ years", "3 years", "5+yrs"
-                                            const singles = Array.from(desc.matchAll(/(\d+)\s*(\+|plus)?\s*(?:year|yr)s?/gi));
-                                            const allMatches = [...matches, ...singles];
-                                            if (allMatches.length > 0) {
-                                                let hasMatchedRange = false;
-                                                for (const m of allMatches) {
-                                                    const low = parseInt(m[1]);
-                                                    let high = low;
-                                                    if (m[2] && /^\d+$/.test(m[2])) {
-                                                        // Range like "1-3" or "2 to 4"
-                                                        high = parseInt(m[2]);
-                                                    } else if (m[2] === "+" || m[2] === "plus" || m[0].includes("+")) {
-                                                        // Open-ended like "2+ years"
-                                                        high = 99;
-                                                    }
-                                                    if (yrs >= low && yrs <= high) {
-                                                        hasMatchedRange = true;
-                                                        break;
-                                                    }
-                                                }
-                                                if (!hasMatchedRange) return false;
-                                            }
-                                        }
-                                    }
-                                }
-                                // Work mode filter
-                                if (workModeFilter !== "all") {
-                                    const loc = (job.location + " " + job.description).toLowerCase();
-                                    if (workModeFilter === "remote") {
-                                        if (!job.remote && !loc.match(/\bremote\b/)) return false;
-                                    } else if (workModeFilter === "onsite") {
-                                        if (job.remote || loc.match(/\bremote\b/)) return false;
-                                    } else if (workModeFilter === "offsite") {
-                                        if (!loc.match(/\b(hybrid|off[\s-]?site|work from home|wfh)\b/)) return false;
-                                    }
-                                }
-                                return true;
-                            }).map((job) => (
+                            {filteredJobs.map((job) => (
                                 <div
                                     key={job.id}
                                     className={`rounded-2xl border p-4 transition w-full max-w-full overflow-hidden ${

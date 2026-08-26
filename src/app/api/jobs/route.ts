@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
                 if (!seen.has(f.id)) jobs.push(f);
             }
             usedFallback = true;
-            jobs = jobs.sort((a, b) => b.matchPercent - a.matchPercent).slice(0, 30);
+            jobs = jobs.sort((a, b) => b.matchPercent - a.matchPercent).slice(0, 100);
         }
 
         return NextResponse.json({

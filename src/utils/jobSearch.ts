@@ -487,6 +487,8 @@ async function fetchAdzunaIndia(query: string, location: string): Promise<Omit<M
     const appKey = process.env.ADZUNA_APP_KEY;
     if (!appId || !appKey) return [];
 
+    const country = process.env.ADZUNA_COUNTRY || "in";
+
     const params = new URLSearchParams({
         app_id: appId,
         app_key: appKey,
@@ -497,7 +499,7 @@ async function fetchAdzunaIndia(query: string, location: string): Promise<Omit<M
     const where = location && !location.toLowerCase().includes("remote") ? location : "";
     if (where) params.set("where", where);
 
-    const url = `https://api.adzuna.com/v1/api/jobs/in/search/1?${params.toString()}`;
+    const url = `https://api.adzuna.com/v1/api/jobs/${country.toLowerCase()}/search/1?${params.toString()}`;
     const res = await fetchWithTimeout(url);
     if (!res.ok) return [];
     const data = (await res.json()) as {
@@ -537,7 +539,7 @@ async function fetchAdzunaIndia(query: string, location: string): Promise<Omit<M
                 description: stripHtml(j.description || "").slice(0, 320),
                 applyUrl: j.redirect_url || "",
                 postedAt: (j.created || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
-                source: "Adzuna India",
+                source: country.toLowerCase() === "in" ? "Adzuna India" : `Adzuna (${country.toUpperCase()})`,
             };
         });
 }
@@ -647,7 +649,7 @@ export async function searchMatchingJobs(
         { name: "Remotive", run: () => fetchRemotive(primary) },
         { name: "Arbeitnow", run: () => fetchArbeitnow(primary) },
         { name: "RemoteOK", run: () => fetchRemoteOK(primary) },
-        { name: "Adzuna India", run: () => fetchAdzunaIndia(primary, preferredLocation) },
+        { name: "Adzuna India", run: () => fetchAdzunaIndia(profile.roles[0] || "Software Engineer", preferredLocation) },
     ];
 
     const settled = await Promise.allSettled(
@@ -675,7 +677,7 @@ export async function searchMatchingJobs(
         .map((job) => scoreJob(job, profile, preferredLocation))
         .filter((j) => j.matchPercent >= 12)
         .sort((a, b) => b.matchPercent - a.matchPercent)
-        .slice(0, 30);
+        .slice(0, 100);
 
     return { jobs: ranked, sourcesTried, queries };
 }
