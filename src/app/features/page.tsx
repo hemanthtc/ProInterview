@@ -2156,7 +2156,12 @@ function FeaturesContent() {
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(newRoadmap)
                 })
-                .then(res => res.json())
+                .then(async res => {
+                    if (!res.ok) {
+                        throw new Error("HTTP error " + res.status);
+                    }
+                    return res.json();
+                })
                 .then(saved => {
                     const updatedList = [saved, ...savedRoadmaps];
                     setSavedRoadmaps(updatedList);
@@ -2216,7 +2221,12 @@ function FeaturesContent() {
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify(newRoadmap)
                     })
-                    .then(res => res.json())
+                    .then(async res => {
+                        if (!res.ok) {
+                            throw new Error("HTTP error " + res.status);
+                        }
+                        return res.json();
+                    })
                     .then(saved => {
                         const updatedList = [saved, ...savedRoadmaps];
                         setSavedRoadmaps(updatedList);
@@ -6091,7 +6101,11 @@ if (!isAuthChecked) return null;
                                                                     {road.course}
                                                                 </div>
                                                                 <div className={`text-[10px] font-bold truncate mt-0.5 ${isLight ? "text-slate-500" : "text-white/50"}`}>
-                                                                    {road.company} &bull; {road.location}
+                                                                    {road.company && road.location ? (
+                                                                        <>{road.company} &bull; {road.location}</>
+                                                                    ) : (
+                                                                        road.company || road.location || "Generic Target"
+                                                                    )}
                                                                 </div>
 
                                                                 <div className="flex items-center gap-1.5 mt-2">
