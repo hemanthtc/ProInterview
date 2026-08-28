@@ -45,6 +45,8 @@ export interface SavedRoadmap {
     createdAt: number;
     roadmapData: RoadmapData;
     tasksChecked: Record<string, boolean>;
+    expiresAt?: string;
+    daysRemaining?: number;
 }
 
 export interface PortfolioAnalysisCache {

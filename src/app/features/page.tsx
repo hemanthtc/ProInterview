@@ -1021,13 +1021,43 @@ function FeaturesContent() {
         });
     }, []);
 
-    // Load roadmaps from local storage database
+    // Load roadmaps from local storage database or MongoDB Atlas
     useEffect(() => {
-        const storedRoadmaps = getStorageItem("savedRoadmapsDatabase");
-        if (storedRoadmaps) {
-            try {
-                const parsed = JSON.parse(storedRoadmaps) as SavedRoadmap[];
-                Promise.resolve().then(() => {
+        const loadRoadmaps = async () => {
+            const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+            if (isLoggedIn) {
+                try {
+                    const res = await fetch("/api/roadmaps");
+                    if (res.ok) {
+                        const parsed = await res.json() as SavedRoadmap[];
+                        setSavedRoadmaps(parsed);
+
+                        if (parsed.length > 0) {
+                            const activeId = getStorageItem("activeRoadmapId");
+                            const activeRoad = parsed.find(r => r.id === activeId) || parsed[0];
+                            setActiveRoadmapId(activeRoad.id);
+                            setStorageItem("activeRoadmapId", activeRoad.id);
+
+                            // Populate inputs and results from the active roadmap
+                            setRoadmapCourse(activeRoad.course);
+                            setRoadmapCompany(activeRoad.company);
+                            setRoadmapLocation(activeRoad.location);
+                            setRoadmapAdditional(activeRoad.additionalInfo);
+                            setRoadmapResult(activeRoad.roadmapData);
+                            setRoadmapTasksChecked(activeRoad.tasksChecked || {});
+                        }
+                        return;
+                    }
+                } catch (e) {
+                    console.error("Failed to fetch roadmaps from server:", e);
+                }
+            }
+
+            // Fallback for guest or when fetch fails
+            const storedRoadmaps = getStorageItem("savedRoadmapsDatabase");
+            if (storedRoadmaps) {
+                try {
+                    const parsed = JSON.parse(storedRoadmaps) as SavedRoadmap[];
                     setSavedRoadmaps(parsed);
 
                     if (parsed.length > 0) {
@@ -1044,11 +1074,12 @@ function FeaturesContent() {
                         setRoadmapResult(activeRoad.roadmapData);
                         setRoadmapTasksChecked(activeRoad.tasksChecked || {});
                     }
-                });
-            } catch (e) {
-                console.error("Failed to parse saved roadmaps database", e);
+                } catch (e) {
+                    console.error("Failed to parse saved roadmaps database", e);
+                }
             }
-        }
+        };
+        loadRoadmaps();
     }, []);
 
     function createNewDefaultResume(currentList: SavedResume[]) {
@@ -2118,11 +2149,36 @@ function FeaturesContent() {
                 tasksChecked: {}
             };
 
-            const updatedList = [newRoadmap, ...savedRoadmaps];
-            setSavedRoadmaps(updatedList);
-            setActiveRoadmapId(newRoadmap.id);
-            setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
-            setStorageItem("activeRoadmapId", newRoadmap.id);
+            const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+            if (isLoggedIn) {
+                fetch("/api/roadmaps", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(newRoadmap)
+                })
+                .then(res => res.json())
+                .then(saved => {
+                    const updatedList = [saved, ...savedRoadmaps];
+                    setSavedRoadmaps(updatedList);
+                    setActiveRoadmapId(saved.id);
+                    setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+                    setStorageItem("activeRoadmapId", saved.id);
+                })
+                .catch(err => {
+                    console.error("Failed to save fallback roadmap to server:", err);
+                    const updatedList = [newRoadmap, ...savedRoadmaps];
+                    setSavedRoadmaps(updatedList);
+                    setActiveRoadmapId(newRoadmap.id);
+                    setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+                    setStorageItem("activeRoadmapId", newRoadmap.id);
+                });
+            } else {
+                const updatedList = [newRoadmap, ...savedRoadmaps];
+                setSavedRoadmaps(updatedList);
+                setActiveRoadmapId(newRoadmap.id);
+                setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+                setStorageItem("activeRoadmapId", newRoadmap.id);
+            }
         };
 
         try {
@@ -2153,11 +2209,36 @@ function FeaturesContent() {
                     tasksChecked: {}
                 };
 
-                const updatedList = [newRoadmap, ...savedRoadmaps];
-                setSavedRoadmaps(updatedList);
-                setActiveRoadmapId(newRoadmap.id);
-                setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
-                setStorageItem("activeRoadmapId", newRoadmap.id);
+                const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+                if (isLoggedIn) {
+                    fetch("/api/roadmaps", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(newRoadmap)
+                    })
+                    .then(res => res.json())
+                    .then(saved => {
+                        const updatedList = [saved, ...savedRoadmaps];
+                        setSavedRoadmaps(updatedList);
+                        setActiveRoadmapId(saved.id);
+                        setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+                        setStorageItem("activeRoadmapId", saved.id);
+                    })
+                    .catch(err => {
+                        console.error("Failed to save roadmap to server:", err);
+                        const updatedList = [newRoadmap, ...savedRoadmaps];
+                        setSavedRoadmaps(updatedList);
+                        setActiveRoadmapId(newRoadmap.id);
+                        setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+                        setStorageItem("activeRoadmapId", newRoadmap.id);
+                    });
+                } else {
+                    const updatedList = [newRoadmap, ...savedRoadmaps];
+                    setSavedRoadmaps(updatedList);
+                    setActiveRoadmapId(newRoadmap.id);
+                    setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+                    setStorageItem("activeRoadmapId", newRoadmap.id);
+                }
             } else {
                 if (res.status === 400 && data?.error) {
                     setRoadmapImageError(data.error);
@@ -2357,12 +2438,21 @@ function FeaturesContent() {
         setRoadmapToDelete(id);
     };
 
-    const confirmDeleteRoadmap = () => {
+    const confirmDeleteRoadmap = async () => {
         if (!roadmapToDelete) return;
         const id = roadmapToDelete;
         const updatedList = savedRoadmaps.filter(r => r.id !== id);
         setSavedRoadmaps(updatedList);
         setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+
+        const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+        if (isLoggedIn) {
+            try {
+                await fetch(`/api/roadmaps/${id}`, { method: "DELETE" });
+            } catch (err) {
+                console.error("Failed to delete roadmap on server:", err);
+            }
+        }
 
         if (activeRoadmapId === id) {
             if (updatedList.length > 0) {
@@ -2391,6 +2481,35 @@ function FeaturesContent() {
             }
         }
         setRoadmapToDelete(null);
+    };
+
+    const handleExtendRoadmap = async (id: string) => {
+        const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+        if (isLoggedIn) {
+            try {
+                const res = await fetch(`/api/roadmaps/${id}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ extend: true }),
+                });
+                if (res.ok) {
+                    const updatedRoadmap = await res.json() as SavedRoadmap;
+                    const updatedList = savedRoadmaps.map((r) =>
+                        r.id === id
+                            ? { ...r, expiresAt: updatedRoadmap.expiresAt, daysRemaining: updatedRoadmap.daysRemaining }
+                            : r
+                    );
+                    setSavedRoadmaps(updatedList);
+                    setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+                    alert("Expiration extended by 30 days!");
+                } else {
+                    alert("Failed to extend roadmap expiration.");
+                }
+            } catch (err) {
+                console.error("Failed to extend roadmap:", err);
+                alert("Failed to extend roadmap expiration.");
+            }
+        }
     };
 
     const handleCreateNewRoadmap = () => {
@@ -5993,6 +6112,17 @@ if (!isAuthChecked) return null;
                                                                             {completionPct}% Done
                                                                         </span>
                                                                     )}
+                                                                    {road.daysRemaining !== undefined && (
+                                                                        <span className={`border px-1.5 py-0.5 rounded text-[8px] font-bold ${
+                                                                            road.daysRemaining <= 3
+                                                                                ? "bg-red-500/10 border-red-500/30 text-red-400 font-extrabold"
+                                                                                : isLight
+                                                                                    ? "bg-slate-100 border-slate-200 text-slate-600"
+                                                                                    : "bg-white/5 border-white/5 text-white/50"
+                                                                        }`}>
+                                                                            ⏳ {road.daysRemaining === 1 ? "1 day left" : `${road.daysRemaining} days left`}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
 
                                                                 <button
@@ -6153,6 +6283,33 @@ if (!isAuthChecked) return null;
                                                         </div>
                                                         <h4 className={`font-extrabold text-base mb-2 ${isLight ? "text-emerald-950" : "text-white"}`}>Roadmap Strategy Overview</h4>
                                                         <p className={`text-sm leading-relaxed max-w-3xl font-medium ${isLight ? "text-emerald-850" : "text-white/70"}`}>{roadmapResult.overview}</p>
+                                                        {(() => {
+                                                            const activeRoadmapObj = savedRoadmaps.find(r => r.id === activeRoadmapId);
+                                                            const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+                                                            if (isLoggedIn && activeRoadmapObj && activeRoadmapObj.daysRemaining !== undefined) {
+                                                                return (
+                                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-4 pt-4 border-t border-emerald-500/20 text-xs">
+                                                                        <span className={activeRoadmapObj.daysRemaining <= 3 ? "text-red-400 font-bold animate-pulse" : isLight ? "text-emerald-800 font-medium" : "text-white/60 font-medium"}>
+                                                                            ⏳ This cloud roadmap will automatically delete in <strong>{activeRoadmapObj.daysRemaining} days</strong> (on {new Date(activeRoadmapObj.expiresAt || "").toLocaleDateString()}).
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleExtendRoadmap(activeRoadmapObj.id)}
+                                                                            className="px-3 py-1.5 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-400 rounded-lg text-[10px] font-black cursor-pointer transition-all uppercase tracking-wider"
+                                                                        >
+                                                                            Extend 30 Days
+                                                                        </button>
+                                                                    </div>
+                                                                );
+                                                            } else if (!isLoggedIn) {
+                                                                return (
+                                                                    <div className="mt-4 pt-4 border-t border-emerald-500/20 text-xs text-white/50 italic">
+                                                                        💡 This is a local draft. Sign in to save it to the cloud and prevent expiration.
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        })()}
                                                     </div>
 
                                                     {/* Progress & Actions Section */}
@@ -6456,6 +6613,15 @@ if (!isAuthChecked) return null;
                                                                                                                             });
                                                                                                                             setSavedRoadmaps(updatedList);
                                                                                                                             setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+
+                                                                                                                            const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+                                                                                                                            if (isLoggedIn) {
+                                                                                                                                fetch(`/api/roadmaps/${activeRoadmapId}`, {
+                                                                                                                                    method: "PATCH",
+                                                                                                                                    headers: { "Content-Type": "application/json" },
+                                                                                                                                    body: JSON.stringify({ tasksChecked: updatedChecked })
+                                                                                                                                }).catch(err => console.error("Failed to sync checkbox progress:", err));
+                                                                                                                            }
                                                                                                                         }
                                                                                                                     }}
                                                                                                                     className={`mt-0.5 accent-emerald-500 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer border ${isLight ? "border-slate-300 bg-white" : "border-white/20 bg-black/40"

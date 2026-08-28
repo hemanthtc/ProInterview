@@ -36,7 +36,7 @@ const securityHeaders = [
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob: https://*.amazonaws.com https://*.googleusercontent.com https://lh3.googleusercontent.com",
             "connect-src 'self' https://generativelanguage.googleapis.com https://api.sarvam.ai https://api.d-id.com https://api.adzuna.com https://api.happenstance.ai https://emkc.org https://checkout.razorpay.com wss://api.d-id.com",
-            "frame-src https://checkout.razorpay.com https://accounts.google.com",
+            "frame-src 'self' https://checkout.razorpay.com https://accounts.google.com",
             "media-src 'self' blob: https://api.d-id.com https://*.amazonaws.com",
             "worker-src 'self' blob:",
             "object-src 'none'",
