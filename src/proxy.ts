@@ -6,6 +6,7 @@ const PUBLIC_PATHS = [
     "/login",
     "/labs",
     "/coding-lab",
+    "/coding-assessment",
     "/community",
     "/domains",
     "/prep",
@@ -14,7 +15,7 @@ const PUBLIC_PATHS = [
     "/film-room",
 ];
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
     // Allow static files, Next.js assets, API routes, and public routes
@@ -63,6 +64,8 @@ export function middleware(req: NextRequest) {
 
     return NextResponse.next();
 }
+
+export default proxy;
 
 export const config = {
     matcher: [
