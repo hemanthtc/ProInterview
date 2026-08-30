@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 
 export interface NegotiateResult {
     reply: string;
@@ -57,12 +57,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json(fallbackNegotiate(safeMode, userMessage, targetComp));
         }
 
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-flash-latest",
-            generationConfig: { temperature: 0.45 },
-        });
-
         const historyText = Array.isArray(history)
             ? history
                   .slice(-12)
@@ -108,40 +102,22 @@ Return ONLY valid JSON (no markdown fences):
 
 Be practical, ethical, and specific to the numbers/context given.`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(prompt);
-                break;
-            } catch (retryErr: any) {
-                const isTransient =
-                    retryErr?.status === 429 ||
-                    retryErr?.status === 503 ||
-                    (retryErr?.message &&
-                        (retryErr.message.includes("429") ||
-                            retryErr.message.includes("503") ||
-                            retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    await new Promise((r) => setTimeout(r, (attempt + 1) * 3000));
-                } else {
-                    console.warn("Negotiate Gemini failed; using fallback.", retryErr?.message || retryErr);
-                    return NextResponse.json(fallbackNegotiate(safeMode, userMessage, targetComp));
-                }
-            }
-        }
-
-        if (!result) {
+        let rawText: string;
+        try {
+            rawText = await generateWithFallback(prompt, {
+                model: "gemini-2.5-flash",
+                generationConfig: { temperature: 0.45 },
+            });
+        } catch (err: any) {
+            console.warn("Negotiate Gemini failed; using fallback.", err?.message || err);
             return NextResponse.json(fallbackNegotiate(safeMode, userMessage, targetComp));
         }
 
         try {
-            const rawText = result.response
-                .text()
-                .trim()
-                .replace(/^```(?:json)?\s*/i, "")
-                .replace(/\s*```$/i, "")
-                .trim();
-            const parsed = JSON.parse(rawText);
+            const parsed = parseJsonFromModel(rawText) as any;
+            if (!parsed || typeof parsed !== "object") {
+                return NextResponse.json(fallbackNegotiate(safeMode, userMessage, targetComp));
+            }
             const moodOptions = ["collaborative", "firm", "curious", "pressured", "warm", "neutral"] as const;
             const mood = moodOptions.includes(parsed.mood) ? parsed.mood : "collaborative";
 
