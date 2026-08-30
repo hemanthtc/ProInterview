@@ -9,6 +9,7 @@ export interface IRoadmap extends Document {
     additionalInfo: string;
     roadmapData: any; // Raw generated Gemini roadmap JSON
     tasksChecked: Record<string, boolean>; // Checklist progress
+    phaseProgress?: Record<string, { unlocked: boolean; passed: boolean; score: number; studyPackGenerated?: boolean; completedAt?: number }>;
     expiresAt: Date; // Auto-delete time
     notifiedNearExpiry: boolean; // Flag to prevent notification spamming
     createdAt: Date;
@@ -25,6 +26,7 @@ const RoadmapSchema = new Schema<IRoadmap>(
         additionalInfo: { type: String, default: "" },
         roadmapData: { type: Schema.Types.Mixed, required: true },
         tasksChecked: { type: Schema.Types.Mixed, default: () => ({}) },
+        phaseProgress: { type: Schema.Types.Mixed, default: () => ({}) },
         expiresAt: { type: Date, required: true, index: true },
         notifiedNearExpiry: { type: Boolean, default: false },
     },

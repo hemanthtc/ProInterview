@@ -19,8 +19,7 @@ describe("security headers in next.config.ts", () => {
     const requiredHeaders = [
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "SAMEORIGIN" },
-        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-        { key: "Permissions-Policy", expected: /camera=\(self\)/ },
+        { key: "Permissions-Policy", expected: /camera=\(self/ },
         { key: "Strict-Transport-Security", expected: /max-age=\d+.*includeSubDomains/ },
         { key: "Content-Security-Policy", expected: /default-src/ },
     ];

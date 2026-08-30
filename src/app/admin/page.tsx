@@ -21,7 +21,7 @@ const SYSTEM_FEATURES = [
     { id: "study_materials", label: "Study Materials 3D Carousel & Notes" },
     { id: "study_materials_interview", label: "Study Materials PDF-to-Interview Mode" },
     { id: "prointerviewer", label: "AI Mock Interview Simulator" },
-    { id: "did_avatar", label: "D-ID Video Avatar Streams" },
+    { id: "did_avatar", label: "Tavus Video Avatar Streams" },
     { id: "coding_lab", label: "Coding Lab submissions" },
     { id: "system_design", label: "System Design Lab shapes & evaluate" },
     { id: "star_coach", label: "STAR behavioral coach drills" },

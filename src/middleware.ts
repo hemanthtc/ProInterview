@@ -4,18 +4,27 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_PATHS = [
     "/",
     "/login",
+    "/labs",
+    "/coding-lab",
+    "/community",
+    "/domains",
+    "/prep",
+    "/ats-match",
+    "/scorecard",
+    "/film-room",
 ];
 
-export function proxy(req: NextRequest) {
+export function middleware(req: NextRequest) {
     const { pathname } = req.nextUrl;
 
-    // Allow static files, Next.js assets, and public routes
+    // Allow static files, Next.js assets, API routes, and public routes
     if (
         pathname.startsWith("/_next") ||
-        pathname.startsWith("/api/auth") ||
+        pathname.startsWith("/api") ||
         pathname.startsWith("/synthetic-data-generator") ||
-        pathname.includes(".") || // static files like images, css, js
-        PUBLIC_PATHS.includes(pathname)
+        pathname.includes(".") || // static files like images, css, js, icons
+        PUBLIC_PATHS.includes(pathname) ||
+        PUBLIC_PATHS.some(p => p !== "/" && pathname.startsWith(p))
     ) {
         return NextResponse.next();
     }
@@ -59,11 +68,10 @@ export const config = {
     matcher: [
         /*
          * Match all request paths except for the ones starting with:
-         * - api/auth (authentication endpoints)
          * - _next/static (static files)
          * - _next/image (image optimization files)
          * - favicon.ico (favicon file)
          */
-        "/((?!api/auth|_next/static|_next/image|favicon.ico).*)",
+        "/((?!_next/static|_next/image|favicon.ico).*)",
     ],
 };

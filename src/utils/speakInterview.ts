@@ -1,9 +1,11 @@
 let activeAudio: HTMLAudioElement | null = null;
+let isHalted = false;
 
 /**
- * Stop and cancel all active interview speech synthesis and audio playback.
+ * Stop and cancel all active interview speech synthesis and audio playback immediately.
  */
 export function stopSpeechInterviewText(): void {
+    isHalted = true;
     if (typeof window !== "undefined") {
         if ("speechSynthesis" in window) {
             try {
@@ -40,13 +42,14 @@ export async function speakInterviewText(
 ): Promise<void> {
     // Ensure any previously playing speech is immediately halted
     stopSpeechInterviewText();
+    isHalted = false;
 
     const clean = text
         .replace(/\[MODE:(CHAT|CODE|DRAW)\]/gi, "")
         .replace(/\[TERMINATE\]/gi, "")
         .trim();
     if (!clean) return;
-    if (opts.isListening?.()) return;
+    if (opts.isListening?.() || isHalted) return;
 
     const provider = opts.provider || "gemini";
     const voiceLanguage = opts.voiceLanguage || "en-IN";
@@ -58,9 +61,10 @@ export async function speakInterviewText(
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ text: clean, voiceLanguage }),
             });
+            if (isHalted) return;
             if (res.ok) {
                 const data = await res.json();
-                if (data.audioBase64) {
+                if (data.audioBase64 && !isHalted) {
                     const mime = data.mimeType || "audio/wav";
                     const src = `data:${mime};base64,${data.audioBase64}`;
                     const audio = new Audio(src);
@@ -91,11 +95,12 @@ export async function speakInterviewText(
         }
     }
 
-    if (!("speechSynthesis" in window)) return;
+    if (isHalted || !("speechSynthesis" in window)) return;
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.lang = voiceLanguage;
 
     const pickVoice = () => {
+        if (isHalted) return;
         const voices = window.speechSynthesis.getVoices();
         const base = (voiceLanguage || "en").slice(0, 2).toLowerCase();
         // Prefer high-quality neural / natural voices so the interviewer sounds human.
@@ -112,7 +117,9 @@ export async function speakInterviewText(
         utterance.volume = 1.0;
         utterance.onstart = () => opts.onStart?.();
         utterance.onend = () => opts.onEnd?.();
-        window.speechSynthesis.speak(utterance);
+        if (!isHalted) {
+            window.speechSynthesis.speak(utterance);
+        }
     };
 
     if (window.speechSynthesis.getVoices().length > 0) pickVoice();

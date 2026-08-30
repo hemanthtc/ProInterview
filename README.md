@@ -15,7 +15,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | **Synthetic Data Generator** | Interactive tabular dataset & document generator with AI schema design, export (PDF, DOCX, MD, TXT), folder management, and public/private workspace sharing |
 | **Portfolio Pre-Analysis** | Analyze GitHub, LinkedIn, portfolio links, or ZIP project uploads for a baseline score |
 | **Weighted Scoring** | Final grade blends portfolio (35%) and live interview performance (65%) across technical, communication, and behavioral vectors |
-| **Realistic Avatar Mode** | D-ID talking-head avatar via REST video or low-latency WebRTC streaming |
+| **Realistic Avatar Mode** | Tavus talking-head avatar via REST video or low-latency WebRTC streaming |
 | **Career Coaching** | Cross-session guidance that maps skill growth and recurring weak areas |
 | **AI Resume Builder** | Templates, style customization, and printable/downloadable resumes |
 | **Email Analyser** | Classify job invites / offer letters and extract role, salary, skills, and meeting details |
@@ -44,7 +44,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 | Framework | **Next.js 16** (App Router) · **React 19** · **TypeScript** |
 | Styling | **Tailwind CSS v4** · **Framer Motion** · **Lucide React** |
 | AI | **Google Gemini** (`@google/generative-ai`) · optional **Sarvam AI** |
-| Avatar | **D-ID** (talk + WebRTC stream) |
+| Avatar | **Tavus** (talk + WebRTC stream) |
 | Data | **MongoDB Atlas** (Mongoose for Synthetic Files, Folders, Profiles & Cloud Sessions) · **AWS S3** (Community Chat, Resumes, Profile Photos, Uploads) · browser `localStorage` |
 | Auth | Google OAuth · email OTP · bcrypt · Guest Mode sandbox |
 | Payments | **Razorpay** · UPI |
@@ -59,7 +59,7 @@ ProInterview is a full-stack AI interview platform that simulates realistic tech
 
 - **Node.js** 18+ (recommended: 20+)
 - **npm** 9+
-- API keys for Gemini (required) and optionally Google OAuth, MongoDB, D-ID, Razorpay, and email SMTP
+- API keys for Gemini (required) and optionally Google OAuth, MongoDB, Tavus, Razorpay, and email SMTP
 
 ### 1. Clone & install
 
@@ -207,7 +207,7 @@ ProInterview/
 | `POST /api/community/messages/like` | Toggle message heart reaction state |
 | `POST /api/analyze-email` | Job invite / offer parsing |
 | `POST /api/generate-roadmap` | Learning roadmap |
-| `POST /api/d-id-talk` / `d-id-stream` | Avatar video & WebRTC |
+| `POST /api/tavus-talk` / `tavus-stream` | Avatar video & WebRTC |
 | `/api/auth/*` | Register, login, OTP, Google, password reset |
 | `/api/razorpay/*` | Create order & verify payment |
 

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import CloudSession from "@/models/CloudSession";
 import { getVerifiedSession } from "@/utils/auth";
-import { isS3Configured, getJSON, uploadJSON, deleteS3Object, pingS3, getS3SessionsKey, getLegacyS3SessionsKey, getS3PrepPacksKey } from "@/utils/s3";
+import { isS3Configured, getJSON, uploadJSON, deleteS3Object, pingS3, getS3SessionsKey, getLegacyS3SessionsKey, getS3PrepPacksKey, getS3FilmRoomKey, deleteObject } from "@/utils/s3";
+import { runProgressAutoCleanup } from "@/utils/serverProgressCleanup";
 
 function sessionKey(s: any): string | null {
     if (!s || typeof s.timestamp !== "number") return null;
@@ -29,16 +30,18 @@ function mergeById(cloud: any[], incoming: any[]): any[] {
         const key =
             typeof item.id === "string"
                 ? item.id
-                : typeof item.createdAt === "number"
-                  ? `created_${item.createdAt}`
-                  : null;
+                : typeof item.timestamp === "number"
+                  ? `ts_${item.timestamp}`
+                  : typeof item.createdAt === "number"
+                    ? `created_${item.createdAt}`
+                    : null;
         if (!key) continue;
         const existing = map.get(key);
-        if (!existing || (item.createdAt || 0) >= (existing.createdAt || 0)) {
+        if (!existing || (item.timestamp || item.createdAt || 0) >= (existing.timestamp || existing.createdAt || 0)) {
             map.set(key, item);
         }
     }
-    return Array.from(map.values()).sort((a, b) => (b.createdAt || b.dueAt || 0) - (a.createdAt || a.dueAt || 0));
+    return Array.from(map.values()).sort((a, b) => (b.timestamp || b.createdAt || b.dueAt || 0) - (a.timestamp || a.createdAt || a.dueAt || 0));
 }
 
 async function getOrCreateBlob(identifier: string) {
@@ -47,8 +50,10 @@ async function getOrCreateBlob(identifier: string) {
         blob = await CloudSession.create({
             identifier,
             sessions: [],
+            mockAptitudeSessions: [],
             prepPacks: [],
             spacedDrills: [],
+            retentionDays: 30,
         });
     }
     return blob;
@@ -95,7 +100,7 @@ async function migrateMongoSessionsToS3(userIdentifier: string, key: string, s3D
             console.log(`Migrating MongoDB sessions to S3 for ${userIdentifier}...`);
             const merged = {
                 sessions: mergeByTimestamp(s3Data.sessions || [], blob.sessions || []),
-                prepPacks: [], // Kept separate in its own S3 folder now
+                prepPacks: [],
                 spacedDrills: mergeById(s3Data.spacedDrills || [], blob.spacedDrills || []),
             };
             await uploadJSON(key, merged);
@@ -155,8 +160,12 @@ export async function GET() {
 
         await connectDB();
         
+        // Execute background auto-cleanup for expired sessions (> 30 days)
+        void runProgressAutoCleanup(session.identifier);
+
         let data: any = null;
         let prepPacks: any[] = [];
+        const blob = await getOrCreateBlob(session.identifier);
         
         if (isS3Configured()) {
             const ping = await pingS3();
@@ -191,7 +200,6 @@ export async function GET() {
         }
 
         if (!data) {
-            const blob = await getOrCreateBlob(session.identifier);
             data = {
                 sessions: blob.sessions || [],
                 prepPacks: [],
@@ -202,8 +210,10 @@ export async function GET() {
 
         return NextResponse.json({
             sessions: data.sessions || [],
+            mockAptitudeSessions: blob.mockAptitudeSessions || [],
             prepPacks: prepPacks || [],
             spacedDrills: data.spacedDrills || [],
+            retentionDays: blob.retentionDays || 30,
         });
     } catch (error: any) {
         console.error("sync-sessions GET error:", error);
@@ -221,9 +231,23 @@ export async function POST(req: NextRequest) {
         await connectDB();
         const body = await req.json();
         const incomingSessions = Array.isArray(body.sessions) ? body.sessions : [];
+        const incomingMocks = Array.isArray(body.mockAptitudeSessions) ? body.mockAptitudeSessions : [];
         const hasIncomingPacks = body.prepPacks !== undefined && Array.isArray(body.prepPacks);
         const incomingPacks = hasIncomingPacks ? body.prepPacks : [];
         const incomingDrills = Array.isArray(body.spacedDrills) ? body.spacedDrills : [];
+
+        const blob = await getOrCreateBlob(session.identifier);
+
+        // Always merge and save mockAptitudeSessions in MongoDB
+        if (incomingMocks.length > 0 || body.mockAptitudeSessions !== undefined) {
+            const mergedMocks = mergeById(blob.mockAptitudeSessions || [], incomingMocks);
+            blob.mockAptitudeSessions = mergedMocks;
+            blob.markModified("mockAptitudeSessions");
+        }
+
+        if (typeof body.retentionDays === "number" && body.retentionDays > 0) {
+            blob.retentionDays = body.retentionDays;
+        }
 
         let finalData: any = null;
         let finalPacks: any[] = [];
@@ -273,18 +297,16 @@ export async function POST(req: NextRequest) {
 
                 finalData = {
                     sessions: mergedSessions,
-                    prepPacks: [], // Kept separate now
+                    prepPacks: [],
                     spacedDrills: mergedDrills,
                 };
                 await uploadJSON(sessionsKey, finalData);
 
-                // Force clear MongoDB prepPacks cache to be 105% sure nothing remains on the server
+                // Clear MongoDB prepPacks cache to keep Mongo clean
                 try {
-                    const blob = await CloudSession.findOne({ identifier: session.identifier });
-                    if (blob && blob.prepPacks && blob.prepPacks.length > 0) {
+                    if (blob.prepPacks && blob.prepPacks.length > 0) {
                         blob.prepPacks = [];
                         blob.markModified("prepPacks");
-                        await blob.save();
                     }
                 } catch (e) {
                     console.error("Force clear MongoDB cache failed:", e);
@@ -293,7 +315,6 @@ export async function POST(req: NextRequest) {
         }
 
         if (!finalData) {
-            const blob = await getOrCreateBlob(session.identifier);
             const mergedSessions = mergeByTimestamp(blob.sessions || [], incomingSessions);
             const mergedPacks = hasIncomingPacks ? incomingPacks : (blob.prepPacks || []);
             const mergedDrills = incomingDrills.length > 0 ? mergeById(blob.spacedDrills || [], incomingDrills) : blob.spacedDrills || [];
@@ -306,8 +327,6 @@ export async function POST(req: NextRequest) {
             blob.markModified("prepPacks");
             blob.markModified("spacedDrills");
 
-            await blob.save();
-
             finalData = {
                 sessions: mergedSessions,
                 prepPacks: mergedPacks,
@@ -316,14 +335,125 @@ export async function POST(req: NextRequest) {
             finalPacks = mergedPacks;
         }
 
+        await blob.save();
+
         return NextResponse.json({
             ok: true,
             sessions: finalData.sessions,
+            mockAptitudeSessions: blob.mockAptitudeSessions || [],
             prepPacks: finalPacks,
             spacedDrills: finalData.spacedDrills,
+            retentionDays: blob.retentionDays || 30,
         });
     } catch (error: any) {
         console.error("sync-sessions POST error:", error);
         return NextResponse.json({ error: error.message || "Failed to sync sessions" }, { status: 500 });
     }
 }
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
+        await connectDB();
+        const body = await req.json().catch(() => ({}));
+        const { type, id, timestamp, tab } = body;
+
+        const blob = await getOrCreateBlob(session.identifier);
+
+        // Case 1: Delete individual interview attempt + cascade S3 film room delete
+        if (type === "interview" || (timestamp && !type)) {
+            const targetTs = Number(timestamp);
+            blob.sessions = (blob.sessions || []).filter((s: any) => {
+                const sTs = s?.timestamp ? Number(s.timestamp) : 0;
+                const sId = s?.id || "";
+                if (id && sId === id) return false;
+                if (targetTs && sTs === targetTs) return false;
+                return true;
+            });
+            blob.markModified("sessions");
+
+            if (isS3Configured()) {
+                // Delete session from S3 session data
+                try {
+                    const sessionsKey = getS3SessionsKey(session.identifier);
+                    const s3Data = await getJSON<any>(sessionsKey).catch(() => null);
+                    if (s3Data && Array.isArray(s3Data.sessions)) {
+                        s3Data.sessions = s3Data.sessions.filter((s: any) => {
+                            const sTs = s?.timestamp ? Number(s.timestamp) : 0;
+                            const sId = s?.id || "";
+                            if (id && sId === id) return false;
+                            if (targetTs && sTs === targetTs) return false;
+                            return true;
+                        });
+                        await uploadJSON(sessionsKey, s3Data);
+                    }
+                } catch (err) {
+                    console.error("Failed to delete interview from S3 sessions:", err);
+                }
+
+                // Cascade delete Film Room S3 object
+                if (targetTs) {
+                    try {
+                        const filmKey = getS3FilmRoomKey(session.identifier, targetTs);
+                        await deleteObject(filmKey);
+                    } catch (err) {
+                        console.error("Failed to cascade delete Film Room S3 object:", err);
+                    }
+                }
+            }
+        }
+
+        // Case 2: Delete individual mock aptitude assessment
+        if (type === "mock_aptitude" || (id && type === "mock_aptitude")) {
+            const targetTs = Number(timestamp);
+            blob.mockAptitudeSessions = (blob.mockAptitudeSessions || []).filter((m: any) => {
+                const mTs = m?.timestamp ? Number(m.timestamp) : 0;
+                const mId = m?.id || "";
+                if (id && mId === id) return false;
+                if (targetTs && mTs === targetTs) return false;
+                return true;
+            });
+            blob.markModified("mockAptitudeSessions");
+        }
+
+        // Case 3: Clear whole tab history
+        if (type === "clear_tab") {
+            if (tab === "interview" || tab === "filmroom") {
+                // Purge all S3 film rooms if possible
+                if (isS3Configured()) {
+                    for (const s of blob.sessions || []) {
+                        const sess = s as any;
+                        if (sess?.timestamp) {
+                            deleteObject(getS3FilmRoomKey(session.identifier, sess.timestamp)).catch(() => {});
+                        }
+                    }
+                    try {
+                        const sessionsKey = getS3SessionsKey(session.identifier);
+                        await uploadJSON(sessionsKey, { sessions: [], prepPacks: [], spacedDrills: [] });
+                    } catch { /* ignore */ }
+                }
+                blob.sessions = [];
+                blob.markModified("sessions");
+            } else if (tab === "aptitude") {
+                blob.mockAptitudeSessions = [];
+                blob.markModified("mockAptitudeSessions");
+            }
+        }
+
+        await blob.save();
+
+        return NextResponse.json({
+            ok: true,
+            sessions: blob.sessions || [],
+            mockAptitudeSessions: blob.mockAptitudeSessions || [],
+        });
+    } catch (error: any) {
+        console.error("sync-sessions DELETE error:", error);
+        return NextResponse.json({ error: error.message || "Failed to delete item" }, { status: 500 });
+    }
+}
+

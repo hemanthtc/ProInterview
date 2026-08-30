@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical, Code2, Clapperboard, FileSearch } from "lucide-react";
+import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical, Code2, Clapperboard, FileSearch, Lock, Unlock, Trophy, CheckCircle2, HelpCircle, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buildPrepSnapshot } from "../../utils/labProgress";
 import { motion, AnimatePresence } from "framer-motion";
@@ -429,8 +429,23 @@ function FeaturesContent() {
     const [isGeneratingRoadmap, setIsGeneratingRoadmap] = useState(false);
     const [roadmapResult, setRoadmapResult] = useState<any>(null);
     const [roadmapTasksChecked, setRoadmapTasksChecked] = useState<Record<string, boolean>>({});
+    const [roadmapPhaseProgress, setRoadmapPhaseProgress] = useState<Record<string, { unlocked: boolean; passed: boolean; score: number; studyPackGenerated?: boolean; completedAt?: number }>>({});
     const [savedRoadmaps, setSavedRoadmaps] = useState<SavedRoadmap[]>([]);
     const [activeRoadmapId, setActiveRoadmapId] = useState<string | null>(null);
+
+    // Phase-specific study pack generation & live progress states
+    const [isGeneratingPhaseStudy, setIsGeneratingPhaseStudy] = useState<Record<number, boolean>>({});
+    const [phaseStudyProgress, setPhaseStudyProgress] = useState<{ phaseIdx: number; current: number; total: number; topicName: string; step: "researching" | "generating" | "saving" } | null>(null);
+
+    // Phase-specific Aptitude Test Modal states (80% gate)
+    const [isPhaseAptitudeModalOpen, setIsPhaseAptitudeModalOpen] = useState(false);
+    const [activeAptitudePhaseIdx, setActiveAptitudePhaseIdx] = useState<number | null>(null);
+    const [isGeneratingAptitudeQuiz, setIsGeneratingAptitudeQuiz] = useState(false);
+    const [aptitudeQuizQuestions, setAptitudeQuizQuestions] = useState<Array<{ question: string; options: string[]; answer: number; explanation: string }>>([]);
+    const [userAptitudeAnswers, setUserAptitudeAnswers] = useState<Record<number, number>>({});
+    const [aptitudeSubmitted, setAptitudeSubmitted] = useState(false);
+    const [aptitudeScorePct, setAptitudeScorePct] = useState(0);
+    const [aptitudePassed, setAptitudePassed] = useState(false);
 
     // Pre-interview analysis states
     const [analysisResult, setAnalysisResult] = useState<{ rating: number; feedback: string } | null>(null);
@@ -2100,31 +2115,59 @@ function FeaturesContent() {
         }
 
         const generateMockFallbackRoadmap = () => {
+            const fallbackTitle = roadmapCourse.trim() || 
+                                   (roadmapCompany ? `${roadmapCompany} Prep Roadmap` : "Software Engineer Career Roadmap");
+
             const mockData = {
-                overview: `A comprehensive preparation path custom-tailored for a ${roadmapCourse || "Software Engineer"} role at ${roadmapCompany || "Generic Company"} (${roadmapLocation || "Remote"}).`,
+                title: fallbackTitle,
+                overview: `A progressive preparation path custom-tailored for ${fallbackTitle} at ${roadmapCompany || "Generic Company"} (${roadmapLocation || "Remote"}).`,
                 timeline: [
                     {
-                        phase: "Phase 1: Foundations & Core Architecture",
+                        phase: "Phase 1: Absolute Foundations & Core Syntax",
                         duration: "Weeks 1-2",
-                        description: `Establish a strong conceptual foundation in core components, algorithms, and design patterns required for ${roadmapCourse || "this role"}.`,
-                        topics: ["Core Concepts", "System Architecture", "Design Principles", "Basic Workflows"],
-                        resources: ["Official Documentation", "Developer Guide Portals", "Tech Blog Articles"],
+                        description: `Establish strong baseline fluency in fundamental programming concepts, syntax, and foundational tools for ${roadmapCourse || "this role"}.`,
+                        topics: ["Core Syntax & Primitives", "Functions & Control Flow", "Basic Data Types", "Environment Setup", "Git & CLI Basics"],
+                        resources: ["Official Language Docs", "Foundations Guide", "MDN / Developer Portal"],
                         tasks: [
-                            "Review standard questions on core concepts",
-                            "Draw a baseline architecture diagram of a sample feature",
-                            "Setup local repository and configure tooling options"
+                            "Review standard questions on baseline syntax",
+                            "Write 10 fundamental algorithmic functions",
+                            "Configure local repository and tools"
                         ]
                     },
                     {
-                        phase: "Phase 2: Advanced Integration & System Design",
+                        phase: "Phase 2: Intermediate Data Structures, Layouts & Async Logic",
                         duration: "Weeks 3-4",
-                        description: `Deep dive into advanced topics, performance optimization, state/resource management, and interview-specific scenarios for ${roadmapCompany || "the target company"}.`,
-                        topics: ["Performance Profiling", "State Management", "API Design", "Scaling Strategies"],
-                        resources: ["System Design Primers", "Case Studies", "Tech Talks & Videos"],
+                        description: `Master intermediate data structures, asynchronous operations, and modular architectural patterns.`,
+                        topics: ["OOP & Design Patterns", "Asynchronous Operations", "API Design & HTTP", "Intermediate Algorithms", "Database Fundamentals"],
+                        resources: ["Architecture Primer", "Language Deep Dive Guides", "API Documentation"],
                         tasks: [
-                            "Build a production-ready mock project testing constraints",
-                            "Practice 3 system design mock interviews with standard scenarios",
-                            "Perform speed profiling on code snippets and find leaks"
+                            "Build an interactive dynamic project testing constraints",
+                            "Implement async data fetching with error handling",
+                            "Solve 10 algorithm interview challenges"
+                        ]
+                    },
+                    {
+                        phase: "Phase 3: Frameworks, State Management & System Design",
+                        duration: "Weeks 5-6",
+                        description: `Deep dive into modern component frameworks, state management, and database models.`,
+                        topics: ["Production Frameworks", "State Management & Lifecycle", "Database Schemas & Indexing", "Authentication & Security", "Automated Testing"],
+                        resources: ["Framework Official Guides", "Database Performance Handbook", "Security Best Practices"],
+                        tasks: [
+                            "Build a production-ready application",
+                            "Implement secure user authentication",
+                            "Write unit and integration tests"
+                        ]
+                    },
+                    {
+                        phase: "Phase 4: Advanced Systems, Security & Mock Interview Mastery",
+                        duration: "Weeks 7-8",
+                        description: `Master system design, web security, performance optimization, and live interview drills for ${roadmapCompany || "target company"}.`,
+                        topics: ["System Design Trade-offs", "Caching & Scalability", "Web Security (CORS/XSS/CSRF)", "Performance Profiling", "Live Mock Interview Drills"],
+                        resources: ["System Design Primer", "OWASP Security Guide", "Tech Interview Handbooks"],
+                        tasks: [
+                            "Conduct 3 full mock interviews under timed conditions",
+                            "Perform speed profiling on code snippets and find leaks",
+                            "Draw architecture diagrams for high-traffic scenarios"
                         ]
                     }
                 ],
@@ -2137,16 +2180,19 @@ function FeaturesContent() {
 
             setRoadmapResult(mockData);
             setExpandedPhases({ 0: true });
+            const initialProgress = { "0": { unlocked: true, passed: false, score: 0, studyPackGenerated: false } };
+            setRoadmapPhaseProgress(initialProgress);
 
             const newRoadmap: SavedRoadmap = {
                 id: "road_" + Date.now(),
-                course: roadmapCourse,
+                course: fallbackTitle,
                 company: roadmapCompany || "Generic Company",
                 location: roadmapLocation || "Remote",
                 additionalInfo: roadmapAdditional,
                 createdAt: Date.now(),
                 roadmapData: mockData,
-                tasksChecked: {}
+                tasksChecked: {},
+                phaseProgress: initialProgress
             };
 
             const isLoggedIn = getStorageItem("userLoggedIn") === "true";
@@ -2157,13 +2203,11 @@ function FeaturesContent() {
                     body: JSON.stringify(newRoadmap)
                 })
                 .then(async res => {
-                    if (!res.ok) {
-                        throw new Error("HTTP error " + res.status);
-                    }
+                    if (!res.ok) return newRoadmap;
                     return res.json();
                 })
                 .then(saved => {
-                    const updatedList = [saved, ...savedRoadmaps];
+                    const updatedList = [saved, ...savedRoadmaps.filter(r => r.id !== saved.id)];
                     setSavedRoadmaps(updatedList);
                     setActiveRoadmapId(saved.id);
                     setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
@@ -2171,14 +2215,14 @@ function FeaturesContent() {
                 })
                 .catch(err => {
                     console.error("Failed to save fallback roadmap to server:", err);
-                    const updatedList = [newRoadmap, ...savedRoadmaps];
+                    const updatedList = [newRoadmap, ...savedRoadmaps.filter(r => r.id !== newRoadmap.id)];
                     setSavedRoadmaps(updatedList);
                     setActiveRoadmapId(newRoadmap.id);
                     setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
                     setStorageItem("activeRoadmapId", newRoadmap.id);
                 });
             } else {
-                const updatedList = [newRoadmap, ...savedRoadmaps];
+                const updatedList = [newRoadmap, ...savedRoadmaps.filter(r => r.id !== newRoadmap.id)];
                 setSavedRoadmaps(updatedList);
                 setActiveRoadmapId(newRoadmap.id);
                 setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
@@ -2203,15 +2247,23 @@ function FeaturesContent() {
                 setRoadmapResult(data);
                 setExpandedPhases({ 0: true });
 
+                const inferredCourse = roadmapCourse.trim() || 
+                                       (data?.title && String(data.title).trim()) || 
+                                       (roadmapCompany ? `${roadmapCompany} Prep Roadmap` : "Software Engineer Career Roadmap");
+
+                const initialProgress = { "0": { unlocked: true, passed: false, score: 0, studyPackGenerated: false } };
+                setRoadmapPhaseProgress(initialProgress);
+
                 const newRoadmap: SavedRoadmap = {
                     id: "road_" + Date.now(),
-                    course: roadmapCourse,
+                    course: inferredCourse,
                     company: roadmapCompany || "Generic Company",
                     location: roadmapLocation || "Remote",
                     additionalInfo: roadmapAdditional,
                     createdAt: Date.now(),
                     roadmapData: data,
-                    tasksChecked: {}
+                    tasksChecked: {},
+                    phaseProgress: initialProgress
                 };
 
                 const isLoggedIn = getStorageItem("userLoggedIn") === "true";
@@ -2222,13 +2274,11 @@ function FeaturesContent() {
                         body: JSON.stringify(newRoadmap)
                     })
                     .then(async res => {
-                        if (!res.ok) {
-                            throw new Error("HTTP error " + res.status);
-                        }
+                        if (!res.ok) return newRoadmap;
                         return res.json();
                     })
                     .then(saved => {
-                        const updatedList = [saved, ...savedRoadmaps];
+                        const updatedList = [saved, ...savedRoadmaps.filter(r => r.id !== saved.id)];
                         setSavedRoadmaps(updatedList);
                         setActiveRoadmapId(saved.id);
                         setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
@@ -2236,14 +2286,14 @@ function FeaturesContent() {
                     })
                     .catch(err => {
                         console.error("Failed to save roadmap to server:", err);
-                        const updatedList = [newRoadmap, ...savedRoadmaps];
+                        const updatedList = [newRoadmap, ...savedRoadmaps.filter(r => r.id !== newRoadmap.id)];
                         setSavedRoadmaps(updatedList);
                         setActiveRoadmapId(newRoadmap.id);
                         setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
                         setStorageItem("activeRoadmapId", newRoadmap.id);
                     });
                 } else {
-                    const updatedList = [newRoadmap, ...savedRoadmaps];
+                    const updatedList = [newRoadmap, ...savedRoadmaps.filter(r => r.id !== newRoadmap.id)];
                     setSavedRoadmaps(updatedList);
                     setActiveRoadmapId(newRoadmap.id);
                     setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
@@ -2301,108 +2351,323 @@ function FeaturesContent() {
         setExpandedPhases({ 0: true });
     };
 
-    const handleGenerateBackgroundStudyMaterials = async () => {
-        if (!roadmapResult || !roadmapResult.timeline) return;
-
-        const topics: string[] = [];
-        roadmapResult.timeline.forEach((phase: any) => {
-            if (Array.isArray(phase.topics)) {
-                phase.topics.forEach((t: string) => {
-                    const clean = t.trim();
-                    if (clean && !topics.includes(clean)) {
-                        topics.push(clean);
-                    }
-                });
+    const getOrCreateSyntheticFolder = async (name: string, parentId: string | null = null): Promise<string> => {
+        try {
+            const listRes = await fetch("/api/synthetic/folders");
+            if (listRes.ok) {
+                const folders = await listRes.json();
+                const existing = Array.isArray(folders) && folders.find(
+                    (f: any) => f.name.toLowerCase() === name.toLowerCase() && (f.parentId === parentId || (!f.parentId && !parentId))
+                );
+                if (existing) return existing.id || existing._id;
             }
+        } catch { /* proceed to create */ }
+
+        const createRes = await fetch("/api/synthetic/folders", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                name,
+                type: "document",
+                parentId
+            })
         });
+        const data = await createRes.json();
+        if (createRes.ok) return data.id || data._id;
+
+        // If conflict (409), re-fetch and find folder
+        if (createRes.status === 409) {
+            const listRes = await fetch("/api/synthetic/folders");
+            const folders = await listRes.json();
+            const existing = Array.isArray(folders) && folders.find((f: any) => f.name.toLowerCase() === name.toLowerCase());
+            if (existing) return existing.id || existing._id;
+        }
+        throw new Error(data.error || `Failed to create folder "${name}"`);
+    };
+
+    const handleGeneratePhaseStudyMaterials = async (phaseIdx: number) => {
+        if (!roadmapResult || !roadmapResult.timeline || !roadmapResult.timeline[phaseIdx]) return;
+        const phase = roadmapResult.timeline[phaseIdx];
+        const topics: string[] = Array.isArray(phase.topics) ? phase.topics.filter((t: string) => t && t.trim()) : [];
 
         if (topics.length === 0) {
-            alert("No topics found in this roadmap to generate materials for.");
+            alert(`No topics found in ${phase.phase || `Phase ${phaseIdx + 1}`} to generate materials for.`);
             return;
         }
 
-        setIsGeneratingStudyMaterials(true);
-        setStudyMaterialsProgress({ current: 0, total: topics.length, topicName: "Initializing folder..." });
+        setIsGeneratingPhaseStudy(prev => ({ ...prev, [phaseIdx]: true }));
+        setPhaseStudyProgress({
+            phaseIdx,
+            current: 0,
+            total: topics.length,
+            topicName: "Setting up Phase Folders...",
+            step: "researching"
+        });
 
         try {
-            const folderName = `${roadmapCompany || "Target"} - ${roadmapCourse || "Role"} Prep Pack`;
-            const folderRes = await fetch("/api/synthetic/folders", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    name: folderName,
-                    type: "document",
-                    parentId: null
-                })
-            });
-            const folderData = await folderRes.json();
-            if (!folderRes.ok) {
-                throw new Error(folderData.error || "Failed to create folder");
-            }
-            const folderId = folderData.id || folderData._id;
+            // Master Parent Folder: e.g. "Google - Frontend Engineer Prep Pack"
+            const masterFolderName = `${roadmapCompany || "Target"} - ${roadmapCourse || "Role"} Prep Pack`;
+            const masterFolderId = await getOrCreateSyntheticFolder(masterFolderName, null);
+
+            // Phase Subfolder: e.g. "Phase 1: Core Fundamentals"
+            const phaseSubfolderName = phase.phase || `Phase ${phaseIdx + 1}: Core Prep`;
+            const phaseSubfolderId = await getOrCreateSyntheticFolder(phaseSubfolderName, masterFolderId);
 
             for (let i = 0; i < topics.length; i++) {
                 const topic = topics[i];
-                setStudyMaterialsProgress({ current: i + 1, total: topics.length, topicName: topic });
-
-                const prompt = `Write a comprehensive, deep-dive technical study guide and documentation for the topic: "${topic}". This is part of prep for a ${roadmapCourse || "Software Engineer"} interview at ${roadmapCompany || "a top tech company"}. Structure it with: 
-- High-level overview of the concept
-- Key technical principles / architectures
-- Common questions / trade-offs
-- Code snippets / implementation guidelines if applicable.`;
-
-                const geminiRes = await fetch("/api/synthetic-data/gemini", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ prompt, jsonMode: false, temperature: 0.6 })
+                setPhaseStudyProgress({
+                    phaseIdx,
+                    current: i + 1,
+                    total: topics.length,
+                    topicName: topic,
+                    step: "researching"
                 });
-                
-                if (!geminiRes.ok) {
-                    console.warn(`Failed to generate content for topic "${topic}", skipping.`);
-                    continue;
-                }
-                const geminiData = await geminiRes.json();
-                const contentText = geminiData.text || "";
 
-                if (!contentText.trim()) continue;
+                await new Promise(r => setTimeout(r, 400));
+
+                setPhaseStudyProgress({
+                    phaseIdx,
+                    current: i + 1,
+                    total: topics.length,
+                    topicName: topic,
+                    step: "generating"
+                });
+
+                const prompt = `Write an exhaustive, high-yield technical study guide and documentation chapter for the topic: "${topic}".
+Context: ${phaseSubfolderName} of an interview preparation roadmap for a ${roadmapCourse || "Software Engineer"} position at ${roadmapCompany || "a top tech company"}.
+
+Structure the study guide with:
+1. 📌 Conceptual Overview & Core Fundamentals
+2. 🏗️ Architecture, Core Mechanisms & Component Breakdown
+3. 💻 Production Code Implementation & Idiomatic Patterns
+4. ⚠️ Common Traps, Edge Cases & Performance Trade-offs
+5. 🎯 Top 5 Likely Interview Questions & Model Answers
+
+Format cleanly with rich Markdown headings, bullet points, and code blocks.`;
+
+                let contentText = "";
+                try {
+                    const geminiRes = await fetch("/api/synthetic-data/gemini", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ prompt, jsonMode: false, temperature: 0.6 })
+                    });
+                    if (geminiRes.ok) {
+                        const geminiData = await geminiRes.json();
+                        contentText = geminiData.text || "";
+                    }
+                } catch (apiErr) {
+                    console.warn(`AI request failed for topic "${topic}", building synthesized guide.`);
+                }
+
+                if (!contentText.trim()) {
+                    contentText = `# ${topic} — Comprehensive Study Guide\n\n## 1. Overview\nThis guide covers fundamental principles, best practices, and interview-ready concepts for **${topic}** as part of ${phaseSubfolderName}.\n\n## 2. Key Architecture & Principles\n- Core mental models and execution mechanisms.\n- State flow and resource lifecycle management.\n- Scalability considerations and performance bottlenecks.\n\n## 3. Best Practice Implementation\n\`\`\`javascript\n// Production implementation pattern for ${topic}\nfunction initialize${topic.replace(/[^a-zA-Z0-9]/g, "")}() {\n    console.log("Initializing ${topic} workflow with error boundaries and optimizations.");\n}\n\`\`\`\n\n## 4. Top Interview Questions & Trade-offs\n1. **How does ${topic} compare with alternative approaches?**\n2. **What are the primary performance optimizations for ${topic}?**\n3. **How do you handle edge cases and debugging in high-concurrency environments?**\n\n## 5. Review Checklist\n- [ ] Mastered core definitions and data flow.\n- [ ] Able to explain trade-offs without notes.\n- [ ] Practiced writing clean code snippets.`;
+                }
+
+                setPhaseStudyProgress({
+                    phaseIdx,
+                    current: i + 1,
+                    total: topics.length,
+                    topicName: topic,
+                    step: "saving"
+                });
 
                 await fetch("/api/synthetic/files", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                         name: `${topic} - Study Guide`,
-                        folderId: folderId,
+                        folderId: phaseSubfolderId,
                         contentType: "document",
                         textContent: contentText
                     })
                 });
+
+                // Gentle pacing to avoid RPM limits
+                await new Promise(r => setTimeout(r, 1200));
             }
 
-            setIsGeneratingStudyMaterials(false);
-            setStudyMaterialsProgress(null);
+            const nextProgress: Record<string, { unlocked: boolean; passed: boolean; score: number; studyPackGenerated?: boolean; completedAt?: number }> = {
+                ...roadmapPhaseProgress,
+                [String(phaseIdx)]: {
+                    ...(roadmapPhaseProgress[String(phaseIdx)] || { unlocked: true, passed: false, score: 0 }),
+                    studyPackGenerated: true
+                }
+            };
+            setRoadmapPhaseProgress(nextProgress);
 
-            alert(`Study Pack Generation Complete!\nSuccessfully created folder "${folderName}" and saved ${topics.length} study guide files.`);
-
-            if ("Notification" in window) {
-                if (Notification.permission === "granted") {
-                    new Notification("Study Materials Complete!", {
-                        body: `Created folder "${folderName}" with ${topics.length} topic guides.`
-                    });
-                } else if (Notification.permission !== "denied") {
-                    const permission = await Notification.requestPermission();
-                    if (permission === "granted") {
-                        new Notification("Study Materials Complete!", {
-                            body: `Created folder "${folderName}" with ${topics.length} topic guides.`
-                        });
+            if (activeRoadmapId) {
+                const updatedList = savedRoadmaps.map(r => {
+                    if (r.id === activeRoadmapId) {
+                        return { ...r, phaseProgress: nextProgress };
                     }
+                    return r;
+                });
+                setSavedRoadmaps(updatedList);
+                setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+
+                const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+                if (isLoggedIn) {
+                    void fetch(`/api/roadmaps/${activeRoadmapId}`, {
+                        method: "PATCH",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ phaseProgress: nextProgress })
+                    });
                 }
             }
+
+            setIsGeneratingPhaseStudy(prev => ({ ...prev, [phaseIdx]: false }));
+            setPhaseStudyProgress(null);
+
+            alert(`✅ ${phaseSubfolderName} Study Pack Complete!\nSaved ${topics.length} study guide files in "${masterFolderName} > ${phaseSubfolderName}". Access them anytime in Synthetic Studio / Document Manager.`);
 
         } catch (err: any) {
             console.error(err);
             alert(`Failed to generate study materials: ${err.message || err}`);
-            setIsGeneratingStudyMaterials(false);
-            setStudyMaterialsProgress(null);
+            setIsGeneratingPhaseStudy(prev => ({ ...prev, [phaseIdx]: false }));
+            setPhaseStudyProgress(null);
+        }
+    };
+
+    const handleOpenPhaseAptitudeModal = async (phaseIdx: number) => {
+        if (!roadmapResult || !roadmapResult.timeline || !roadmapResult.timeline[phaseIdx]) return;
+        const phase = roadmapResult.timeline[phaseIdx];
+        const topics = Array.isArray(phase.topics) ? phase.topics : [];
+
+        setActiveAptitudePhaseIdx(phaseIdx);
+        setIsPhaseAptitudeModalOpen(true);
+        setIsGeneratingAptitudeQuiz(true);
+        setUserAptitudeAnswers({});
+        setAptitudeSubmitted(false);
+        setAptitudeScorePct(0);
+        setAptitudePassed(false);
+
+        const prompt = `Generate a 5-question technical multiple choice aptitude quiz specifically testing concepts in Phase ${phaseIdx + 1} (${phase.phase}).
+Topics covered in this phase: ${topics.join(", ") || phase.description}.
+Target Interview Role: ${roadmapCourse || "Software Engineer"} at ${roadmapCompany || "a top tech company"}.
+
+Generate 5 rigorous, practical interview questions (not trivial trivia). Return ONLY a valid JSON object matching this schema:
+{
+  "questions": [
+    {
+      "question": "Clear problem statement or scenario question",
+      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "answer": 0,
+      "explanation": "Why this option is correct and why other options are suboptimal."
+    }
+  ]
+}`;
+
+        try {
+            const res = await fetch("/api/synthetic-data/gemini", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ prompt, jsonMode: true, temperature: 0.3 })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                let clean = data.text || "";
+                clean = clean.replace(/```json/gi, "").replace(/```/g, "").trim();
+                const parsed = JSON.parse(clean);
+                if (Array.isArray(parsed.questions) && parsed.questions.length > 0) {
+                    setAptitudeQuizQuestions(parsed.questions);
+                    setIsGeneratingAptitudeQuiz(false);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to generate custom phase quiz, falling back to targeted questions:", e);
+        }
+
+        // Fallback robust questions for this phase
+        const fallbackQs = topics.slice(0, 5).map((topic: string) => ({
+            question: `When designing a production architecture with ${topic}, what is the most critical consideration for high scalability and reliability?`,
+            options: [
+                `Decoupling components, establishing clear boundaries, and managing state transitions cleanly.`,
+                `Writing all logic in a single monolithic controller to reduce network hops.`,
+                `Relying purely on client-side caching without server validation.`,
+                `Ignoring asynchronous event loops and polling at high frequencies.`
+            ],
+            answer: 0,
+            explanation: `Decoupling modules, enforcing state consistency, and bounding contexts are universal best practices for ${topic} at enterprise scale.`
+        }));
+
+        if (fallbackQs.length === 0) {
+            fallbackQs.push({
+                question: `What is the primary benefit of mastering ${phase.phase}?`,
+                options: [
+                    `It provides the foundational engineering patterns required for technical interviews.`,
+                    `It completely eliminates the need for unit testing.`,
+                    `It guarantees instant execution without memory constraints.`,
+                    `It replaces database schema indexing.`
+                ],
+                answer: 0,
+                explanation: `Mastering these milestones builds strong architectural and algorithmic intuition for technical interviews.`
+            });
+        }
+
+        setAptitudeQuizQuestions(fallbackQs);
+        setIsGeneratingAptitudeQuiz(false);
+    };
+
+    const handleSubmitPhaseAptitudeQuiz = () => {
+        if (aptitudeQuizQuestions.length === 0) return;
+        const total = aptitudeQuizQuestions.length;
+        let correct = 0;
+        aptitudeQuizQuestions.forEach((q, idx) => {
+            if (userAptitudeAnswers[idx] === q.answer) {
+                correct++;
+            }
+        });
+
+        const score = Math.round((correct / total) * 100);
+        const passed = score >= 80;
+
+        setAptitudeScorePct(score);
+        setAptitudePassed(passed);
+        setAptitudeSubmitted(true);
+
+        const phaseIdx = activeAptitudePhaseIdx ?? 0;
+        const nextProgress: Record<string, { unlocked: boolean; passed: boolean; score: number; studyPackGenerated?: boolean; completedAt?: number }> = {
+            ...roadmapPhaseProgress,
+            [String(phaseIdx)]: {
+                ...(roadmapPhaseProgress[String(phaseIdx)] || { studyPackGenerated: false }),
+                unlocked: true,
+                passed,
+                score,
+                completedAt: Date.now()
+            }
+        };
+
+        // If score >= 80%, unlock next phase!
+        if (passed && roadmapResult?.timeline && phaseIdx + 1 < roadmapResult.timeline.length) {
+            nextProgress[String(phaseIdx + 1)] = {
+                ...(nextProgress[String(phaseIdx + 1)] || { passed: false, score: 0, studyPackGenerated: false }),
+                unlocked: true
+            };
+        }
+
+        setRoadmapPhaseProgress(nextProgress);
+
+        if (activeRoadmapId) {
+            const updatedList = savedRoadmaps.map(r => {
+                if (r.id === activeRoadmapId) {
+                    return { ...r, phaseProgress: nextProgress };
+                }
+                return r;
+            });
+            setSavedRoadmaps(updatedList);
+            setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+
+            const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+            if (isLoggedIn) {
+                void fetch(`/api/roadmaps/${activeRoadmapId}`, {
+                    method: "PATCH",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ phaseProgress: nextProgress })
+                });
+            }
         }
     };
 
@@ -2438,6 +2703,7 @@ function FeaturesContent() {
         setRoadmapAdditional(road.additionalInfo);
         setRoadmapResult(road.roadmapData);
         setRoadmapTasksChecked(road.tasksChecked || {});
+        setRoadmapPhaseProgress(road.phaseProgress || { "0": { unlocked: true, passed: false, score: 0 } });
         setRoadmapImages([]);
         setRoadmapImageError("");
         setExpandedPhases({ 0: true });
@@ -2476,6 +2742,7 @@ function FeaturesContent() {
                 setRoadmapAdditional(nextRoad.additionalInfo);
                 setRoadmapResult(nextRoad.roadmapData);
                 setRoadmapTasksChecked(nextRoad.tasksChecked || {});
+                setRoadmapPhaseProgress(nextRoad.phaseProgress || { "0": { unlocked: true, passed: false, score: 0 } });
                 setExpandedPhases({ 0: true });
             } else {
                 setActiveRoadmapId(null);
@@ -2487,6 +2754,7 @@ function FeaturesContent() {
                 setRoadmapAdditional("");
                 setRoadmapResult(null);
                 setRoadmapTasksChecked({});
+                setRoadmapPhaseProgress({});
                 setExpandedPhases({ 0: true });
             }
         }
@@ -2534,6 +2802,7 @@ function FeaturesContent() {
         setRoadmapImageError("");
         setRoadmapResult(null);
         setRoadmapTasksChecked({});
+        setRoadmapPhaseProgress({});
         setExpandedPhases({ 0: true });
     };
 
@@ -2921,6 +3190,7 @@ function FeaturesContent() {
             codingGradings: mockTestCodingOutputs
         };
         setStorageItem("mockAptitudeSessions", JSON.stringify([newMockSession, ...oldMockSessions]));
+        void syncSessionsToCloud();
 
         setMockTestCompleted(true);
     };
@@ -6400,14 +6670,14 @@ if (!isAuthChecked) return null;
                                                                         </button>
                                                                         <button
                                                                             type="button"
-                                                                            disabled={isGeneratingStudyMaterials}
-                                                                            onClick={handleGenerateBackgroundStudyMaterials}
+                                                                            disabled={!!isGeneratingPhaseStudy[0]}
+                                                                            onClick={() => handleGeneratePhaseStudyMaterials(0)}
                                                                             className="flex-1 md:flex-none px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-indigo-600/10 disabled:opacity-50"
                                                                         >
-                                                                            {isGeneratingStudyMaterials ? (
-                                                                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating Guides...</>
+                                                                            {isGeneratingPhaseStudy[0] ? (
+                                                                                <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating Phase 1...</>
                                                                             ) : (
-                                                                                <><BookOpen className="w-3.5 h-3.5" /> Generate Study Pack</>
+                                                                                <><BookOpen className="w-3.5 h-3.5" /> Generate Phase 1 Pack</>
                                                                             )}
                                                                         </button>
                                                                         <button
@@ -6482,6 +6752,13 @@ if (!isAuthChecked) return null;
                                                                 }, 0);
                                                                 const isPhaseCompleted = phaseTasksCount > 0 && phaseCheckedCount === phaseTasksCount;
 
+                                                                const isPhaseUnlocked = phaseIdx === 0 || !!roadmapPhaseProgress[phaseIdx]?.unlocked || !!roadmapPhaseProgress[phaseIdx - 1]?.passed;
+                                                                const phaseProgressData = roadmapPhaseProgress[phaseIdx] || { unlocked: isPhaseUnlocked, passed: false, score: 0 };
+                                                                const isPassed = !!phaseProgressData.passed;
+                                                                const isStudyPackReady = !!phaseProgressData.studyPackGenerated;
+                                                                const isGeneratingThisPhase = !!isGeneratingPhaseStudy[phaseIdx];
+                                                                const isThisPhaseActive = phaseStudyProgress?.phaseIdx === phaseIdx;
+
                                                                 return (
                                                                     <div
                                                                         key={phaseIdx}
@@ -6505,23 +6782,29 @@ if (!isAuthChecked) return null;
                                                                             className="p-5 flex items-center justify-between gap-4 cursor-pointer select-none"
                                                                         >
                                                                             <div className="flex items-center gap-3.5 min-w-0">
-                                                                                {/* Phase Completion Node indicator */}
+                                                                                {/* Phase Node indicator */}
                                                                                 <div className="shrink-0">
-                                                                                    {isPhaseCompleted ? (
-                                                                                        <div className={`w-7 h-7 rounded-full border flex items-center justify-center ${isLight ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                                                                                            }`}>
+                                                                                    {!isPhaseUnlocked ? (
+                                                                                        <div className={`w-7 h-7 rounded-full border flex items-center justify-center ${isLight ? "bg-amber-50 border-amber-200 text-amber-600" : "bg-amber-500/10 border-amber-500/20 text-amber-400"}`}>
+                                                                                            <Lock className="w-3.5 h-3.5" />
+                                                                                        </div>
+                                                                                    ) : isPassed ? (
+                                                                                        <div className={`w-7 h-7 rounded-full border flex items-center justify-center ${isLight ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>
+                                                                                            <CheckCircle2 className="w-4 h-4" />
+                                                                                        </div>
+                                                                                    ) : isPhaseCompleted ? (
+                                                                                        <div className={`w-7 h-7 rounded-full border flex items-center justify-center ${isLight ? "bg-emerald-50 border-emerald-200 text-emerald-600" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"}`}>
                                                                                             <CheckCircle className="w-4 h-4" />
                                                                                         </div>
                                                                                     ) : (
-                                                                                        <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-black ${isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-white/5 border-white/15 text-white/50"
-                                                                                            }`}>
+                                                                                        <div className={`w-7 h-7 rounded-full border flex items-center justify-center text-xs font-black ${isLight ? "bg-slate-50 border-slate-200 text-slate-600" : "bg-white/5 border-white/15 text-white/50"}`}>
                                                                                             {phaseIdx + 1}
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
 
                                                                                 <div className="min-w-0">
-                                                                                    <h5 className={`font-bold text-sm truncate flex items-center gap-2 ${isLight ? "text-slate-900" : "text-white"}`}>
+                                                                                    <h5 className={`font-bold text-sm truncate flex items-center gap-2 ${!isPhaseUnlocked ? "text-white/50" : isLight ? "text-slate-900" : "text-white"}`}>
                                                                                         {phase.phase}
                                                                                     </h5>
                                                                                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
@@ -6536,14 +6819,32 @@ if (!isAuthChecked) return null;
                                                                                                 </span>
                                                                                             </>
                                                                                         )}
+                                                                                        {isStudyPackReady && (
+                                                                                            <>
+                                                                                                <span className="text-white/20 text-[9px]">&bull;</span>
+                                                                                                <span className="text-[10px] font-extrabold text-indigo-400">
+                                                                                                    📚 Study Pack Ready
+                                                                                                </span>
+                                                                                            </>
+                                                                                        )}
                                                                                     </div>
                                                                                 </div>
                                                                             </div>
 
                                                                             <div className="shrink-0 flex items-center gap-2.5">
-                                                                                <span className={`bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-opacity ${isExpanded ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
-                                                                                    {isPhaseCompleted ? "Completed" : "Active"}
-                                                                                </span>
+                                                                                {!isPhaseUnlocked ? (
+                                                                                    <span className="bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                                                                                        <Lock className="w-2.5 h-2.5" /> Locked
+                                                                                    </span>
+                                                                                ) : isPassed ? (
+                                                                                    <span className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider flex items-center gap-1">
+                                                                                        <Trophy className="w-2.5 h-2.5 text-amber-400" /> Passed ({phaseProgressData.score}%)
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className={`bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider transition-opacity ${isExpanded ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+                                                                                        {isPhaseCompleted ? "Completed" : "Active"}
+                                                                                    </span>
+                                                                                )}
                                                                                 <div className={isLight ? "text-slate-400 hover:text-slate-600 transition-colors" : "text-white/40 hover:text-white transition-colors"}>
                                                                                     {isExpanded ? (
                                                                                         <ChevronUp className="w-4 h-4" />
@@ -6565,91 +6866,166 @@ if (!isAuthChecked) return null;
                                                                                     className="overflow-hidden"
                                                                                 >
                                                                                     <div className={`px-5 pb-5 pt-1.5 border-t space-y-4 text-left ${isLight ? "border-slate-100" : "border-white/5"}`}>
-                                                                                        <p className={`text-xs leading-relaxed font-medium ${isLight ? "text-slate-650" : "text-white/60"}`}>
-                                                                                            {phase.description}
-                                                                                        </p>
-
-                                                                                        {/* Topics badges */}
-                                                                                        {phase.topics && phase.topics.length > 0 && (
-                                                                                            <div className="space-y-1.5">
-                                                                                                <span className={`text-[10px] uppercase font-extrabold block ${isLight ? "text-slate-400" : "text-white/30"}`}>Topics to Study</span>
-                                                                                                <div className="flex flex-wrap gap-1.5">
-                                                                                                    {phase.topics.map((topic: string, i: number) => (
-                                                                                                        <span key={i} className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${isLight ? "bg-slate-50 border-slate-200 text-slate-700" : "bg-white/5 border-white/5 text-white/70"
-                                                                                                            }`}>{topic}</span>
-                                                                                                    ))}
+                                                                                        {!isPhaseUnlocked ? (
+                                                                                            <div className="p-4 rounded-xl border border-amber-500/20 bg-amber-500/5 flex items-start gap-3 text-left">
+                                                                                                <Lock className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                                                                                                <div className="space-y-1">
+                                                                                                    <h6 className="text-xs font-bold text-amber-300">Phase {phaseIdx + 1} is Locked</h6>
+                                                                                                    <p className="text-[11px] text-amber-200/80 leading-relaxed">
+                                                                                                        Complete Phase {phaseIdx} milestones and score at least <strong className="text-amber-200 underline decoration-amber-400/50">80% on the Phase {phaseIdx} Aptitude Test</strong> to unlock this phase and its study guide generation.
+                                                                                                    </p>
                                                                                                 </div>
                                                                                             </div>
-                                                                                        )}
-
-                                                                                        {/* Resources to check */}
-                                                                                        {phase.resources && phase.resources.length > 0 && (
-                                                                                            <div className={`space-y-1.5 border p-3.5 rounded-xl ${isLight ? "bg-slate-50/50 border-slate-200" : "bg-white/[0.01] border border-white/5"
-                                                                                                }`}>
-                                                                                                <span className={`text-[10px] uppercase font-extrabold block flex items-center gap-1 ${isLight ? "text-slate-400" : "text-white/30"}`}>
-                                                                                                    <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Study Resources
-                                                                                                </span>
-                                                                                                <ul className={`text-xs space-y-1.5 list-disc pl-4 leading-relaxed font-medium ${isLight ? "text-slate-600" : "text-white/70"}`}>
-                                                                                                    {phase.resources.map((res: string, i: number) => (
-                                                                                                        <li key={i}>{res}</li>
-                                                                                                    ))}
-                                                                                                </ul>
-                                                                                            </div>
-                                                                                        )}
-
-                                                                                        {/* Task list with checkboxes */}
-                                                                                        {phase.tasks && phase.tasks.length > 0 && (
-                                                                                            <div className="space-y-2">
-                                                                                                <span className={`text-[10px] uppercase font-extrabold block ${isLight ? "text-slate-400" : "text-white/30"}`}>Tasks Check-list</span>
-                                                                                                <div className="space-y-1.5">
-                                                                                                    {phase.tasks.map((task: string, taskIdx: number) => {
-                                                                                                        const taskKey = `${phaseIdx}_${taskIdx}`;
-                                                                                                        return (
-                                                                                                            <label key={taskIdx} className={`flex items-start gap-2.5 p-2.5 rounded-xl text-xs transition-colors cursor-pointer group border ${isLight
-                                                                                                                ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
-                                                                                                                : "bg-black/40 border-white/5 text-white/70 hover:text-white"
-                                                                                                                }`}>
-                                                                                                                <input
-                                                                                                                    type="checkbox"
-                                                                                                                    checked={!!roadmapTasksChecked[taskKey]}
-                                                                                                                    onChange={(e) => {
-                                                                                                                        const updatedChecked = {
-                                                                                                                            ...roadmapTasksChecked,
-                                                                                                                            [taskKey]: e.target.checked
-                                                                                                                        };
-                                                                                                                        setRoadmapTasksChecked(updatedChecked);
-                                                                                                                        if (activeRoadmapId) {
-                                                                                                                            const updatedList = savedRoadmaps.map(r => {
-                                                                                                                                if (r.id === activeRoadmapId) {
-                                                                                                                                    return { ...r, tasksChecked: updatedChecked };
-                                                                                                                                }
-                                                                                                                                return r;
-                                                                                                                            });
-                                                                                                                            setSavedRoadmaps(updatedList);
-                                                                                                                            setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
-
-                                                                                                                            const isLoggedIn = getStorageItem("userLoggedIn") === "true";
-                                                                                                                            if (isLoggedIn) {
-                                                                                                                                fetch(`/api/roadmaps/${activeRoadmapId}`, {
-                                                                                                                                    method: "PATCH",
-                                                                                                                                    headers: { "Content-Type": "application/json" },
-                                                                                                                                    body: JSON.stringify({ tasksChecked: updatedChecked })
-                                                                                                                                }).catch(err => console.error("Failed to sync checkbox progress:", err));
-                                                                                                                            }
-                                                                                                                        }
-                                                                                                                    }}
-                                                                                                                    className={`mt-0.5 accent-emerald-500 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer border ${isLight ? "border-slate-300 bg-white" : "border-white/20 bg-black/40"
-                                                                                                                        }`}
+                                                                                        ) : (
+                                                                                            <>
+                                                                                                {/* Phase Action Bar: Generate Phase Study Pack & Take Aptitude Test */}
+                                                                                                <div className="p-3.5 rounded-xl border border-white/10 bg-white/[0.02] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-left">
+                                                                                                    {/* Live Study Progress or Generator Button */}
+                                                                                                    {isGeneratingThisPhase || isThisPhaseActive ? (
+                                                                                                        <div className="flex-1 space-y-1.5 min-w-0">
+                                                                                                            <div className="flex items-center justify-between gap-2 text-xs">
+                                                                                                                <div className="flex items-center gap-2 truncate">
+                                                                                                                    <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400 shrink-0" />
+                                                                                                                    <span className="font-semibold text-white/90 truncate text-[11px]">
+                                                                                                                        {phaseStudyProgress?.step === "researching" && `🔍 Researching "${phaseStudyProgress.topicName}"...`}
+                                                                                                                        {phaseStudyProgress?.step === "generating" && `⚡ Generating Guide for "${phaseStudyProgress.topicName}"...`}
+                                                                                                                        {phaseStudyProgress?.step === "saving" && `💾 Saving to Phase Subfolder...`}
+                                                                                                                        {!phaseStudyProgress?.step && "Initializing..."}
+                                                                                                                    </span>
+                                                                                                                </div>
+                                                                                                                <span className="text-[10px] font-bold text-indigo-400 shrink-0 font-sans">
+                                                                                                                    {phaseStudyProgress?.current || 0}/{phaseStudyProgress?.total || 1} ({Math.round(((phaseStudyProgress?.current || 0) / (phaseStudyProgress?.total || 1)) * 100)}%)
+                                                                                                                </span>
+                                                                                                            </div>
+                                                                                                            <div className="w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                                                                                                                <div
+                                                                                                                    className="bg-indigo-500 h-full rounded-full transition-all duration-300"
+                                                                                                                    style={{ width: `${Math.max(5, Math.round(((phaseStudyProgress?.current || 0) / (phaseStudyProgress?.total || 1)) * 100))}%` }}
                                                                                                                 />
-                                                                                                                <span className={`font-medium ${roadmapTasksChecked[taskKey]
-                                                                                                                    ? isLight ? "line-through text-slate-300" : "line-through text-white/30"
-                                                                                                                    : ""
-                                                                                                                    }`}>{task}</span>
-                                                                                                            </label>
-                                                                                                        );
-                                                                                                    })}
+                                                                                                            </div>
+                                                                                                        </div>
+                                                                                                    ) : (
+                                                                                                        <button
+                                                                                                            type="button"
+                                                                                                            onClick={() => handleGeneratePhaseStudyMaterials(phaseIdx)}
+                                                                                                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/30 transition-all cursor-pointer shadow-[0_0_15px_rgba(99,102,241,0.1)]"
+                                                                                                        >
+                                                                                                            <BookOpen className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                                                                                                            <span>{isStudyPackReady ? `Regenerate Phase ${phaseIdx + 1} Study Pack` : `Generate Phase ${phaseIdx + 1} Study Pack`}</span>
+                                                                                                        </button>
+                                                                                                    )}
+
+                                                                                                    {/* Phase Aptitude Test Gate Button */}
+                                                                                                    <button
+                                                                                                        type="button"
+                                                                                                        onClick={() => handleOpenPhaseAptitudeModal(phaseIdx)}
+                                                                                                        className={`flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                                                                                            isPassed
+                                                                                                                ? "bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]"
+                                                                                                                : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-purple-400/30 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                                                                                                        }`}
+                                                                                                    >
+                                                                                                        {isPassed ? (
+                                                                                                            <>
+                                                                                                                <Trophy className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                                                                                                                <span>Phase Test Passed ({phaseProgressData.score}%) — Retake</span>
+                                                                                                            </>
+                                                                                                        ) : (
+                                                                                                            <>
+                                                                                                                <Sparkles className="w-3.5 h-3.5 text-yellow-300 shrink-0" />
+                                                                                                                <span>Take Phase {phaseIdx + 1} Aptitude Test (80% to Pass)</span>
+                                                                                                            </>
+                                                                                                        )}
+                                                                                                    </button>
                                                                                                 </div>
-                                                                                            </div>
+
+                                                                                                <p className={`text-xs leading-relaxed font-medium ${isLight ? "text-slate-650" : "text-white/60"}`}>
+                                                                                                    {phase.description}
+                                                                                                </p>
+
+                                                                                                {/* Topics badges */}
+                                                                                                {phase.topics && phase.topics.length > 0 && (
+                                                                                                    <div className="space-y-1.5">
+                                                                                                        <span className={`text-[10px] uppercase font-extrabold block ${isLight ? "text-slate-400" : "text-white/30"}`}>Topics to Study</span>
+                                                                                                        <div className="flex flex-wrap gap-1.5">
+                                                                                                            {phase.topics.map((topic: string, i: number) => (
+                                                                                                                <span key={i} className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${isLight ? "bg-slate-50 border-slate-200 text-slate-700" : "bg-white/5 border-white/5 text-white/70"
+                                                                                                                    }`}>{topic}</span>
+                                                                                                            ))}
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                )}
+
+                                                                                                {/* Resources to check */}
+                                                                                                {phase.resources && phase.resources.length > 0 && (
+                                                                                                    <div className={`space-y-1.5 border p-3.5 rounded-xl ${isLight ? "bg-slate-50/50 border-slate-200" : "bg-white/[0.01] border border-white/5"
+                                                                                                        }`}>
+                                                                                                        <span className={`text-[10px] uppercase font-extrabold block flex items-center gap-1 ${isLight ? "text-slate-400" : "text-white/30"}`}>
+                                                                                                            <BookOpen className="w-3.5 h-3.5 text-emerald-600" /> Study Resources
+                                                                                                        </span>
+                                                                                                        <ul className={`text-xs space-y-1.5 list-disc pl-4 leading-relaxed font-medium ${isLight ? "text-slate-600" : "text-white/70"}`}>
+                                                                                                            {phase.resources.map((res: string, i: number) => (
+                                                                                                                <li key={i}>{res}</li>
+                                                                                                            ))}
+                                                                                                        </ul>
+                                                                                                    </div>
+                                                                                                )}
+
+                                                                                                {/* Task list with checkboxes */}
+                                                                                                {phase.tasks && phase.tasks.length > 0 && (
+                                                                                                    <div className="space-y-2">
+                                                                                                        <span className={`text-[10px] uppercase font-extrabold block ${isLight ? "text-slate-400" : "text-white/30"}`}>Tasks Check-list</span>
+                                                                                                        <div className="space-y-1.5">
+                                                                                                            {phase.tasks.map((task: string, taskIdx: number) => {
+                                                                                                                const taskKey = `${phaseIdx}_${taskIdx}`;
+                                                                                                                return (
+                                                                                                                    <label key={taskIdx} className={`flex items-start gap-2.5 p-2.5 rounded-xl text-xs transition-colors cursor-pointer group border ${isLight
+                                                                                                                        ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900"
+                                                                                                                        : "bg-black/40 border-white/5 text-white/70 hover:text-white"
+                                                                                                                        }`}>
+                                                                                                                        <input
+                                                                                                                            type="checkbox"
+                                                                                                                            checked={!!roadmapTasksChecked[taskKey]}
+                                                                                                                            onChange={(e) => {
+                                                                                                                                const updatedChecked = {
+                                                                                                                                    ...roadmapTasksChecked,
+                                                                                                                                    [taskKey]: e.target.checked
+                                                                                                                                };
+                                                                                                                                setRoadmapTasksChecked(updatedChecked);
+                                                                                                                                if (activeRoadmapId) {
+                                                                                                                                    const updatedList = savedRoadmaps.map(r => {
+                                                                                                                                        if (r.id === activeRoadmapId) {
+                                                                                                                                            return { ...r, tasksChecked: updatedChecked };
+                                                                                                                                        }
+                                                                                                                                        return r;
+                                                                                                                                    });
+                                                                                                                                    setSavedRoadmaps(updatedList);
+                                                                                                                                    setStorageItem("savedRoadmapsDatabase", JSON.stringify(updatedList));
+
+                                                                                                                                    const isLoggedIn = getStorageItem("userLoggedIn") === "true";
+                                                                                                                                    if (isLoggedIn) {
+                                                                                                                                        fetch(`/api/roadmaps/${activeRoadmapId}`, {
+                                                                                                                                            method: "PATCH",
+                                                                                                                                            headers: { "Content-Type": "application/json" },
+                                                                                                                                            body: JSON.stringify({ tasksChecked: updatedChecked })
+                                                                                                                                        }).catch(err => console.error("Failed to sync checkbox progress:", err));
+                                                                                                                                    }
+                                                                                                                                }
+                                                                                                                            }}
+                                                                                                                            className={`mt-0.5 accent-emerald-500 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer border ${isLight ? "border-slate-300 bg-white" : "border-white/20 bg-black/40"
+                                                                                                                                }`}
+                                                                                                                        />
+                                                                                                                        <span className={`font-medium ${roadmapTasksChecked[taskKey]
+                                                                                                                            ? isLight ? "line-through text-slate-300" : "line-through text-white/30"
+                                                                                                                            : ""
+                                                                                                                            }`}>{task}</span>
+                                                                                                                    </label>
+                                                                                                                );
+                                                                                                            })}
+                                                                                                        </div>
+                                                                                                    </div>
+                                                                                                )}
+                                                                                            </>
                                                                                         )}
                                                                                     </div>
                                                                                 </motion.div>
@@ -7467,6 +7843,237 @@ if (!isAuthChecked) return null;
                                     >
                                         Okay
                                     </button>
+                                )}
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Phase Aptitude Test Modal (80% Passing Gate) */}
+            <AnimatePresence>
+                {isPhaseAptitudeModalOpen && activeAptitudePhaseIdx !== null && roadmapResult?.timeline?.[activeAptitudePhaseIdx] && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-md p-4 overflow-y-auto"
+                        onClick={() => {
+                            if (!aptitudeSubmitted) {
+                                if (confirm("Leave aptitude test? Your current answers will be discarded.")) {
+                                    setIsPhaseAptitudeModalOpen(false);
+                                }
+                            } else {
+                                setIsPhaseAptitudeModalOpen(false);
+                            }
+                        }}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                            className={`w-full max-w-2xl rounded-3xl p-6 sm:p-8 shadow-2xl relative border my-8 max-h-[90vh] flex flex-col ${
+                                isLight ? "bg-white border-slate-200 text-slate-900" : "bg-[#0f1017] border-white/10 text-white shadow-purple-950/20"
+                            }`}
+                            onClick={e => e.stopPropagation()}
+                        >
+                            {/* Close button */}
+                            <button
+                                type="button"
+                                onClick={() => setIsPhaseAptitudeModalOpen(false)}
+                                className="absolute top-5 right-5 text-white/40 hover:text-white transition-colors cursor-pointer p-1 rounded-lg bg-white/5 hover:bg-white/10"
+                                title="Close Quiz"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
+
+                            {/* Header */}
+                            <div className="flex items-start gap-4 mb-6 pr-8">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
+                                    <Trophy className="w-6 h-6 text-yellow-400" />
+                                </div>
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                                            Phase {activeAptitudePhaseIdx + 1} Aptitude Verification
+                                        </span>
+                                        <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                                            80% Pass Required
+                                        </span>
+                                    </div>
+                                    <h3 className="text-lg sm:text-xl font-extrabold mt-1 truncate">
+                                        {roadmapResult.timeline[activeAptitudePhaseIdx].phase}
+                                    </h3>
+                                </div>
+                            </div>
+
+                            {/* Modal Content */}
+                            <div className="flex-1 overflow-y-auto pr-1 space-y-6 scrollbar-thin">
+                                {isGeneratingAptitudeQuiz ? (
+                                    <div className="py-16 text-center space-y-4">
+                                        <Loader2 className="w-10 h-10 animate-spin text-purple-400 mx-auto" />
+                                        <div className="space-y-1">
+                                            <p className="text-sm font-bold text-white">Generating Phase Verification Questions...</p>
+                                            <p className="text-xs text-white/50">Analyzing phase concepts & creating rigorous interview multiple choice scenarios.</p>
+                                        </div>
+                                    </div>
+                                ) : !aptitudeSubmitted ? (
+                                    <div className="space-y-6">
+                                        <div className="p-3.5 rounded-2xl bg-purple-500/5 border border-purple-500/20 text-xs text-purple-300 flex items-center gap-2.5">
+                                            <HelpCircle className="w-4 h-4 shrink-0 text-purple-400" />
+                                            <span>Answer all 5 questions below. Score at least <strong>80% (4/5)</strong> to verify Phase {activeAptitudePhaseIdx + 1} and unlock Phase {activeAptitudePhaseIdx + 2}.</span>
+                                        </div>
+
+                                        {aptitudeQuizQuestions.map((q, qIdx) => {
+                                            const selected = userAptitudeAnswers[qIdx];
+                                            return (
+                                                <div key={qIdx} className={`p-5 rounded-2xl border transition-all ${
+                                                    isLight ? "bg-slate-50/80 border-slate-200" : "bg-white/[0.02] border-white/5"
+                                                }`}>
+                                                    <div className="flex items-start gap-3 mb-3.5">
+                                                        <span className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 text-xs font-black flex items-center justify-center shrink-0 mt-0.5">
+                                                            {qIdx + 1}
+                                                        </span>
+                                                        <p className="text-sm font-bold leading-snug">{q.question}</p>
+                                                    </div>
+                                                    <div className="space-y-2 pl-9">
+                                                        {q.options.map((opt, optIdx) => {
+                                                            const isChecked = selected === optIdx;
+                                                            return (
+                                                                <label
+                                                                    key={optIdx}
+                                                                    onClick={() => setUserAptitudeAnswers(prev => ({ ...prev, [qIdx]: optIdx }))}
+                                                                    className={`flex items-center gap-3 p-3 rounded-xl border text-xs font-medium cursor-pointer transition-all ${
+                                                                        isChecked
+                                                                            ? "bg-purple-600/20 border-purple-500/60 text-white shadow-[0_0_15px_rgba(168,85,247,0.15)]"
+                                                                            : isLight
+                                                                            ? "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
+                                                                            : "bg-black/30 border-white/5 text-white/70 hover:border-white/20 hover:text-white"
+                                                                    }`}
+                                                                >
+                                                                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 ${
+                                                                        isChecked ? "border-purple-400 bg-purple-500" : "border-white/30"
+                                                                    }`}>
+                                                                        {isChecked && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                                                    </div>
+                                                                    <span className="leading-relaxed">{opt}</span>
+                                                                </label>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ) : (
+                                    /* Result Screen */
+                                    <div className="space-y-6">
+                                        {/* Score Gauge Card */}
+                                        <div className={`p-6 rounded-3xl border text-center space-y-3 ${
+                                            aptitudePassed
+                                                ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-300 shadow-[0_0_30px_rgba(16,185,129,0.15)]"
+                                                : "bg-rose-500/10 border-rose-500/30 text-rose-300 shadow-[0_0_30px_rgba(244,63,94,0.15)]"
+                                        }`}>
+                                            <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center text-2xl font-black border border-current">
+                                                {aptitudeScorePct}%
+                                            </div>
+                                            <div>
+                                                <h4 className="text-lg font-black">
+                                                    {aptitudePassed ? "🎉 Phase Verified & Passed!" : "⚠️ Score Below 80% Threshold"}
+                                                </h4>
+                                                <p className="text-xs text-white/70 mt-1 max-w-md mx-auto">
+                                                    {aptitudePassed
+                                                        ? `Outstanding work! You demonstrated mastery of ${roadmapResult.timeline[activeAptitudePhaseIdx].phase}. Phase ${activeAptitudePhaseIdx + 2} is now unlocked!`
+                                                        : `You scored ${aptitudeScorePct}%. Review your generated study guide materials in Documents and retry the quiz to unlock the next phase.`}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Detailed Question Review */}
+                                        <div className="space-y-4">
+                                            <h5 className="text-xs font-black uppercase tracking-wider text-white/50">Detailed Questions Review</h5>
+                                            {aptitudeQuizQuestions.map((q, qIdx) => {
+                                                const userChoice = userAptitudeAnswers[qIdx];
+                                                const isCorrect = userChoice === q.answer;
+                                                return (
+                                                    <div key={qIdx} className={`p-4 rounded-2xl border ${
+                                                        isCorrect ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"
+                                                    }`}>
+                                                        <div className="flex items-start gap-2.5 mb-2">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-black ${
+                                                                isCorrect ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"
+                                                            }`}>
+                                                                {isCorrect ? "Correct" : "Incorrect"}
+                                                            </span>
+                                                            <p className="text-xs font-bold text-white/90">{q.question}</p>
+                                                        </div>
+                                                        <div className="text-[11px] space-y-1 pl-2 text-left">
+                                                            <p className="text-white/60">
+                                                                Your Answer: <span className={isCorrect ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>{q.options[userChoice] || "Unanswered"}</span>
+                                                            </p>
+                                                            {!isCorrect && (
+                                                                <p className="text-emerald-400">
+                                                                    Correct Answer: <span className="font-bold">{q.options[q.answer]}</span>
+                                                                </p>
+                                                            )}
+                                                            <p className="text-white/50 text-[10px] bg-white/[0.03] p-2 rounded-lg mt-2 border border-white/5">
+                                                                💡 <strong className="text-white/70">Explanation:</strong> {q.explanation}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Footer Actions */}
+                            <div className="pt-4 mt-4 border-t border-white/10 flex items-center justify-between gap-3">
+                                {!aptitudeSubmitted ? (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsPhaseAptitudeModalOpen(false)}
+                                            className="px-4 py-2.5 rounded-xl text-xs font-bold text-white/60 hover:text-white bg-white/5 hover:bg-white/10 transition-all cursor-pointer"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={Object.keys(userAptitudeAnswers).length < aptitudeQuizQuestions.length || isGeneratingAptitudeQuiz}
+                                            onClick={handleSubmitPhaseAptitudeQuiz}
+                                            className={`px-6 py-2.5 rounded-xl text-xs font-black transition-all ${
+                                                Object.keys(userAptitudeAnswers).length < aptitudeQuizQuestions.length || isGeneratingAptitudeQuiz
+                                                    ? "bg-white/10 text-white/30 cursor-not-allowed"
+                                                    : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)] cursor-pointer"
+                                            }`}
+                                        >
+                                            Submit Test ({Object.keys(userAptitudeAnswers).length}/{aptitudeQuizQuestions.length})
+                                        </button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (activeAptitudePhaseIdx !== null) {
+                                                    void handleOpenPhaseAptitudeModal(activeAptitudePhaseIdx);
+                                                }
+                                            }}
+                                            className="px-4 py-2.5 rounded-xl text-xs font-bold text-purple-300 bg-purple-600/20 hover:bg-purple-600/30 border border-purple-500/30 flex items-center gap-2 transition-all cursor-pointer"
+                                        >
+                                            <RefreshCw className="w-3.5 h-3.5" /> Retake Test
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsPhaseAptitudeModalOpen(false)}
+                                            className="px-6 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-500 text-white transition-all cursor-pointer shadow-lg"
+                                        >
+                                            {aptitudePassed ? "Continue to Next Phase" : "Review Study Guide"}
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </motion.div>

@@ -17,7 +17,7 @@ const securityHeaders = [
     },
     {
         key: "Permissions-Policy",
-        value: "camera=(self), microphone=(self), geolocation=(), payment=(self)",
+        value: "camera=(self \"https://*.daily.co\"), microphone=(self \"https://*.daily.co\"), autoplay=(self \"https://*.daily.co\"), geolocation=(), payment=(self)",
     },
     {
         key: "Strict-Transport-Security",
@@ -31,13 +31,13 @@ const securityHeaders = [
         key: "Content-Security-Policy",
         value: [
             "default-src 'self'",
-            `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com https://accounts.google.com https://apis.google.com`,
+            `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://checkout.razorpay.com https://accounts.google.com https://apis.google.com https://unpkg.com`,
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob: https://*.amazonaws.com https://*.googleusercontent.com https://lh3.googleusercontent.com",
-            "connect-src 'self' https://generativelanguage.googleapis.com https://api.sarvam.ai https://api.d-id.com https://api.adzuna.com https://api.happenstance.ai https://emkc.org https://checkout.razorpay.com wss://api.d-id.com",
-            "frame-src 'self' https://checkout.razorpay.com https://accounts.google.com",
-            "media-src 'self' blob: https://api.d-id.com https://*.amazonaws.com",
+            "connect-src 'self' https://generativelanguage.googleapis.com https://api.sarvam.ai https://tavusapi.com https://*.daily.co wss://*.daily.co https://api.adzuna.com https://api.happenstance.ai https://emkc.org https://checkout.razorpay.com",
+            "frame-src 'self' https://checkout.razorpay.com https://accounts.google.com https://*.daily.co https://*.tavus.io",
+            "media-src 'self' blob: https://*.daily.co https://tavus.video https://*.tavus.video https://*.amazonaws.com",
             "worker-src 'self' blob:",
             "object-src 'none'",
             "base-uri 'self'",

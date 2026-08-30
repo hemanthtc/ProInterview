@@ -14,7 +14,7 @@ import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapsh
 import { syncSessionsToCloud } from "../../utils/cloudSync";
 import { buildSpacedDrills } from "../../utils/spacedDrills";
 import { resolveCompanyBank } from "../../data/companyBanks";
-import { speakInterviewText } from "../../utils/speakInterview";
+import { speakInterviewText, stopSpeechInterviewText } from "../../utils/speakInterview";
 
 export default function InterviewRoom() {
     const router = useRouter();
@@ -300,6 +300,7 @@ export default function InterviewRoom() {
         }
 
         stopCamera();
+        stopSpeechInterviewText();
 
         setVideoActive(false);
         setIsListening(false);
@@ -318,6 +319,26 @@ export default function InterviewRoom() {
             return;
         }
         setIsAuthChecked(true);
+
+        // Check if user reloaded while viewing an ended or completed interview session
+        const isEnded = sessionStorage.getItem("prointerview_session_ended") === "true";
+        const savedCompleted = sessionStorage.getItem("prointerview_completed_session");
+        if (isEnded || savedCompleted) {
+            setIsCallEnded(true);
+            isCallEndedRef.current = true;
+            stopSpeechInterviewText();
+            if (savedCompleted) {
+                try {
+                    const parsed = JSON.parse(savedCompleted);
+                    if (parsed?.scores) setFinalScores(parsed.scores);
+                    if (parsed?.messages) setMessages(parsed.messages);
+                    if (parsed?.blobUrl) setRecordedBlobUrl(parsed.blobUrl);
+                } catch (e) {
+                    console.warn("Failed to restore completed interview session:", e);
+                }
+            }
+            return; // Do not initialize camera, speech recognition, or AI question generation
+        }
 
         isCallEndedRef.current = false;
         const text = getInterviewResumeText();
@@ -475,8 +496,8 @@ export default function InterviewRoom() {
         return () => {
             isMounted = false;
             isCallEndedRef.current = true;
+            stopSpeechInterviewText();
             stopCamera();
-            window.speechSynthesis.cancel();
             stopFaceDetection();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -607,6 +628,7 @@ export default function InterviewRoom() {
     };
 
     const speakText = (text: string) => {
+        if (isCallEndedRef.current) return;
         void speakInterviewText(text, {
             provider: getStorageItem("aiProvider") || "gemini",
             voiceLanguage: getStorageItem("voiceLanguage") || "en-IN",
@@ -847,9 +869,18 @@ export default function InterviewRoom() {
     };
 
     const endCall = async () => {
-        stopInterviewRuntime();
-        setIsCallEnded(true);
         isCallEndedRef.current = true;
+        setIsCallEnded(true);
+        stopSpeechInterviewText();
+        stopInterviewRuntime();
+        try {
+            sessionStorage.setItem("prointerview_session_ended", "true");
+            sessionStorage.setItem("prointerview_completed_session", JSON.stringify({
+                scores: finalScores || null,
+                messages: messagesRef.current,
+                blobUrl: recordedBlobUrl
+            }));
+        } catch { /* ignore */ }
 
         setIsEvaluating(true);
         try {
@@ -910,7 +941,7 @@ export default function InterviewRoom() {
             // Clamp to valid range
             finalOutput = Math.max(0, Math.min(100, finalOutput));
 
-            setFinalScores({
+            const scoresToSave = {
                 interview: iScore,
                 technical: tScore,
                 behavioral: bScore,
@@ -919,7 +950,9 @@ export default function InterviewRoom() {
                 final: finalOutput,
                 annotatedTranscript,
                 summary: sessionSummary
-            });
+            };
+
+            setFinalScores(scoresToSave);
 
             const oldSessions = JSON.parse(getStorageItem("interviewSessions") || "[]");
             const finalTranscriptText = annotatedTranscript || messagesRef.current.map(m => `${m.role === 'user' ? 'YOU' : 'AI'}: ${m.content}`).join("\n\n");
@@ -948,6 +981,14 @@ export default function InterviewRoom() {
                 setStorageItem("spacedDrills", JSON.stringify(drills));
             } catch { /* ignore */ }
             removeStorageItem("activeHrIntel");
+            try {
+                sessionStorage.setItem("prointerview_session_ended", "true");
+                sessionStorage.setItem("prointerview_completed_session", JSON.stringify({
+                    scores: scoresToSave,
+                    messages: messagesRef.current,
+                    blobUrl: recordedBlobUrl
+                }));
+            } catch { /* ignore */ }
             void syncSessionsToCloud();
         } catch (e) {
             console.error(e);
@@ -984,7 +1025,12 @@ export default function InterviewRoom() {
                     </div>
 
                     <button
-                        onClick={() => router.push("/")}
+                        onClick={() => {
+                            stopSpeechInterviewText();
+                            sessionStorage.removeItem("prointerview_session_ended");
+                            sessionStorage.removeItem("prointerview_completed_session");
+                            router.push("/");
+                        }}
                         className="px-8 py-3 bg-red-600 hover:bg-red-500 transition-colors rounded-xl font-medium"
                     >
                         Return Home
@@ -1243,7 +1289,12 @@ export default function InterviewRoom() {
                             <Download className="w-4 h-4 text-indigo-400" /> Download Report (.doc)
                         </button>
                         <button
-                            onClick={() => router.push("/")}
+                            onClick={() => {
+                                stopSpeechInterviewText();
+                                sessionStorage.removeItem("prointerview_session_ended");
+                                sessionStorage.removeItem("prointerview_completed_session");
+                                router.push("/");
+                            }}
                             className="w-full sm:w-auto flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-500 transition-all rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
                         >
                             Return Home

@@ -6,6 +6,7 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTr
 import { motion } from "framer-motion";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import Script from "next/script";
 import { getStorageItem, getInterviewResumeText, setStorageItem, removeStorageItem } from "../../utils/storage";
 import VoiceCoachPanel from "../../components/VoiceCoachPanel";
 import SessionRecorder from "../../components/SessionRecorder";
@@ -13,7 +14,7 @@ import { analyzeUtterance, mergeCoachStats, endCallHabits, type VoiceCoachSnapsh
 import { syncSessionsToCloud } from "../../utils/cloudSync";
 import { buildSpacedDrills } from "../../utils/spacedDrills";
 import { resolveCompanyBank } from "../../data/companyBanks";
-import { speakInterviewText } from "../../utils/speakInterview";
+import { speakInterviewText, stopSpeechInterviewText } from "../../utils/speakInterview";
 
 export default function RealisticInterviewRoom() {
     const router = useRouter();
@@ -55,13 +56,17 @@ export default function RealisticInterviewRoom() {
     const [isEvaluating, setIsEvaluating] = useState(false);
     const [isAuthChecked, setIsAuthChecked] = useState(false);
 
-    // D-ID Talking Head Avatar states
+    // Tavus Talking Head Avatar states
     const avatarVideoRef = useRef<HTMLVideoElement>(null);
+    const avatarVideoElementsRef = useRef<Set<HTMLVideoElement>>(new Set());
     const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null);
     const [isAvatarGenerating, setIsAvatarGenerating] = useState(false);
     const [isDidAvailable, setIsDidAvailable] = useState<boolean | null>(null);
-    const [avatarType, setAvatarType] = useState<"d-id" | "svg">("svg");
+    const [avatarType, setAvatarType] = useState<"tavus" | "svg">("tavus");
+    const [selectedReplicaId, setSelectedReplicaId] = useState<string>("r67d1c9cac37");
     const [avatarError, setAvatarError] = useState<string | null>(null);
+    const tavusTalkAbortControllerRef = useRef<AbortController | null>(null);
+    const isTavusInitializingRef = useRef<boolean>(false);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
@@ -99,38 +104,57 @@ export default function RealisticInterviewRoom() {
         }
     }, []);
 
-    const closeDIdStream = () => {
-        if (peerConnectionRef.current) {
-            try { peerConnectionRef.current.close(); } catch (e) { }
-            peerConnectionRef.current = null;
+    const closeTavusStream = () => {
+        if (tavusTalkAbortControllerRef.current) {
+            tavusTalkAbortControllerRef.current.abort();
+            tavusTalkAbortControllerRef.current = null;
         }
-        if (dataChannelRef.current) {
-            try { dataChannelRef.current.close(); } catch (e) { }
-            dataChannelRef.current = null;
+        if (conversationIdRef.current) {
+            fetch("/api/tavus-stream", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "end", conversationId: conversationIdRef.current })
+            }).catch(() => {});
         }
-        streamIdRef.current = null;
-        sessionIdRef.current = null;
+        const existingCall = dailyCallRef.current || (typeof window !== "undefined" && (window as any).DailyIframe?.getCallInstance());
+        if (existingCall) {
+            try { existingCall.leave(); existingCall.destroy(); } catch (e) { }
+            dailyCallRef.current = null;
+        }
+        conversationIdRef.current = null;
+        conversationUrlRef.current = null;
         remoteStreamRef.current = null;
         setAvatarVideoUrl(null);
         setIsAvatarGenerating(false);
     };
 
-    const handleSwitchAvatarType = (type: "d-id" | "svg") => {
+    const handleSwitchAvatarType = (type: "tavus" | "svg") => {
         if (type === avatarType) return;
         setAvatarType(type);
-        if (type === "svg") {
-            closeDIdStream();
-            setIsDidAvailable(false);
+        if (type === "tavus") {
+            initializeTavusStream();
         } else {
-            initializeDIdStream();
+            closeTavusStream();
+            setIsDidAvailable(false);
         }
     };
 
-    // WebRTC Streaming refs
-    const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-    const dataChannelRef = useRef<RTCDataChannel | null>(null);
-    const streamIdRef = useRef<string | null>(null);
-    const sessionIdRef = useRef<string | null>(null);
+    const handleSelectPresenterPersona = (newReplicaId: string) => {
+        if (newReplicaId === selectedReplicaId && avatarType === "tavus") return;
+        closeTavusStream();
+        setStorageItem("tavusSelectedReplicaId", newReplicaId);
+        setSelectedReplicaId(newReplicaId);
+        setAvatarType("tavus");
+        setTimeout(() => {
+            initializeTavusStream(newReplicaId);
+        }, 150);
+    };
+
+    // Tavus WebRTC Streaming refs
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dailyCallRef = useRef<any>(null);
+    const conversationIdRef = useRef<string | null>(null);
+    const conversationUrlRef = useRef<string | null>(null);
     const remoteStreamRef = useRef<MediaStream | null>(null);
 
     const [interactionMode, setInteractionMode] = useState<"chat" | "code" | "draw">("chat");
@@ -341,6 +365,7 @@ export default function RealisticInterviewRoom() {
         }
 
         stopCamera();
+        stopSpeechInterviewText();
 
         if (avatarVideoRef.current) {
             avatarVideoRef.current.pause();
@@ -349,18 +374,8 @@ export default function RealisticInterviewRoom() {
             avatarVideoRef.current.load();
         }
 
-        // WebRTC stream cleanup
-        if (peerConnectionRef.current) {
-            try { peerConnectionRef.current.close(); } catch (e) { }
-            peerConnectionRef.current = null;
-        }
-        if (dataChannelRef.current) {
-            try { dataChannelRef.current.close(); } catch (e) { }
-            dataChannelRef.current = null;
-        }
-        streamIdRef.current = null;
-        sessionIdRef.current = null;
-        remoteStreamRef.current = null;
+        // Tavus WebRTC stream cleanup
+        closeTavusStream();
 
         setAvatarVideoUrl(null);
         setVideoActive(false);
@@ -381,6 +396,26 @@ export default function RealisticInterviewRoom() {
             return;
         }
         setIsAuthChecked(true);
+
+        // Check if user reloaded while viewing an ended or completed realistic interview session
+        const isEnded = sessionStorage.getItem("prointerview_realistic_session_ended") === "true";
+        const savedCompleted = sessionStorage.getItem("prointerview_completed_realistic_session");
+        if (isEnded || savedCompleted) {
+            setIsCallEnded(true);
+            isCallEndedRef.current = true;
+            stopSpeechInterviewText();
+            if (savedCompleted) {
+                try {
+                    const parsed = JSON.parse(savedCompleted);
+                    if (parsed?.scores) setFinalScores(parsed.scores);
+                    if (parsed?.messages) setMessages(parsed.messages);
+                    if (parsed?.blobUrl) setRecordedBlobUrl(parsed.blobUrl);
+                } catch (e) {
+                    console.warn("Failed to restore completed realistic interview session:", e);
+                }
+            }
+            return; // Do not initialize camera or Tavus WebRTC stream
+        }
 
         isCallEndedRef.current = false;
         const text = getInterviewResumeText();
@@ -404,9 +439,9 @@ export default function RealisticInterviewRoom() {
 
         setResumeText(text || "");
 
-        // Initialize D-ID WebRTC Stream session only if selected
-        if (avatarType === "d-id") {
-            initializeDIdStream();
+        // Initialize Tavus WebRTC Stream session only if selected
+        if (avatarType === "tavus") {
+            initializeTavusStream();
         }
 
         let isMounted = true;
@@ -526,9 +561,10 @@ export default function RealisticInterviewRoom() {
         return () => {
             isMounted = false;
             isCallEndedRef.current = true;
+            stopSpeechInterviewText();
             stopCamera();
-            window.speechSynthesis.cancel();
             stopFaceDetection();
+            closeTavusStream();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
@@ -555,312 +591,322 @@ export default function RealisticInterviewRoom() {
         document.documentElement.style.colorScheme = nextTheme === "eyeprotect" ? "light" : nextTheme;
     };
 
-    const initializeDIdStream = useCallback(async () => {
+    const TAVUS_PERSONAS = [
+        { id: "r67d1c9cac37", name: "Alex", title: "Tech Lead" },
+        { id: "r9d30b0e55ac", name: "Luna", title: "Director" },
+        { id: "re6220ec0195", name: "Marcus", title: "Architect" },
+    ] as const;
+
+    const initializeTavusStream = useCallback(async (customReplicaId?: string) => {
+        if (isTavusInitializingRef.current || conversationIdRef.current) {
+            console.log("Tavus stream initialization already in progress or session active.");
+            return;
+        }
+        isTavusInitializingRef.current = true;
         try {
-            console.log("Initializing D-ID WebRTC Stream...");
-            const res = await fetch("/api/d-id-stream", {
+            // Determine replica to use (user selected or dynamic session rotation)
+            let replicaToUse = customReplicaId || getStorageItem("tavusSelectedReplicaId");
+            if (!replicaToUse || replicaToUse === "dynamic" || !TAVUS_PERSONAS.some(p => p.id === replicaToUse)) {
+                const randomIdx = Math.floor(Math.random() * TAVUS_PERSONAS.length);
+                replicaToUse = TAVUS_PERSONAS[randomIdx].id;
+                console.log(`Dynamic session rotation selected persona: ${TAVUS_PERSONAS[randomIdx].name} (${replicaToUse})`);
+            }
+            setSelectedReplicaId(replicaToUse);
+
+            console.log(`Initializing Tavus WebRTC stream with replica ${replicaToUse}...`);
+            const res = await fetch("/api/tavus-stream", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "create" })
+                body: JSON.stringify({ action: "create", replica_id: replicaToUse })
             });
+            
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || `Failed to create D-ID stream session: Status ${res.status}`);
+                console.warn("Tavus WebRTC initialization returned status:", res.status, data.error);
+                setIsDidAvailable(false);
+                closeTavusStream();
+                setAvatarType("svg");
+                const isCreditError = data?.error?.includes("credits") || res.status === 402;
+                setAvatarError(
+                    isCreditError
+                        ? "Tavus conversational credits exhausted. Switched to built-in SVG voice avatar."
+                        : (data?.error || "Tavus stream connection failed. Using SVG fallback.")
+                );
+                setTimeout(() => setAvatarError(null), 8000);
+                return;
             }
             
-            const data = await res.json();
-            const streamId = data.id || data.streamId;
-            const sessionId = data.session_id || data.sessionId;
-            const offer = data.offer;
-            const iceServers = data.ice_servers;
+            const conversationUrl = data.conversation_url;
+            const conversationId = data.conversation_id;
 
-            if (!streamId || !sessionId) {
-                throw new Error("Missing streamId or session_id from D-ID stream initialization.");
+            if (!conversationUrl) {
+                console.warn("Missing conversation_url from Tavus stream initialization.");
+                setIsDidAvailable(false);
+                closeTavusStream();
+                setAvatarType("svg");
+                return;
             }
             
-            streamIdRef.current = streamId;
-            sessionIdRef.current = sessionId;
-            
-            // 1. Create Peer Connection
-            const pc = new RTCPeerConnection({ iceServers });
-            peerConnectionRef.current = pc;
-            
-            // 2. Create Data Channel
-            const dc = pc.createDataChannel("JanusAndDID", { ordered: true });
-            dataChannelRef.current = dc;
+            conversationIdRef.current = conversationId;
+            conversationUrlRef.current = conversationUrl;
 
-            dc.onopen = () => {
-                console.log("D-ID WebRTC Data Channel opened.");
-            };
+            // Ensure Daily SDK is ready
+            if (typeof window === "undefined" || !(window as any).DailyIframe) {
+                let attempts = 0;
+                while (attempts < 20 && !(window as any).DailyIframe) {
+                    await new Promise(r => setTimeout(r, 200));
+                    attempts++;
+                }
+            }
 
-            dc.onmessage = (event) => {
-                console.log("D-ID Data Channel Message:", event.data);
+            const DailyIframe = (window as any).DailyIframe;
+            if (typeof window === "undefined" || !DailyIframe) {
+                throw new Error("DailyIframe SDK script failed to load. Please refresh and try again.");
+            }
+
+            // Clean up any pre-existing Daily CallObject instance to prevent duplicate instance errors
+            const existingCall = dailyCallRef.current || DailyIframe.getCallInstance();
+            if (existingCall) {
                 try {
-                    let parsed: any = null;
-                    if (typeof event.data === "string") {
-                        if (event.data.startsWith("{")) {
-                            parsed = JSON.parse(event.data);
-                        } else {
-                            parsed = { event: event.data };
-                        }
-                    }
-                    
-                    const eventName = parsed?.event || event.data;
-                    if (eventName === "talk/started") {
-                        setIsSpeaking(true);
-                    } else if (eventName === "talk/completed" || eventName === "talk/ended") {
-                        setIsSpeaking(false);
-                    }
-                } catch (e) {
-                    if (event.data && typeof event.data === "string") {
-                        if (event.data.includes("talk/started")) {
-                            setIsSpeaking(true);
-                        } else if (event.data.includes("talk/completed") || event.data.includes("talk/ended")) {
-                            setIsSpeaking(false);
-                        }
-                    }
-                }
-            };
+                    await existingCall.leave();
+                    await existingCall.destroy();
+                } catch (e) {}
+                dailyCallRef.current = null;
+                await new Promise(r => setTimeout(r, 100));
+            }
 
-            // Buffer ICE candidates until SDP answer is sent to D-ID
-            let isSdpAnswerSent = false;
-            const iceCandidateQueue: RTCIceCandidate[] = [];
-
-            const sendIceCandidate = (candidateObj: RTCIceCandidate) => {
-                const { candidate, sdpMid, sdpMLineIndex } = candidateObj;
-                fetch("/api/d-id-stream", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        action: "ice",
-                        streamId,
-                        sessionId,
-                        candidate,
-                        sdpMid,
-                        sdpMLineIndex
-                    })
-                }).catch(err => console.warn("Failed to send ICE candidate:", err));
-            };
-
-            // 3. Handle onicecandidate
-            pc.onicecandidate = (event) => {
-                if (event.candidate) {
-                    if (!isSdpAnswerSent) {
-                        iceCandidateQueue.push(event.candidate);
-                    } else {
-                        sendIceCandidate(event.candidate);
-                    }
-                }
-            };
-            
-            // 4. Handle ontrack
-            pc.ontrack = (event) => {
-                console.log("Received remote WebRTC track:", event);
-                if (event.streams && event.streams[0]) {
-                    const remoteStream = event.streams[0];
-                    remoteStreamRef.current = remoteStream;
-                    setIsDidAvailable(true);
-                    if (avatarVideoRef.current) {
-                        avatarVideoRef.current.srcObject = remoteStream;
-                        avatarVideoRef.current.muted = false;
-                        avatarVideoRef.current.play().catch(e => console.warn("Webrtc video play failed:", e));
-                    }
-                }
-            };
-            
-            // 5. Set remote description
-            await pc.setRemoteDescription(new RTCSessionDescription(offer));
-            
-            // 6. Create local answer
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            
-            // 7. Send SDP answer
-            const sdpRes = await fetch("/api/d-id-stream", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "sdp",
-                    streamId,
-                    sessionId,
-                    answer
-                })
+            // Create Daily CallObject
+            const call = DailyIframe.createCallObject({
+                subscribeToTracksAutomatically: true,
+                videoSource: false,
+                audioSource: false,
+                allowMultipleCallInstances: true,
             });
-            if (!sdpRes.ok) {
-                const errData = await sdpRes.json().catch(() => ({}));
-                throw new Error(errData.error || `Failed to send SDP answer: Status ${sdpRes.status}`);
-            }
+            dailyCallRef.current = call;
 
-            // Mark SDP answer as sent and flush queued ICE candidates
-            isSdpAnswerSent = true;
-            while (iceCandidateQueue.length > 0) {
-                const queuedCandidate = iceCandidateQueue.shift();
-                if (queuedCandidate) {
-                    sendIceCandidate(queuedCandidate);
+            const attachTracks = (participant: any, track?: any) => {
+                if (!participant || participant.local) return;
+                console.log("Attaching Tavus remote tracks from participant:", participant.session_id);
+                setIsDidAvailable(true);
+                
+                let stream = remoteStreamRef.current;
+                if (!stream) {
+                    stream = new MediaStream();
+                    remoteStreamRef.current = stream;
                 }
-            }
-            
-            console.log("D-ID WebRTC Stream initialized successfully.");
+
+                // Add explicit track if passed
+                if (track && !stream.getTracks().some((t: any) => t.id === track.id)) {
+                    stream.addTrack(track);
+                }
+
+                // Also pull any persistent tracks from participant object
+                const videoTrack = participant.tracks?.video?.persistentTrack;
+                const audioTrack = participant.tracks?.audio?.persistentTrack;
+                if (videoTrack && !stream.getTracks().some((t: any) => t.id === videoTrack.id)) {
+                    stream.addTrack(videoTrack);
+                }
+                if (audioTrack && !stream.getTracks().some((t: any) => t.id === audioTrack.id)) {
+                    stream.addTrack(audioTrack);
+                }
+
+                // Bind to all active video elements (desktop and mobile/responsive views)
+                avatarVideoElementsRef.current.forEach((videoEl) => {
+                    if (videoEl && videoEl.srcObject !== stream) {
+                        videoEl.srcObject = stream;
+                        videoEl.muted = false;
+                        videoEl.play().catch((e) => {
+                            if (e?.name === "AbortError") return;
+                            console.warn("Unmuted play blocked by browser policy, attempting muted play:", e);
+                            videoEl.muted = true;
+                            videoEl.play().catch(() => {});
+                        });
+                    }
+                });
+            };
+
+            call.on("track-started", (event: any) => {
+                console.log("Daily WebRTC track started:", event);
+                attachTracks(event.participant, event.track);
+            });
+
+            call.on("participant-joined", (event: any) => {
+                console.log("Daily WebRTC participant joined:", event);
+                attachTracks(event.participant);
+            });
+
+            call.on("participant-updated", (event: any) => {
+                console.log("Daily WebRTC participant updated:", event);
+                attachTracks(event.participant);
+            });
+
+            call.on("app-message", (event: any) => {
+                console.log("Daily WebRTC app-message received:", event);
+                const data = event?.data;
+                const eventType = data?.event_type || data?.event;
+                if (eventType === "conversation.speaking_started" || eventType === "speech_started") {
+                    setIsSpeaking(true);
+                } else if (eventType === "conversation.speaking_stopped" || eventType === "speech_stopped" || eventType === "talk/ended") {
+                    setIsSpeaking(false);
+                }
+            });
+
+            call.on("error", (event: any) => {
+                console.error("Daily WebRTC error:", event);
+            });
+
+            await call.join({ url: conversationUrl });
+            console.log("Tavus WebRTC Stream initialized successfully.");
             setIsDidAvailable(true);
+
+            // Check existing participants right after joining
+            const participants = call.participants();
+            if (participants) {
+                Object.values(participants).forEach((p: any) => attachTracks(p));
+            }
         } catch (err: any) {
-            console.error("D-ID WebRTC initialization failed, falling back:", err);
+            console.warn("Tavus WebRTC stream initialization unavailable:", err?.message || err);
             setIsDidAvailable(false);
-            closeDIdStream();
+            closeTavusStream();
             setAvatarType("svg");
-            setAvatarError(err?.message || "D-ID stream limit reached or connection failed. Using SVG fallback.");
-            setTimeout(() => setAvatarError(null), 6000);
+            const isCreditError = err?.message?.includes("credits") || err?.message?.includes("402");
+            setAvatarError(
+                isCreditError
+                    ? "Tavus conversational credits exhausted. Switched to built-in SVG voice avatar."
+                    : (err?.message || "Tavus stream connection failed. Using SVG fallback.")
+            );
+            setTimeout(() => setAvatarError(null), 8000);
+        } finally {
+            isTavusInitializingRef.current = false;
         }
     }, [avatarType]);
 
     const setAvatarVideoRef = useCallback((el: HTMLVideoElement | null) => {
-        (avatarVideoRef as any).current = el;
         if (el) {
+            avatarVideoElementsRef.current.add(el);
+            (avatarVideoRef as any).current = el;
             if (remoteStreamRef.current) {
                 console.log("Attaching remote stream to video element via callback ref");
                 el.srcObject = remoteStreamRef.current;
                 el.muted = false;
-                el.play().catch(e => console.warn("Webrtc video play failed in callback ref:", e));
+                el.play().catch((e) => {
+                    if (e?.name === "AbortError") return;
+                    console.warn("Webrtc video play with sound blocked, trying muted:", e);
+                    el.muted = true;
+                    el.play().catch(() => {});
+                });
             } else if (avatarVideoUrl) {
                 console.log("Loading video URL via callback ref:", avatarVideoUrl);
                 el.src = avatarVideoUrl;
-                el.play().catch(e => console.warn("Video url play failed in callback ref:", e));
+                el.play().catch(() => {});
             }
         }
     }, [avatarVideoUrl]);
 
-    // Effect to attach/re-attach remote stream to new video element on layout switches
+    // Effect to attach/re-attach remote stream to all video elements on layout switches
     useEffect(() => {
-        const el = avatarVideoRef.current;
-        if (isDidAvailable === true && el) {
-            if (remoteStreamRef.current) {
-                console.log("Attaching remote stream to video element on layout change");
-                el.srcObject = remoteStreamRef.current;
-                el.muted = false;
-                el.play().catch(e => console.warn("Play failed on layout change:", e));
-            } else if (avatarVideoUrl) {
-                el.src = avatarVideoUrl;
-                el.play().catch(e => console.warn("Play failed on layout change:", e));
-            }
+        if (isDidAvailable === true) {
+            avatarVideoElementsRef.current.forEach((el) => {
+                if (el) {
+                    if (remoteStreamRef.current && el.srcObject !== remoteStreamRef.current) {
+                        console.log("Attaching remote stream to video element on layout change");
+                        el.srcObject = remoteStreamRef.current;
+                        el.muted = false;
+                        el.play().catch((e) => {
+                            if (e?.name === "AbortError") return;
+                            console.warn("Play failed on layout change:", e);
+                        });
+                    } else if (avatarVideoUrl && el.src !== avatarVideoUrl) {
+                        el.src = avatarVideoUrl;
+                        el.play().catch((e) => {
+                            if (e?.name === "AbortError") return;
+                            console.warn("Play failed on layout change:", e);
+                        });
+                    }
+                }
+            });
         }
     }, [interactionMode, isDidAvailable, avatarType, avatarVideoUrl]);
 
     const handleVoiceAndVideo = (text: string) => {
+        if (isCallEndedRef.current) return;
         if (avatarType === "svg") {
-            // SVG Animation mode: speaks via local TTS directly, bypassing D-ID video API
             speakText(text);
-        } else if (isDidAvailable === true && streamIdRef.current && sessionIdRef.current) {
-            // WebRTC Stream mode: speaks and animates directly via WebRTC
-            triggerDidVideo(text);
         } else {
-            // Fallback/Standard mode: play local TTS instantly, then load video when D-ID talk is generated
-            speakText(text);
-            triggerDidVideo(text);
+            triggerTavusVideo(text);
         }
     };
 
-    const triggerDidVideo = (text: string) => {
-        if (isDidAvailable === false) return;
+    const triggerTavusVideo = async (text: string) => {
+        if (isCallEndedRef.current || terminatedForCheating) return;
 
-        // If WebRTC stream is active, use it
-        if (isDidAvailable === true && streamIdRef.current && sessionIdRef.current) {
-            setIsAvatarGenerating(true);
-            fetch("/api/d-id-stream", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    action: "speak",
-                    streamId: streamIdRef.current,
-                    sessionId: sessionIdRef.current,
-                    text
-                })
-            })
-            .then(async (res) => {
-                if (isCallEndedRef.current) return;
-                if (!res.ok) {
-                    const errData = await res.json().catch(() => ({}));
-                    console.warn("D-ID Stream speak failed. Falling back to local TTS.", errData);
-                    speakText(text);
-                    setIsDidAvailable(false);
-                    closeDIdStream();
-                    setAvatarType("svg");
-                    setAvatarError("D-ID Stream speak failed. Falling back to built-in SVG avatar.");
-                    setTimeout(() => setAvatarError(null), 6000);
-                } else {
-                    console.log("D-ID Stream speak triggered successfully.");
-                }
-            })
-            .catch((err) => {
-                console.error("D-ID Stream speak error:", err);
-                speakText(text);
-                setIsDidAvailable(false);
-                closeDIdStream();
-                setAvatarType("svg");
-                setAvatarError("D-ID Stream speak error. Falling back to built-in SVG avatar.");
-                setTimeout(() => setAvatarError(null), 6000);
-            })
-            .finally(() => {
-                setIsAvatarGenerating(false);
-            });
-            return;
-        }
+        const cleanText = text.replace(/\[MODE:[A-Z]+\]/g, "").replace(/\[TERMINATE\]/g, "").trim();
+        if (!cleanText) return;
 
-        // Standard fallback polling
         setIsAvatarGenerating(true);
-        fetch("/api/d-id-talk", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text }),
-        })
-        .then(async (res) => {
-            if (isCallEndedRef.current) return;
-            if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                console.warn("D-ID generation failed. Falling back to SVG.", errData);
-                setIsDidAvailable(false);
-                setAvatarType("svg");
-                setAvatarError(errData?.error || "D-ID presenter generation failed. Using built-in SVG avatar.");
-                setTimeout(() => setAvatarError(null), 6000);
-                return;
+
+        try {
+            // Cancel local browser speech synthesis immediately so native avatar voice is heard
+            if (typeof window !== "undefined" && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
             }
-            const videoData = await res.json();
-            if (videoData.result_url) {
-                console.log("D-ID video url received:", videoData.result_url);
-                setIsDidAvailable(true);
-                setAvatarVideoUrl(videoData.result_url);
-                
-                // Programmatically play video unmuted if speech synthesis is currently active
-                setTimeout(() => {
-                    const videoEl = avatarVideoRef.current;
-                    if (videoEl) {
-                        const wasSpeaking = window.speechSynthesis.speaking;
-                        if (wasSpeaking) {
-                            window.speechSynthesis.cancel();
-                            setIsSpeaking(false);
-                            videoEl.muted = false;
-                        } else {
-                            videoEl.muted = true;
-                        }
-                        videoEl.load();
-                        videoEl.play().catch(e => console.warn("Video play failed:", e));
+
+            // Ensure Daily CallObject is joined AND Tavus remote participant has joined the room
+            let attempts = 0;
+            while (attempts < 60) {
+                if (isCallEndedRef.current || terminatedForCheating) return;
+                const currentCall = dailyCallRef.current;
+                const participants = currentCall?.participants?.();
+                const hasRemote = participants && Object.values(participants).some((p: any) => !p.local);
+                if (currentCall && currentCall.meetingState?.() === "joined-meeting" && (hasRemote || isDidAvailable)) {
+                    break;
+                }
+                await new Promise(r => setTimeout(r, 250));
+                attempts++;
+            }
+
+            const call = dailyCallRef.current;
+            const convId = conversationIdRef.current;
+
+            if (call && call.meetingState?.() === "joined-meeting" && convId) {
+                console.log("Attempting to send conversation.echo to Tavus via Daily CallObject:", cleanText);
+                let messageDelivered = false;
+
+                // Retry loop with 500ms backoff to allow WebRTC data channel to finish connection setup
+                for (let retry = 0; retry < 12; retry++) {
+                    if (isCallEndedRef.current || terminatedForCheating) break;
+                    try {
+                        call.sendAppMessage({
+                            message_type: "conversation",
+                            event_type: "conversation.echo",
+                            conversation_id: convId,
+                            properties: {
+                                text: cleanText
+                            }
+                        }, "*");
+                        console.log(`Tavus conversation.echo dispatched successfully on attempt ${retry + 1}.`);
+                        messageDelivered = true;
+                        break;
+                    } catch (sendErr: any) {
+                        console.warn(`sendAppMessage attempt ${retry + 1} waiting for data channel (${sendErr?.message || sendErr}), retrying in 500ms...`);
+                        await new Promise(r => setTimeout(r, 500));
                     }
-                }, 100);
+                }
+
+                if (!messageDelivered && !isCallEndedRef.current && !terminatedForCheating) {
+                    console.warn("Tavus data channel handshake timed out. Falling back to speech synthesis.");
+                    speakText(text);
+                }
             } else {
-                setIsDidAvailable(false);
-                setAvatarType("svg");
-                setAvatarError("D-ID presenter did not return a valid URL. Using built-in SVG avatar.");
-                setTimeout(() => setAvatarError(null), 6000);
+                console.warn("Daily CallObject not connected. Falling back to speech synthesis.");
+                speakText(text);
             }
-        })
-        .catch((err) => {
-            console.error("D-ID fetch error:", err);
-            setIsDidAvailable(false);
-            setAvatarType("svg");
-            setAvatarError("D-ID network request error. Using built-in SVG avatar.");
-            setTimeout(() => setAvatarError(null), 6000);
-        })
-        .finally(() => {
+        } catch (err) {
+            console.error("Tavus Stream speak error:", err);
+            speakText(text);
+        } finally {
             setIsAvatarGenerating(false);
-        });
+        }
     };
 
     const triggerAiResponse = async (resume: string, history: { role: string, content: string, attachment?: string }[], nextMessage: string, forceType?: string, attachment?: string) => {
@@ -964,6 +1010,7 @@ export default function RealisticInterviewRoom() {
     };
 
     const speakText = (text: string) => {
+        if (isCallEndedRef.current) return;
         void speakInterviewText(text, {
             provider: getStorageItem("aiProvider") || "gemini",
             voiceLanguage: getStorageItem("voiceLanguage") || "en-IN",
@@ -1204,9 +1251,18 @@ export default function RealisticInterviewRoom() {
     };
 
     const endCall = async () => {
-        stopInterviewRuntime();
-        setIsCallEnded(true);
         isCallEndedRef.current = true;
+        setIsCallEnded(true);
+        stopSpeechInterviewText();
+        stopInterviewRuntime();
+        try {
+            sessionStorage.setItem("prointerview_realistic_session_ended", "true");
+            sessionStorage.setItem("prointerview_completed_realistic_session", JSON.stringify({
+                scores: finalScores || null,
+                messages: messagesRef.current,
+                blobUrl: recordedBlobUrl
+            }));
+        } catch { /* ignore */ }
 
         setIsEvaluating(true);
         try {
@@ -1267,7 +1323,7 @@ export default function RealisticInterviewRoom() {
             // Clamp to valid range
             finalOutput = Math.max(0, Math.min(100, finalOutput));
 
-            setFinalScores({
+            const scoresToSave = {
                 interview: iScore,
                 technical: tScore,
                 behavioral: bScore,
@@ -1276,7 +1332,9 @@ export default function RealisticInterviewRoom() {
                 final: finalOutput,
                 annotatedTranscript,
                 summary: sessionSummary
-            });
+            };
+
+            setFinalScores(scoresToSave);
 
             const oldSessions = JSON.parse(getStorageItem("interviewSessions") || "[]");
             const finalTranscriptText = annotatedTranscript || messagesRef.current.map(m => `${m.role === 'user' ? 'YOU' : 'AI'}: ${m.content}`).join("\n\n");
@@ -1305,6 +1363,14 @@ export default function RealisticInterviewRoom() {
                 setStorageItem("spacedDrills", JSON.stringify(drills));
             } catch { /* ignore */ }
             removeStorageItem("activeHrIntel");
+            try {
+                sessionStorage.setItem("prointerview_realistic_session_ended", "true");
+                sessionStorage.setItem("prointerview_completed_realistic_session", JSON.stringify({
+                    scores: scoresToSave,
+                    messages: messagesRef.current,
+                    blobUrl: recordedBlobUrl
+                }));
+            } catch { /* ignore */ }
             void syncSessionsToCloud();
         } catch (e) {
             console.error(e);
@@ -1341,7 +1407,12 @@ export default function RealisticInterviewRoom() {
                     </div>
 
                     <button
-                        onClick={() => router.push("/")}
+                        onClick={() => {
+                            stopSpeechInterviewText();
+                            sessionStorage.removeItem("prointerview_realistic_session_ended");
+                            sessionStorage.removeItem("prointerview_completed_realistic_session");
+                            router.push("/");
+                        }}
                         className="px-8 py-3 bg-red-600 hover:bg-red-500 transition-colors rounded-xl font-medium"
                     >
                         Return Home
@@ -1600,7 +1671,12 @@ export default function RealisticInterviewRoom() {
                             <Download className="w-4 h-4 text-indigo-400" /> Download Report (.doc)
                         </button>
                         <button
-                            onClick={() => router.push("/")}
+                            onClick={() => {
+                                stopSpeechInterviewText();
+                                sessionStorage.removeItem("prointerview_realistic_session_ended");
+                                sessionStorage.removeItem("prointerview_completed_realistic_session");
+                                router.push("/");
+                            }}
                             className="w-full sm:w-auto flex-1 py-3 px-5 bg-indigo-600 hover:bg-indigo-500 transition-all rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
                         >
                             Return Home
@@ -1616,6 +1692,7 @@ export default function RealisticInterviewRoom() {
 
     return (
         <div className="min-h-screen lg:h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
+            <Script src="https://unpkg.com/@daily-co/daily-js" strategy="afterInteractive" />
             {/* Ambient dynamic glassmorphism background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen opacity-50 animate-[pulse_8s_ease-in-out_infinite]"></div>
@@ -1673,7 +1750,7 @@ export default function RealisticInterviewRoom() {
                         <div className="flex flex-col gap-4 flex-1 min-h-0">
                             {/* Desktop Video Grid */}
                             <div className="hidden lg:grid gap-4 grid-cols-1 md:grid-cols-2 flex-1 min-h-0">
-                                // {/* AI Video - Animated Human Face */}
+                                {/* AI Video - Animated Human Face */}
                                 <div className="relative bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center min-h-[300px]">
                                     {avatarError && (
                                         <div className="absolute top-12 right-3 left-3 bg-red-950/80 backdrop-blur-sm border border-red-500/30 text-red-200 text-[10px] p-2 rounded-lg z-30 flex items-center justify-between shadow-lg">
@@ -1691,21 +1768,34 @@ export default function RealisticInterviewRoom() {
                                         ProInterview <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
                                     </div>
 
-                                    {/* Segmented Switch for D-ID vs. SVG fallback */}
-                                    <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 p-0.5 rounded-lg text-[9px] font-bold z-30">
+                                    {/* Persona & SVG Switcher Toolbar */}
+                                    <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/10 p-0.5 rounded-lg text-[9px] font-bold z-30 shadow-lg">
+                                        {[
+                                            { id: "r67d1c9cac37", label: "Alex" },
+                                            { id: "r9d30b0e55ac", label: "Luna" },
+                                            { id: "re6220ec0195", label: "Marcus" }
+                                        ].map((persona) => (
+                                            <button
+                                                key={persona.id}
+                                                type="button"
+                                                onClick={() => handleSelectPresenterPersona(persona.id)}
+                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                                                    avatarType === "tavus" && selectedReplicaId === persona.id
+                                                        ? "bg-indigo-600 text-white shadow-sm"
+                                                        : "text-white/50 hover:text-white"
+                                                }`}
+                                                title={`Switch to ${persona.label}`}
+                                            >
+                                                {persona.label}
+                                            </button>
+                                        ))}
                                         <button
                                             type="button"
                                             onClick={() => handleSwitchAvatarType("svg")}
-                                            className={`px-2 py-0.5 rounded-md transition-all ${avatarType === "svg" ? "bg-indigo-600 text-white" : "text-white/50 hover:text-white"}`}
+                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${avatarType === "svg" ? "bg-purple-600 text-white shadow-sm" : "text-white/50 hover:text-white"}`}
+                                            title="Switch to lightweight SVG avatar"
                                         >
-                                            SVG Avatar
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSwitchAvatarType("d-id")}
-                                            className={`px-2 py-0.5 rounded-md transition-all ${avatarType === "d-id" ? "bg-indigo-600 text-white" : "text-white/50 hover:text-white"}`}
-                                        >
-                                            D-ID Presenter
+                                            SVG
                                         </button>
                                     </div>
 
@@ -1737,31 +1827,29 @@ export default function RealisticInterviewRoom() {
                                                 </div>
                                                 <div className="mt-8 text-center px-4">
                                                     <h3 className="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">AI Voice Synthesizer</h3>
-                                                    <p className="text-white/40 text-[10px] mt-1.5 leading-relaxed max-w-xs">SVG talking head active (API-saver). Click &quot;D-ID Presenter&quot; at the top-right to start video stream.</p>
+                                                    <p className="text-white/40 text-[10px] mt-1.5 leading-relaxed max-w-xs">SVG talking head active (API-saver). Click &quot;Tavus Presenter&quot; at the top-right to start video stream.</p>
                                                 </div>
                                             </div>
                                          ) : (
                                              <>
-                                                {/* D-ID video layer — shown when available */}
-                                                {isDidAvailable === true && (avatarVideoUrl || (streamIdRef.current && sessionIdRef.current)) && (
-                                                    <video
-                                                        ref={setAvatarVideoRef}
-                                                        src={avatarVideoUrl || undefined}
-                                                        className="object-cover w-full h-full absolute inset-0 z-20"
-                                                        playsInline
-                                                        autoPlay
-                                                        onPlay={() => setIsSpeaking(true)}
-                                                        onEnded={() => setIsSpeaking(false)}
-                                                    />
-                                                )}
+                                                {/* Tavus video layer — always rendered when Tavus is selected */}
+                                                <video
+                                                    ref={setAvatarVideoRef}
+                                                    src={avatarVideoUrl || undefined}
+                                                    className={`object-cover w-full h-full absolute inset-0 z-20 transition-opacity duration-500 ${isDidAvailable ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                                                    playsInline
+                                                    autoPlay
+                                                    onPlay={() => setIsSpeaking(true)}
+                                                    onEnded={() => setIsSpeaking(false)}
+                                                />
 
 
                                                 {/* Ultra-realistic presenter photo with speaking indicators */}
                                                 <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0f0f24] to-[#0a0a14]">
                                                     {/* Professional presenter photo */}
                                                     <img
-                                                        src="https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg"
-                                                        alt="ProInterview"
+                                                        src={theme === "light" ? "/ai-avatar-light.jpg" : theme === "eyeprotect" ? "/ai-avatar-eyeprotect.jpg" : "/tavus-avatar.jpg"}
+                                                        alt="ProInterview Tavus Presenter"
                                                         className={`object-cover w-full h-full transition-all duration-700 ${isSpeaking ? "brightness-110 contrast-105" : "brightness-90 contrast-100"}`}
                                                     />
 
@@ -1796,7 +1884,7 @@ export default function RealisticInterviewRoom() {
                                                         ))}
                                                     </div>
 
-                                                    {/* D-ID generating overlay */}
+                                                    {/* Tavus generating overlay */}
                                                     {isAvatarGenerating && (
                                                         <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-20">
                                                             <Loader2 className="w-8 h-8 animate-spin text-indigo-400 mb-2" />
@@ -1844,20 +1932,31 @@ export default function RealisticInterviewRoom() {
                                     ProInterview <Volume2 className={`w-2.5 h-2.5 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
                                 </div>
 
-                                <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/10 p-0.5 rounded-lg text-[8px] font-bold z-30">
+                                <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/10 p-0.5 rounded-lg text-[8px] font-bold z-30 shadow-md">
+                                    {[
+                                        { id: "r67d1c9cac37", label: "Alex" },
+                                        { id: "r9d30b0e55ac", label: "Luna" },
+                                        { id: "re6220ec0195", label: "Marcus" }
+                                    ].map((persona) => (
+                                        <button
+                                            key={persona.id}
+                                            type="button"
+                                            onClick={() => handleSelectPresenterPersona(persona.id)}
+                                            className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                                                avatarType === "tavus" && selectedReplicaId === persona.id
+                                                    ? "bg-indigo-600 text-white shadow-sm"
+                                                    : "text-white/50 hover:text-white"
+                                            }`}
+                                        >
+                                            {persona.label}
+                                        </button>
+                                    ))}
                                     <button
                                         type="button"
                                         onClick={() => handleSwitchAvatarType("svg")}
-                                        className={`px-1.5 py-0.5 rounded transition-all ${avatarType === "svg" ? "bg-indigo-600 text-white" : "text-white/50"}`}
+                                        className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${avatarType === "svg" ? "bg-purple-600 text-white shadow-sm" : "text-white/50 hover:text-white"}`}
                                     >
                                         SVG
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleSwitchAvatarType("d-id")}
-                                        className={`px-1.5 py-0.5 rounded transition-all ${avatarType === "d-id" ? "bg-indigo-600 text-white" : "text-white/50"}`}
-                                    >
-                                        D-ID
                                     </button>
                                 </div>
 
@@ -1881,21 +1980,19 @@ export default function RealisticInterviewRoom() {
                                         </div>
                                     ) : (
                                         <>
-                                            {isDidAvailable === true && (avatarVideoUrl || (streamIdRef.current && sessionIdRef.current)) && (
-                                                <video
-                                                    ref={setAvatarVideoRef}
-                                                    src={avatarVideoUrl || undefined}
-                                                    className="object-cover w-full h-full absolute inset-0 z-20"
-                                                    playsInline
-                                                    autoPlay
-                                                    onPlay={() => setIsSpeaking(true)}
-                                                    onEnded={() => setIsSpeaking(false)}
-                                                />
-                                            )}
+                                            <video
+                                                ref={setAvatarVideoRef}
+                                                src={avatarVideoUrl || undefined}
+                                                className={`object-cover w-full h-full absolute inset-0 z-20 transition-opacity duration-500 ${isDidAvailable ? "opacity-100" : "opacity-0 pointer-events-none"}`}
+                                                playsInline
+                                                autoPlay
+                                                onPlay={() => setIsSpeaking(true)}
+                                                onEnded={() => setIsSpeaking(false)}
+                                            />
                                             <div className="absolute inset-0 w-full h-full flex items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0f0f24] to-[#0a0a14]">
                                                 <img
-                                                    src="https://d-id-public-bucket.s3.us-west-2.amazonaws.com/alice.jpg"
-                                                    alt="ProInterview"
+                                                    src={theme === "light" ? "/ai-avatar-light.jpg" : theme === "eyeprotect" ? "/ai-avatar-eyeprotect.jpg" : "/tavus-avatar.jpg"}
+                                                    alt="ProInterview Tavus Presenter"
                                                     className={`object-cover w-full h-full transition-all duration-700 ${isSpeaking ? "brightness-110 contrast-105" : "brightness-90 contrast-100"}`}
                                                 />
                                                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30 pointer-events-none" />

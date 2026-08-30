@@ -211,10 +211,20 @@ export function extractResumeProfileHeuristic(resumeText: string): ResumeProfile
     };
 }
 
-export function buildSearchQueries(profile: ResumeProfile, location: string): string[] {
+export function buildSearchQueries(profile: ResumeProfile, location: string, filter?: string): string[] {
     const loc = location.trim();
     const primaryRole = profile.roles[0] || "Software Engineer";
     const topSkills = profile.skills.slice(0, 3).join(" ");
+    
+    if (filter === "intern") {
+        return uniqueStrings([
+            `${primaryRole} Intern ${loc}`.trim(),
+            `Software Engineering Intern ${loc}`.trim(),
+            `Developer Intern ${loc}`.trim(),
+            `Internship ${loc}`.trim(),
+        ], 4);
+    }
+
     const queries = [
         [primaryRole, topSkills, loc].filter(Boolean).join(" ").trim(),
         [primaryRole, loc].filter(Boolean).join(" ").trim(),
@@ -288,7 +298,12 @@ function locationMatches(jobLocation: string, preferred: string, remote: boolean
     return { score: 0 };
 }
 
-function scoreJob(job: Omit<MatchedJob, "matchPercent" | "matchReasons">, profile: ResumeProfile, preferredLocation: string): MatchedJob {
+function scoreJob(
+    job: Omit<MatchedJob, "matchPercent" | "matchReasons">,
+    profile: ResumeProfile,
+    preferredLocation: string,
+    filter?: string
+): MatchedJob {
     const hay = `${job.role} ${job.company} ${job.location} ${job.tags.join(" ")} ${job.description}`.toLowerCase();
     let score = 0;
     const reasons: string[] = [];
@@ -325,7 +340,12 @@ function scoreJob(job: Omit<MatchedJob, "matchPercent" | "matchReasons">, profil
     score += loc.score;
     if (loc.reason) reasons.push(loc.reason);
 
-    if (profile.seniority === "junior" && job.type === "intern") {
+    if (filter === "intern") {
+        if (job.type === "intern" || /\b(intern|internship|trainee|apprentice|student|summer)\b/i.test(hay)) {
+            score += 30;
+            reasons.unshift("Internship match");
+        }
+    } else if (profile.seniority === "junior" && job.type === "intern") {
         score += 8;
         reasons.push("Internship-friendly for junior profile");
     }
@@ -394,9 +414,7 @@ async function fetchRemotive(query: string): Promise<Omit<MatchedJob, "matchPerc
 }
 
 async function fetchArbeitnow(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> {
-    const url = query
-        ? `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(query)}`
-        : "https://www.arbeitnow.com/api/job-board-api";
+    const url = `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(query)}`;
     const res = await fetchWithTimeout(url);
     if (!res.ok) return [];
     const data = (await res.json()) as {
@@ -550,87 +568,129 @@ async function fetchAdzunaIndia(query: string, location: string): Promise<Omit<M
  */
 export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReasons">[] = [
     {
-        id: "job_in_razorpay_be",
+        id: "job_in_google_intern",
+        company: "Google India",
+        role: "Software Engineering Intern",
+        location: "Bangalore / Hyderabad",
+        type: "intern",
+        remote: false,
+        tags: ["C++", "Java", "Python", "Data Structures", "Algorithms"],
+        salaryRange: "₹80k–₹1.2L / month Stipend",
+        description: "Join Google's engineering teams in Bangalore or Hyderabad as a software intern. Work on scalable distributed systems, developer tools, or AI services with 1-on-1 mentorship.",
+        applyUrl: "https://careers.google.com/jobs/results/",
+        postedAt: "2026-08-01",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_microsoft_intern",
+        company: "Microsoft India",
+        role: "Software Engineering Intern",
+        location: "Hyderabad / Bangalore",
+        type: "intern",
+        remote: false,
+        tags: ["Azure", "C#", "TypeScript", "Problem Solving"],
+        salaryRange: "₹75k–₹1.1L / month Stipend",
+        description: "Summer software engineering internship for college students and recent grads. Build high-impact cloud services, Teams features, and AI developer workflows.",
+        applyUrl: "https://careers.microsoft.com/",
+        postedAt: "2026-08-02",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_amazon_intern",
+        company: "Amazon India",
+        role: "SDE Intern (Campus & Off-Campus)",
+        location: "Bangalore / Hyderabad",
+        type: "intern",
+        remote: false,
+        tags: ["Java", "AWS", "DSA", "Distributed Systems"],
+        salaryRange: "₹80k–₹1.1L / month Stipend",
+        description: "Collaborate with senior AWS and retail service engineers to design and ship customer-facing features. Open to final-year students and fresh graduates.",
+        applyUrl: "https://www.amazon.jobs/",
+        postedAt: "2026-08-03",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_razorpay_intern",
         company: "Razorpay",
-        role: "Backend Engineer",
+        role: "Full-Stack Engineering Intern",
+        location: "Bangalore / Remote",
+        type: "intern",
+        remote: true,
+        tags: ["React", "Node.js", "Payments", "Web APIs"],
+        salaryRange: "₹45k–₹65k / month Stipend",
+        description: "Work with modern React, Next.js, and Node.js microservices on India's premier payment gateway. Great learning curve for aspiring full-stack engineers.",
+        applyUrl: "https://razorpay.com/jobs/",
+        postedAt: "2026-08-05",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_swiggy_fresher",
+        company: "Swiggy",
+        role: "Associate Software Engineer (0-1 Year / Fresher)",
         location: "Bangalore",
         type: "full-time",
         remote: false,
-        tags: ["Node.js", "Payments", "API"],
+        tags: ["Java", "Golang", "Microservices", "Fresher"],
+        salaryRange: "₹14L–₹20L",
+        description: "Entry-level engineering role for freshers and 0-1 year developers. Build core ordering and delivery platform microservices serving millions of daily orders.",
+        applyUrl: "https://careers.swiggy.com/",
+        postedAt: "2026-08-04",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_flipkart_sde1",
+        company: "Flipkart",
+        role: "SDE 1 (1-2 Years Experience)",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["Java", "Spring Boot", "Kafka", "MySQL"],
+        salaryRange: "₹18L–₹26L",
+        description: "High-scale backend engineering for early-career developers with 1-2 years experience. Work on inventory, cart, and high-concurrency checkout services.",
+        applyUrl: "https://www.flipkartcareers.com/",
+        postedAt: "2026-07-29",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_razorpay_be",
+        company: "Razorpay",
+        role: "Backend Engineer (1-3 Years Experience)",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["Node.js", "Payments", "API", "TypeScript"],
         salaryRange: "₹18L–₹32L",
-        description: "Build payment and banking infrastructure powering businesses across India.",
+        description: "Build payment and banking infrastructure powering businesses across India with clean architecture and microservices.",
         applyUrl: "https://razorpay.com/jobs/",
         postedAt: "2026-07-28",
         source: "ProInterview curated (India)",
     },
     {
-        id: "job_in_swiggy_fullstack",
-        company: "Swiggy",
-        role: "Full-Stack Engineer",
+        id: "job_in_cred_backend",
+        company: "CRED",
+        role: "Senior Backend Engineer (3+ Years)",
         location: "Bangalore",
         type: "full-time",
         remote: false,
-        tags: ["React", "Node.js", "Microservices"],
-        salaryRange: "₹20L–₹38L",
-        description: "Ship consumer and logistics features for one of India's largest delivery platforms.",
-        applyUrl: "https://careers.swiggy.com/",
-        postedAt: "2026-07-26",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_flipkart_sde2",
-        company: "Flipkart",
-        role: "SDE II",
-        location: "Bangalore",
-        type: "full-time",
-        remote: false,
-        tags: ["Java", "Distributed Systems", "Scale"],
-        salaryRange: "₹22L–₹40L",
-        description: "Work on high-throughput commerce systems serving hundreds of millions of users.",
-        applyUrl: "https://www.flipkartcareers.com/",
-        postedAt: "2026-07-24",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_microsoft_swe",
-        company: "Microsoft India",
-        role: "Software Engineer",
-        location: "Hyderabad",
-        type: "full-time",
-        remote: false,
-        tags: ["C#", "Azure", "Cloud"],
-        salaryRange: "₹25L–₹45L",
-        description: "Build cloud services for Microsoft's Hyderabad engineering center.",
-        applyUrl: "https://careers.microsoft.com/",
-        postedAt: "2026-07-27",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_salesforce_ase",
-        company: "Salesforce",
-        role: "Associate Software Engineer",
-        location: "Hyderabad",
-        type: "full-time",
-        remote: false,
-        tags: ["Java", "Apex", "SaaS"],
-        salaryRange: "₹15L–₹26L",
-        description: "Join Salesforce's Hyderabad hub building multi-tenant SaaS platform features.",
-        applyUrl: "https://careers.salesforce.com/",
-        postedAt: "2026-07-21",
+        tags: ["Golang", "Distributed Systems", "Kafka", "PostgreSQL"],
+        salaryRange: "₹35L–₹60L",
+        description: "Design high-reliability, low-latency financial service pipelines with 3+ years experience in distributed backend architectures.",
+        applyUrl: "https://cred.club/careers",
+        postedAt: "2026-08-02",
         source: "ProInterview curated (India)",
     },
     {
         id: "job_in_remote_india_devrel",
         company: "Postman",
-        role: "Developer Advocate",
+        role: "Developer Advocate (Remote India)",
         location: "Remote (India)",
         type: "full-time",
         remote: true,
-        tags: ["API", "Community", "Content"],
-        salaryRange: "₹16L–₹28L",
-        description: "Fully remote role for engineers across India supporting the API developer community.",
+        tags: ["API", "Community", "JavaScript", "TypeScript"],
+        salaryRange: "₹18L–₹30L",
+        description: "Fully remote position for engineers across India supporting the global API developer community with demos, tutorials, and developer tooling.",
         applyUrl: "https://www.postman.com/company/careers/",
-        postedAt: "2026-07-19",
+        postedAt: "2026-07-30",
         source: "ProInterview curated (India)",
     },
 ];
@@ -638,18 +698,20 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
 /** Fetch live openings from public job boards and rank them against the resume profile. */
 export async function searchMatchingJobs(
     profile: ResumeProfile,
-    preferredLocation: string
+    preferredLocation: string,
+    filter?: string
 ): Promise<{ jobs: MatchedJob[]; sourcesTried: string[]; queries: string[] }> {
-    const queries = buildSearchQueries(profile, preferredLocation);
-    const primary = queries[0] || profile.roles[0] || "software engineer";
+    const queries = buildSearchQueries(profile, preferredLocation, filter);
+    const primary = queries[0] || (filter === "intern" ? "Software Engineer Intern" : profile.roles[0] || "software engineer");
     const sourcesTried: string[] = [];
     const collected: Omit<MatchedJob, "matchPercent" | "matchReasons">[] = [];
 
+    const adzunaRole = filter === "intern" ? "Software Intern" : profile.roles[0] || "Software Engineer";
     const tasks: Array<{ name: string; run: () => Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> }> = [
         { name: "Remotive", run: () => fetchRemotive(primary) },
         { name: "Arbeitnow", run: () => fetchArbeitnow(primary) },
         { name: "RemoteOK", run: () => fetchRemoteOK(primary) },
-        { name: "Adzuna India", run: () => fetchAdzunaIndia(profile.roles[0] || "Software Engineer", preferredLocation) },
+        { name: "Adzuna India", run: () => fetchAdzunaIndia(adzunaRole, preferredLocation) },
     ];
 
     const settled = await Promise.allSettled(
@@ -674,7 +736,7 @@ export async function searchMatchingJobs(
     }
 
     const ranked = [...byId.values()]
-        .map((job) => scoreJob(job, profile, preferredLocation))
+        .map((job) => scoreJob(job, profile, preferredLocation, filter))
         .filter((j) => j.matchPercent >= 12)
         .sort((a, b) => b.matchPercent - a.matchPercent)
         .slice(0, 100);

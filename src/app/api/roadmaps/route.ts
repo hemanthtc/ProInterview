@@ -31,6 +31,7 @@ export async function GET() {
                 additionalInfo: r.additionalInfo,
                 roadmapData: r.roadmapData,
                 tasksChecked: r.tasksChecked || {},
+                phaseProgress: r.phaseProgress || {},
                 createdAt: r.createdAt.getTime(),
                 expiresAt: r.expiresAt.toISOString(),
                 daysRemaining,
@@ -55,10 +56,14 @@ export async function POST(req: NextRequest) {
         await connectDB();
         const body = await req.json();
 
-        const { id, course, company, location, additionalInfo, roadmapData, tasksChecked } = body;
-        if (!id || !course || !roadmapData) {
-            return NextResponse.json({ error: "Missing required roadmap parameters (id, course, roadmapData)." }, { status: 400 });
+        const { id, course, company, location, additionalInfo, roadmapData, tasksChecked, phaseProgress } = body;
+        if (!id || !roadmapData) {
+            return NextResponse.json({ error: "Missing required roadmap parameters (id, roadmapData)." }, { status: 400 });
         }
+
+        const finalCourse = (course && String(course).trim()) || 
+                            (roadmapData?.title && String(roadmapData.title).trim()) || 
+                            (company ? `${company} Preparation Roadmap` : "Career Preparation Roadmap");
 
         // Set expiresAt to exactly 30 days from now
         const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
@@ -69,12 +74,13 @@ export async function POST(req: NextRequest) {
             {
                 id,
                 userIdentifier: session.identifier,
-                course,
+                course: finalCourse,
                 company: company || "Generic Company",
                 location: location || "Remote",
                 additionalInfo: additionalInfo || "",
                 roadmapData,
                 tasksChecked: tasksChecked || {},
+                phaseProgress: phaseProgress || {},
                 expiresAt,
                 notifiedNearExpiry: false,
             },
@@ -91,6 +97,7 @@ export async function POST(req: NextRequest) {
             additionalInfo: r.additionalInfo,
             roadmapData: r.roadmapData,
             tasksChecked: r.tasksChecked,
+            phaseProgress: r.phaseProgress,
             createdAt: r.createdAt.getTime(),
             expiresAt: r.expiresAt.toISOString(),
             daysRemaining,

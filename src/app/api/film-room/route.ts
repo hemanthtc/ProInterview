@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
-import { isS3Configured, getJSON, uploadJSON, pingS3, getS3FilmRoomKey } from "@/utils/s3";
+import { isS3Configured, getJSON, uploadJSON, pingS3, getS3FilmRoomKey, deleteObject } from "@/utils/s3";
 
 export interface FilmAnnotation {
     t: number;
@@ -344,5 +344,41 @@ Rules:
     } catch (error: any) {
         console.error("Film-room error:", error);
         return NextResponse.json({ error: error.message || "Failed to build film room" }, { status: 500 });
+    }
+}
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const session = await getVerifiedSession();
+        if (!session) {
+            return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+        }
+
+        const { searchParams } = new URL(req.url);
+        const timestampStr = searchParams.get("timestamp");
+        if (!timestampStr) {
+            return NextResponse.json({ error: "Missing timestamp parameter" }, { status: 400 });
+        }
+
+        const timestamp = Number(timestampStr);
+        if (!Number.isFinite(timestamp)) {
+            return NextResponse.json({ error: "Invalid timestamp parameter" }, { status: 400 });
+        }
+
+        if (isS3Configured()) {
+            const key = getS3FilmRoomKey(session.identifier, timestamp);
+            try {
+                await deleteObject(key);
+            } catch (err: any) {
+                if (err.name !== "NoSuchKey" && err.$metadata?.httpStatusCode !== 404) {
+                    console.error("Failed to delete S3 film-room object:", err);
+                }
+            }
+        }
+
+        return NextResponse.json({ ok: true, message: "Film room data deleted successfully." });
+    } catch (error: any) {
+        console.error("DELETE /api/film-room error:", error);
+        return NextResponse.json({ error: error.message || "Failed to delete film room data" }, { status: 500 });
     }
 }

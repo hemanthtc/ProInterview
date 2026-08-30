@@ -40,7 +40,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         await connectDB();
 
         const body = await req.json();
-        const { tasksChecked, extend } = body;
+        const { tasksChecked, phaseProgress, extend } = body;
 
         const roadmap = await Roadmap.findOne({ id, userIdentifier: session.identifier });
         if (!roadmap) {
@@ -50,6 +50,11 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
         if (tasksChecked !== undefined) {
             roadmap.tasksChecked = tasksChecked;
             roadmap.markModified("tasksChecked");
+        }
+
+        if (phaseProgress !== undefined) {
+            roadmap.phaseProgress = phaseProgress;
+            roadmap.markModified("phaseProgress");
         }
 
         if (extend === true) {
@@ -69,6 +74,7 @@ export async function PATCH(req: NextRequest, ctx: Ctx) {
             additionalInfo: roadmap.additionalInfo,
             roadmapData: roadmap.roadmapData,
             tasksChecked: roadmap.tasksChecked,
+            phaseProgress: roadmap.phaseProgress,
             createdAt: roadmap.createdAt.getTime(),
             expiresAt: roadmap.expiresAt.toISOString(),
             daysRemaining,

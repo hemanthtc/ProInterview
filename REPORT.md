@@ -426,8 +426,8 @@ The largest file in the project. Contains 4 tool tabs:
 | `/api/profile-guidance` | POST | Career coaching across sessions | `{ pastSessions }` |
 | `/api/upload` | POST | Resume PDF upload + text extraction | `FormData { file }` |
 | `/api/auth` | POST | Authentication | `{ token, provider }` |
-| `/api/d-id-talk` | POST | Triggers static talking head video generation | `{ text }` |
-| `/api/d-id-stream` | POST | Creates, configures WebRTC D-ID stream connection and SDP exchange | `{ action, streamId?, sessionId?, answer?, candidate?, sdpMid?, sdpMLineIndex?, text? }` |
+| `/api/tavus-talk` | POST | Triggers static talking head video generation | `{ text }` |
+| `/api/tavus-stream` | POST | Creates Tavus WebRTC conversation session | `{ action: "create" }` |
 
 ### `/api/analyze-email` — Response Shape
 

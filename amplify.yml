@@ -16,7 +16,9 @@ frontend:
         - echo "SARVAM_API_KEY=${SARVAM_API_KEY}" >> .env.production
         - echo "NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}" >> .env.production
         - echo "NEXT_PUBLIC_MERCHANT_UPI_ID=${NEXT_PUBLIC_MERCHANT_UPI_ID}" >> .env.production
-        - echo "DID_API_KEY=${DID_API_KEY}" >> .env.production
+        - echo "TAVUS_API_KEY=${TAVUS_API_KEY}" >> .env.production
+        - echo "TAVUS_PAL_ID=${TAVUS_PAL_ID}" >> .env.production
+        - echo "TAVUS_FACE_ID=${TAVUS_FACE_ID}" >> .env.production
         - echo "GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}" >> .env.production
         - echo "NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}" >> .env.production
         - echo "MONGODB_URI=${MONGODB_URI}" >> .env.production

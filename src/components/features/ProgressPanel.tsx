@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Award, ChevronDown, ChevronUp, Clock, TrendingUp, Video, Film, Share2, Download, Loader2, Sparkles, X } from "lucide-react";
-import { getStorageItem } from "../../utils/storage";
+import { Award, ChevronDown, ChevronUp, Clock, TrendingUp, Video, Film, Share2, Download, Loader2, Sparkles, X, ShieldCheck, Trash2, AlertTriangle } from "lucide-react";
+import { getStorageItem, setStorageItem } from "../../utils/storage";
+import { deleteSessionFromCloud, deleteMockAptitudeFromCloud, clearTabHistoryFromCloud, pullSessionsFromCloud } from "../../utils/cloudSync";
 
 interface ProgressPanelProps {
     isLight: boolean;
     defaultTab?: "filmroom" | "interview" | "aptitude";
     onClose?: () => void;
+}
+
+interface DeleteModalState {
+    isOpen: boolean;
+    type: "filmroom" | "interview" | "aptitude" | "clear_tab";
+    id?: string;
+    timestamp?: number;
+    title?: string;
 }
 
 /** "My Progress" dashboard — interview attempt history + mock aptitude assessment history, read from localStorage. */
@@ -22,8 +31,22 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
     const [loadingGuidance, setLoadingGuidance] = useState(false);
     const [guidance, setGuidance] = useState("");
 
-    const interviewData = JSON.parse(getStorageItem("interviewSessions") || "[]");
-    const mockData = JSON.parse(getStorageItem("mockAptitudeSessions") || "[]");
+    const [interviewData, setInterviewData] = useState<any[]>([]);
+    const [mockData, setMockData] = useState<any[]>([]);
+    const [deleteModal, setDeleteModal] = useState<DeleteModalState | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    useEffect(() => {
+        const loadData = () => {
+            setInterviewData(JSON.parse(getStorageItem("interviewSessions") || "[]"));
+            setMockData(JSON.parse(getStorageItem("mockAptitudeSessions") || "[]"));
+        };
+        loadData();
+
+        void pullSessionsFromCloud().then(() => {
+            loadData();
+        });
+    }, []);
 
     const totalInterviews = interviewData.length;
     const avgScore = (() => {
@@ -108,6 +131,42 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
         }
     };
 
+    const handleConfirmDelete = async () => {
+        if (!deleteModal) return;
+        setIsDeleting(true);
+        const { type, id, timestamp } = deleteModal;
+
+        try {
+            if (type === "filmroom") {
+                if (timestamp) {
+                    fetch(`/api/film-room?timestamp=${timestamp}`, { method: "DELETE" }).catch(() => {});
+                    localStorage.removeItem(`filmRoom_${timestamp}`);
+                }
+                setToastMsg("Film Room analysis deleted.");
+            } else if (type === "interview") {
+                await deleteSessionFromCloud(id, timestamp);
+                setInterviewData(JSON.parse(getStorageItem("interviewSessions") || "[]"));
+                setToastMsg("Interview attempt and associated Film Room data deleted.");
+            } else if (type === "aptitude") {
+                await deleteMockAptitudeFromCloud(id, timestamp);
+                setMockData(JSON.parse(getStorageItem("mockAptitudeSessions") || "[]"));
+                setToastMsg("Mock aptitude assessment deleted.");
+            } else if (type === "clear_tab") {
+                const currentTab = progressTab;
+                await clearTabHistoryFromCloud(currentTab);
+                setInterviewData(JSON.parse(getStorageItem("interviewSessions") || "[]"));
+                setMockData(JSON.parse(getStorageItem("mockAptitudeSessions") || "[]"));
+                setToastMsg(`All ${currentTab} history cleared.`);
+            }
+        } catch (e: any) {
+            setToastMsg("Failed to delete record.");
+        } finally {
+            setIsDeleting(false);
+            setDeleteModal(null);
+            setTimeout(() => setToastMsg(null), 3000);
+        }
+    };
+
     return (
         <div className="space-y-6 text-left animate-in fade-in duration-300 font-sans relative">
             {/* Top Modal Header */}
@@ -118,235 +177,140 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                 </div>
                 {onClose && (
                     <button
+                        type="button"
                         onClick={onClose}
-                        className="p-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white transition-all cursor-pointer"
+                        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors cursor-pointer"
                         title="Close Dashboard"
                     >
-                        <X className="w-4.5 h-4.5" />
+                        <X className="w-5 h-5" />
                     </button>
                 )}
             </div>
 
-            {/* Row 1: Top 3 Stats Cards (2 per row on mobile, 3 on desktop) */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 w-full">
-                {/* Stat Card 1: Total Interviews */}
-                <div className={`relative overflow-hidden rounded-2xl border p-3.5 sm:p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl ${
-                    isLight 
-                        ? "bg-white border-slate-300 shadow-slate-200/50" 
-                        : "bg-gradient-to-b from-indigo-950/20 via-black/30 to-black/30 border-white/10"
-                }`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all" />
-                    <div className="flex items-center justify-between mb-2.5 sm:mb-4">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className={`w-2 h-2 rounded-full animate-pulse ${isLight ? "bg-indigo-600" : "bg-indigo-400"}`} />
-                            <h3 className={`font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase ${isLight ? "text-indigo-900" : "text-indigo-300"}`}>
-                                Total Interviews
-                            </h3>
-                        </div>
-                        <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ${
-                            isLight ? "bg-indigo-100 border border-indigo-300 text-indigo-700" : "bg-indigo-500/15 border border-indigo-400/30 text-indigo-300"
-                        }`}>
-                            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 mb-1 sm:mb-2">
-                        <p className={`text-2xl sm:text-4xl font-black tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
-                            {totalInterviews}
-                        </p>
-                        <span className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border self-start sm:self-auto ${
-                            isLight ? "bg-indigo-100 text-indigo-900 border-indigo-200" : "bg-indigo-500/10 text-indigo-300/80 border-indigo-500/20"
-                        }`}>
-                            Last 12 mos
-                        </span>
-                    </div>
-                    <p className={`text-[10px] sm:text-[11px] font-semibold ${isLight ? "text-slate-600" : "text-white/40"}`}>Logged & synced attempts</p>
+            {/* Row 1: KPI Stats Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className={`p-4 rounded-2xl border ${isLight ? "bg-white border-slate-200 shadow-sm" : "bg-white/5 border-white/10"}`}>
+                    <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">Total Mock Sessions</span>
+                    <span className="text-2xl font-black text-white">{totalInterviews}</span>
                 </div>
-
-                {/* Stat Card 2: Weighted Avg Score */}
-                <div className={`relative overflow-hidden rounded-2xl border p-3.5 sm:p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl ${
-                    isLight 
-                        ? "bg-white border-slate-300 shadow-slate-200/50" 
-                        : "bg-gradient-to-b from-purple-950/20 via-black/30 to-black/30 border-white/10"
-                }`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/10 transition-all" />
-                    <div className="flex items-center justify-between mb-2.5 sm:mb-4">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className={`w-2 h-2 rounded-full animate-pulse ${isLight ? "bg-purple-600" : "bg-purple-400"}`} />
-                            <h3 className={`font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase ${isLight ? "text-purple-900" : "text-purple-300"}`}>
-                                Weighted Avg Score
-                            </h3>
-                        </div>
-                        <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ${
-                            isLight ? "bg-purple-100 border border-purple-300 text-purple-700" : "bg-purple-500/15 border border-purple-400/30 text-purple-300"
-                        }`}>
-                            <TrendingUp className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </div>
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-1 mb-1 sm:mb-2">
-                        <p className={`text-2xl sm:text-4xl font-black tracking-tight ${isLight ? "text-slate-900" : "text-white"}`}>
-                            {avgScore} <span className={`text-xs sm:text-sm font-bold ${isLight ? "text-slate-500" : "text-white/30"}`}>/ 100</span>
-                        </p>
-                        <span className={`text-[9px] sm:text-[10px] font-bold px-2 py-0.5 rounded-full border self-start sm:self-auto ${
-                            isLight ? "bg-purple-100 text-purple-900 border-purple-200" : "bg-purple-500/10 text-purple-300/80 border-purple-500/20"
-                        }`}>
-                            Recency weighted
-                        </span>
-                    </div>
-                    <div className={`w-full h-1.5 rounded-full overflow-hidden mt-2 ${isLight ? "bg-slate-200" : "bg-white/10"}`}>
-                        <div
-                            className="h-full bg-gradient-to-r from-purple-500 to-pink-400 rounded-full transition-all duration-500"
-                            style={{ width: `${Math.min(100, Math.max(0, avgScore))}%` }}
-                        />
-                    </div>
+                <div className={`p-4 rounded-2xl border ${isLight ? "bg-white border-slate-200 shadow-sm" : "bg-white/5 border-white/10"}`}>
+                    <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">Weighted Avg Score</span>
+                    <span className="text-2xl font-black text-sky-400">{avgScore > 0 ? `${avgScore}/100` : "N/A"}</span>
                 </div>
-
-                {/* Stat Card 3: Hiring Benchmark */}
-                <div className={`col-span-2 sm:col-span-1 relative overflow-hidden rounded-2xl border p-3.5 sm:p-5 group shadow-xl transition-all duration-300 backdrop-blur-xl ${
-                    isLight 
-                        ? "bg-white border-slate-300 shadow-slate-200/50" 
-                        : "bg-gradient-to-b from-emerald-950/20 via-black/30 to-black/30 border-white/10"
-                }`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all" />
-                    <div className="flex items-center justify-between mb-2.5 sm:mb-4">
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                            <span className={`w-2 h-2 rounded-full animate-pulse ${isLight ? "bg-emerald-600" : "bg-emerald-400"}`} />
-                            <h3 className={`font-extrabold text-[10px] sm:text-[11px] tracking-wider uppercase ${isLight ? "text-emerald-900" : "text-emerald-300"}`}>
-                                Hiring Benchmark
-                            </h3>
-                        </div>
-                        <div className={`w-7 h-7 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform ${
-                            isLight ? "bg-emerald-100 border border-emerald-300 text-emerald-700" : "bg-emerald-500/15 border border-emerald-400/30 text-emerald-300"
-                        }`}>
-                            <Award className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-between min-h-[32px] sm:min-h-[40px]">
-                        {interviewData.length === 0 ? (
-                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border font-extrabold text-xs ${
-                                isLight ? "bg-slate-100 border-slate-300 text-slate-800" : "bg-white/5 border-white/10 text-white/50"
-                            }`}>
-                                No Data Yet
-                            </span>
-                        ) : (
-                            <p className={`text-base sm:text-lg font-extrabold tracking-tight ${benchmarkColor}`}>{benchmark}</p>
-                        )}
-                    </div>
-                    <p className={`text-[10px] sm:text-[11px] font-semibold mt-2 ${isLight ? "text-slate-600" : "text-white/40"}`}>Industry hiring bar evaluation</p>
+                <div className={`p-4 rounded-2xl border ${isLight ? "bg-white border-slate-200 shadow-sm" : "bg-white/5 border-white/10"}`}>
+                    <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">Candidate Benchmark</span>
+                    <span className={`text-sm font-black truncate block mt-1 ${benchmarkColor}`}>{benchmark}</span>
                 </div>
-            </div>
-
-            {/* Row 2: AI Career Coach (Full Width) */}
-            <div className={`w-full border rounded-2xl overflow-hidden shadow-xl backdrop-blur-xl ${
-                isLight 
-                    ? "bg-gradient-to-r from-indigo-50 via-purple-50 to-white border-slate-300" 
-                    : "bg-gradient-to-r from-indigo-950/30 via-purple-950/10 to-black border-white/10"
-            }`}>
-                <div className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5 min-w-0">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                            isLight ? "bg-indigo-100 border border-indigo-300 text-indigo-700" : "bg-indigo-500/20 border border-indigo-500/30 text-indigo-400"
-                        }`}>
-                            <Sparkles className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                                <h2 className={`font-black text-sm sm:text-base ${isLight ? "text-slate-900" : "text-white"}`}>AI Career Coach</h2>
-                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider border ${
-                                    isLight ? "bg-indigo-100 text-indigo-900 border-indigo-300" : "bg-indigo-500/20 text-indigo-300 border-indigo-500/30"
-                                }`}>
-                                    Personalized
-                                </span>
-                            </div>
-                            <p className={`text-xs font-semibold line-clamp-1 ${isLight ? "text-slate-600" : "text-white/60"}`}>Get custom guidance & action plan based on your interview history</p>
-                        </div>
-                    </div>
+                <div className={`p-4 rounded-2xl border flex flex-col justify-between ${isLight ? "bg-white border-slate-200 shadow-sm" : "bg-white/5 border-white/10"}`}>
+                    <span className="text-[10px] uppercase font-bold text-white/40 block mb-1">AI Growth Guidance</span>
                     <button
-                        onClick={guidanceOpen ? () => setGuidanceOpen(false) : fetchGuidance}
-                        disabled={loadingGuidance || interviewData.length === 0}
-                        className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 transition-all px-5 py-2.5 rounded-xl font-bold text-xs sm:text-sm text-white shadow-lg shadow-indigo-500/25 shrink-0 whitespace-nowrap w-full sm:w-auto cursor-pointer"
+                        type="button"
+                        onClick={fetchGuidance}
+                        disabled={loadingGuidance || totalInterviews === 0}
+                        className="w-full py-1.5 px-3 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:opacity-50 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-md shadow-sky-500/10"
                     >
                         {loadingGuidance ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" /> Analyzing...</>
-                        ) : guidanceOpen ? (
-                            "Close Plan"
+                            <><Loader2 className="w-3.5 h-3.5 animate-spin" /> Analyzing...</>
                         ) : (
-                            "Get My Plan"
+                            <><Sparkles className="w-3.5 h-3.5" /> Get AI Coaching</>
                         )}
                     </button>
                 </div>
-
-                {guidanceOpen && (
-                    <div className="border-t border-white/10 p-5 sm:p-6 bg-black/30 max-h-[400px] overflow-y-auto custom-scrollbar">
-                        {loadingGuidance ? (
-                            <div className="flex flex-col items-center justify-center py-6 gap-2 text-white/50">
-                                <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
-                                <p className="text-xs font-medium">Analyzing sessions and crafting your personalized plan...</p>
-                            </div>
-                        ) : (
-                            <div className="prose prose-invert max-w-none space-y-2 text-left">
-                                {guidance.split("\n").map((line, i) => {
-                                    const isBold = /^\*\*.+\*\*/.test(line);
-                                    const cleaned = line.replace(/\*\*/g, "").replace(/^#+\s*/, "");
-                                    if (!cleaned.trim()) return <div key={i} className="h-2" />;
-                                    if (isBold) return <p key={i} className="font-extrabold text-indigo-300 text-sm mt-3 mb-1">{cleaned}</p>;
-                                    if (line.startsWith("- ") || line.startsWith("• ")) return <p key={i} className="text-white/80 text-xs pl-4 before:content-['•'] before:text-indigo-400 before:mr-2">{cleaned.replace(/^[-•]\s*/, "")}</p>;
-                                    return <p key={i} className="text-white/70 text-xs leading-relaxed">{cleaned}</p>;
-                                })}
-                            </div>
-                        )}
-                    </div>
-                )}
             </div>
+
+            {/* AI Guidance Accordion */}
+            {guidanceOpen && (
+                <div className={`p-4 rounded-2xl border animate-in slide-in-from-top-2 duration-300 ${isLight ? "bg-sky-50 border-sky-200 text-slate-800" : "bg-sky-950/20 border-sky-500/30 text-sky-200"}`}>
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                        <div className="flex items-center gap-2">
+                            <Sparkles className="w-4 h-4 text-sky-400" />
+                            <h4 className="text-xs font-black uppercase tracking-wider text-sky-400">Personalized AI Performance Guidance</h4>
+                        </div>
+                        <button type="button" onClick={() => setGuidanceOpen(false)} className="text-white/40 hover:text-white">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                    <div className="text-xs leading-relaxed whitespace-pre-line font-medium opacity-90">
+                        {guidance}
+                    </div>
+                </div>
+            )}
 
             {/* Row 3: My Progress & Learning (Tabs & Lists Section) */}
             <div className="space-y-4 pt-2">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4">
-                    <div className="flex items-center gap-2">
-                        <Award className="w-5 h-5 text-sky-400" />
-                        <h3 className="text-base sm:text-lg font-extrabold text-white">My Progress & Learning</h3>
+                    <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                            <Award className="w-5 h-5 text-sky-400" />
+                            <h3 className="text-base sm:text-lg font-extrabold text-white">My Progress & Learning</h3>
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-white/40">
+                            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Auto-cleanup active (30-day retention) &bull; MongoDB synced</span>
+                        </div>
                     </div>
 
-                    {/* Navigation Toggle */}
-                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 shrink-0 self-start sm:self-auto">
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setProgressTab("filmroom");
-                                setExpandedProgressInterviewId(null);
-                            }}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${progressTab === "filmroom"
-                                ? "bg-sky-500 text-white shadow-md shadow-sky-500/10"
-                                : "text-white/60 hover:text-white"
-                                }`}
-                        >
-                            Film Room
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setProgressTab("interview");
-                                setExpandedProgressInterviewId(null);
-                            }}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${progressTab === "interview"
-                                ? "bg-sky-500 text-white shadow-md shadow-sky-500/10"
-                                : "text-white/60 hover:text-white"
-                                }`}
-                        >
-                            Interview Attempts
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setProgressTab("aptitude");
-                                setExpandedProgressMockId(null);
-                            }}
-                            className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${progressTab === "aptitude"
-                                ? "bg-sky-500 text-white shadow-md shadow-sky-500/10"
-                                : "text-white/60 hover:text-white"
-                                }`}
-                        >
-                            Mock Assessments
-                        </button>
+                    {/* Navigation Toggle & Actions */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex bg-white/5 p-1 rounded-xl border border-white/5 shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setProgressTab("filmroom");
+                                    setExpandedProgressInterviewId(null);
+                                }}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${progressTab === "filmroom"
+                                    ? "bg-sky-500 text-white shadow-md shadow-sky-500/10"
+                                    : "text-white/60 hover:text-white"
+                                    }`}
+                            >
+                                Film Room ({interviewData.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setProgressTab("interview");
+                                    setExpandedProgressInterviewId(null);
+                                }}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${progressTab === "interview"
+                                    ? "bg-sky-500 text-white shadow-md shadow-sky-500/10"
+                                    : "text-white/60 hover:text-white"
+                                    }`}
+                            >
+                                Interview Attempts ({interviewData.length})
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setProgressTab("aptitude");
+                                    setExpandedProgressMockId(null);
+                                }}
+                                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${progressTab === "aptitude"
+                                    ? "bg-sky-500 text-white shadow-md shadow-sky-500/10"
+                                    : "text-white/60 hover:text-white"
+                                    }`}
+                            >
+                                Mock Assessments ({mockData.length})
+                            </button>
+                        </div>
+
+                        {/* Clear Tab History Button */}
+                        {((progressTab === "interview" || progressTab === "filmroom") && interviewData.length > 0) || (progressTab === "aptitude" && mockData.length > 0) ? (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDeleteModal({
+                                        isOpen: true,
+                                        type: "clear_tab",
+                                        title: `Clear all ${progressTab === "aptitude" ? "Mock Assessment" : "Interview / Film Room"} records`
+                                    });
+                                }}
+                                className="px-3 py-1.5 rounded-lg text-xs font-bold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 transition-all flex items-center gap-1 cursor-pointer"
+                                title="Clear All History for this tab"
+                            >
+                                <Trash2 className="w-3.5 h-3.5" /> Clear Tab
+                            </button>
+                        ) : null}
                     </div>
                 </div>
 
@@ -377,13 +341,11 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
 
                                         const index = interviewData.findIndex((s: any) => s.timestamp === sess.timestamp);
                                         const sessId = sess.id || `idx_${index}`;
-                                        const isExpanded = expandedProgressInterviewId === sessId;
 
                                         return (
-                                            <Link
+                                            <div
                                                 key={sessId}
-                                                href={`/film-room?t=${sess.timestamp}`}
-                                                className={`p-4 flex items-center justify-between border rounded-2xl text-left transition-all duration-200 cursor-pointer ${isLight
+                                                className={`p-4 flex items-center justify-between border rounded-2xl text-left transition-all duration-200 ${isLight
                                                     ? "bg-white border-slate-200 hover:border-indigo-500 shadow-sm shadow-slate-100/10"
                                                     : "bg-[#0b0c15] border-white/5 hover:border-indigo-500/40 hover:bg-[#111222]"
                                                     }`}
@@ -402,11 +364,32 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                                     </div>
                                                 </div>
                                                 <div className="flex items-center gap-2 shrink-0">
-                                                    <span className={`text-[10px] font-black text-sky-400 border border-sky-500/20 bg-sky-500/10 px-2.5 py-1 rounded-lg`}>
+                                                    <Link
+                                                        href={`/film-room?t=${sess.timestamp}`}
+                                                        className="text-[10px] font-black text-sky-400 border border-sky-500/20 bg-sky-500/10 hover:bg-sky-500/20 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                                    >
                                                         Analyze Replay
-                                                    </span>
+                                                    </Link>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            e.stopPropagation();
+                                                            setDeleteModal({
+                                                                isOpen: true,
+                                                                type: "filmroom",
+                                                                id: sess.id,
+                                                                timestamp: sess.timestamp,
+                                                                title: `${sess.role || "Mock Interview"} (Film Room Analysis)`
+                                                            });
+                                                        }}
+                                                        className="p-1.5 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 transition-all cursor-pointer"
+                                                        title="Delete Film Room analysis"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
                                                 </div>
-                                            </Link>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -429,7 +412,6 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                     {interviewData.map((sess: any, index: number) => {
                                         const isExpanded = expandedProgressInterviewId === sess.id || expandedProgressInterviewId === `idx_${index}`;
                                         const sessId = sess.id || `idx_${index}`;
-                                        // eslint-disable-next-line react-hooks/purity
                                         const dateString = new Date(sess.timestamp || Date.now()).toLocaleDateString("en-US", {
                                             month: "short",
                                             day: "numeric",
@@ -445,7 +427,7 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                                     onClick={() => setExpandedProgressInterviewId(isExpanded ? null : sessId)}
                                                     className="p-3.5 sm:p-4 flex flex-col gap-2.5 cursor-pointer hover:bg-white/[0.01]"
                                                 >
-                                                    {/* Header Top Row: Title + Date on Left, Final Score + Chevron on Right */}
+                                                    {/* Header Top Row: Title + Date on Left, Final Score + Delete on Right */}
                                                     <div className="flex items-center justify-between gap-3 w-full">
                                                         <div className="flex items-center gap-2.5 min-w-0">
                                                             <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-xs shrink-0">
@@ -461,16 +443,33 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex items-center gap-2 shrink-0">
+                                                        <div className="flex items-center gap-3 shrink-0">
                                                             <div className="text-right">
                                                                 <span className="text-[8px] uppercase font-bold text-sky-400 block font-extrabold">Final Score</span>
                                                                 <span className="text-xs sm:text-sm font-black text-sky-400">{sess.finalScore || sess.interviewRating || 0}/100</span>
                                                             </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setDeleteModal({
+                                                                        isOpen: true,
+                                                                        type: "interview",
+                                                                        id: sess.id || sessId,
+                                                                        timestamp: sess.timestamp,
+                                                                        title: `${sess.role || "Mock Interview"} ${sess.company ? `(${sess.company})` : ""}`
+                                                                    });
+                                                                }}
+                                                                className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                                                title="Delete interview session"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
                                                             {isExpanded ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
                                                         </div>
                                                     </div>
 
-                                                    {/* Header Bottom Row: Technical, Behavioral, Communication side-by-side */}
+                                                    {/* Header Bottom Row */}
                                                     <div className="flex items-center gap-4 sm:gap-6 text-left flex-wrap border-t border-white/5 pt-2">
                                                         <div>
                                                             <span className="text-[8px] uppercase font-bold text-white/30 block">Technical</span>
@@ -489,7 +488,7 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
 
                                                 {isExpanded && (
                                                     <div className={`border-t p-3 sm:p-4 space-y-3 text-left ${isLight ? "border-slate-200 bg-slate-50/60" : "border-white/5 bg-black/20"}`}>
-                                                        {/* 5 ratings grid with overflow protection */}
+                                                        {/* 5 ratings grid */}
                                                         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                                                             <div className={`p-2.5 sm:p-3 rounded-xl border text-center ${isLight ? "bg-white border-slate-300 shadow-sm" : "bg-white/5 border-white/10"}`}>
                                                                 <span className={`text-[8.5px] sm:text-[9.5px] uppercase font-bold block mb-0.5 tracking-tight truncate ${isLight ? "text-sky-700 font-extrabold" : "text-sky-400 font-extrabold"}`}>Final Score</span>
@@ -503,7 +502,7 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                                                 <span className={`text-[8.5px] sm:text-[9.5px] uppercase font-bold block mb-0.5 tracking-tight truncate ${isLight ? "text-slate-600 font-extrabold" : "text-white/40"}`}>Behavioral</span>
                                                                 <span className={`text-xs sm:text-sm font-black ${isLight ? "text-slate-900" : "text-white"}`}>{sess.behavioralRating || 0}/100</span>
                                                             </div>
-                                                            <div className={`p-2.5 sm:p-3 rounded-xl border text-center ${isLight ? "bg-white border-slate-300 shadow-sm" : "bg-white/5 border-white/10"}`}>
+                                                            <div className={`p-2.5 sm:p-3 rounded-xl border text-center ${isLight ? "bg-white border-slate-300 shadow-sm" : "bg-white/10"}`}>
                                                                 <span className={`text-[8.5px] sm:text-[9.5px] uppercase font-bold block mb-0.5 tracking-tight truncate ${isLight ? "text-slate-600 font-extrabold" : "text-white/40"}`}>Communication</span>
                                                                 <span className={`text-xs sm:text-sm font-black ${isLight ? "text-slate-900" : "text-white"}`}>{sess.communicationRating || 0}/100</span>
                                                             </div>
@@ -548,27 +547,6 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                                                 Download Transcript
                                                             </button>
                                                         </div>
-
-                                                        {sess.summary && (
-                                                            <div className="space-y-1.5">
-                                                                <span className="text-[9px] uppercase font-bold text-sky-400 block tracking-wider font-extrabold">Evaluation Summary</span>
-                                                                <div className={`leading-relaxed whitespace-pre-line font-medium ${isLight ? "text-slate-700" : "text-white/80"}`}>
-                                                                    {sess.summary}
-                                                                </div>
-                                                            </div>
-                                                        )}
-
-                                                        <div className="space-y-2">
-                                                            <span className="text-[9px] uppercase font-bold text-sky-400 block tracking-wider font-extrabold">Annotated Transcript & Corrections</span>
-                                                            <div className={`rounded-xl p-4 font-mono text-[10px] max-h-[350px] overflow-y-auto leading-relaxed border ${isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-black/30 border-white/5 text-indigo-200"
-                                                                }`}>
-                                                                {sess.transcript ? (
-                                                                    <div className="whitespace-pre-wrap">{sess.transcript}</div>
-                                                                ) : (
-                                                                    <span className="text-white/30 italic">No transcript recorded for this session.</span>
-                                                                )}
-                                                            </div>
-                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
@@ -593,7 +571,6 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                 <div className="space-y-3.5">
                                     {mockData.map((sess: any, index: number) => {
                                         const isExpanded = expandedProgressMockId === sess.id;
-                                        // eslint-disable-next-line react-hooks/purity
                                         const dateString = new Date(sess.timestamp || Date.now()).toLocaleDateString("en-US", {
                                             month: "short",
                                             day: "numeric",
@@ -631,80 +608,32 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                                             </div>
                                                         </div>
 
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-3">
                                                             <div className="text-right">
                                                                 <span className="text-[8px] uppercase font-bold text-emerald-400 block font-extrabold">Final Score</span>
                                                                 <span className="text-xs font-black text-emerald-450">{sess.score ?? 0}/100</span>
                                                             </div>
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setDeleteModal({
+                                                                        isOpen: true,
+                                                                        type: "aptitude",
+                                                                        id: sess.id,
+                                                                        timestamp: sess.timestamp,
+                                                                        title: "Mock Aptitude Assessment"
+                                                                    });
+                                                                }}
+                                                                className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                                                title="Delete mock assessment"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
                                                             {isExpanded ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
                                                         </div>
                                                     </div>
                                                 </div>
-
-                                                {isExpanded && (
-                                                    <div className="border-t border-white/5 p-4 bg-black/10 space-y-4 text-left">
-                                                        <div className="space-y-2">
-                                                            <span className="text-[9px] uppercase font-bold text-emerald-400 block tracking-wider font-extrabold">Aptitude Assessment Performance</span>
-                                                            <div className={`p-4 rounded-xl border grid grid-cols-2 gap-4 ${isLight ? "bg-slate-50 border-slate-200 text-slate-850" : "bg-black/20 border-white/5 text-white/80"
-                                                                }`}>
-                                                                <div className="space-y-1">
-                                                                    <span className="text-[9px] uppercase font-bold text-white/30 block">Total MCQ Questions</span>
-                                                                    <span className={`text-base font-black ${isLight ? "text-slate-800" : "text-white"}`}>{sess.totalQuestions ?? 10}</span>
-                                                                </div>
-                                                                <div className="space-y-1">
-                                                                    <span className="text-[9px] uppercase font-bold text-white/30 block">Correct Answers</span>
-                                                                    <span className="text-emerald-400 text-base font-black">{sess.correctAnswers ?? 0}</span>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="space-y-3 pt-2">
-                                                            <span className="text-[9px] uppercase font-bold text-emerald-400 block tracking-wider font-extrabold">Coding Lab Exercises</span>
-                                                            {sess.codingGradings && Object.keys(sess.codingGradings).length > 0 ? (
-                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                                    {Object.entries(sess.codingGradings).map(([qId, grading]: [string, any]) => (
-                                                                        <div key={qId} className={`p-4 rounded-xl border space-y-2.5 ${isLight ? "bg-slate-50 border-slate-200" : "bg-black/20 border-white/5"
-                                                                            }`}>
-                                                                            <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                                                                                <span className={`text-xs font-bold ${isLight ? "text-slate-800" : "text-white"}`}>Coding Question ID: {qId}</span>
-                                                                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider ${grading.score >= 7
-                                                                                    ? "bg-green-500/10 border border-green-500/20 text-green-400"
-                                                                                    : "bg-red-500/10 border border-red-500/20 text-red-400"
-                                                                                    }`}>
-                                                                                    Score: {grading.score}/10
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="space-y-1">
-                                                                                <div className="flex justify-between text-[10px]">
-                                                                                    <span className="text-white/40 font-bold">Status:</span>
-                                                                                    <span className="text-sky-400 font-extrabold uppercase">{grading.status}</span>
-                                                                                </div>
-                                                                                <div className="flex justify-between text-[10px]">
-                                                                                    <span className="text-white/40 font-bold">Time Complexity:</span>
-                                                                                    <span className={`font-mono font-bold ${isLight ? "text-slate-700" : "text-white"}`}>{grading.timeComplexity || "N/A"}</span>
-                                                                                </div>
-                                                                                <div className="flex justify-between text-[10px]">
-                                                                                    <span className="text-white/40 font-bold">Space Complexity:</span>
-                                                                                    <span className={`font-mono font-bold ${isLight ? "text-slate-700" : "text-white"}`}>{grading.spaceComplexity || "N/A"}</span>
-                                                                                </div>
-                                                                            </div>
-                                                                            {grading.recommendations && (
-                                                                                <div className="space-y-1 border-t border-white/5 pt-2">
-                                                                                    <span className="text-[9px] uppercase font-bold text-white/30 block">AI Suggestions</span>
-                                                                                    <p className={`text-[10px] leading-relaxed font-semibold italic ${isLight ? "text-slate-650" : "text-white/60"}`}>
-                                                                                        &quot;{grading.recommendations}&quot;
-                                                                                    </p>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    ))}
-                                                                </div>
-                                                            ) : (
-                                                                <span className="text-white/30 italic">No coding evaluations recorded for this session.</span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
                                         );
                                     })}
@@ -714,6 +643,51 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                     )}
                 </div>
             </div>
+
+            {/* Custom Delete Confirmation Modal */}
+            {deleteModal?.isOpen && (
+                <div
+                    className="fixed inset-0 z-[120] flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+                    onClick={() => !isDeleting && setDeleteModal(null)}
+                >
+                    <div
+                        className="bg-[#11121c] border border-white/10 rounded-3xl p-6 sm:p-8 max-w-sm w-full shadow-2xl shadow-black/80 relative text-left"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-start gap-4 mb-5">
+                            <div className="w-12 h-12 rounded-2xl bg-red-500/10 border border-red-500/25 flex items-center justify-center shrink-0">
+                                <AlertTriangle className="w-6 h-6 text-red-400" />
+                            </div>
+                            <div>
+                                <h4 className="text-base font-extrabold text-white mb-1">Confirm Deletion</h4>
+                                <p className="text-xs text-white/60 leading-relaxed">
+                                    Are you sure you want to delete <strong className="text-white">{deleteModal.title || "this item"}</strong>? This action permanently purges database and cloud storage records.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 pt-2">
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={handleConfirmDelete}
+                                className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold py-2.5 rounded-xl transition-colors text-xs flex items-center justify-center gap-1.5 cursor-pointer shadow-lg shadow-red-600/20"
+                            >
+                                {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                                {isDeleting ? "Deleting..." : "Delete Permanently"}
+                            </button>
+                            <button
+                                type="button"
+                                disabled={isDeleting}
+                                onClick={() => setDeleteModal(null)}
+                                className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white font-bold py-2.5 rounded-xl transition-colors text-xs cursor-pointer"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Float notification toast */}
             {toastMsg && (

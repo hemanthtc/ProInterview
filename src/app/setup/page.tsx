@@ -29,6 +29,7 @@ export default function SetupPage() {
     const [voiceLanguage, setVoiceLanguage] = useState("en-IN");
     const [campusPath, setCampusPath] = useState("onCampus");
     const [hideLanguageOptions, setHideLanguageOptions] = useState(false);
+    const [selectedAvatarPersona, setSelectedAvatarPersona] = useState<string>("dynamic");
     const router = useRouter();
 
     const [hasAccountPortfolio, setHasAccountPortfolio] = useState(false);
@@ -120,6 +121,8 @@ export default function SetupPage() {
         setProvider(savedProvider);
         const savedLang = getStorageItem("voiceLanguage") || "en-IN";
         setVoiceLanguage(savedLang);
+        const savedAvatar = getStorageItem("tavusSelectedReplicaId") || "dynamic";
+        setSelectedAvatarPersona(savedAvatar);
 
         const fetchUserProfile = async () => {
             try {
@@ -322,6 +325,12 @@ export default function SetupPage() {
             setStorageItem("campusPath", campusPath);
 
             removeStorageItem("resumeFromPaused"); // ensure fresh start
+            try {
+                sessionStorage.removeItem("prointerview_session_ended");
+                sessionStorage.removeItem("prointerview_realistic_session_ended");
+                sessionStorage.removeItem("prointerview_completed_session");
+                sessionStorage.removeItem("prointerview_completed_realistic_session");
+            } catch { /* ignore */ }
             
             if (globalMode === "realistic") {
                 router.push("/realistic-interview");
@@ -475,31 +484,69 @@ export default function SetupPage() {
                     />
                 </div>
                 
-                {hasAccountResume || hasManualFiles ? (
+                {hasAccountResume && !hasManualFiles && (
                     <div 
-                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors font-medium"
+                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors font-medium flex items-center justify-between gap-3"
                         style={{
                             backgroundColor: theme === 'dark' 
-                                ? (hasManualFiles ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)')
+                                ? 'rgba(16, 185, 129, 0.1)'
                                 : theme === 'eyeprotect' ? '#f5efe6'
-                                : (hasManualFiles ? '#e0e7ff' : '#d1fae5'),
+                                : '#d1fae5',
                             borderColor: theme === 'dark'
-                                ? (hasManualFiles ? 'rgba(99, 102, 241, 0.2)' : 'rgba(16, 185, 129, 0.2)')
+                                ? 'rgba(16, 185, 129, 0.2)'
                                 : theme === 'eyeprotect' ? '#8c8578'
-                                : (hasManualFiles ? '#c7d2fe' : '#a7f3d0'),
+                                : '#a7f3d0',
                             color: theme === 'dark'
-                                ? (hasManualFiles ? '#c7d2fe' : '#a7f3d0')
+                                ? '#a7f3d0'
                                 : theme === 'eyeprotect' ? '#1c1917'
-                                : (hasManualFiles ? '#312e81' : '#064e3b')
+                                : '#064e3b'
                         }}
                     >
-                        {hasManualFiles ? (
-                            "New resume file(s) selected. They will be parsed and used for this session."
-                        ) : (
-                            <>Saved Resume / CV detected from your account: <span className="font-semibold">{resumeCvName}</span>. The upload box is not needed unless you want to add more files.</>
-                        )}
+                        <div>
+                            Saved Resume / CV detected from account: <span className="font-semibold">{resumeCvName}</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setHasAccountResume(false);
+                                setResumeCvText("");
+                                setResumeCvName("");
+                                removeStorageItem("resumeText");
+                                removeStorageItem("userResumeCvText");
+                                removeStorageItem("userResumeCvName");
+                            }}
+                            className="text-xs font-semibold underline hover:opacity-75 cursor-pointer whitespace-nowrap"
+                        >
+                            Upload Different
+                        </button>
                     </div>
-                ) : (
+                )}
+
+                {hasManualFiles && (
+                    <div 
+                        className="mb-6 rounded-xl border px-4 py-3 text-sm transition-colors font-medium flex items-center justify-between gap-3"
+                        style={{
+                            backgroundColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.1)' : theme === 'eyeprotect' ? '#f5efe6' : '#e0e7ff',
+                            borderColor: theme === 'dark' ? 'rgba(99, 102, 241, 0.2)' : theme === 'eyeprotect' ? '#8c8578' : '#c7d2fe',
+                            color: theme === 'dark' ? '#c7d2fe' : theme === 'eyeprotect' ? '#1c1917' : '#312e81'
+                        }}
+                    >
+                        <span>New resume file(s) selected: {files.map(f => f.name).join(", ")}</span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setFiles([]);
+                                setResumeCvText("");
+                                removeStorageItem("resumeText");
+                            }}
+                            className="text-xs font-semibold underline hover:opacity-75 cursor-pointer whitespace-nowrap"
+                        >
+                            Clear
+                        </button>
+                    </div>
+                )}
+
+                {(!hasAccountResume || hasManualFiles) && (
                     <>
                         <div className="flex items-center gap-4 my-6 opacity-40">
                             <div className={`h-px flex-1 ${isLight ? "bg-slate-300" : "bg-white"}`}></div>
@@ -583,6 +630,87 @@ export default function SetupPage() {
 
 
 
+                {/* Realistic Mode: AI Interviewer Persona Selection */}
+                {isRealisticMode && (
+                    <div className="mt-8">
+                        <label className={`font-semibold mb-3 flex items-center justify-between text-sm ${isLight ? "text-slate-800" : "text-white/80"}`}>
+                            <span className="flex items-center gap-2">
+                                <Sparkles className={`w-4 h-4 ${isLight ? "text-indigo-600" : "text-indigo-400"}`} /> Select AI Interviewer Persona
+                            </span>
+                            <span className="text-xs font-normal opacity-60">Realistic Human Presenters</span>
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            {[
+                                {
+                                    id: "dynamic",
+                                    name: "🎲 Dynamic Rotation",
+                                    role: "Rotates Each Session",
+                                    desc: "Rotates seamlessly between Alex, Luna, and Marcus for each interview session.",
+                                },
+                                {
+                                    id: "r67d1c9cac37",
+                                    name: "Alex",
+                                    role: "Senior Technical Lead",
+                                    desc: "Deep-dive systems analysis, coding rigor, and clean architecture.",
+                                },
+                                {
+                                    id: "r9d30b0e55ac",
+                                    name: "Luna",
+                                    role: "Engineering Director",
+                                    desc: "High-impact scalability, executive communication, and product vision.",
+                                },
+                                {
+                                    id: "re6220ec0195",
+                                    name: "Marcus",
+                                    role: "Principal Architect",
+                                    desc: "Distributed infrastructure, reliability patterns, and performance.",
+                                }
+                            ].map((persona) => (
+                                <button
+                                    key={persona.id}
+                                    type="button"
+                                    onClick={() => {
+                                        setSelectedAvatarPersona(persona.id);
+                                        setStorageItem("tavusSelectedReplicaId", persona.id);
+                                    }}
+                                    className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                                        selectedAvatarPersona === persona.id
+                                            ? (theme === "eyeprotect"
+                                                ? "bg-[#0b5f58]/20 border-[#0b5f58] shadow-lg ring-1 ring-[#0b5f58]"
+                                                : isLight
+                                                ? "bg-indigo-50 border-indigo-600 shadow-lg ring-1 ring-indigo-600"
+                                                : "bg-indigo-600/20 border-indigo-500 shadow-lg ring-1 ring-indigo-500")
+                                            : (theme === "light"
+                                                ? "bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100 shadow-sm"
+                                                : theme === "eyeprotect"
+                                                ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white")
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className={`font-bold text-sm ${
+                                            selectedAvatarPersona === persona.id
+                                                ? (theme === "eyeprotect" ? "text-[#0b5f58]" : isLight ? "text-indigo-700" : "text-indigo-300")
+                                                : (isLight ? "text-slate-900" : "text-white")
+                                        }`}>
+                                            {persona.name}
+                                        </span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                                            selectedAvatarPersona === persona.id
+                                                ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30"
+                                                : "bg-white/5 text-white/40 border border-white/10"
+                                        }`}>
+                                            {persona.role}
+                                        </span>
+                                    </div>
+                                    <p className={`text-xs leading-relaxed ${isLight ? "text-slate-600" : "opacity-70"}`}>{persona.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Practice Mode Options */}
                 {!isRealisticMode && (
                     <>
                         <div className="mt-6">

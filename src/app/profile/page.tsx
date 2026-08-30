@@ -2388,7 +2388,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        5 D-ID Avatar Stream interviews / mo
+                                                        5 Tavus Avatar Stream interviews / mo
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
@@ -2435,7 +2435,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                                 <ul className="space-y-2.5 text-xs text-white/60 mb-6 break-words">
                                                     <li className="flex items-center gap-2 font-bold text-indigo-300">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                                                        Unlimited D-ID Avatar Calls
+                                                        Unlimited Tavus Avatar Calls
                                                     </li>
                                                     <li className="flex items-center gap-2">
                                                         <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />

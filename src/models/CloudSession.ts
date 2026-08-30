@@ -22,9 +22,11 @@ export interface PrepProgressBlob {
 export interface ICloudSessionBlob extends Document {
     identifier: string;
     sessions: unknown[];
+    mockAptitudeSessions: unknown[];
     prepPacks: unknown[];
     spacedDrills: unknown[];
     prepProgress: PrepProgressBlob;
+    retentionDays?: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -33,8 +35,10 @@ const CloudSessionSchema = new Schema(
     {
         identifier: { type: String, required: true, unique: true, index: true },
         sessions: { type: [Schema.Types.Mixed], default: [] },
+        mockAptitudeSessions: { type: [Schema.Types.Mixed], default: [] },
         prepPacks: { type: [Schema.Types.Mixed], default: [] },
         spacedDrills: { type: [Schema.Types.Mixed], default: [] },
+        retentionDays: { type: Number, default: 30 },
         prepProgress: {
             type: Schema.Types.Mixed,
             default: () => ({

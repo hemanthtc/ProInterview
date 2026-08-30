@@ -30,6 +30,7 @@ export interface RoadmapPhase {
 }
 
 export interface RoadmapData {
+    title?: string;
     overview?: string;
     timeline?: RoadmapPhase[];
     interviewTips?: string[];
@@ -45,6 +46,7 @@ export interface SavedRoadmap {
     createdAt: number;
     roadmapData: RoadmapData;
     tasksChecked: Record<string, boolean>;
+    phaseProgress?: Record<string, { unlocked: boolean; passed: boolean; score: number; studyPackGenerated?: boolean; completedAt?: number }>;
     expiresAt?: string;
     daysRemaining?: number;
 }

@@ -29,7 +29,7 @@ import {
     ChevronDown,
 } from "lucide-react";
 
-type ExperienceFilter = "all" | "fresher" | "intern" | "1year" | "2year" | "custom";
+type ExperienceFilter = "all" | "fresher" | "intern" | "1year" | "2year" | "3plus" | "on_campus" | "off_campus" | "custom";
 type WorkModeFilter = "all" | "onsite" | "offsite" | "remote";
 
 interface MatchedJob {
@@ -126,17 +126,27 @@ export default function JobsPage() {
 
     // Filter jobs based on selected experience and work mode filters
     const filteredJobs = jobs.filter((job) => {
-        // Experience filter
+        // Experience & Hiring Type filter
         if (experienceFilter !== "all") {
             const desc = (job.description + " " + job.role + " " + job.tags.join(" ")).toLowerCase();
             if (experienceFilter === "fresher") {
-                if (!desc.match(/\b(fresher|freshers|entry[\s-]?level|0[\s-]?year|graduate|junior)\b/i)) return false;
+                if (!desc.match(/\b(fresher|freshers|entry[\s-]?level|0[\s-]?year|0[\s-]?yr|graduate|junior)\b/i)) return false;
             } else if (experienceFilter === "intern") {
-                if (job.type !== "intern" && !desc.match(/\b(intern|internship|trainee)\b/i)) return false;
+                const isIntern =
+                    job.type === "intern" ||
+                    job.role.toLowerCase().includes("intern") ||
+                    desc.match(/\b(intern|internship|trainee|apprentice|student|summer|campus|fellow|co-op)\b/i);
+                if (!isIntern) return false;
             } else if (experienceFilter === "1year") {
-                if (!desc.match(/\b(0\s*-\s*1|1\s*[\+\-]?|1\s*year|1\s*yr|entry)\b/i) && !desc.match(/\b(fresher|freshers)\b/i)) return false;
+                if (!desc.match(/\b(0\s*-\s*1|1\s*[\+\-]?\s*year|1\s*yr|1\s*year|entry)\b/i) && !desc.match(/\b(fresher|freshers)\b/i)) return false;
             } else if (experienceFilter === "2year") {
-                if (!desc.match(/\b([0-2]\s*-\s*[2-3]|2\s*[\+\-]?|2\s*year|2\s*yr)\b/i) && !desc.match(/\b(1\s*-\s*2|0\s*-\s*2)\b/i)) return false;
+                if (!desc.match(/\b([0-2]\s*-\s*[2-3]|2\s*[\+\-]?\s*year|2\s*yr|1\s*-\s*2|0\s*-\s*2)\b/i)) return false;
+            } else if (experienceFilter === "3plus") {
+                if (!desc.match(/\b([3-9]\s*[\+\-]?\s*year|[3-9]\s*yr|senior|lead|mid)\b/i)) return false;
+            } else if (experienceFilter === "on_campus") {
+                if (!desc.match(/\b(campus|university|college|grad|graduate|fresher|intern|trainee)\b/i)) return false;
+            } else if (experienceFilter === "off_campus") {
+                if (!desc.match(/\b(off[\s-]?campus|direct|experienced|lateral|full[\s-]?time|industry)\b/i) && desc.match(/\bon[\s-]?campus\b/i)) return false;
             } else if (experienceFilter === "custom" && customExpYears) {
                 const yrs = parseInt(customExpYears);
                 if (!isNaN(yrs)) {
@@ -462,29 +472,30 @@ export default function JobsPage() {
         }));
 
         try {
+            const descriptionToPass = (job.description || "").trim() || `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Focus: Full Stack Development, Problem Solving, Software Architecture.`;
             const res = await fetch("/api/ats-match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     resumeText: activeResume,
-                    jobDescription: job.description,
+                    jobDescription: descriptionToPass,
                     company: job.company,
                     role: job.role
                 })
             });
+            const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                throw new Error("Failed to compute match");
+                throw new Error(data.error || "Failed to compute match");
             }
-            const data = await res.json();
             setAtsMatches(prev => ({
                 ...prev,
                 [job.id]: {
                     loading: false,
-                    matchPercent: data.matchPercent,
-                    keywordHits: data.keywordHits,
-                    keywordGaps: data.keywordGaps,
-                    sectionAdvice: data.sectionAdvice,
-                    rewrittenBullets: data.rewrittenBullets
+                    matchPercent: data.matchPercent ?? 75,
+                    keywordHits: data.keywordHits || [],
+                    keywordGaps: data.keywordGaps || [],
+                    sectionAdvice: data.sectionAdvice || [],
+                    rewrittenBullets: data.rewrittenBullets || []
                 }
             }));
         } catch (err: any) {
@@ -555,6 +566,7 @@ export default function JobsPage() {
                 body: JSON.stringify({
                     resumeText: resumeText.trim(),
                     location: location.trim(),
+                    experienceFilter,
                 }),
             });
             const data = await res.json();
@@ -893,6 +905,54 @@ export default function JobsPage() {
                         </div>
                     </div>
 
+                    {/* Filter Option Below Location */}
+                    <div>
+                        <label className={`text-xs uppercase tracking-widest flex items-center justify-between mb-2 font-bold ${
+                            isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/40"
+                        }`}>
+                            <span className="flex items-center gap-2">
+                                <Filter className="w-3.5 h-3.5 text-emerald-500" /> Filter Experience & Hiring Mode
+                            </span>
+                            <span className="text-[11px] font-normal opacity-60">
+                                {experienceFilter === "all" ? "Showing all" : experienceFilter}
+                            </span>
+                        </label>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            {[
+                                { id: "all", label: "🌟 All Opportunities", desc: "All roles & hiring types" },
+                                { id: "intern", label: "🎓 Internships", desc: "Interns & college trainees" },
+                                { id: "fresher", label: "🌱 Freshers (0 YOE)", desc: "Entry-level & new grads" },
+                                { id: "1year", label: "⚡ 1 Year Exp", desc: "0-1 year experience" },
+                                { id: "2year", label: "🚀 2 Years Exp", desc: "1-2 years experience" },
+                                { id: "3plus", label: "🔥 3+ Years Exp", desc: "Mid & Senior engineers" },
+                                { id: "on_campus", label: "🏫 On-Campus", desc: "University hiring drives" },
+                                { id: "off_campus", label: "💼 Off-Campus", desc: "Direct lateral openings" },
+                            ].map((f) => (
+                                <button
+                                    key={f.id}
+                                    type="button"
+                                    onClick={() => setExperienceFilter(f.id as ExperienceFilter)}
+                                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                                        experienceFilter === f.id
+                                            ? (theme === "eyeprotect"
+                                                ? "bg-[#0b5f58]/20 border-[#0b5f58] text-[#0b5f58] shadow-md ring-1 ring-[#0b5f58]"
+                                                : isLight
+                                                ? "bg-emerald-50 border-emerald-600 text-emerald-700 shadow-md ring-1 ring-emerald-600"
+                                                : "bg-emerald-500/20 border-emerald-500 text-emerald-300 shadow-md ring-1 ring-emerald-500")
+                                            : (theme === "light"
+                                                ? "bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100"
+                                                : theme === "eyeprotect"
+                                                ? "bg-[#f5efe6] border-[#8c8578] text-[#1c1917] hover:bg-[#e8dcc8]"
+                                                : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:text-white")
+                                    }`}
+                                >
+                                    <span className="block font-bold text-xs">{f.label}</span>
+                                    <span className={`text-[10px] leading-tight block mt-0.5 ${isLight ? "text-slate-500" : "opacity-60"}`}>{f.desc}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     {error && (
                         <p className="text-sm text-rose-500 bg-rose-500/10 border border-rose-500/20 rounded-xl px-3 py-2">
                             {error}
@@ -988,15 +1048,17 @@ export default function JobsPage() {
                         }`}>
                             {/* Experience Filter */}
                             <div>
-                                <p className={`text-[10px] uppercase font-bold mb-1.5 ${isLight ? "text-slate-500" : "text-white/40"}`}>Work Experience</p>
+                                <p className={`text-[10px] uppercase font-bold mb-1.5 ${isLight ? "text-slate-500" : "text-white/40"}`}>Experience & Hiring Mode</p>
                                 <div className="flex flex-wrap gap-1.5">
                                     {([
                                         { value: "all", label: "All" },
-                                        { value: "fresher", label: "Fresher" },
                                         { value: "intern", label: "Intern" },
+                                        { value: "fresher", label: "Fresher" },
                                         { value: "1year", label: "1 Year" },
                                         { value: "2year", label: "2 Years" },
-                                        { value: "custom", label: "Custom" },
+                                        { value: "3plus", label: "3+ Years" },
+                                        { value: "on_campus", label: "On-Campus" },
+                                        { value: "off_campus", label: "Off-Campus" },
                                     ] as { value: ExperienceFilter; label: string }[]).map((opt) => (
                                         <button
                                             key={opt.value}
@@ -1015,21 +1077,6 @@ export default function JobsPage() {
                                             {opt.label}
                                         </button>
                                     ))}
-                                    {experienceFilter === "custom" && (
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            max="50"
-                                            placeholder="Years"
-                                            value={customExpYears}
-                                            onChange={(e) => setCustomExpYears(e.target.value)}
-                                            className={`w-16 px-2 py-1 rounded-lg text-[11px] font-bold border outline-none transition ${
-                                                isLight
-                                                    ? "bg-white border-slate-300 text-slate-800 focus:border-emerald-500"
-                                                    : "bg-white/5 border-white/10 text-white focus:border-emerald-500"
-                                            }`}
-                                        />
-                                    )}
                                 </div>
                             </div>
                             {/* Work Mode Filter */}

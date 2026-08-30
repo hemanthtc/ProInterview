@@ -68,15 +68,21 @@ export function setStorageItem(key: string, value: string): void {
         if (value === "true") {
             localStorage.setItem("userLoggedIn", "true");
             tempMemory["userLoggedIn"] = "true";
-            document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+            if (typeof document !== "undefined") {
+                document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+            }
         } else if (value === "guest") {
             localStorage.setItem("userLoggedIn", "guest");
             tempMemory["userLoggedIn"] = "guest";
-            document.cookie = "userLoggedIn=guest; path=/; max-age=86400; SameSite=Lax";
+            if (typeof document !== "undefined") {
+                document.cookie = "userLoggedIn=guest; path=/; max-age=86400; SameSite=Lax";
+            }
         } else {
             localStorage.removeItem("userLoggedIn");
             delete tempMemory["userLoggedIn"];
-            document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            if (typeof document !== "undefined") {
+                document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            }
         }
         emitStorageChange(key);
         return;
@@ -92,7 +98,7 @@ export function setStorageItem(key: string, value: string): void {
     const isLoggedIn =
         localStorage.getItem("userLoggedIn") === "true" ||
         tempMemory["userLoggedIn"] === "true" ||
-        (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+        (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
 
     if (isLoggedIn) {
         localStorage.setItem(getScopedKey(key), value);
@@ -133,12 +139,16 @@ export function removeStorageItem(key: string): void {
         delete tempMemory["userLoggedIn"];
         delete tempMemory["userIdentifier"];
         delete tempMemory["userName"];
-        document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        if (typeof document !== "undefined") {
+            document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
         purgeAllUserLocalCaches();
         emitStorageChange(key);
         return;
     }
-    const isLoggedIn = localStorage.getItem("userLoggedIn") === "true" || document.cookie.includes("userLoggedIn=true");
+    const isLoggedIn =
+        localStorage.getItem("userLoggedIn") === "true" ||
+        (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
     if (isLoggedIn) {
         localStorage.removeItem(getScopedKey(key));
     } else {
