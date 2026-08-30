@@ -10,7 +10,7 @@ import {
     type DragEvent,
     type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Download, Eraser, MousePointer2, PenLine, Trash2, ChevronDown, FolderOpen, FolderClosed } from "lucide-react";
+import { Download, Eraser, MousePointer2, PenLine, Trash2, ChevronDown } from "lucide-react";
 import {
     BoardShape,
     BoardShapeKind,
@@ -583,7 +583,6 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
     const drawing = useRef(false);
     const inkRef = useRef(false);
     const dragShapeId = useRef<string | null>(null);
-    const dragOffset = useRef({ x: 0, y: 0 });
     const dragNode = useRef<"start" | "end" | null>(null);
     const dragNodeShapeId = useRef<string | null>(null);
     const lastDragPos = useRef({ x: 0, y: 0 });
@@ -591,7 +590,6 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const reactId = useId();
-    const [libraryOpen, setLibraryOpen] = useState(true);
     const [mobileLibraryCollapsed, setMobileLibraryCollapsed] = useState(true);
 
     const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
@@ -1064,13 +1062,6 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
     useImperativeHandle(ref, () => ({
         getPngDataUrl: () => buildPngDataUrl(),
     }));
-
-    function deleteSelected() {
-        if (!selectedId) return;
-        onShapesChange(shapes.filter((s) => s.id !== selectedId));
-        setSelectedId(null);
-        setEditingId(null);
-    }
 
     function updateLabel(id: string, label: string) {
         onShapesChange(shapes.map((s) => (s.id === id ? { ...s, label } : s)));

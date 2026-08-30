@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { companyBankPromptBlock, resolveCompanyBank } from "@/data/companyBanks";
 
 export interface InterviewPayload {
     history?: any[];

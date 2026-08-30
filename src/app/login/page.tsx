@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Video, Loader2, Lock, Mail, AlertCircle, CheckCircle, ChevronDown, Search, User, Sun, Moon, Eye } from "lucide-react";
+import { ArrowLeft, Video, Loader2, Lock, Mail, AlertCircle, CheckCircle, User, Sun, Moon, Eye } from "lucide-react";
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";

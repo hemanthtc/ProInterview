@@ -4,7 +4,7 @@ import User from "@/models/User";
 import SyntheticFile, { ISyntheticFile } from "@/models/SyntheticFile";
 import SyntheticFolder, { ISyntheticFolder } from "@/models/SyntheticFolder";
 import { NextResponse } from "next/server";
-import { getJSON, isS3Configured, uploadJSON, deleteObject, pingS3 } from "@/utils/s3";
+import { getJSON, isS3Configured, uploadJSON, pingS3 } from "@/utils/s3";
 
 export async function requireSession(): Promise<
     { session: SessionPayload; error?: undefined } | { session?: undefined; error: NextResponse }

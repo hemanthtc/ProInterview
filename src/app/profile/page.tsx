@@ -35,7 +35,7 @@ export default function ProfilePage() {
     const [guidance, setGuidance] = useState<string>("");
     const [loadingGuidance, setLoadingGuidance] = useState(false);
     const [guidanceOpen, setGuidanceOpen] = useState(false);
-    const [accountDetailsOpen, setAccountDetailsOpen] = useState(false);
+
     const [userIdentifier, setUserIdentifier] = useState("");
     const [memberSince, setMemberSince] = useState("");
     const [mounted, setMounted] = useState(false);
@@ -364,7 +364,7 @@ export default function ProfilePage() {
         try {
             const parsed = JSON.parse(stored);
             const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-            // eslint-disable-next-line react-hooks/purity
+
             const now = Date.now();
             const currentIdentifier = getStorageItem("userIdentifier") || "";
 

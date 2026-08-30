@@ -18,10 +18,8 @@ import {
     CheckCheck,
     Heart,
     Trash2,
-    Image,
     Paperclip,
     CornerUpLeft,
-    Video,
 } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
 import { processImageForUpload } from "@/utils/imageProcess";

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
 import ProfileData from "@/models/ProfileData";
-import OrgAdmin from "@/models/OrgAdmin";
 import { getVerifiedSession } from "@/utils/auth";
 
 // Admin auth check helper using secure sessions

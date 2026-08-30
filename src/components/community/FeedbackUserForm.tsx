@@ -10,12 +10,9 @@ import {
     MessageSquare,
     AlertCircle,
     FileText,
-    Sparkles,
     Trash2,
     Paperclip,
     X,
-    ChevronRight,
-    HelpCircle,
     GraduationCap,
     Lightbulb,
     ShieldCheck,
@@ -530,7 +527,7 @@ export default function FeedbackUserForm({ theme = "dark" }: { theme?: "dark" | 
                                 }`}>
                                     <MessageSquare className="w-8 h-8 text-white/20 mx-auto" />
                                     <p className={`text-sm font-bold ${isLight ? "text-slate-700" : "text-white/60"}`}>
-                                        You haven't submitted any feedback yet.
+                                        You haven&apos;t submitted any feedback yet.
                                     </p>
                                     <button
                                         type="button"

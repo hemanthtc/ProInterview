@@ -8,7 +8,7 @@ export async function GET() {
         await connectDB();
         const config = await LabsVisibilityConfig.findOne({}).lean();
         return NextResponse.json({ hiddenTools: config?.hiddenTools || [] });
-    } catch (error: any) {
+    } catch (_error: any) {
         // If DB is unavailable, return empty (nothing hidden) so the page still works
         return NextResponse.json({ hiddenTools: [] });
     }

@@ -22,12 +22,11 @@ export async function POST(req: NextRequest) {
 
         const {
             history = [], resume, github, linkedin, portfolioUrl, portfolioRating, portfolioFeedback, message, attachment,
-            company, roles, level, hrIntel, companyClone, provider, voiceLanguage,
+            company, roles, level: _level, hrIntel, companyClone, provider, voiceLanguage,
         } = await req.json();
 
         const safeCompany = company || "a modern tech company";
         const safeRoles = roles || "Software Engineer";
-        const safeLevel = level || "intermediate";
         const useSarvam = String(provider || "").toLowerCase() === "sarvam";
 
         const bank = companyClone !== false ? resolveCompanyBank(safeCompany) : null;

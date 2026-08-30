@@ -9,19 +9,12 @@ import {
     X,
     MessageSquare,
     CheckCircle2,
-    Clock,
-    AlertCircle,
     GraduationCap,
     Lightbulb,
     Search,
-    Filter,
     Paperclip,
     ShieldCheck,
-    Layers,
-    ChevronDown,
-    ChevronUp,
-    RefreshCw,
-    CornerDownRight
+    RefreshCw
 } from "lucide-react";
 
 interface FeedbackItem {

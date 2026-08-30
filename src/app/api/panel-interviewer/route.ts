@@ -13,17 +13,17 @@ const PANELISTS = [
 const DYNAMIC_PANELIST_QUESTIONS: Record<string, Record<number, (comp: string, role: string) => string>> = {
     tech_lead: {
         0: (comp, role) => `Welcome! As Tech Lead at ${comp}, I'd like to dive into your technical depth for the ${role} position. Could you walk me through the system architecture of a complex feature or service you built recently, detailing data flow and key component interactions?`,
-        1: (comp, role) => `Thanks. In that architecture, how did you handle data consistency, database indexing/caching strategies, and error boundaries under heavy concurrent user traffic?`,
-        2: (comp, role) => `Before I pass control to Jordan, tell me about your strategy for code reviews, testing (unit, integration, and contract tests), and avoiding technical debt in production releases.`
+        1: (_comp, _role) => `Thanks. In that architecture, how did you handle data consistency, database indexing/caching strategies, and error boundaries under heavy concurrent user traffic?`,
+        2: (_comp, _role) => `Before I pass control to Jordan, tell me about your strategy for code reviews, testing (unit, integration, and contract tests), and avoiding technical debt in production releases.`
     },
     em: {
-        3: (comp, role) => `Thanks Alex. Moving to engineering execution—tell me about a situation at work where sprint priorities shifted or requirements changed unexpectedly. How did you communicate with stakeholders and balance velocity versus code quality?`,
-        4: (comp, role) => `Describe a scenario where engineers on your team had conflicting technical opinions on architecture. How did you facilitate consensus and keep project delivery on track?`,
-        5: (comp, role) => `How do you approach onboarding new team members, mentoring junior developers, and keeping team delivery velocity high without causing developer burnout?`
+        3: (_comp, _role) => `Thanks Alex. Moving to engineering execution—tell me about a situation at work where sprint priorities shifted or requirements changed unexpectedly. How did you communicate with stakeholders and balance velocity versus code quality?`,
+        4: (_comp, _role) => `Describe a scenario where engineers on your team had conflicting technical opinions on architecture. How did you facilitate consensus and keep project delivery on track?`,
+        5: (_comp, _role) => `How do you approach onboarding new team members, mentoring junior developers, and keeping team delivery velocity high without causing developer burnout?`
     },
     bar_raiser: {
-        6: (comp, role) => `Great context. As Bar Raiser, I focus on long-term scalability and engineering resilience. If your core service experienced a 10x sudden spike in traffic overnight, where would the current architecture fail first, and how would you redesign it?`,
-        7: (comp, role) => `Looking back at your engineering career, what is one major design or architectural trade-off decision you regret making, and what did you learn about security and system resilience from it?`
+        6: (_comp, _role) => `Great context. As Bar Raiser, I focus on long-term scalability and engineering resilience. If your core service experienced a 10x sudden spike in traffic overnight, where would the current architecture fail first, and how would you redesign it?`,
+        7: (_comp, _role) => `Looking back at your engineering career, what is one major design or architectural trade-off decision you regret making, and what did you learn about security and system resilience from it?`
     }
 };
 

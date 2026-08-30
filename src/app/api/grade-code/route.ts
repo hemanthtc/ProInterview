@@ -82,7 +82,7 @@ Ensure all JSON keys match exactly. Do not output anything else.`;
         try {
             const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
             parsedData = JSON.parse(cleanJson);
-        } catch (e) {
+        } catch (_e) {
             console.error("Failed to parse JSON response from Gemini for code grading:", textResponse);
             return NextResponse.json(getFallbackGrading(questionTitle, code, language));
         }
@@ -95,7 +95,7 @@ Ensure all JSON keys match exactly. Do not output anything else.`;
 }
 
 // Fallback logic in case API Key is missing or Gemini fails
-function getFallbackGrading(title: string, code: string, language: string) {
+function getFallbackGrading(title: string, code: string, _language: string) {
     const codeLen = code.trim().length;
     
     // Very simple heuristics

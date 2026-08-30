@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Award, ChevronDown, ChevronUp, Clock, TrendingUp, Video, Film, Share2, Download, Loader2, Sparkles, X, ShieldCheck, Trash2, AlertTriangle } from "lucide-react";
-import { getStorageItem, setStorageItem } from "../../utils/storage";
+import { getStorageItem } from "../../utils/storage";
 import { deleteSessionFromCloud, deleteMockAptitudeFromCloud, clearTabHistoryFromCloud, pullSessionsFromCloud } from "../../utils/cloudSync";
 
 interface ProgressPanelProps {

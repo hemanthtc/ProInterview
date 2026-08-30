@@ -10,7 +10,7 @@ import {
     SyntheticFile,
 } from "@/lib/syntheticAccess";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
     const auth = await requireSession();
     if (auth.error) return auth.error;
 

@@ -1,13 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getStorageItem } from "@/utils/storage";
 import {
     Briefcase,
     ExternalLink,
-    FileUp,
     Filter,
     Loader2,
     MapPin,
@@ -17,13 +16,8 @@ import {
     Moon,
     Sun,
     Eye,
-    Trash2,
     CheckCircle2,
-    Clock,
     XCircle,
-    AlertCircle,
-    UserCheck,
-    TrendingUp,
     FileText,
     UploadCloud,
     ChevronDown,

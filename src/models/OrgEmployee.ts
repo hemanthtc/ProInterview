@@ -1,4 +1,4 @@
-import mongoose, { Schema, Document, Model, Types } from "mongoose";
+import mongoose, { Schema, Document, Model } from "mongoose";
 
 export interface IOrgEmployee extends Document {
     identifier: string;       // login ID (e.g. email, employee code)

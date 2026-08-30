@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { 
-    Folder, FileText, Plus, Trash2, Save, RefreshCw, 
-    BookOpen, ChevronRight, AlertCircle, CheckCircle2,
-    Eye, Edit, Loader2, Upload
+    FileText, Plus, Trash2, Save, RefreshCw, 
+    BookOpen, AlertCircle, CheckCircle2,
+    Eye, Loader2, Upload
 } from "lucide-react";
 
 interface Subject {

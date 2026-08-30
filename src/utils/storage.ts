@@ -120,7 +120,7 @@ export function purgeAllUserLocalCaches(): void {
     keysToRemove.forEach((key) => {
         try {
             localStorage.removeItem(key);
-        } catch (e) {}
+        } catch {}
     });
 
     Object.keys(tempMemory).forEach((key) => {

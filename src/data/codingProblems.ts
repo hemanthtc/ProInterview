@@ -431,7 +431,8 @@ export const CODING_PROBLEMS: CodingProblem[] = [
 export function getProblemPublic(id: string) {
     const p = CODING_PROBLEMS.find((x) => x.id === id);
     if (!p) return null;
-    const { hiddenTests, invoke, ...rest } = p;
+    const { hiddenTests, invoke: _, ...rest } = p;
+    void _;
     return { ...rest, hiddenTestCount: hiddenTests.length };
 }
 

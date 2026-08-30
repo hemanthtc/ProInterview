@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getStorageItem, setStorageItem } from "../../utils/storage";
-import { ArrowLeft, Clapperboard, Loader2, Target, RefreshCw, Sparkles, ChevronRight, TrendingUp, Award, Activity } from "lucide-react";
+import { ArrowLeft, Clapperboard, Loader2, Target, RefreshCw, Sparkles, ChevronRight, TrendingUp, Award } from "lucide-react";
 
 interface FilmAnnotation {
     t: number;

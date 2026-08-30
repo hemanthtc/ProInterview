@@ -63,7 +63,7 @@ export async function isSafeUrl(urlStr: string): Promise<boolean> {
         }
 
         return true;
-    } catch (e) {
+    } catch {
         return false;
     }
 }

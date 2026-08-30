@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import {
-    Briefcase,
     Code2,
     FileSearch,
     PenTool,
     Target,
     Users,
-    Video,
     Play,
     Sparkles,
     FileText,

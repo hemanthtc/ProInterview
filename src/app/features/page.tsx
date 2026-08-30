@@ -4000,7 +4000,7 @@ if (!isAuthChecked) return null;
                                         <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 animate-pulse ml-2">
                                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                                             <span className="text-[11px] font-bold">
-                                                Generating: "{studyMaterialsProgress.topicName}" ({studyMaterialsProgress.current}/{studyMaterialsProgress.total})
+                                                Generating: &quot;{studyMaterialsProgress.topicName}&quot; ({studyMaterialsProgress.current}/{studyMaterialsProgress.total})
                                             </span>
                                         </div>
                                     )}

@@ -38,7 +38,6 @@ export default function LabsBanner({ isLight = false }: { isLight?: boolean }) {
                         type="button"
                         className="rounded-xl bg-rose-600 hover:bg-rose-500 px-3.5 py-2 text-xs font-bold text-white shadow-sm transition border border-rose-500/30 cursor-pointer"
                         onClick={() => {
-                            const el = document.querySelector("[data-tool=email_analyser], button");
                             window.location.hash = "email";
                             // Users open Email Analyser from the tool grid below
                             alert("Tip: open Email Analyser for Gmail invite import, then Prep Packs / Aptitude / Mock tests from the tool grid.");

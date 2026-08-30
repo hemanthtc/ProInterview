@@ -10,7 +10,7 @@ import {
     SyntheticFile,
     hydrateFilePayload,
 } from "@/lib/syntheticAccess";
-import { getJSON, uploadJSON, deleteObject, isS3Configured, pingS3 } from "@/utils/s3";
+import { uploadJSON, deleteObject, isS3Configured, pingS3 } from "@/utils/s3";
 
 type Ctx = { params: Promise<{ id: string }> };
 

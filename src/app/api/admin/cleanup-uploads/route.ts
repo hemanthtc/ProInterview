@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedSession } from "@/utils/auth";
 import { isS3Configured, listS3ObjectsWithDetails, deleteS3ObjectsBulk } from "@/utils/s3";
 
-const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 async function checkAuth(req: NextRequest): Promise<boolean> {
     // 1. Session-based Admin check

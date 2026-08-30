@@ -67,7 +67,7 @@ export default function CompanySelect({
   // Handler for select changes
   const handleChange = (
     newValue: MultiValue<OptionType>,
-    actionMeta: ActionMeta<OptionType>
+    _actionMeta: ActionMeta<OptionType>
   ) => {
     // 4. Checking the maximum selection limit
     if (newValue.length > maxLimit) {

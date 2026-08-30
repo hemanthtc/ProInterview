@@ -9,8 +9,8 @@ import CleanupUploadsManager from "@/components/admin/CleanupUploadsManager";
 import {
     Users, UserPlus, Trash2, BarChart3, ShieldCheck, LogOut,
     TrendingUp, Server, Crown, Zap, RefreshCw, X, Eye, EyeOff,
-    Building2, ChevronRight, Activity, Calendar, Mail, Briefcase,
-    Sun, Moon, AlertCircle, CheckCircle2, Clock, Star, PenTool
+    Building2, Activity, Calendar, Mail, Briefcase,
+    Sun, Moon, AlertCircle, CheckCircle2, Star, PenTool
 } from "lucide-react";
 
 const SYSTEM_FEATURES = [
