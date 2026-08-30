@@ -15,7 +15,7 @@ if (IS_LOCAL) {
     );
   });
 } else {
-  const CACHE = "prointerview-shell-v5";
+  const CACHE = "prointerview-shell-v6";
   const SHELL = ["/", "/labs", "/prep", "/star-coach", "/coding-lab", "/manifest.json", "/offline-drills.json"];
 
   // API GET responses that are safe to cache network-first, for offline drill practice.
@@ -53,14 +53,25 @@ if (IS_LOCAL) {
             }
             return res;
           })
-          .catch(() => caches.match(req))
+          .catch(async () => {
+            const cached = await caches.match(req);
+            return cached || new Response(JSON.stringify({ error: "Offline drill data unavailable." }), {
+              status: 503,
+              headers: { "Content-Type": "application/json" }
+            });
+          })
       );
       return;
     }
 
-    // Never cache other API/auth responses
+    // Never cache other API/auth responses, but guarantee a valid Response on network rejection
     if (url.origin === self.location.origin && url.pathname.startsWith("/api/")) {
-      event.respondWith(fetch(req));
+      event.respondWith(
+        fetch(req).catch(() => new Response(JSON.stringify({ error: "Network request failed." }), {
+          status: 503,
+          headers: { "Content-Type": "application/json" }
+        }))
+      );
       return;
     }
 
@@ -78,23 +89,33 @@ if (IS_LOCAL) {
             }
             return res;
           })
-          .catch(() => caches.match(req))
+          .catch(async () => {
+            const cachedPage = await caches.match(req);
+            if (cachedPage) return cachedPage;
+            const shellRoot = await caches.match("/");
+            if (shellRoot) return shellRoot;
+            return new Response("<!DOCTYPE html><html><head><title>Offline - ProInterview</title></head><body><h2>Offline</h2><p>You are currently offline. Please reconnect to access this page.</p></body></html>", {
+              status: 503,
+              headers: { "Content-Type": "text/html; charset=utf-8" }
+            });
+          })
       );
       return;
     }
 
+    // Cache-first for other static assets with safe fallback
     event.respondWith(
       caches.match(req).then((cached) => {
-        const fetched = fetch(req)
+        if (cached) return cached;
+        return fetch(req)
           .then((res) => {
-            const copy = res.clone();
             if (res.ok && url.origin === self.location.origin) {
+              const copy = res.clone();
               caches.open(CACHE).then((cache) => cache.put(req, copy));
             }
             return res;
           })
-          .catch(() => cached);
-        return cached || fetched;
+          .catch(() => new Response("", { status: 404, statusText: "Not Found" }));
       })
     );
   });

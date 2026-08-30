@@ -125,7 +125,8 @@ async function resolveSrvConnectionString(srvUri: string): Promise<string> {
 }
 
 async function connectDB() {
-    if (!MONGODB_URI) {
+    const mongoUri = process.env.MONGODB_URI;
+    if (!mongoUri) {
         throw new Error(
             "Please define the MONGODB_URI environment variable to connect to MongoDB Atlas."
         );
@@ -171,13 +172,13 @@ async function connectDB() {
 
         // If using mongodb+srv://, resolve via DoH first to avoid 8s local DNS timeout on blocked UDP port 53
         cached.promise = (async () => {
-            let targetUri = MONGODB_URI;
-            if (MONGODB_URI.startsWith("mongodb+srv://")) {
+            let targetUri = mongoUri;
+            if (mongoUri.startsWith("mongodb+srv://")) {
                 try {
-                    targetUri = await resolveSrvConnectionString(MONGODB_URI);
+                    targetUri = await resolveSrvConnectionString(mongoUri);
                 } catch (dohError) {
                     console.warn("DoH pre-resolution failed, trying original MONGODB_URI...", dohError);
-                    targetUri = MONGODB_URI;
+                    targetUri = mongoUri;
                 }
             }
 
@@ -186,9 +187,9 @@ async function connectDB() {
                 console.log("Connected to MongoDB successfully.");
                 return mongooseInstance;
             } catch (firstError) {
-                if (targetUri !== MONGODB_URI) {
+                if (targetUri !== mongoUri) {
                     console.warn("Resolved URI connection failed, falling back to original MONGODB_URI...", firstError);
-                    return await mongoose.connect(MONGODB_URI, opts);
+                    return await mongoose.connect(mongoUri, opts);
                 }
                 throw firstError;
             }
