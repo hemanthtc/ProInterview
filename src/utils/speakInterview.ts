@@ -2,6 +2,26 @@ let activeAudio: HTMLAudioElement | null = null;
 let isHalted = false;
 
 /**
+ * Clean markdown symbols, code delimiters, and prompt tags so browser voice sounds natural.
+ */
+function cleanInterviewSpeechText(text: string): string {
+    return text
+        .replace(/\[MODE:(CHAT|CODE|DRAW)\]/gi, "")
+        .replace(/\[TERMINATE\]/gi, "")
+        .replace(/```[\s\S]*?```/g, " [Code snippet provided] ") // Replace multiline code blocks
+        .replace(/`([^`]+)`/g, "$1") // Strip inline backticks
+        .replace(/\*\*([^*]+)\*\*/g, "$1") // Strip bold **
+        .replace(/\*([^*]+)\*/g, "$1") // Strip italics *
+        .replace(/__([^_]+)__/g, "$1") // Strip bold __
+        .replace(/_([^_]+)_/g, "$1") // Strip italics _
+        .replace(/^#{1,6}\s+/gm, "") // Strip headers #
+        .replace(/^[-*+]\s+/gm, "") // Strip list bullets
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1") // Convert links [text](url) to text
+        .replace(/\s{2,}/g, " ") // Normalize spaces
+        .trim();
+}
+
+/**
  * Stop and cancel all active interview speech synthesis and audio playback immediately.
  */
 export function stopSpeechInterviewText(): void {
@@ -28,13 +48,15 @@ export function stopSpeechInterviewText(): void {
 }
 
 /**
- * Speak interview replies via Sarvam TTS (when provider=sarvam) or browser speechSynthesis.
+ * Speak interview replies via browser speechSynthesis calibrated to match the target warm voice sample (0 API Credits).
  */
 export async function speakInterviewText(
     text: string,
     opts: {
         provider?: string;
         voiceLanguage?: string;
+        pitch?: number;
+        rate?: number;
         isListening?: () => boolean;
         onStart?: () => void;
         onEnd?: () => void;
@@ -44,84 +66,82 @@ export async function speakInterviewText(
     stopSpeechInterviewText();
     isHalted = false;
 
-    const clean = text
-        .replace(/\[MODE:(CHAT|CODE|DRAW)\]/gi, "")
-        .replace(/\[TERMINATE\]/gi, "")
-        .trim();
+    const clean = cleanInterviewSpeechText(text);
     if (!clean) return;
     if (opts.isListening?.() || isHalted) return;
 
-    const provider = opts.provider || "gemini";
-    const voiceLanguage = opts.voiceLanguage || "en-IN";
+    const voiceLanguage = opts.voiceLanguage || "en-US";
 
-    if (provider === "sarvam") {
-        try {
-            const res = await fetch("/api/sarvam/tts", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ text: clean, voiceLanguage }),
-            });
-            if (isHalted) return;
-            if (res.ok) {
-                const data = await res.json();
-                if (data.audioBase64 && !isHalted) {
-                    const mime = data.mimeType || "audio/wav";
-                    const src = `data:${mime};base64,${data.audioBase64}`;
-                    const audio = new Audio(src);
-                    activeAudio = audio;
-                    opts.onStart?.();
-                    await new Promise<void>((resolve) => {
-                        audio.onended = () => {
-                            activeAudio = null;
-                            opts.onEnd?.();
-                            resolve();
-                        };
-                        audio.onerror = () => {
-                            activeAudio = null;
-                            opts.onEnd?.();
-                            resolve();
-                        };
-                        void audio.play().catch(() => {
-                            activeAudio = null;
-                            opts.onEnd?.();
-                            resolve();
-                        });
-                    });
-                    return;
-                }
-            }
-        } catch {
-            /* fall through to browser TTS */
-        }
-    }
-
-    if (isHalted || !("speechSynthesis" in window)) return;
+    if (isHalted || typeof window === "undefined" || !("speechSynthesis" in window)) return;
     const utterance = new SpeechSynthesisUtterance(clean);
     utterance.lang = voiceLanguage;
 
     const pickVoice = () => {
         if (isHalted) return;
         const voices = window.speechSynthesis.getVoices();
-        const base = (voiceLanguage || "en").slice(0, 2).toLowerCase();
-        // Prefer high-quality neural / natural voices so the interviewer sounds human.
-        const isNatural = (v: SpeechSynthesisVoice) =>
-            /natural|neural|premium|enhanced|google|online|siri|aria|jenny|libby|sonia|samantha|neerja|prabhat/i.test(v.name);
-        const langVoices = voices.filter((v) => v.lang?.toLowerCase().startsWith(base));
-        const naturalExact = langVoices.find(isNatural);
-        const plainExact = voices.find((v) => v.lang === voiceLanguage);
-        const naturalEn = voices.filter((v) => v.lang?.toLowerCase().startsWith("en")).find(isNatural);
-        utterance.voice = naturalExact || plainExact || langVoices[0] || naturalEn || voices[0] || null;
-        // Natural human cadence: a touch slower than default with neutral pitch.
-        utterance.rate = 0.96;
-        utterance.pitch = 1.0;
+        if (!voices || voices.length === 0) return;
+
+        // Preferred voice order matching the warm, natural female conversational tone of Audio Sample 2
+        const targetVoiceKeywords = [
+            "google us english",
+            "microsoft jenny online",
+            "microsoft jenny",
+            "microsoft aria online",
+            "microsoft aria",
+            "microsoft zira",
+            "samantha",
+            "microsoft michelle",
+            "microsoft guy",
+            "microsoft neerja",
+            "natural",
+            "neural",
+            "premium",
+            "enhanced"
+        ];
+
+        let selectedVoice: SpeechSynthesisVoice | null = null;
+
+        // 1. Try finding by highest priority target voice names
+        for (const kw of targetVoiceKeywords) {
+            const found = voices.find(v => v.name.toLowerCase().includes(kw));
+            if (found) {
+                selectedVoice = found;
+                break;
+            }
+        }
+
+        // 2. Try exact language match with English
+        if (!selectedVoice) {
+            selectedVoice = voices.find(v => v.lang === "en-US" || v.lang === "en_US") ||
+                           voices.find(v => v.lang?.toLowerCase().startsWith("en")) ||
+                           voices[0] || null;
+        }
+
+        utterance.voice = selectedVoice;
+
+        // Custom Acoustic Calibration matching Sample 2:
+        // - Pitch: 0.90 (slight drop from 1.0 to add warm vocal resonance and eliminate metallic treble)
+        // - Rate: 0.88 (comfortable 135 WPM conversational interview pace rather than rushed 165 WPM)
+        // - Volume: 1.0 (clean full-gain clarity)
+        const customPitch = typeof opts.pitch === "number" ? opts.pitch : 0.90;
+        const customRate = typeof opts.rate === "number" ? opts.rate : 0.88;
+
+        utterance.pitch = Math.max(0.5, Math.min(1.5, customPitch));
+        utterance.rate = Math.max(0.5, Math.min(1.5, customRate));
         utterance.volume = 1.0;
+
         utterance.onstart = () => opts.onStart?.();
         utterance.onend = () => opts.onEnd?.();
+        utterance.onerror = () => opts.onEnd?.();
+
         if (!isHalted) {
             window.speechSynthesis.speak(utterance);
         }
     };
 
-    if (window.speechSynthesis.getVoices().length > 0) pickVoice();
-    else window.speechSynthesis.onvoiceschanged = pickVoice;
+    if (window.speechSynthesis.getVoices().length > 0) {
+        pickVoice();
+    } else {
+        window.speechSynthesis.onvoiceschanged = pickVoice;
+    }
 }
