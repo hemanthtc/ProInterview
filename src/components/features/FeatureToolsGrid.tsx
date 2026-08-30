@@ -219,15 +219,6 @@ export default function FeatureToolsGrid({
                     color: "amber",
                     badges: ["Sign-in", "Beta"],
                 },
-                {
-                    id: "coding_assessment",
-                    href: "/coding-assessment",
-                    title: "Coding Assessment",
-                    desc: "Timed HR-style test, AI face proctor, no tab switch",
-                    icon: Code2,
-                    color: "emerald",
-                    badges: ["New", "Sign-in"],
-                },
             ],
         },
         {

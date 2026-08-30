@@ -444,6 +444,7 @@ export default function Home() {
     const [isHydrated, setIsHydrated] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
+    const [showModeSwitchModal, setShowModeSwitchModal] = useState<{ isOpen: boolean; targetUrl: string; targetLabel: string } | null>(null);
     const [snap, setSnap] = useState<any>(null);
     const [progressActiveTab, setProgressActiveTab] = useState<"filmroom" | "interview" | "aptitude">("interview");
 
@@ -618,6 +619,73 @@ export default function Home() {
         URL.revokeObjectURL(url);
     };
 
+    const renderModeSwitchModal = () => {
+        if (!showModeSwitchModal?.isOpen) return null;
+        return (
+            <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-fadeIn">
+                <div 
+                    className="w-full max-w-md rounded-2xl border p-6 shadow-2xl relative transition-all duration-300 transform scale-100"
+                    style={{
+                        backgroundColor: theme === "light" ? "#ffffff" : theme === "eyeprotect" ? "#fdfbf7" : "#0d0d1a",
+                        borderColor: theme === "light" ? "#e2e8f0" : theme === "eyeprotect" ? "#e7e5e4" : "rgba(255, 255, 255, 0.12)",
+                        color: theme === "light" ? "#0f172a" : theme === "eyeprotect" ? "#292524" : "#ffffff"
+                    }}
+                >
+                    <div className="flex items-start gap-3.5 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center shrink-0 text-orange-400">
+                            <Compass className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-base">You are in Realistic AI Mode</h3>
+                                <button 
+                                    onClick={() => setShowModeSwitchModal(null)}
+                                    className="text-white/40 hover:text-white transition-colors cursor-pointer p-1"
+                                    title="Close"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <p className={`text-xs mt-1.5 leading-relaxed ${theme === "light" ? "text-slate-600" : theme === "eyeprotect" ? "text-stone-600" : "text-white/60"}`}>
+                                {showModeSwitchModal.targetLabel || "Features and Labs"} are available in <strong className="text-orange-400 font-bold">Practice Mode</strong>. Would you like to switch to Practice Mode now?
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="mt-6 flex flex-col sm:flex-row items-center gap-2.5">
+                        <button
+                            onClick={() => {
+                                const target = showModeSwitchModal.targetUrl;
+                                setShowModeSwitchModal(null);
+                                setIsRealisticMode(false);
+                                setStorageItem("globalInterviewMode", "technical");
+                                if (target) {
+                                    router.push(target);
+                                }
+                            }}
+                            className="w-full sm:flex-1 py-2.5 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-500/20 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                        >
+                            <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+                            Switch to Practice Mode
+                        </button>
+                        <button
+                            onClick={() => setShowModeSwitchModal(null)}
+                            className={`w-full sm:w-auto py-2.5 px-4 rounded-xl font-semibold text-xs border transition-all cursor-pointer ${
+                                theme === "light"
+                                    ? "bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700"
+                                    : theme === "eyeprotect"
+                                    ? "bg-stone-100 hover:bg-stone-200 border-stone-200 text-stone-700"
+                                    : "bg-white/5 hover:bg-white/10 border-white/10 text-white/70 hover:text-white"
+                            }`}
+                        >
+                            Stay in Realistic Mode
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    };
+
     if (!isHydrated) {
         return (
             <div className="min-h-screen bg-[#050505] flex items-center justify-center">
@@ -763,25 +831,27 @@ export default function Home() {
 
                         <button 
                             onClick={() => {
-                                if (isRealisticMode) return;
+                                if (isRealisticMode) {
+                                    setShowModeSwitchModal({
+                                        isOpen: true,
+                                        targetUrl: (isLoggedIn || isGuest) ? "/features" : "/login",
+                                        targetLabel: "Practice & Features"
+                                    });
+                                    return;
+                                }
                                 if (isLoggedIn || isGuest) {
                                     router.push("/features");
                                 } else {
                                     router.push("/login");
                                 }
                             }}
-                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${isRealisticMode
-                                ? theme === "light"
-                                ? "text-slate-200 cursor-not-allowed"
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                                theme === "light"
+                                ? "text-slate-400 hover:text-slate-600"
                                 : theme === "eyeprotect"
-                                ? "text-stone-200 cursor-not-allowed"
-                                : "text-white/15 cursor-not-allowed"
-                                : theme === "light"
-                                ? "text-slate-400 hover:text-slate-600 cursor-pointer"
-                                : theme === "eyeprotect"
-                                ? "text-stone-400 hover:text-stone-600 cursor-pointer"
-                                : "text-white/40 hover:text-white/60 cursor-pointer"}`}
-                            disabled={isRealisticMode}
+                                ? "text-stone-400 hover:text-stone-600"
+                                : "text-white/40 hover:text-white/60"}`}
+                            title={isRealisticMode ? "In Realistic Mode. Click to switch to Practice Mode." : "Practice"}
                         >
                             <Compass className="w-5 h-5" />
                             <span className="text-[10px]">Practice</span>
@@ -789,20 +859,23 @@ export default function Home() {
 
                         <button 
                             onClick={() => {
-                                if (!isRealisticMode) router.push("/labs");
+                                if (isRealisticMode) {
+                                    setShowModeSwitchModal({
+                                        isOpen: true,
+                                        targetUrl: "/labs",
+                                        targetLabel: "Labs & Practice Tools"
+                                    });
+                                    return;
+                                }
+                                router.push("/labs");
                             }}
-                            className={`flex flex-col items-center justify-center gap-1 transition-colors ${isRealisticMode
-                                ? theme === "light"
-                                ? "text-slate-200 cursor-not-allowed"
+                            className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                                theme === "light"
+                                ? "text-slate-400 hover:text-slate-600"
                                 : theme === "eyeprotect"
-                                ? "text-stone-200 cursor-not-allowed"
-                                : "text-white/15 cursor-not-allowed"
-                                : theme === "light"
-                                ? "text-slate-400 hover:text-slate-600 cursor-pointer"
-                                : theme === "eyeprotect"
-                                ? "text-stone-400 hover:text-stone-600 cursor-pointer"
-                                : "text-white/40 hover:text-white/60 cursor-pointer"}`}
-                            disabled={isRealisticMode}
+                                ? "text-stone-400 hover:text-stone-600"
+                                : "text-white/40 hover:text-white/60"}`}
+                            title={isRealisticMode ? "In Realistic Mode. Click to switch to Practice Mode." : "Labs"}
                         >
                             <FlaskConical className="w-5 h-5" />
                             <span className="text-[10px]">Labs</span>
@@ -867,12 +940,53 @@ export default function Home() {
                             >
                                 Home
                             </Link>
+                            <button
+                                onClick={() => {
+                                    setMobileMenuOpen(false);
+                                    if (isRealisticMode) {
+                                        setShowModeSwitchModal({
+                                            isOpen: true,
+                                            targetUrl: "/features",
+                                            targetLabel: "Features & Practice Tools"
+                                        });
+                                    } else {
+                                        router.push("/features");
+                                    }
+                                }}
+                                className="text-lg font-semibold text-white/80 hover:text-white transition-colors cursor-pointer"
+                            >
+                                Features
+                            </button>
                             <Link 
                                 href="/community" 
                                 onClick={() => setMobileMenuOpen(false)}
                                 className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
                             >
                                 Community
+                            </Link>
+                            <button
+                                onClick={() => {
+                                    setMobileMenuOpen(false);
+                                    if (isRealisticMode) {
+                                        setShowModeSwitchModal({
+                                            isOpen: true,
+                                            targetUrl: "/labs",
+                                            targetLabel: "Labs & Interactive Tools"
+                                        });
+                                    } else {
+                                        router.push("/labs");
+                                    }
+                                }}
+                                className="text-lg font-semibold text-white/80 hover:text-white transition-colors cursor-pointer"
+                            >
+                                Labs
+                            </button>
+                            <Link 
+                                href="/jobs" 
+                                onClick={() => setMobileMenuOpen(false)}
+                                className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                            >
+                                Jobs
                             </Link>
                             <Link 
                                 href="/#how-it-works" 
@@ -954,6 +1068,9 @@ export default function Home() {
 
                     </div>
                 )}
+
+                {/* Mode Switch Popup Modal for Mobile View */}
+                {renderModeSwitchModal()}
             </div>
         );
     }
@@ -1026,9 +1143,39 @@ export default function Home() {
                             </button>
                         </div>
                     )}
-                    {!isRealisticMode && <Link href="/features" className="hover:text-white text-white/70 transition-colors pb-1">Features</Link>}
+                    <button
+                        onClick={() => {
+                            if (isRealisticMode) {
+                                setShowModeSwitchModal({
+                                    isOpen: true,
+                                    targetUrl: "/features",
+                                    targetLabel: "Features & Practice Tools"
+                                });
+                            } else {
+                                router.push("/features");
+                            }
+                        }}
+                        className="hover:text-white text-white/70 transition-colors pb-1 cursor-pointer"
+                    >
+                        Features
+                    </button>
                     <Link href="/community" className="hover:text-white text-white/70 transition-colors pb-1">Community</Link>
-                    <Link href="/labs" className="hover:text-white text-white/70 transition-colors pb-1">Labs</Link>
+                    <button
+                        onClick={() => {
+                            if (isRealisticMode) {
+                                setShowModeSwitchModal({
+                                    isOpen: true,
+                                    targetUrl: "/labs",
+                                    targetLabel: "Labs & Interactive Tools"
+                                });
+                            } else {
+                                router.push("/labs");
+                            }
+                        }}
+                        className="hover:text-white text-white/70 transition-colors pb-1 cursor-pointer"
+                    >
+                        Labs
+                    </button>
                     <Link href="/jobs" className="hover:text-white text-white/70 transition-colors pb-1">Jobs</Link>
                     {!isRealisticMode && (
                         <Link 
@@ -1172,15 +1319,23 @@ export default function Home() {
                                 </button>
                             </div>
                         )}
-                        {!isRealisticMode && (
-                            <Link 
-                                href="/features" 
-                                onClick={() => setMobileMenuOpen(false)}
-                                className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
-                            >
-                                Features
-                            </Link>
-                        )}
+                        <button 
+                            onClick={() => {
+                                setMobileMenuOpen(false);
+                                if (isRealisticMode) {
+                                    setShowModeSwitchModal({
+                                        isOpen: true,
+                                        targetUrl: "/features",
+                                        targetLabel: "Features & Practice Tools"
+                                    });
+                                } else {
+                                    router.push("/features");
+                                }
+                            }}
+                            className="text-lg font-semibold text-white/80 hover:text-white transition-colors cursor-pointer"
+                        >
+                            Features
+                        </button>
                         <Link
                             href="/community"
                             onClick={() => setMobileMenuOpen(false)}
@@ -1188,13 +1343,23 @@ export default function Home() {
                         >
                             Community
                         </Link>
-                        <Link
-                            href="/labs"
-                            onClick={() => setMobileMenuOpen(false)}
-                            className="text-lg font-semibold text-white/80 hover:text-white transition-colors"
+                        <button
+                            onClick={() => {
+                                setMobileMenuOpen(false);
+                                if (isRealisticMode) {
+                                    setShowModeSwitchModal({
+                                        isOpen: true,
+                                        targetUrl: "/labs",
+                                        targetLabel: "Labs & Interactive Tools"
+                                    });
+                                } else {
+                                    router.push("/labs");
+                                }
+                            }}
+                            className="text-lg font-semibold text-white/80 hover:text-white transition-colors cursor-pointer"
                         >
                             Labs
-                        </Link>
+                        </button>
                         <Link
                             href="/jobs"
                             onClick={() => setMobileMenuOpen(false)}
@@ -1680,6 +1845,9 @@ export default function Home() {
                     </div>
                 </section>
             )}
+
+            {/* Mode Switch Popup Modal for Realistic AI Mode */}
+            {renderModeSwitchModal()}
         </div>
     );
 }
