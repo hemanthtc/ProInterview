@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect } from "react";
+import Link from "next/link";
 import type { VoiceCoachSnapshot } from "../utils/voiceCoach";
 import { loadVoiceWeek, recordVoiceWeek, voiceWeekSummary } from "../utils/voiceCoachHistory";
 import { Activity, Gauge, MessageSquareWarning, Type } from "lucide-react";
@@ -26,7 +27,10 @@ export default function VoiceCoachPanel({ snapshot, compact = false, className =
     if (!snapshot) {
         return (
             <div className={`rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-white/50 ${className}`}>
-                Voice coach idle — speak to get live confidence, pace, and filler feedback.
+                Voice coach idle — speak to get live confidence, pace, and filler feedback.{" "}
+                <Link href="/english" className="text-sky-400 font-bold hover:underline">
+                    English lab
+                </Link>
             </div>
         );
     }
@@ -68,6 +72,9 @@ export default function VoiceCoachPanel({ snapshot, compact = false, className =
                 <Stat icon={<Type className="w-3.5 h-3.5" />} label="Words" value={`${snapshot.words}`} />
             </div>
 
+            <Link href="/english" className="block text-[11px] font-bold text-sky-400 hover:underline">
+                Train English fluency →
+            </Link>
             {snapshot.tips?.length > 0 && (
                 <ul className="space-y-1.5">
                     {snapshot.tips.map((tip, i) => (

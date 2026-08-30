@@ -113,6 +113,15 @@ const CATEGORIES: Category[] = [
                 badges: ["Sign-in"],
             },
             {
+                id: "english_fluency",
+                href: "/english",
+                title: "English Fluency",
+                desc: "New words, speaking, interview English",
+                icon: Globe2,
+                color: "sky",
+                badges: ["New", "Public"],
+            },
+            {
                 id: "domain_packs",
                 href: "/domains",
                 title: "Domain Packs",

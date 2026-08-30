@@ -4,6 +4,11 @@ import { NextRequest, NextResponse } from "next/server";
 const PUBLIC_PATHS = [
     "/",
     "/login",
+    "/labs",
+    "/coding-lab",
+    "/community",
+    "/peer-mock",
+    "/english",
 ];
 
 export function proxy(req: NextRequest) {

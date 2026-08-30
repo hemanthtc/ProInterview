@@ -5,6 +5,7 @@ import {
     Briefcase,
     Code2,
     FileSearch,
+    Languages,
     PenTool,
     Target,
     Users,
@@ -200,6 +201,15 @@ export default function FeatureToolsGrid({
                     icon: Target,
                     color: "violet",
                     badges: ["New", "Sign-in"],
+                },
+                {
+                    id: "english_fluency",
+                    href: "/english",
+                    title: "English Fluency",
+                    desc: "Words, speak, 60s fluency, polish campus English",
+                    icon: Languages,
+                    color: "sky",
+                    badges: ["New", "Public"],
                 },
                 {
                     id: "system_design",

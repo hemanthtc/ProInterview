@@ -25,6 +25,7 @@ const SYSTEM_FEATURES = [
     { id: "coding_lab", label: "Coding Lab submissions" },
     { id: "system_design", label: "System Design Lab shapes & evaluate" },
     { id: "star_coach", label: "STAR behavioral coach drills" },
+    { id: "english_fluency", label: "English fluency lab (words + speaking)" },
     { id: "coaches", label: "Coach Marketplace slot bookings" },
     { id: "negotiate", label: "Salary Intel & Negotiation Simulator" },
     { id: "aptitude", label: "Aptitude Quizzes & Mock Exams" },

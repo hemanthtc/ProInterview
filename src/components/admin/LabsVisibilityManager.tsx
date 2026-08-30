@@ -62,6 +62,7 @@ const ALL_CATEGORIES: Category[] = [
             { id: "start_interview", title: "Start Interview Session", desc: "Real-time AI interview" },
             { id: "panel_interview", title: "Panel Interviews", desc: "Multi-interviewer rounds" },
             { id: "star_coach", title: "STAR Coach", desc: "Behavioral question drills" },
+            { id: "english_fluency", title: "English Fluency", desc: "Words, speaking, interview English" },
             { id: "system_design", title: "System Design Lab", desc: "Shapes, freestyle, eval" },
             { id: "coding_lab", title: "Coding Lab", desc: "Progressive hidden tests" },
         ],
