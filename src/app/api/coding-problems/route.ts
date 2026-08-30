@@ -1,101 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { CODING_PROBLEMS, getProblemPublic, progressivePath } from "@/data/codingProblems";
+import { buildFunctionHarness, compareOutputs, normalizeStdout } from "@/utils/codingHarness";
+import { pickAssessmentProblems, mulberry32 } from "@/utils/pickAssessmentProblems";
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
 
 const PISTON_URL = "https://emkc.org/api/v2/piston/execute";
 
-function buildHarness(problemId: string, language: string, code: string, tests: { input: string; expected: string }[]): string | null {
-    if (language === "javascript" || language === "js") {
-        const cases = JSON.stringify(tests);
-        let invoke = "";
-        switch (problemId) {
-            case "two-sum":
-                invoke = `const a = JSON.parse(t.input); out = JSON.stringify(twoSum(a.nums, a.target));`;
-                break;
-            case "valid-anagram":
-                invoke = `const a = JSON.parse(t.input); out = String(isAnagram(a.s, a.t));`;
-                break;
-            case "course-schedule":
-                invoke = `const a = JSON.parse(t.input); out = String(canFinish(a.numCourses, a.prerequisites));`;
-                break;
-            case "word-break":
-                invoke = `const a = JSON.parse(t.input); out = String(wordBreak(a.s, a.wordDict));`;
-                break;
-            case "lru-cache":
-                invoke = `
-                  const a = JSON.parse(t.input);
-                  const ops = a.ops; const args = a.args;
-                  const res = [];
-                  let cache = null;
-                  for (let i = 0; i < ops.length; i++) {
-                    const op = ops[i];
-                    if (op === "LRUCache") { cache = new LRUCache(args[i][0]); res.push(null); }
-                    else if (op === "put") { cache.put(args[i][0], args[i][1]); res.push(null); }
-                    else if (op === "get") { res.push(cache.get(args[i][0])); }
-                  }
-                  out = JSON.stringify(res);
-                `;
-                break;
-            default:
-                return null;
-        }
-        return `${code}
-const __tests = ${cases};
-const __results = [];
-for (const t of __tests) {
-  let out = "";
-  let err = null;
-  try {
-    ${invoke}
-  } catch (e) {
-    err = String(e && e.message ? e.message : e);
-  }
-  __results.push({ output: out, error: err, expected: t.expected });
-}
-console.log(JSON.stringify(__results));
-`;
-    }
-
-    if (language === "python") {
-        const cases = JSON.stringify(tests);
-        let invoke = "";
-        switch (problemId) {
-            case "two-sum":
-                invoke = `a = json.loads(t["input"]); out = json.dumps(two_sum(a["nums"], a["target"]))`;
-                break;
-            case "valid-anagram":
-                invoke = `a = json.loads(t["input"]); out = str(is_anagram(a["s"], a["t"])).lower()`;
-                break;
-            case "course-schedule":
-                invoke = `a = json.loads(t["input"]); out = str(can_finish(a["numCourses"], a["prerequisites"])).lower()`;
-                break;
-            case "word-break":
-                invoke = `a = json.loads(t["input"]); out = str(word_break(a["s"], a["wordDict"])).lower()`;
-                break;
-            default:
-                return null;
-        }
-        return `import json
-${code}
-__tests = json.loads(${JSON.stringify(cases)})
-__results = []
-for t in __tests:
-    out = ""
-    err = None
-    try:
-        ${invoke}
-    except Exception as e:
-        err = str(e)
-    __results.append({"output": out, "error": err, "expected": t["expected"]})
-print(json.dumps(__results))
-`;
-    }
-
-    return null;
-}
-
-async function runOnPiston(language: string, source: string): Promise<{ ok: boolean; stdout: string; stderr: string; detail?: string }> {
+async function runOnPiston(
+    language: string,
+    source: string,
+    stdin = ""
+): Promise<{ ok: boolean; stdout: string; stderr: string; detail?: string }> {
     const pistonLang = language === "python" ? "python" : "javascript";
     const version = language === "python" ? "3.10.0" : "18.15.0";
     const filename = language === "python" ? "main.py" : "main.js";
@@ -107,6 +23,7 @@ async function runOnPiston(language: string, source: string): Promise<{ ok: bool
             language: pistonLang,
             version,
             files: [{ name: filename, content: source }],
+            stdin,
             compile_timeout: 10000,
             run_timeout: 10000,
         }),
@@ -132,6 +49,18 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     const path = searchParams.get("path");
+    const mode = searchParams.get("mode");
+    if (mode === "assessment") {
+        const count = Math.min(4, Math.max(1, Number(searchParams.get("count") || 3)));
+        const seedRaw = searchParams.get("seed");
+        const rng = seedRaw != null && seedRaw !== "" ? mulberry32(Number(seedRaw) || 1) : Math.random;
+        const picked = pickAssessmentProblems(count, rng);
+        return NextResponse.json({
+            mode: "assessment",
+            durationSec: 60 * 60,
+            problems: picked.map((p) => getProblemPublic(p.id)),
+        });
+    }
     if (path === "1") {
         return NextResponse.json({ path: progressivePath(), problems: CODING_PROBLEMS.map((p) => getProblemPublic(p.id)) });
     }
@@ -173,7 +102,42 @@ export async function POST(req: NextRequest) {
 
         const lang = String(language || "javascript").toLowerCase();
         const allTests = [...problem.publicTests, ...problem.hiddenTests];
-        const harness = buildHarness(problemId, lang, code, allTests);
+
+        if (problem.ioMode === "stdio") {
+            const results = [];
+            for (let i = 0; i < allTests.length; i++) {
+                const test = allTests[i];
+                const hidden = i >= problem.publicTests.length;
+                const run = await runOnPiston(lang, code, test.input);
+                if (!run.ok) {
+                    return NextResponse.json(
+                        { error: run.detail || "Code execution service unavailable", score: null },
+                        { status: 502 }
+                    );
+                }
+                const output = normalizeStdout(run.stdout);
+                const passed = !run.stderr && compareOutputs(run.stdout, test.expected);
+                results.push({
+                    passed,
+                    input: hidden ? "[hidden]" : test.input,
+                    expected: hidden ? "[hidden]" : test.expected,
+                    output: hidden && !passed ? "[hidden failure]" : run.stderr || output,
+                    hidden,
+                });
+            }
+            const passedCount = results.filter((r) => r.passed).length;
+            const score = Math.round((passedCount / results.length) * 100);
+            return NextResponse.json({
+                score,
+                passedCount,
+                total: results.length,
+                results,
+                nextId: score >= 70 ? problem.nextId : undefined,
+                unlockedNext: Boolean(problem.nextId && score >= 70),
+            });
+        }
+
+        const harness = buildFunctionHarness(problem, lang, code, allTests);
         if (!harness) {
             return NextResponse.json(
                 { error: "This problem/language combo is not supported by the sandboxed grader yet." },
@@ -213,7 +177,7 @@ export async function POST(req: NextRequest) {
 
         const results = parsed.map((r, i) => {
             const hidden = i >= problem.publicTests.length;
-            const passed = !r.error && String(r.output) === String(r.expected);
+            const passed = !r.error && compareOutputs(String(r.output), String(r.expected));
             return {
                 passed,
                 input: hidden ? "[hidden]" : allTests[i].input,

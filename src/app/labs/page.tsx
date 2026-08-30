@@ -121,6 +121,15 @@ const CATEGORIES: Category[] = [
                 color: "lime",
                 badges: ["Public"],
             },
+            {
+                id: "coding_assessment",
+                href: "/coding-assessment",
+                title: "Coding Assessment",
+                desc: "HackerRank-style timed test + AI proctor",
+                icon: Code2,
+                color: "amber",
+                badges: ["New", "Sign-in"],
+            },
         ],
     },
     {
