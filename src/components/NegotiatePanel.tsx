@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Handshake, Loader2, Send, Sparkles, ChevronDown, ChevronUp, RotateCcw, Copy, Check, ShieldAlert } from "lucide-react";
+import { Handshake, Loader2, Send, Sparkles, ChevronDown, ChevronUp, RotateCcw, Copy, Check } from "lucide-react";
 
 type Mode = "simulate" | "coach";
 
@@ -51,53 +51,10 @@ export default function NegotiatePanel({
     const [mode, setMode] = useState<Mode>("coach");
     const [userMessage, setUserMessage] = useState("");
     const [history, setHistory] = useState<ChatTurn[]>([]);
-    const [levers, setLevers] = useState<string[]>([]);
-    const [redLines, setRedLines] = useState<string[]>([]);
-    const [mood, setMood] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [showInputs, setShowInputs] = useState(true);
     const [copiedScriptIndex, setCopiedScriptIndex] = useState<number | null>(null);
-    const [salaryIntel, setSalaryIntel] = useState<any>(null);
-    const [salaryLoading, setSalaryLoading] = useState(false);
-
-    useEffect(() => {
-        setCompany(defaultCompany);
-    }, [defaultCompany]);
-
-    useEffect(() => {
-        setRole(defaultRole);
-    }, [defaultRole]);
-
-    useEffect(() => {
-        setCurrentOffer(defaultCurrentOffer);
-    }, [defaultCurrentOffer]);
-
-    useEffect(() => {
-        setBenefits(defaultBenefits);
-    }, [defaultBenefits]);
-
-    async function loadSalaryIntel() {
-        setSalaryLoading(true);
-        setError("");
-        try {
-            const res = await fetch("/api/salary-intel", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ company, role, currentOffer, level: "mid" }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Salary intel failed");
-            setSalaryIntel(data);
-            if (data.totalCompRange?.p50 && !targetComp) {
-                setTargetComp(String(data.totalCompRange.p50));
-            }
-        } catch (e: unknown) {
-            setError(e instanceof Error ? e.message : "Salary intel failed");
-        } finally {
-            setSalaryLoading(false);
-        }
-    }
 
     const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -160,9 +117,6 @@ export default function NegotiatePanel({
             const newRedLines = Array.isArray(data.redLines) ? data.redLines : [];
             const newMood = data.mood || "";
 
-            setLevers(newLevers);
-            setRedLines(newRedLines);
-            setMood(newMood);
             setUserMessage("");
 
             if (onUpdateStrategy) {
@@ -181,9 +135,6 @@ export default function NegotiatePanel({
 
     const resetSession = () => {
         setHistory([]);
-        setLevers([]);
-        setRedLines([]);
-        setMood("");
         setShowInputs(true);
         setUserMessage("");
         setError("");

@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
-import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
+import { useRouter } from "next/navigation";
+import { getStorageItem, setStorageItem } from "../utils/storage";
 import type { PrepPack } from "../utils/prepPack";
 import { Bell, CheckSquare, ClipboardList, Square, Trash2, Play, Compass, DollarSign, Calendar, Mail } from "lucide-react";
 import { syncSessionsToCloud } from "../utils/cloudSync";
@@ -37,6 +38,7 @@ export default function PrepPackPanel({
     onCreateRoadmap,
     onOpenNegotiation,
 }: PrepPackPanelProps) {
+    const router = useRouter();
     const [packs, setPacks] = useState<PrepPack[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [now, setNow] = useState(() => Date.now());
@@ -305,7 +307,7 @@ export default function PrepPackPanel({
                                     if (active.hrName) {
                                         /* keep any existing activeHrIntel */
                                     }
-                                    window.location.href = "/setup";
+                                    router.push("/setup");
                                 }}
                                 className="flex-1 min-w-[130px] px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-semibold text-white/90 transition-all cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
                             >

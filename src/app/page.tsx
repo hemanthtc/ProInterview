@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { 
-    ArrowRight, Video, FileText, Settings, ShieldCheck, MessageSquare, Download, Play, Trash2, Sparkles, Sun, Moon, Eye, Menu, X,
+    ArrowRight, FileText, Settings, ShieldCheck, MessageSquare, Download, Play, Trash2, Sparkles, Sun, Moon, Eye, Menu, X,
     Compass, TrendingUp, Database, Code, CalendarClock, Award, Flame, User, Home as HomeIcon, FlaskConical,
     Code2, Clapperboard, FileSearch
 } from "lucide-react";
@@ -11,7 +11,6 @@ import { useRouter } from "next/navigation";
 import { buildPrepSnapshot } from "../utils/labProgress";
 import { marked } from "marked";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
-import { motion } from "framer-motion";
 import BrandLogo from "../components/BrandLogo";
 import NotificationBell from "../components/NotificationBell";
 import ProgressPanel from "../components/features/ProgressPanel";
@@ -19,7 +18,7 @@ import ProgressPanel from "../components/features/ProgressPanel";
 interface MobileDashboardContentProps {
     theme: "dark" | "light" | "eyeprotect";
     isRealisticMode: boolean;
-    onSelectAnalysis: () => void;
+    onSelectAnalysis?: () => void;
     onStartInterview: () => void;
     onSelectProgress: () => void;
 }
@@ -27,7 +26,6 @@ interface MobileDashboardContentProps {
 function MobileDashboardContent({
     theme,
     isRealisticMode,
-    onSelectAnalysis,
     onStartInterview,
     onSelectProgress,
 }: MobileDashboardContentProps) {
@@ -49,6 +47,7 @@ function MobileDashboardContent({
 
     // Filter sessions to find this month's attempts
     const sessionsThisMonth = pastSessions.filter((s: any) => {
+        if (!s.timestamp) return false;
         const d = new Date(s.timestamp);
         const now = new Date();
         return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
@@ -62,26 +61,29 @@ function MobileDashboardContent({
     const dayStreak = 5; // fallback to 5
 
     // Get display sessions: if empty, show the mock sessions from the screenshot
-    const displaySessions = pastSessions.length > 0 ? pastSessions.slice(0, 2) : [
-        {
-            id: "mock1",
-            role: "Interview Session",
-            timestamp: Date.now() - 24 * 60 * 60 * 1000, // yesterday
-            finalScore: 85,
-            duration: "45 min",
-            difficulty: "Intermediate",
-            isMock: true
-        },
-        {
-            id: "mock2",
-            role: "Interview Session",
-            timestamp: Date.now() - 2 * 24 * 60 * 65 * 1000, // 2 days ago
-            finalScore: 85,
-            duration: "60 min",
-            difficulty: "Intermediate",
-            isMock: true
-        }
-    ];
+    const displaySessions = useMemo(() => {
+        if (pastSessions.length > 0) return pastSessions.slice(0, 2);
+        return [
+            {
+                id: "mock1",
+                role: "Interview Session",
+                timestamp: 1700000000000,
+                finalScore: 85,
+                duration: "45 min",
+                difficulty: "Intermediate",
+                isMock: true
+            },
+            {
+                id: "mock2",
+                role: "Interview Session",
+                timestamp: 1699900000000,
+                finalScore: 85,
+                duration: "60 min",
+                difficulty: "Intermediate",
+                isMock: true
+            }
+        ];
+    }, [pastSessions]);
 
     return (
         <div className="w-full max-w-md mx-auto flex flex-col gap-5 px-1 animate-in fade-in duration-300">
@@ -282,17 +284,11 @@ function MobileDashboardContent({
                         const ringColor = isPurple ? "stroke-purple-500" : "stroke-emerald-400";
                         const badgeBg = isPurple ? "bg-purple-500/10 text-purple-400 border border-purple-500/20" : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                         
-                        let timeText = "Just now";
+                        let timeText = "Recently";
                         if (sess.isMock) {
                             timeText = sess.id === "mock1" ? "Yesterday" : "2 days ago";
-                        } else {
-                            const diff = Date.now() - sess.timestamp;
-                            const mins = Math.floor(diff / 60000);
-                            const hours = Math.floor(mins / 60);
-                            const days = Math.floor(hours / 24);
-                            if (days > 0) timeText = days === 1 ? "Yesterday" : `${days} days ago`;
-                            else if (hours > 0) timeText = `${hours}h ago`;
-                            else if (mins > 0) timeText = `${mins}m ago`;
+                        } else if (sess.timestamp) {
+                            timeText = "Completed";
                         }
 
                         const duration = sess.duration || "45 min";

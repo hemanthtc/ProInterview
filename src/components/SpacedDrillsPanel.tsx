@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getStorageItem, setStorageItem } from "../utils/storage";
 import { buildSpacedDrills, drillsDue, type SpacedDrill } from "../utils/spacedDrills";
 import { CalendarClock, RefreshCw, Zap } from "lucide-react";
@@ -131,6 +132,7 @@ function DrillCard({
     onDone: () => void;
     due?: boolean;
 }) {
+    const router = useRouter();
     const dueLabel = new Date(drill.dueAt).toLocaleDateString(undefined, {
         month: "short",
         day: "numeric",
@@ -160,7 +162,7 @@ function DrillCard({
                         onClick={() => {
                             setStorageItem("focusedRetakePrompt", drill.prompt);
                             setStorageItem("interviewLevel", drill.difficulty);
-                            window.location.href = "/setup";
+                            router.push("/setup");
                         }}
                         className="text-[11px] font-bold text-teal-300 hover:text-teal-200"
                     >

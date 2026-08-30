@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Video, LogOut, Download, TrendingUp, User, Award, Activity, Trash2, Sparkles, Loader2, ChevronDown, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, AlertTriangle } from "lucide-react";
+import { ArrowLeft, LogOut, Download, User, Award, Trash2, Sparkles, Loader2, ChevronDown, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { ProfileInterviewSession, ProfileToastState } from "../../types/profile";
 import { useRouter } from "next/navigation";

@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { DOMAIN_PACKS } from "../../data/domainPacks";
 import { Layers, Moon, Sun, Eye } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 
 export default function DomainsPage() {
+    const router = useRouter();
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
 
     useEffect(() => {
@@ -106,7 +108,7 @@ export default function DomainsPage() {
                                         onClick={() => {
                                             localStorage.setItem("domainPackId", d.id);
                                             localStorage.setItem("preferredRoles", d.name);
-                                            window.location.href = "/setup";
+                                            router.push("/setup");
                                         }}
                                     >
                                         Full mock
@@ -119,7 +121,7 @@ export default function DomainsPage() {
                                             const q = d.behavioralThemes?.[0]
                                                 ? `Tell me about a time related to: ${d.behavioralThemes[0]}`
                                                 : d.signatureQuestions[0] || "Tell me about a relevant project.";
-                                            window.location.href = `/star-coach?question=${encodeURIComponent(q)}&weakSpot=${encodeURIComponent("domain depth")}`;
+                                            router.push(`/star-coach?question=${encodeURIComponent(q)}&weakSpot=${encodeURIComponent("domain depth")}`);
                                         }}
                                     >
                                         STAR drill
@@ -129,7 +131,7 @@ export default function DomainsPage() {
                                         className="rounded-xl border border-white/15 px-3 py-2 text-sm text-white/80"
                                         onClick={() => {
                                             localStorage.setItem("domainPackId", d.id);
-                                            window.location.href = "/system-design";
+                                            router.push("/system-design");
                                         }}
                                     >
                                         Design lab

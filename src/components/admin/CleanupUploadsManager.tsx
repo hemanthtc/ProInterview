@@ -10,8 +10,7 @@ import {
     ShieldAlert,
     HardDrive,
     Sparkles,
-    FileIcon,
-    Clock
+    FileIcon
 } from "lucide-react";
 
 interface ExpiredFile {
