@@ -533,23 +533,25 @@ export async function DELETE(req: NextRequest) {
         }
 
         const senderId = session.identifier.toLowerCase();
+        const isAdmin = session.role === "admin" || (session as any).isAdmin === true;
 
         // 1. AWS S3 Check
         if (isS3Configured()) {
-            const success = await s3DeleteMessages(roomSlug, ids, senderId);
+            const success = await s3DeleteMessages(roomSlug, ids, senderId, isAdmin);
             if (success) {
                 return NextResponse.json({ success: true });
             }
-            return NextResponse.json({ error: "Messages not found or you are not the author." }, { status: 403 });
+            return NextResponse.json({ error: "Messages not found or insufficient permissions to delete." }, { status: 403 });
         }
 
         // 2. MongoDB Fallback
         try {
             await connectDB();
-            const res = await CommunityMessage.deleteMany({
-                _id: { $in: ids },
-                senderId: senderId,
-            });
+            const filter: any = { _id: { $in: ids } };
+            if (!isAdmin) {
+                filter.senderId = senderId;
+            }
+            const res = await CommunityMessage.deleteMany(filter);
             if (res.deletedCount && res.deletedCount > 0) {
                 return NextResponse.json({ success: true });
             }
@@ -558,12 +560,12 @@ export async function DELETE(req: NextRequest) {
         }
 
         // 3. Memory store fallback
-        const success = memDeleteMessages(ids, senderId);
+        const success = memDeleteMessages(ids, senderId, isAdmin);
         if (success) {
             return NextResponse.json({ success: true });
         }
 
-        return NextResponse.json({ error: "Messages not found or you are not the author." }, { status: 403 });
+        return NextResponse.json({ error: "Messages not found or insufficient permissions to delete." }, { status: 403 });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : "Failed to delete message";
         return NextResponse.json({ error: message }, { status: 500 });

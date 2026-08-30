@@ -179,14 +179,14 @@ export async function s3LikeMessage(roomSlug: string, messageId: string, userPub
     }
 }
 
-export async function s3DeleteMessages(roomSlug: string, messageIds: string[], senderId: string): Promise<boolean> {
+export async function s3DeleteMessages(roomSlug: string, messageIds: string[], senderId: string, isAdmin = false): Promise<boolean> {
     const key = `community/messages/${roomSlug}.json`;
     try {
         const messages = await s3GetMessages(roomSlug);
         const nextMessages = messages.filter(m => {
             const isTarget = messageIds.includes(m.id);
             const isOwner = m.senderId.toLowerCase() === senderId.toLowerCase();
-            return !(isTarget && isOwner);
+            return !(isTarget && (isOwner || isAdmin));
         });
         if (messages.length === nextMessages.length) return false;
 

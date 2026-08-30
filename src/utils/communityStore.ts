@@ -183,14 +183,14 @@ export function memOnline(withinMs = 45_000) {
         .sort((a, b) => a.displayName.localeCompare(b.displayName));
 }
 
-export function memDeleteMessages(messageIds: string[], senderId: string): boolean {
+export function memDeleteMessages(messageIds: string[], senderId: string, isAdmin = false): boolean {
     const s = store();
     const cleanSender = senderId.toLowerCase();
     const beforeCount = s.messages.length;
     s.messages = s.messages.filter(m => {
         const isTarget = messageIds.includes(m.id);
         const isOwner = m.senderId.toLowerCase() === cleanSender;
-        return !(isTarget && isOwner);
+        return !(isTarget && (isOwner || isAdmin));
     });
     return s.messages.length < beforeCount;
 }
