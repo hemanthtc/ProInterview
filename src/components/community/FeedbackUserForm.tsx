@@ -119,10 +119,18 @@ export default function FeedbackUserForm({ theme = "dark" }: { theme?: "dark" | 
         setUploading(true);
         try {
             const processed = await processImageForUpload(file);
-            setAttachmentUrl(processed);
+            const reader = new FileReader();
+            reader.onload = () => {
+                setAttachmentUrl(reader.result as string);
+                setUploading(false);
+            };
+            reader.onerror = () => {
+                setErrorMessage("Failed to read image file.");
+                setUploading(false);
+            };
+            reader.readAsDataURL(processed);
         } catch (err: any) {
             setErrorMessage(err.message || "Failed to process attachment");
-        } finally {
             setUploading(false);
         }
     };

@@ -1121,7 +1121,8 @@ export default function CommunityPage() {
                         </div>
                     </form>
                     </>
-                </section>
+                )}
+            </section>
 
                 {/* Online */}
                 <aside className={`hidden md:flex flex-col border-l overflow-y-auto ${
