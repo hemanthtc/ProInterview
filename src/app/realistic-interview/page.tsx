@@ -60,6 +60,7 @@ export default function RealisticInterviewRoom() {
     const avatarVideoRef = useRef<HTMLVideoElement>(null);
     const avatarVideoElementsRef = useRef<Set<HTMLVideoElement>>(new Set());
     const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null);
+    const [isAvatarGenerating, setIsAvatarGenerating] = useState(false);
     const [isDidAvailable, setIsDidAvailable] = useState<boolean | null>(null);
     const [avatarType, setAvatarType] = useState<"tavus" | "svg">(() => {
         const saved = getStorageItem("tavusSelectedAvatarType");

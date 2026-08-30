@@ -13,7 +13,7 @@ describe("Avatar Credit Safety & Default Mode Lifecycle", () => {
 
     it("does not trigger Tavus stream API on room initialization when avatar is SVG", () => {
         const fetchMock = vi.fn();
-        const savedAvatarType = "svg";
+        const savedAvatarType: "svg" | "tavus" = "svg";
 
         if (savedAvatarType === "tavus") {
             fetchMock("/api/tavus-stream", { method: "POST" });
