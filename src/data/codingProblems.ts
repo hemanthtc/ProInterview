@@ -428,11 +428,24 @@ export const CODING_PROBLEMS: CodingProblem[] = [
     },
 ];
 
+const JAVA_STDIO_STARTER = `import java.util.*;
+public class Main {
+  public static void main(String[] args) {
+    Scanner sc = new Scanner(System.in);
+    // Read stdin and print the answer
+  }
+}
+`;
+
 export function getProblemPublic(id: string) {
     const p = CODING_PROBLEMS.find((x) => x.id === id);
     if (!p) return null;
     const { hiddenTests, invoke, ...rest } = p;
-    return { ...rest, hiddenTestCount: hiddenTests.length };
+    const starterCode = { ...rest.starterCode };
+    if (rest.ioMode === "stdio" && !starterCode.java) {
+        starterCode.java = JAVA_STDIO_STARTER;
+    }
+    return { ...rest, starterCode, hiddenTestCount: hiddenTests.length };
 }
 
 export function progressivePath(startId = "two-sum"): string[] {

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { companyBankPromptBlock, resolveCompanyBank } from "@/data/companyBanks";
+import { buildOfflineInterviewReply } from "@/utils/interviewFallback";
 
 export interface InterviewPayload {
     history?: any[];
@@ -213,11 +214,13 @@ export function formatGeminiParts(text: string, inlineAttach?: string): any[] {
 export async function sendGeminiMessageWithRetry(
     chat: any,
     nextParts: any[],
-    logContext: string = "interview generation"
+    logContext: string = "interview generation",
+    fallbackCtx?: { historyLength?: number; company?: string; role?: string }
 ): Promise<NextResponse | string> {
     const quotaFallback = () => {
         return NextResponse.json({
-            message: "[MODE:CHAT] I’m having trouble reaching the interview engine right now. Please try again shortly."
+            message: buildOfflineInterviewReply(fallbackCtx || {}),
+            provider: "offline",
         });
     };
 

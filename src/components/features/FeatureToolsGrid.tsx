@@ -228,6 +228,15 @@ export default function FeatureToolsGrid({
                     color: "emerald",
                     badges: ["New", "Sign-in"],
                 },
+                {
+                    id: "faculty_exams",
+                    href: "/faculty/exams",
+                    title: "Faculty Exams",
+                    desc: "Join codes, live scores, integrity log",
+                    icon: Code2,
+                    color: "cyan",
+                    badges: ["New", "Sign-in"],
+                },
             ],
         },
         {

@@ -2,48 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { CODING_PROBLEMS, getProblemPublic, progressivePath } from "@/data/codingProblems";
 import { buildFunctionHarness, compareOutputs, normalizeStdout } from "@/utils/codingHarness";
 import { pickAssessmentProblems, mulberry32 } from "@/utils/pickAssessmentProblems";
+import { runOnPiston } from "@/utils/piston";
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
-
-const PISTON_URL = "https://emkc.org/api/v2/piston/execute";
-
-async function runOnPiston(
-    language: string,
-    source: string,
-    stdin = ""
-): Promise<{ ok: boolean; stdout: string; stderr: string; detail?: string }> {
-    const pistonLang = language === "python" ? "python" : "javascript";
-    const version = language === "python" ? "3.10.0" : "18.15.0";
-    const filename = language === "python" ? "main.py" : "main.js";
-
-    const pistonRes = await fetch(PISTON_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            language: pistonLang,
-            version,
-            files: [{ name: filename, content: source }],
-            stdin,
-            compile_timeout: 10000,
-            run_timeout: 10000,
-        }),
-    }).catch(() => null);
-
-    if (!pistonRes) {
-        return { ok: false, stdout: "", stderr: "", detail: "Code execution service unreachable" };
-    }
-    if (!pistonRes.ok) {
-        const errText = await pistonRes.text().catch(() => "");
-        return { ok: false, stdout: "", stderr: "", detail: errText.slice(0, 300) || "Code execution service unavailable" };
-    }
-
-    const data = await pistonRes.json();
-    return {
-        ok: true,
-        stdout: String(data?.run?.stdout || data?.run?.output || ""),
-        stderr: String(data?.run?.stderr || data?.compile?.stderr || ""),
-    };
-}
 
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
@@ -74,7 +35,7 @@ export async function GET(req: NextRequest) {
     });
 }
 
-/** Grade submitted code against hidden tests via sandboxed Piston only (no local eval). */
+/** Grade submitted code against tests via sandboxed Piston only (no local eval). */
 export async function POST(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
@@ -82,8 +43,10 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
 
-        const { problemId, language = "javascript", code } = await req.json();
-        const rl = rateLimit(`coding-grade:${session.identifier}`, { limit: 30, windowMs: 15 * 60 * 1000 });
+        const body = await req.json();
+        const { problemId, language = "javascript", code, customStdin } = body;
+        const mode = body.mode === "run" ? "run" : "submit";
+        const rl = rateLimit(`coding-grade:${session.identifier}`, { limit: 40, windowMs: 15 * 60 * 1000 });
         if (!rl.allowed) {
             return NextResponse.json(
                 { error: `Rate limited. Retry in ${rl.retryAfterSec}s.` },
@@ -101,13 +64,34 @@ export async function POST(req: NextRequest) {
         }
 
         const lang = String(language || "javascript").toLowerCase();
+        if (lang === "java" && problem.ioMode !== "stdio") {
+            return NextResponse.json(
+                { error: "Java is available for stdin/stdout contest problems. Use JS or Python for function problems." },
+                { status: 400 }
+            );
+        }
+
+        if (mode === "run" && typeof customStdin === "string" && problem.ioMode === "stdio") {
+            const run = await runOnPiston(lang, code, customStdin);
+            if (!run.ok) {
+                return NextResponse.json({ error: run.detail || "Code execution service unavailable" }, { status: 502 });
+            }
+            return NextResponse.json({
+                mode: "run",
+                custom: true,
+                output: normalizeStdout(run.stdout),
+                stderr: run.stderr.slice(0, 400),
+            });
+        }
+
         const allTests = [...problem.publicTests, ...problem.hiddenTests];
+        const tests = mode === "run" ? problem.publicTests : allTests;
 
         if (problem.ioMode === "stdio") {
             const results = [];
-            for (let i = 0; i < allTests.length; i++) {
-                const test = allTests[i];
-                const hidden = i >= problem.publicTests.length;
+            for (let i = 0; i < tests.length; i++) {
+                const test = tests[i];
+                const hidden = mode === "submit" && i >= problem.publicTests.length;
                 const run = await runOnPiston(lang, code, test.input);
                 if (!run.ok) {
                     return NextResponse.json(
@@ -126,18 +110,19 @@ export async function POST(req: NextRequest) {
                 });
             }
             const passedCount = results.filter((r) => r.passed).length;
-            const score = Math.round((passedCount / results.length) * 100);
+            const score = tests.length ? Math.round((passedCount / results.length) * 100) : 0;
             return NextResponse.json({
+                mode,
                 score,
                 passedCount,
                 total: results.length,
                 results,
-                nextId: score >= 70 ? problem.nextId : undefined,
-                unlockedNext: Boolean(problem.nextId && score >= 70),
+                nextId: mode === "submit" && score >= 70 ? problem.nextId : undefined,
+                unlockedNext: Boolean(mode === "submit" && problem.nextId && score >= 70),
             });
         }
 
-        const harness = buildFunctionHarness(problem, lang, code, allTests);
+        const harness = buildFunctionHarness(problem, lang, code, tests);
         if (!harness) {
             return NextResponse.json(
                 { error: "This problem/language combo is not supported by the sandboxed grader yet." },
@@ -168,7 +153,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!Array.isArray(parsed) || parsed.length !== allTests.length) {
+        if (!Array.isArray(parsed) || parsed.length !== tests.length) {
             return NextResponse.json(
                 { error: "Incomplete harness results", score: null, detail: run.stderr.slice(0, 400) },
                 { status: 502 }
@@ -176,12 +161,12 @@ export async function POST(req: NextRequest) {
         }
 
         const results = parsed.map((r, i) => {
-            const hidden = i >= problem.publicTests.length;
+            const hidden = mode === "submit" && i >= problem.publicTests.length;
             const passed = !r.error && compareOutputs(String(r.output), String(r.expected));
             return {
                 passed,
-                input: hidden ? "[hidden]" : allTests[i].input,
-                expected: hidden ? "[hidden]" : allTests[i].expected,
+                input: hidden ? "[hidden]" : tests[i].input,
+                expected: hidden ? "[hidden]" : tests[i].expected,
                 output: hidden && !passed ? "[hidden failure]" : r.error || r.output,
                 hidden,
             };
@@ -189,9 +174,10 @@ export async function POST(req: NextRequest) {
 
         const passedCount = results.filter((r) => r.passed).length;
         const score = Math.round((passedCount / results.length) * 100);
-        const nextId = score >= 70 ? problem.nextId : undefined;
+        const nextId = mode === "submit" && score >= 70 ? problem.nextId : undefined;
 
         return NextResponse.json({
+            mode,
             score,
             passedCount,
             total: results.length,

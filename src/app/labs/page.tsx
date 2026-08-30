@@ -130,6 +130,15 @@ const CATEGORIES: Category[] = [
                 color: "amber",
                 badges: ["New", "Sign-in"],
             },
+            {
+                id: "faculty_exams",
+                href: "/faculty/exams",
+                title: "Faculty Exams",
+                desc: "Create join codes, watch scores & integrity",
+                icon: Code2,
+                color: "emerald",
+                badges: ["New", "Sign-in"],
+            },
         ],
     },
     {

@@ -14,6 +14,7 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import { checkAndIncrementUsage } from "@/utils/usageMeter";
 import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
+import { buildOfflineInterviewReply } from "@/utils/interviewFallback";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -149,8 +150,15 @@ ${ANTI_LEAK_SUFFIX}`;
             // fall through to Gemini if Sarvam chat fails
         }
 
-        if (!GEMINI_API_KEY) {
-            throw new Error("Missing GEMINI_API_KEY in environment variables.");
+        if (!GEMINI_API_KEY || GEMINI_API_KEY === "dummy") {
+            return NextResponse.json({
+                message: buildOfflineInterviewReply({
+                    historyLength: Array.isArray(history) ? history.length : 0,
+                    company: safeCompany,
+                    role: safeRoles,
+                }),
+                provider: "offline",
+            });
         }
         const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.7 } });
@@ -167,7 +175,11 @@ ${ANTI_LEAK_SUFFIX}`;
         });
 
         const nextParts = formatGeminiParts(message || "Hello!", attachment);
-        const responseResult = await sendGeminiMessageWithRetry(chat, nextParts, "standard interview generation");
+        const responseResult = await sendGeminiMessageWithRetry(chat, nextParts, "standard interview generation", {
+            historyLength: Array.isArray(history) ? history.length : 0,
+            company: safeCompany,
+            role: safeRoles,
+        });
 
         if (typeof responseResult !== "string") {
             return responseResult; // NextResponse fallback object
@@ -178,7 +190,8 @@ ${ANTI_LEAK_SUFFIX}`;
         console.error("AI Provider Error:", error);
         if (error?.status === 429 || String(error?.message || "").includes("quota")) {
             return NextResponse.json({
-                message: "[MODE:CHAT] I’m having trouble reaching the interview engine right now. Please try again shortly."
+                message: buildOfflineInterviewReply({ historyLength: 0 }),
+                provider: "offline",
             });
         }
         return NextResponse.json({ error: error.message || "Failed to generate AI response" }, { status: 500 });

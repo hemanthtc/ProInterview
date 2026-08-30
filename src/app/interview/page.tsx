@@ -15,6 +15,7 @@ import { syncSessionsToCloud } from "../../utils/cloudSync";
 import { buildSpacedDrills } from "../../utils/spacedDrills";
 import { resolveCompanyBank } from "../../data/companyBanks";
 import { speakInterviewText } from "../../utils/speakInterview";
+import DefaultInterviewerAvatar from "@/components/interview/DefaultInterviewerAvatar";
 
 export default function InterviewRoom() {
     const router = useRouter();
@@ -1330,8 +1331,8 @@ export default function InterviewRoom() {
                                                 className="absolute w-48 h-48 bg-indigo-500/30 rounded-full blur-2xl"
                                             />
                                         )}
-                                        <div className={`w-28 h-28 z-10 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-5xl shadow-[0_0_60px_rgba(79,70,229,0.5)] transition-all duration-300 ${isSpeaking ? "scale-110 shadow-[0_0_100px_rgba(79,70,229,0.9)] border-4 border-white/20" : "border-2 border-white/10"}`}>
-                                            🤖
+                                        <div className="z-10">
+                                            <DefaultInterviewerAvatar speaking={isSpeaking} />
                                         </div>
                                     </div>
                                 </div>
@@ -1364,8 +1365,8 @@ export default function InterviewRoom() {
                                             className="absolute w-36 h-36 bg-indigo-500/30 rounded-full blur-2xl"
                                         />
                                     )}
-                                    <div className={`w-20 h-20 z-10 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center text-3xl shadow-[0_0_30px_rgba(79,70,229,0.5)] transition-all duration-300 ${isSpeaking ? "scale-110 shadow-[0_0_60px_rgba(79,70,229,0.8)] border-2 border-white/20" : "border border-white/10"}`}>
-                                        🤖
+                                    <div className="z-10">
+                                        <DefaultInterviewerAvatar speaking={isSpeaking} compact />
                                     </div>
                                     <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 bg-black/60 backdrop-blur-md border border-white/10 px-2 py-1 rounded-lg text-[10px] font-semibold z-10">
                                         ProInterview <Volume2 className={`w-2.5 h-2.5 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />

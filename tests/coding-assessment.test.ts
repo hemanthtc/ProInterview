@@ -3,6 +3,8 @@ import { CODING_PROBLEMS, getProblemPublic } from "../src/data/codingProblems";
 import { pickAssessmentProblems, mulberry32 } from "../src/utils/pickAssessmentProblems";
 import { buildFunctionHarness, compareOutputs, normalizeStdout } from "../src/utils/codingHarness";
 import { estimateFaceFromImageData } from "../src/utils/localFacePresence";
+import { pistonLangConfig } from "../src/utils/piston";
+import { buildOfflineInterviewReply } from "../src/utils/interviewFallback";
 
 describe("assessment problem bank", () => {
     it("covers all four platforms", () => {
@@ -18,6 +20,22 @@ describe("assessment problem bank", () => {
         expect(pub && "hiddenTests" in pub).toBe(false);
         expect(pub?.sourceLabel).toBe("Codeforces");
         expect(pub?.ioMode).toBe("stdio");
+        expect(pub?.starterCode.java).toContain("class Main");
+    });
+});
+
+describe("piston languages", () => {
+    it("maps java to Main.java", () => {
+        expect(pistonLangConfig("java").filename).toBe("Main.java");
+        expect(pistonLangConfig("python").language).toBe("python");
+    });
+});
+
+describe("offline interview fallback", () => {
+    it("always returns a MODE:CHAT question", () => {
+        const msg = buildOfflineInterviewReply({ historyLength: 0, company: "TCS", role: "SDE" });
+        expect(msg.startsWith("[MODE:CHAT]")).toBe(true);
+        expect(msg).toMatch(/TCS|SDE|project|API|bug/i);
     });
 });
 

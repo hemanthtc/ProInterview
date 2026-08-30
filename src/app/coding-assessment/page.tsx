@@ -56,27 +56,98 @@ export default function CodingAssessmentPage() {
     const [remaining, setRemaining] = useState(60 * 60);
     const [durationSec, setDurationSec] = useState(60 * 60);
     const [loadError, setLoadError] = useState("");
+    const [examCode, setExamCode] = useState("");
+    const [examTitle, setExamTitle] = useState("");
+    const [customStdin, setCustomStdin] = useState("");
+    const [customOut, setCustomOut] = useState("");
 
     const proctor = useAssessmentProctor(phase === "live");
     const active = problems[activeIndex] || null;
     const code = active ? codeByProblem[active.id] || "" : "";
 
     useEffect(() => {
+        if (!active || language !== "java" || active.ioMode === "stdio") return;
+        setLanguage("javascript");
+        setCodeByProblem((prev) => ({ ...prev, [active.id]: active.starterCode?.javascript || prev[active.id] || "" }));
+    }, [active, language]);
+
+    function applyProblemSet(list: Problem[], duration: number, title = "") {
+        setProblems(list);
+        setDurationSec(duration);
+        setRemaining(duration);
+        setExamTitle(title);
+        const initial: Record<string, string> = {};
+        for (const p of list) {
+            initial[p.id] = p.starterCode?.javascript || "";
+        }
+        setCodeByProblem(initial);
+    }
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const fromUrl = (params.get("exam") || "").toUpperCase();
+        if (fromUrl) setExamCode(fromUrl);
+        if (fromUrl) {
+            fetch(`/api/exams?code=${encodeURIComponent(fromUrl)}`)
+                .then((r) => r.json())
+                .then((d) => {
+                    const list = (d.exam?.problems || []).filter(Boolean) as Problem[];
+                    if (!list.length) {
+                        setLoadError("Exam not found or you need to sign in.");
+                        return;
+                    }
+                    applyProblemSet(list, Number(d.exam.durationSec) || 3600, d.exam.title || "");
+                })
+                .catch(() => setLoadError("Could not load faculty exam."));
+            return;
+        }
         fetch("/api/coding-problems?mode=assessment&count=3")
             .then((r) => r.json())
             .then((d) => {
-                const list = (d.problems || []).filter(Boolean) as Problem[];
-                setProblems(list);
-                setDurationSec(Number(d.durationSec) || 3600);
-                setRemaining(Number(d.durationSec) || 3600);
-                const initial: Record<string, string> = {};
-                for (const p of list) {
-                    initial[p.id] = p.starterCode?.javascript || "";
-                }
-                setCodeByProblem(initial);
+                applyProblemSet((d.problems || []).filter(Boolean) as Problem[], Number(d.durationSec) || 3600);
             })
             .catch(() => setLoadError("Could not load a random assessment set."));
     }, []);
+
+    async function joinExam() {
+        const code = examCode.trim().toUpperCase();
+        if (!code) return;
+        setLoadError("");
+        const res = await fetch("/api/exams", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "join", code }),
+        });
+        const d = await res.json();
+        if (!res.ok) {
+            setLoadError(d.error || "Could not join exam.");
+            return;
+        }
+        const list = (d.exam?.problems || []).filter(Boolean) as Problem[];
+        applyProblemSet(list, Number(d.exam.durationSec) || 3600, d.exam.title || "");
+        window.history.replaceState(null, "", `/coding-assessment?exam=${code}`);
+    }
+
+    async function reportExam(extra: { submitted?: boolean; terminated?: boolean; scores?: Record<string, number> }) {
+        if (!examCode) return;
+        const scores = extra.scores || Object.fromEntries(
+            Object.entries(grades)
+                .filter(([, g]) => typeof g.score === "number")
+                .map(([id, g]) => [id, g.score as number])
+        );
+        await fetch("/api/exams", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                action: "report",
+                code: examCode,
+                events: proctor.events,
+                scores,
+                submitted: extra.submitted,
+                terminated: extra.terminated,
+            }),
+        }).catch(() => undefined);
+    }
 
     useEffect(() => {
         if (phase !== "live") return;
@@ -94,46 +165,74 @@ export default function CodingAssessmentPage() {
 
     useEffect(() => {
         if (proctor.terminated && phase === "live") {
+            void reportExam({ terminated: true, submitted: true });
             setPhase("submitted");
             proctor.stopCamera();
         }
     }, [proctor.terminated, phase, proctor.stopCamera]);
 
+    useEffect(() => {
+        if (phase === "live" && examCode && proctor.events.length) {
+            void reportExam({});
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [proctor.events.length, phase, examCode]);
+
     const startAssessment = useCallback(async () => {
+        if (examCode) {
+            await fetch("/api/exams", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "join", code: examCode }),
+            }).catch(() => undefined);
+        }
         const cam = await proctor.startCamera();
         if (!cam) return;
         await proctor.requestFullscreen();
         setPhase("live");
         setRemaining(durationSec);
-    }, [proctor, durationSec]);
+    }, [proctor, durationSec, examCode]);
 
     const setCode = (value: string) => {
         if (!active) return;
         setCodeByProblem((prev) => ({ ...prev, [active.id]: value }));
     };
 
-    async function gradeCurrent() {
+    async function gradeCurrent(mode: "run" | "submit") {
         if (!active) return;
         setLoading(true);
         setError("");
+        setCustomOut("");
         try {
+            const payload: Record<string, unknown> = { problemId: active.id, language, code, mode };
+            if (mode === "run" && customStdin.trim() && active.ioMode === "stdio") {
+                payload.customStdin = customStdin;
+            }
             const res = await fetch("/api/coding-problems", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ problemId: active.id, language, code }),
+                body: JSON.stringify(payload),
             });
             const data = await res.json();
             if (!res.ok) {
                 setError(data.error || "Grading failed — sign in required.");
                 return;
             }
+            if (data.custom) {
+                setCustomOut(data.stderr ? data.stderr : data.output || "(empty)");
+                return;
+            }
             setGrades((prev) => ({ ...prev, [active.id]: data }));
+            if (mode === "submit" && examCode && typeof data.score === "number") {
+                void reportExam({ scores: { [active.id]: data.score } });
+            }
         } finally {
             setLoading(false);
         }
     }
 
     function finish() {
+        void reportExam({ submitted: true });
         setPhase("submitted");
         proctor.stopCamera();
         if (document.fullscreenElement) {
@@ -199,7 +298,23 @@ export default function CodingAssessmentPage() {
                     </p>
                     <LabAuthBanner feature="sandboxed grading and AI face monitoring" />
                     <div className="mt-6 grid gap-3 text-sm">
-                        <div className="rounded-xl border border-white/10 bg-white/5 p-4">3 questions · 60 minutes · JS / Python</div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-4">
+                            {examTitle ? `${examTitle} · ` : ""}3 questions · JS / Python / Java (stdin problems)
+                        </div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                        <input
+                            value={examCode}
+                            onChange={(e) => setExamCode(e.target.value.toUpperCase())}
+                            placeholder="Faculty exam code"
+                            className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm font-mono w-44"
+                        />
+                        <button type="button" onClick={() => void joinExam()} className="text-xs font-bold text-emerald-400 hover:underline">
+                            Join exam
+                        </button>
+                        <Link href="/faculty/exams" className="text-xs text-white/40 hover:text-white">
+                            Faculty dashboard
+                        </Link>
+                    </div>
                         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
                             Camera required. {MAX_INTEGRITY_WARNINGS} integrity warnings ends the test.
                         </div>
@@ -311,22 +426,42 @@ export default function CodingAssessmentPage() {
                         >
                             <option value="javascript">JavaScript</option>
                             <option value="python">Python</option>
+                            {active.ioMode === "stdio" && <option value="java">Java</option>}
                         </select>
                         <button
                             type="button"
-                            onClick={() => void gradeCurrent()}
+                            onClick={() => void gradeCurrent("run")}
+                            disabled={loading}
+                            className="rounded-md border border-white/20 px-3 py-1 text-xs font-bold disabled:opacity-50"
+                        >
+                            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Run"}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void gradeCurrent("submit")}
                             disabled={loading}
                             className="rounded-md bg-[#1ba94c] px-3 py-1 text-xs font-bold disabled:opacity-50"
                         >
-                            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Run tests"}
+                            Submit
                         </button>
                     </div>
+                    {active?.ioMode === "stdio" && (
+                        <textarea
+                            value={customStdin}
+                            onChange={(e) => setCustomStdin(e.target.value)}
+                            placeholder="Optional custom stdin for Run"
+                            className="w-full min-h-[56px] resize-y bg-[#121212] px-3 py-2 font-mono text-xs text-white/70 border-b border-white/10 focus:outline-none"
+                        />
+                    )}
                     <textarea
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
                         spellCheck={false}
                         className="flex-1 min-h-[280px] w-full resize-none bg-[#1b1b1b] p-4 font-mono text-sm text-[#d4d4d4] focus:outline-none"
                     />
+                    {customOut && (
+                        <pre className="px-3 py-2 text-xs text-emerald-200/90 whitespace-pre-wrap border-t border-white/10">{customOut}</pre>
+                    )}
                     {error && <p className="px-3 py-2 text-xs text-rose-300">{error}</p>}
                     {active && grades[active.id] && grades[active.id].score != null && (
                         <div className="border-t border-white/10 px-3 py-3 text-sm">
