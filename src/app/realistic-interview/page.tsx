@@ -60,9 +60,11 @@ export default function RealisticInterviewRoom() {
     const avatarVideoRef = useRef<HTMLVideoElement>(null);
     const avatarVideoElementsRef = useRef<Set<HTMLVideoElement>>(new Set());
     const [avatarVideoUrl, setAvatarVideoUrl] = useState<string | null>(null);
-    const [isAvatarGenerating, setIsAvatarGenerating] = useState(false);
     const [isDidAvailable, setIsDidAvailable] = useState<boolean | null>(null);
-    const [avatarType, setAvatarType] = useState<"tavus" | "svg">("tavus");
+    const [avatarType, setAvatarType] = useState<"tavus" | "svg">(() => {
+        const saved = getStorageItem("tavusSelectedAvatarType");
+        return saved === "tavus" ? "tavus" : "svg";
+    });
     const [selectedReplicaId, setSelectedReplicaId] = useState<string>("r67d1c9cac37");
     const [avatarError, setAvatarError] = useState<string | null>(null);
     const tavusTalkAbortControllerRef = useRef<AbortController | null>(null);
@@ -131,6 +133,7 @@ export default function RealisticInterviewRoom() {
     const handleSwitchAvatarType = (type: "tavus" | "svg") => {
         if (type === avatarType) return;
         setAvatarType(type);
+        setStorageItem("tavusSelectedAvatarType", type);
         if (type === "tavus") {
             initializeTavusStream();
         } else {
@@ -140,9 +143,9 @@ export default function RealisticInterviewRoom() {
     };
 
     const handleSelectPresenterPersona = (newReplicaId: string) => {
-        if (newReplicaId === selectedReplicaId && avatarType === "tavus") return;
         closeTavusStream();
         setStorageItem("tavusSelectedReplicaId", newReplicaId);
+        setStorageItem("tavusSelectedAvatarType", "tavus");
         setSelectedReplicaId(newReplicaId);
         setAvatarType("tavus");
         setTimeout(() => {
@@ -439,8 +442,9 @@ export default function RealisticInterviewRoom() {
 
         setResumeText(text || "");
 
-        // Initialize Tavus WebRTC Stream session only if selected
-        if (avatarType === "tavus") {
+        // Initialize Tavus WebRTC Stream only if user explicitly saved 'tavus' in their preferences
+        const savedAvatarType = getStorageItem("tavusSelectedAvatarType");
+        if (savedAvatarType === "tavus") {
             initializeTavusStream();
         }
 
@@ -1764,39 +1768,70 @@ export default function RealisticInterviewRoom() {
                                             </button>
                                         </div>
                                     )}
-                                    <div className="absolute top-3 left-3 inline-flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-1 rounded-lg text-xs font-semibold z-10">
-                                        ProInterview <Volume2 className={`w-3 h-3 ${isSpeaking ? "text-green-400" : "text-white/40"}`} />
+                                    <div className="absolute top-3 left-3 inline-flex items-center gap-2 bg-black/75 backdrop-blur-md border border-white/10 px-2.5 py-1.5 rounded-xl text-xs font-semibold z-20 shadow-lg">
+                                        <span>ProInterview</span>
+                                        <Volume2 className={`w-3.5 h-3.5 ${isSpeaking ? "text-emerald-400" : "text-white/40"}`} />
+                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                            avatarType === "svg"
+                                                ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                                                : "bg-indigo-500/15 border-indigo-500/30 text-indigo-300"
+                                        }`}>
+                                            {avatarType === "svg" ? "0 Credits • SVG Active" : "Live Video Active"}
+                                        </span>
                                     </div>
 
-                                    {/* Persona & SVG Switcher Toolbar */}
-                                    <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-black/70 backdrop-blur-md border border-white/10 p-0.5 rounded-lg text-[9px] font-bold z-30 shadow-lg">
-                                        {[
-                                            { id: "r67d1c9cac37", label: "Alex" },
-                                            { id: "r9d30b0e55ac", label: "Luna" },
-                                            { id: "re6220ec0195", label: "Marcus" }
-                                        ].map((persona) => (
-                                            <button
-                                                key={persona.id}
-                                                type="button"
-                                                onClick={() => handleSelectPresenterPersona(persona.id)}
-                                                className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                                                    avatarType === "tavus" && selectedReplicaId === persona.id
-                                                        ? "bg-indigo-600 text-white shadow-sm"
-                                                        : "text-white/50 hover:text-white"
-                                                }`}
-                                                title={`Switch to ${persona.label}`}
-                                            >
-                                                {persona.label}
-                                            </button>
-                                        ))}
+                                    {/* Persona & Avatar Switcher Toolbar */}
+                                    <div className="absolute top-3 right-3 inline-flex items-center gap-1.5 bg-black/80 backdrop-blur-md border border-white/10 p-1 rounded-xl text-[10px] font-bold z-30 shadow-xl">
                                         <button
                                             type="button"
                                             onClick={() => handleSwitchAvatarType("svg")}
-                                            className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${avatarType === "svg" ? "bg-purple-600 text-white shadow-sm" : "text-white/50 hover:text-white"}`}
-                                            title="Switch to lightweight SVG avatar"
+                                            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                                                avatarType === "svg"
+                                                    ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25 font-extrabold"
+                                                    : "text-white/60 hover:text-white hover:bg-white/5"
+                                            }`}
+                                            title="Default mode: SVG Voice AI (0 API Credits consumed)"
                                         >
-                                            SVG
+                                            <span>⚡ SVG Avatar</span>
+                                            <span className="text-[9px] opacity-75 font-normal">(0 Credits)</span>
                                         </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSwitchAvatarType("tavus")}
+                                            className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${
+                                                avatarType === "tavus"
+                                                    ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/25 font-extrabold"
+                                                    : "text-white/60 hover:text-white hover:bg-white/5"
+                                            }`}
+                                            title="Live AI Video Stream (Tavus WebRTC - consumes credits)"
+                                        >
+                                            <span>🎥 Live Video</span>
+                                        </button>
+
+                                        {avatarType === "tavus" && (
+                                            <div className="flex items-center gap-1 pl-1 border-l border-white/10">
+                                                {[
+                                                    { id: "r67d1c9cac37", label: "Alex" },
+                                                    { id: "r9d30b0e55ac", label: "Luna" },
+                                                    { id: "re6220ec0195", label: "Marcus" }
+                                                ].map((persona) => (
+                                                    <button
+                                                        key={persona.id}
+                                                        type="button"
+                                                        onClick={() => handleSelectPresenterPersona(persona.id)}
+                                                        className={`px-1.5 py-0.5 rounded text-[9px] transition-all cursor-pointer ${
+                                                            selectedReplicaId === persona.id
+                                                                ? "bg-white/20 text-white font-black"
+                                                                : "text-white/40 hover:text-white"
+                                                        }`}
+                                                        title={`Switch to ${persona.label}`}
+                                                    >
+                                                        {persona.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="relative flex items-center justify-center z-0 w-full h-full">
@@ -1825,9 +1860,20 @@ export default function RealisticInterviewRoom() {
                                                         <Volume2 className="w-10 h-10 text-white animate-pulse" />
                                                     </motion.div>
                                                 </div>
-                                                <div className="mt-8 text-center px-4">
-                                                    <h3 className="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">AI Voice Synthesizer</h3>
-                                                    <p className="text-white/40 text-[10px] mt-1.5 leading-relaxed max-w-xs">SVG talking head active (API-saver). Click &quot;Tavus Presenter&quot; at the top-right to start video stream.</p>
+                                                <div className="mt-8 text-center px-4 space-y-2">
+                                                    <h3 className="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
+                                                        AI Voice Synthesizer Active
+                                                    </h3>
+                                                    <p className="text-white/50 text-[11px] leading-relaxed max-w-xs">
+                                                        Default credit-saving mode. Full speech & audio interview capabilities active without consuming video API credits.
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleSwitchAvatarType("tavus")}
+                                                        className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-indigo-300 hover:text-white transition-all cursor-pointer shadow-md"
+                                                    >
+                                                        <span>🎥 Switch to Live Video Avatar</span>
+                                                    </button>
                                                 </div>
                                             </div>
                                          ) : (
