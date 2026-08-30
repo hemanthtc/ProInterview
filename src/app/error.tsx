@@ -16,7 +16,11 @@ export default function GlobalError({
     return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 p-8 bg-slate-950 text-center">
             <h2 className="text-xl font-semibold text-white">Something went wrong</h2>
-            <p className="text-sm text-white/50 max-w-md">{error.message || "Unexpected application error."}</p>
+            <p className="text-sm text-white/50 max-w-md">
+                {process.env.NODE_ENV === "production"
+                    ? "Unexpected application error. Try again, or return to the home page."
+                    : error.message || "Unexpected application error."}
+            </p>
             <button
                 type="button"
                 onClick={reset}

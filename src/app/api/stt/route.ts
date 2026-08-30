@@ -21,14 +21,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ text: "", provider: "offline" });
     }
 
-    const comma = audio.indexOf(",");
-    const base64 = comma >= 0 ? audio.slice(comma + 1) : audio;
-    const mime = audio.slice(5, audio.indexOf(";")) || "audio/webm";
-    const genAI = new GoogleGenerativeAI(key);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
-    const result = await model.generateContent([
-        { text: "Transcribe this interview answer. Return only the spoken words, no commentary." },
-        { inlineData: { mimeType: mime, data: base64 } },
-    ]);
-    return NextResponse.json({ text: result.response.text().trim(), provider: "gemini" });
+    try {
+        const comma = audio.indexOf(",");
+        const base64 = comma >= 0 ? audio.slice(comma + 1) : audio;
+        const mime = audio.slice(5, audio.indexOf(";")) || "audio/webm";
+        const genAI = new GoogleGenerativeAI(key);
+        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite" });
+        const result = await model.generateContent([
+            { text: "Transcribe this interview answer. Return only the spoken words, no commentary." },
+            { inlineData: { mimeType: mime, data: base64 } },
+        ]);
+        return NextResponse.json({ text: result.response.text().trim(), provider: "gemini" });
+    } catch {
+        return NextResponse.json({ text: "", provider: "offline", error: "Transcription unavailable." }, { status: 502 });
+    }
 }

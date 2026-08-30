@@ -18,7 +18,12 @@ function isName(value: string): value is AnalyticsEventName {
 export async function GET() {
     const session = await getVerifiedSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    return NextResponse.json({ funnel: analyticsFunnel(), events: listAnalyticsEvents().slice(0, 80) });
+    return NextResponse.json({
+        funnel: analyticsFunnel(),
+        events: listAnalyticsEvents().slice(0, 80),
+        persistent: false,
+        note: "Funnel events are in-process only and reset on deploy.",
+    });
 }
 
 export async function POST(req: NextRequest) {

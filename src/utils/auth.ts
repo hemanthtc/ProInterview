@@ -106,14 +106,7 @@ export async function getVerifiedSession(): Promise<SessionPayload | null> {
         const cookieStore = await cookies();
         const token = cookieStore.get("session")?.value;
         if (!token) return null;
-        const session = verifyToken(token);
-        if (!session) return null;
-        const meta = readTokenMeta(token);
-        const remaining = (meta?.exp || 0) - Date.now();
-        if (meta && remaining > 0 && remaining < 2 * 24 * 60 * 60 * 1000) {
-            await setSessionCookie(session);
-        }
-        return session;
+        return verifyToken(token);
     } catch {
         return null;
     }

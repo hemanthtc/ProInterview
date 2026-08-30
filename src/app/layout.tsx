@@ -4,6 +4,7 @@ import Script from "next/script";
 import ErrorBoundary from "../components/ErrorBoundary";
 import PwaRegister from "../components/PwaRegister";
 import RateLimitToaster from "../components/RateLimitToaster";
+import SessionKeepAlive from "../components/SessionKeepAlive";
 import "./globals.css";
 import "../components/prointerviewer/ProInterviewer.css";
 
@@ -78,6 +79,7 @@ export default function RootLayout({
                     {children}
                 </ErrorBoundary>
                 <PwaRegister />
+                <SessionKeepAlive />
                 <RateLimitToaster />
             </body>
         </html>

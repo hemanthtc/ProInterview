@@ -10,7 +10,10 @@ interface CfProblem {
 
 export async function GET() {
     try {
-        const res = await fetch("https://codeforces.com/api/problemset.problems", { next: { revalidate: 3600 } });
+        const res = await fetch("https://codeforces.com/api/problemset.problems", {
+            next: { revalidate: 3600 },
+            signal: AbortSignal.timeout(10_000),
+        });
         if (!res.ok) {
             return NextResponse.json({ error: "Codeforces is unreachable." }, { status: 502 });
         }

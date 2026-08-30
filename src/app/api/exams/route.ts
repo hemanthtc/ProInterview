@@ -65,23 +65,33 @@ export async function POST(req: NextRequest) {
             .split(/[\n,;]+/)
             .map((s) => s.trim())
             .filter(Boolean);
-        const exam = await createExam({
-            title: String(body.title || "Campus coding exam"),
-            createdBy: session.identifier,
-            durationSec: Number(body.durationSec) || 3600,
-            problemIds: picked.slice(0, 4),
-            roster,
-        });
-        recordAnalyticsEvent({ name: "exam_created", at: Date.now(), identifier: session.identifier });
-        return NextResponse.json({ exam: { ...exam, joinPath: `/coding-assessment?exam=${exam.code}` } });
+        try {
+            const exam = await createExam({
+                title: String(body.title || "Campus coding exam"),
+                createdBy: session.identifier,
+                durationSec: Number(body.durationSec) || 3600,
+                problemIds: picked.slice(0, 4),
+                roster,
+            });
+            recordAnalyticsEvent({ name: "exam_created", at: Date.now(), identifier: session.identifier });
+            return NextResponse.json({ exam: { ...exam, joinPath: `/coding-assessment?exam=${exam.code}` } });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Could not create exam.";
+            return NextResponse.json({ error: message }, { status: 503 });
+        }
     }
 
     if (action === "join") {
         const exam = await getExam(String(body.code || ""));
         if (!exam) return NextResponse.json({ error: "Exam not found" }, { status: 404 });
-        await upsertAttempt(exam.code, session.identifier, {
-            displayName: String(body.displayName || session.identifier),
-        });
+        try {
+            await upsertAttempt(exam.code, session.identifier, {
+                displayName: String(body.displayName || session.identifier),
+            });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Could not join exam.";
+            return NextResponse.json({ error: message }, { status: 503 });
+        }
         return NextResponse.json({ exam: examPublic(exam) });
     }
 
@@ -113,15 +123,20 @@ export async function POST(req: NextRequest) {
                           .map(([k, v]) => [k, String(v).slice(0, 20_000)])
                   )
                 : undefined;
-        const updated = await upsertAttempt(exam.code, session.identifier, {
-            displayName: String(body.displayName || session.identifier),
-            events,
-            scores,
-            fingerprints,
-            terminated: Boolean(body.terminated),
-            submittedAt: body.submitted ? Date.now() : undefined,
-        });
-        return NextResponse.json({ ok: true, attemptCount: updated?.attempts.length || 0 });
+        try {
+            const updated = await upsertAttempt(exam.code, session.identifier, {
+                displayName: String(body.displayName || session.identifier),
+                events,
+                scores,
+                fingerprints,
+                terminated: Boolean(body.terminated),
+                submittedAt: body.submitted ? Date.now() : undefined,
+            });
+            return NextResponse.json({ ok: true, attemptCount: updated?.attempts.length || 0 });
+        } catch (err) {
+            const message = err instanceof Error ? err.message : "Could not save attempt.";
+            return NextResponse.json({ error: message }, { status: 503 });
+        }
     }
 
     return NextResponse.json({ error: "Unknown action" }, { status: 400 });

@@ -1,6 +1,8 @@
 import connectDB from "@/utils/db";
 import CodingExam, { type ICodingExamAttempt } from "@/models/CodingExam";
 import { plagiarismHits } from "@/utils/codeSimilarity";
+import { requirePersistentStore } from "@/utils/runtimeEnv";
+import { presencePublicId } from "@/utils/community";
 
 export interface ExamAttemptView {
     identifier: string;
@@ -113,6 +115,9 @@ export async function createExam(input: {
         return toView(doc);
     });
 
+    if (!saved && requirePersistentStore()) {
+        throw new Error("Database unavailable. Exams cannot be created in production.");
+    }
     const finalRecord = saved || record;
     memory.set(finalRecord.code, finalRecord);
     return finalRecord;
@@ -128,6 +133,7 @@ export async function getExam(code: string): Promise<ExamRecord | null> {
         memory.set(key, fromDb);
         return fromDb;
     }
+    if (requirePersistentStore()) return null;
     return memory.get(key) || null;
 }
 
@@ -137,6 +143,7 @@ export async function listExams(createdBy: string): Promise<ExamRecord[]> {
         return docs.map((d) => toView(d));
     });
     if (fromDb) return fromDb;
+    if (requirePersistentStore()) return [];
     return [...memory.values()].filter((e) => e.createdBy === createdBy).sort((a, b) => b.createdAt - a.createdAt);
 }
 
@@ -169,7 +176,10 @@ export async function upsertAttempt(
             );
         const mine = Object.values(next.fingerprints || {});
         const hits = mine.flatMap((code) => plagiarismHits(code, others));
-        next.plagiarism = hits.slice(0, 5);
+        next.plagiarism = hits.slice(0, 5).map((h) => ({
+            identifier: presencePublicId(h.identifier),
+            score: h.score,
+        }));
     }
 
     const attempts = existing
@@ -178,13 +188,16 @@ export async function upsertAttempt(
     const updated = { ...exam, attempts };
     memory.set(exam.code, updated);
 
-    await tryMongo(async () => {
+    const persisted = await tryMongo(async () => {
         await CodingExam.updateOne(
             { code: exam.code },
             { $set: { attempts } }
         );
         return true;
     });
+    if (!persisted && requirePersistentStore()) {
+        throw new Error("Database unavailable. Exam attempt was not saved.");
+    }
 
     return updated;
 }
