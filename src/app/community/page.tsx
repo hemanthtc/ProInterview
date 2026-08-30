@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
 import { processImageForUpload } from "@/utils/imageProcess";
+import FeedbackUserForm from "@/components/community/FeedbackUserForm";
 
 type Room = {
     slug: string;
@@ -819,20 +820,24 @@ export default function CommunityPage() {
                             : "bg-gradient-to-b from-slate-950 to-[#0a0a12] text-white"
                     }`}
                 >
-                    {(activeRoom?.description || selectedMessageIds.length > 0) && (
-                        <div className={`px-4 py-2 border-b text-xs ${isLight ? "border-slate-200 text-slate-500 bg-slate-50/50" : "border-white/5 text-white/45"}`}>
-                            {selectedMessageIds.length > 0 ? (
-                                <div className="flex items-center justify-between w-full">
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            type="button"
-                                            onClick={handleSelectAll}
-                                            className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
-                                                isLight 
-                                                    ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100" 
-                                                    : "border-indigo-500/30 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
-                                            }`}
-                                        >
+                    {activeSlug === "feedback" ? (
+                        <FeedbackUserForm theme={theme} />
+                    ) : (
+                        <>
+                            {(activeRoom?.description || selectedMessageIds.length > 0) && (
+                                <div className={`px-4 py-2 border-b text-xs ${isLight ? "border-slate-200 text-slate-500 bg-slate-50/50" : "border-white/5 text-white/45"}`}>
+                                    {selectedMessageIds.length > 0 ? (
+                                        <div className="flex items-center justify-between w-full">
+                                            <div className="flex items-center gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSelectAll}
+                                                    className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border transition cursor-pointer ${
+                                                        isLight 
+                                                            ? "border-indigo-200 bg-indigo-50 text-indigo-700 hover:bg-indigo-100" 
+                                                            : "border-indigo-500/30 bg-indigo-500/10 text-indigo-200 hover:bg-indigo-500/20"
+                                                    }`}
+                                                >
                                             {selectedMessageIds.length === activeMessages.filter(m => !m.isPending && (Boolean(m.mine) || m.senderPublicId === mePublicId)).length
                                                 ? "Deselect All"
                                                 : "Select All"}
@@ -1115,6 +1120,7 @@ export default function CommunityPage() {
                             </button>
                         </div>
                     </form>
+                    </>
                 </section>
 
                 {/* Online */}
