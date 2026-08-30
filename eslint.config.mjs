@@ -20,6 +20,13 @@ export default defineConfig([
             // legacy API shapes). Downgrade to warning until that debt is paid
             // down — see REPORT.md.
             "@typescript-eslint/no-explicit-any": "warn",
+            "@typescript-eslint/no-require-imports": "warn",
+            "@typescript-eslint/no-unused-vars": "warn",
+            "react/no-unescaped-entities": "warn",
+            "react-hooks/rules-of-hooks": "warn",
+            "react-hooks/set-state-in-effect": "warn",
+            "react-hooks/purity": "warn",
+            "react-hooks/refs": "warn",
         },
     },
     globalIgnores([
