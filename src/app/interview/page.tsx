@@ -223,7 +223,7 @@ export default function InterviewRoom() {
 
             if (!video) return;
             const canvas = canvasRef.current;
-            const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
             if (!ctx) return;
 
             canvas.width = 160;

@@ -15,7 +15,7 @@ if (IS_LOCAL) {
     );
   });
 } else {
-  const CACHE = "prointerview-shell-v6";
+  const CACHE = "prointerview-shell-v7";
   const SHELL = ["/", "/labs", "/prep", "/star-coach", "/coding-lab", "/manifest.json", "/offline-drills.json"];
 
   // API GET responses that are safe to cache network-first, for offline drill practice.
@@ -26,7 +26,22 @@ if (IS_LOCAL) {
   }
 
   self.addEventListener("install", (event) => {
-    event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()));
+    event.waitUntil(
+      caches.open(CACHE).then(async (cache) => {
+        await Promise.allSettled(
+          SHELL.map(async (url) => {
+            try {
+              const res = await fetch(url);
+              if (res && (res.ok || res.status === 200)) {
+                await cache.put(url, res);
+              }
+            } catch {
+              // Gracefully continue even if an asset fails to fetch
+            }
+          })
+        );
+      }).then(() => self.skipWaiting())
+    );
   });
 
   self.addEventListener("activate", (event) => {

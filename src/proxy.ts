@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
     "/community",
     "/domains",
     "/prep",
+    "/star-coach",
     "/ats-match",
     "/scorecard",
     "/film-room",

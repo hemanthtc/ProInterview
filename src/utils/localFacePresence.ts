@@ -40,7 +40,7 @@ export function captureJpegDataUrl(video: HTMLVideoElement, canvas: HTMLCanvasEl
     if (!video.videoWidth) return null;
     canvas.width = 160;
     canvas.height = 120;
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return null;
     ctx.drawImage(video, 0, 0, 160, 120);
     return canvas.toDataURL("image/jpeg", quality);

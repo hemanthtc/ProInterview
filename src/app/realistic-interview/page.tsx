@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play } from "lucide-react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
 import Script from "next/script";
@@ -292,7 +292,7 @@ export default function RealisticInterviewRoom() {
 
             if (!video) return;
             const canvas = canvasRef.current;
-            const ctx = canvas.getContext("2d");
+            const ctx = canvas.getContext("2d", { willReadFrequently: true });
             if (!ctx) return;
 
             canvas.width = 160;
@@ -1748,6 +1748,41 @@ export default function RealisticInterviewRoom() {
                 </motion.div>
             )}
 
+            {/* Avatar Error / Fallback Notification Banner */}
+            <AnimatePresence>
+                {avatarError && (
+                    <motion.div
+                        initial={{ y: -20, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -20, opacity: 0 }}
+                        className={`px-4 py-2.5 text-xs font-semibold flex items-center justify-between gap-3 border-b shadow-md z-30 transition-colors ${
+                            theme === "light"
+                                ? "bg-amber-100 border-amber-300 text-amber-950"
+                                : theme === "eyeprotect"
+                                ? "bg-amber-950/80 border-amber-500/40 text-amber-200"
+                                : "bg-amber-950/90 border-amber-500/50 text-amber-100"
+                        }`}
+                    >
+                        <div className="flex items-center gap-2 max-w-4xl mx-auto flex-1">
+                            <span className="text-base shrink-0">⚠️</span>
+                            <span className="leading-snug">{avatarError}</span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setAvatarError(null)}
+                            className={`px-2 py-1 rounded text-xs font-bold transition-all cursor-pointer ${
+                                theme === "light"
+                                    ? "hover:bg-amber-200 text-amber-900"
+                                    : "hover:bg-white/10 text-amber-300 hover:text-white"
+                            }`}
+                            title="Dismiss"
+                        >
+                            ✕
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             <main className={`flex-grow flex flex-col lg:flex-row p-4 gap-4 relative ${interactionMode !== "chat" ? "max-w-none px-4 lg:px-6" : "max-w-[1600px]"} mx-auto w-full min-h-0 transition-all duration-500`}>
                 {interactionMode === "chat" ? (
                     <>
@@ -1758,12 +1793,22 @@ export default function RealisticInterviewRoom() {
                                 {/* AI Video - Animated Human Face */}
                                 <div className="relative bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center min-h-[300px]">
                                     {avatarError && (
-                                        <div className="absolute top-12 right-3 left-3 bg-red-950/80 backdrop-blur-sm border border-red-500/30 text-red-200 text-[10px] p-2 rounded-lg z-30 flex items-center justify-between shadow-lg">
-                                            <span>⚠️ {avatarError}</span>
+                                        <div className={`absolute top-12 right-3 left-3 backdrop-blur-sm p-2 rounded-lg z-30 flex items-center justify-between shadow-lg text-[10px] font-medium transition-colors ${
+                                            theme === "light"
+                                                ? "bg-amber-50/95 border border-amber-300 text-amber-950 shadow-amber-950/10"
+                                                : theme === "eyeprotect"
+                                                ? "bg-amber-950/90 border border-amber-500/40 text-amber-200"
+                                                : "bg-red-950/90 border border-red-500/40 text-red-200"
+                                        }`}>
+                                            <span className="leading-snug">⚠️ {avatarError}</span>
                                             <button 
                                                 type="button" 
                                                 onClick={() => setAvatarError(null)} 
-                                                className="text-red-400 hover:text-white ml-2 text-xs font-bold cursor-pointer"
+                                                className={`ml-2 text-xs font-bold cursor-pointer transition-colors ${
+                                                    theme === "light"
+                                                        ? "text-amber-800 hover:text-black"
+                                                        : "text-red-400 hover:text-white"
+                                                }`}
                                             >
                                                 ✕
                                             </button>
@@ -1964,12 +2009,22 @@ export default function RealisticInterviewRoom() {
                             {/* Mobile/Tablet Video Frame (Picture in Picture) */}
                             <div className="lg:hidden relative w-full h-[220px] sm:h-[280px] bg-[#0a0a14] rounded-2xl overflow-hidden border border-white/10 shadow-[0_0_40px_rgba(79,70,229,0.1)] flex items-center justify-center shrink-0">
                                 {avatarError && (
-                                    <div className="absolute top-12 right-3 left-3 bg-red-950/80 backdrop-blur-sm border border-red-500/30 text-red-200 text-[10px] p-2 rounded-lg z-30 flex items-center justify-between shadow-lg">
-                                        <span>⚠️ {avatarError}</span>
+                                    <div className={`absolute top-12 right-3 left-3 backdrop-blur-sm p-2 rounded-lg z-30 flex items-center justify-between shadow-lg text-[10px] font-medium transition-colors ${
+                                        theme === "light"
+                                            ? "bg-amber-50/95 border border-amber-300 text-amber-950 shadow-amber-950/10"
+                                            : theme === "eyeprotect"
+                                            ? "bg-amber-950/90 border border-amber-500/40 text-amber-200"
+                                            : "bg-red-950/90 border border-red-500/40 text-red-200"
+                                    }`}>
+                                        <span className="leading-snug">⚠️ {avatarError}</span>
                                         <button 
                                             type="button" 
                                             onClick={() => setAvatarError(null)} 
-                                            className="text-red-400 hover:text-white ml-2 text-xs font-bold cursor-pointer"
+                                            className={`ml-2 text-xs font-bold cursor-pointer transition-colors ${
+                                                theme === "light"
+                                                    ? "text-amber-800 hover:text-black"
+                                                    : "text-red-400 hover:text-white"
+                                            }`}
                                         >
                                             ✕
                                         </button>
