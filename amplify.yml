@@ -34,10 +34,23 @@ frontend:
         - echo "JWT_SECRET=${JWT_SECRET}" >> .env.production
         - echo "EMAIL_USER=${EMAIL_USER}" >> .env.production
         - echo "EMAIL_PASS=${EMAIL_PASS}" >> .env.production
+        - echo "RAZORPAY_WEBHOOK_SECRET=${RAZORPAY_WEBHOOK_SECRET}" >> .env.production
+        - echo "CRON_SECRET=${CRON_SECRET}" >> .env.production
         - echo "S3_BUCKET=${S3_BUCKET}" >> .env.production
+        - echo "AWS_S3_BUCKET=${AWS_S3_BUCKET}" >> .env.production
         - echo "S3_REGION=${S3_REGION}" >> .env.production
         - echo "S3_ACCESS_KEY_ID=${S3_ACCESS_KEY_ID}" >> .env.production
         - echo "S3_SECRET_ACCESS_KEY=${S3_SECRET_ACCESS_KEY}" >> .env.production
+        - echo "S3_PUBLIC_BASE_URL=${S3_PUBLIC_BASE_URL}" >> .env.production
+        - echo "AWS_REGION=${AWS_REGION}" >> .env.production
+        - echo "AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}" >> .env.production
+        - echo "AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}" >> .env.production
+        - echo "INIT_DB_KEY=${INIT_DB_KEY}" >> .env.production
+        - echo "SEED_ADMIN_PASSWORD=${SEED_ADMIN_PASSWORD}" >> .env.production
+        - echo "SEED_EMPLOYEE_PASSWORD=${SEED_EMPLOYEE_PASSWORD}" >> .env.production
+        - echo "SEED_ADMIN_IDENTIFIER=${SEED_ADMIN_IDENTIFIER}" >> .env.production
+        - echo "SEED_EMPLOYEE_IDENTIFIER=${SEED_EMPLOYEE_IDENTIFIER}" >> .env.production
+        - echo "TAVUS_REPLICA_ID=${TAVUS_REPLICA_ID}" >> .env.production
     build:
       commands:
         - npm run build
@@ -49,3 +62,4 @@ frontend:
     paths:
       - .npm/**/*
       - .next/cache/**/*
+      - node_modules/**/*
