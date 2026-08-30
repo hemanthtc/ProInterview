@@ -17,6 +17,7 @@ export interface ExamRecord {
     createdBy: string;
     durationSec: number;
     problemIds: string[];
+    roster: string[];
     createdAt: number;
     attempts: ExamAttemptView[];
 }
@@ -36,6 +37,7 @@ function toView(doc: {
     createdBy: string;
     durationSec: number;
     problemIds: string[];
+    roster?: string[];
     createdAt: Date;
     attempts: ICodingExamAttempt[];
 }): ExamRecord {
@@ -45,6 +47,7 @@ function toView(doc: {
         createdBy: doc.createdBy,
         durationSec: doc.durationSec,
         problemIds: doc.problemIds,
+        roster: doc.roster || [],
         createdAt: new Date(doc.createdAt).getTime(),
         attempts: (doc.attempts || []).map((a) => ({
             identifier: a.identifier,
@@ -72,6 +75,7 @@ export async function createExam(input: {
     createdBy: string;
     durationSec: number;
     problemIds: string[];
+    roster?: string[];
 }): Promise<ExamRecord> {
     let code = makeCode();
     const record: ExamRecord = {
@@ -80,6 +84,7 @@ export async function createExam(input: {
         createdBy: input.createdBy,
         durationSec: Math.min(3 * 60 * 60, Math.max(10 * 60, input.durationSec || 3600)),
         problemIds: input.problemIds,
+        roster: (input.roster || []).map((s) => s.trim()).filter(Boolean).slice(0, 200),
         createdAt: Date.now(),
         attempts: [],
     };
@@ -97,6 +102,7 @@ export async function createExam(input: {
             createdBy: record.createdBy,
             durationSec: record.durationSec,
             problemIds: record.problemIds,
+            roster: record.roster,
             attempts: [],
         });
         return toView(doc);

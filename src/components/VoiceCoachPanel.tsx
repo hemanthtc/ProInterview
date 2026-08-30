@@ -1,7 +1,8 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import type { VoiceCoachSnapshot } from "../utils/voiceCoach";
+import { loadVoiceWeek, recordVoiceWeek, voiceWeekSummary } from "../utils/voiceCoachHistory";
 import { Activity, Gauge, MessageSquareWarning, Type } from "lucide-react";
 
 interface VoiceCoachPanelProps {
@@ -18,6 +19,10 @@ const moodColor: Record<VoiceCoachSnapshot["moodHint"], string> = {
 };
 
 export default function VoiceCoachPanel({ snapshot, compact = false, className = "" }: VoiceCoachPanelProps) {
+    useEffect(() => {
+        if (snapshot) recordVoiceWeek(snapshot);
+    }, [snapshot]);
+
     if (!snapshot) {
         return (
             <div className={`rounded-2xl border border-white/10 bg-[#111] p-4 text-sm text-white/50 ${className}`}>
@@ -27,6 +32,7 @@ export default function VoiceCoachPanel({ snapshot, compact = false, className =
     }
 
     const fillerPct = Math.round((snapshot.fillerRate || 0) * 1000) / 10;
+    const week = voiceWeekSummary(loadVoiceWeek());
 
     return (
         <div className={`rounded-2xl border border-white/10 bg-[#111] p-4 space-y-3 ${className}`}>
@@ -39,6 +45,11 @@ export default function VoiceCoachPanel({ snapshot, compact = false, className =
                     {snapshot.moodHint}
                 </span>
             </div>
+            {week.samples > 0 && (
+                <p className="text-[10px] text-white/40">
+                    This week: {week.avgWpm} wpm · {week.avgFiller}% fillers ({week.samples} samples)
+                </p>
+            )}
 
             <div className={`grid ${compact ? "grid-cols-2" : "grid-cols-2 sm:grid-cols-4"} gap-2`}>
                 <Stat

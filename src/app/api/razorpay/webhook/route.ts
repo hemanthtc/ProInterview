@@ -5,6 +5,7 @@ import CoachBooking from "@/models/CoachBooking";
 import { pushNotification } from "@/utils/usageMeter";
 import { sendCoachEmail, coachBookingEmailHtml } from "@/utils/mailer";
 import { buildGoogleCalendarUrl, nextSlotDate } from "@/utils/googleCalendar";
+import User from "@/models/User";
 
 export const dynamic = "force-dynamic";
 
@@ -44,7 +45,21 @@ export async function POST(req: NextRequest) {
         }
 
         const payment = event.payload?.payment?.entity;
-        if (!payment || payment.notes?.kind !== "coach") {
+        if (!payment) {
+            return NextResponse.json({ success: true, ignored: true });
+        }
+
+        if (payment.notes?.kind === "subscription") {
+            await connectDB();
+            const identifier = payment.notes.identifier;
+            const plan = payment.notes.plan || "Pro Plan";
+            if (identifier) {
+                await User.updateOne({ identifier }, { subscriptionPlan: plan });
+            }
+            return NextResponse.json({ success: true, kind: "subscription" });
+        }
+
+        if (payment.notes?.kind !== "coach") {
             return NextResponse.json({ success: true, ignored: true });
         }
 

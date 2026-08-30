@@ -8,6 +8,9 @@ export function pistonLangConfig(language: string): { language: string; version:
     if (lang === "java") {
         return { language: "java", version: "15.0.2", filename: "Main.java" };
     }
+    if (lang === "cpp" || lang === "c++") {
+        return { language: "c++", version: "10.2.0", filename: "main.cpp" };
+    }
     return { language: "javascript", version: "18.15.0", filename: "main.js" };
 }
 

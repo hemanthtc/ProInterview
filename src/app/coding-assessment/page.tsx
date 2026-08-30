@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AlertTriangle, Camera, Clock, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import { MAX_INTEGRITY_WARNINGS, useAssessmentProctor } from "@/hooks/useAssessmentProctor";
+import { assessmentCopy, type UiLang } from "@/utils/uiLocale";
 
 interface Problem {
     id: string;
@@ -60,13 +61,15 @@ export default function CodingAssessmentPage() {
     const [examTitle, setExamTitle] = useState("");
     const [customStdin, setCustomStdin] = useState("");
     const [customOut, setCustomOut] = useState("");
+    const [uiLang, setUiLang] = useState<UiLang>("en");
+    const copy = assessmentCopy(uiLang);
 
     const proctor = useAssessmentProctor(phase === "live");
     const active = problems[activeIndex] || null;
     const code = active ? codeByProblem[active.id] || "" : "";
 
     useEffect(() => {
-        if (!active || language !== "java" || active.ioMode === "stdio") return;
+        if (!active || (language !== "java" && language !== "cpp") || active.ioMode === "stdio") return;
         setLanguage("javascript");
         setCodeByProblem((prev) => ({ ...prev, [active.id]: active.starterCode?.javascript || prev[active.id] || "" }));
     }, [active, language]);
@@ -232,6 +235,11 @@ export default function CodingAssessmentPage() {
     }
 
     function finish() {
+        void fetch("/api/analytics", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: "assessment_submitted" }),
+        }).catch(() => undefined);
         void reportExam({ submitted: true });
         setPhase("submitted");
         proctor.stopCamera();
@@ -291,11 +299,13 @@ export default function CodingAssessmentPage() {
             <div className="min-h-screen bg-[#0b141a] text-white">
                 <div className="max-w-3xl mx-auto px-4 py-12">
                     <p className="text-xs uppercase tracking-widest text-emerald-400 font-bold">Timed coding assessment</p>
-                    <h1 className="mt-2 text-3xl font-bold">HackerRank-style coding round</h1>
-                    <p className="mt-3 text-sm text-white/60 leading-relaxed">
-                        You will get a random mix of problems in the style of LeetCode, HackerRank, Codeforces, and CodeChef.
-                        An AI proctor watches your webcam for face presence and expression. Tab switching and leaving this window count as violations.
-                    </p>
+                    <div className="flex justify-end">
+                        <button type="button" onClick={() => setUiLang(uiLang === "en" ? "hi" : "en")} className="text-[11px] font-bold text-white/45">
+                            {uiLang === "en" ? "हिन्दी" : "English"}
+                        </button>
+                    </div>
+                    <h1 className="mt-2 text-3xl font-bold">{copy.assessmentTitle}</h1>
+                    <p className="mt-3 text-sm text-white/60 leading-relaxed">{copy.assessmentBody}</p>
                     <LabAuthBanner feature="sandboxed grading and AI face monitoring" />
                     <div className="mt-6 grid gap-3 text-sm">
                         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -309,10 +319,10 @@ export default function CodingAssessmentPage() {
                             className="rounded-lg border border-white/15 bg-black/40 px-3 py-2 text-sm font-mono w-44"
                         />
                         <button type="button" onClick={() => void joinExam()} className="text-xs font-bold text-emerald-400 hover:underline">
-                            Join exam
+                            {copy.joinExam}
                         </button>
                         <Link href="/faculty/exams" className="text-xs text-white/40 hover:text-white">
-                            Faculty dashboard
+                            {copy.faculty}
                         </Link>
                     </div>
                         <div className="rounded-xl border border-white/10 bg-white/5 p-4">
@@ -331,7 +341,7 @@ export default function CodingAssessmentPage() {
                         className="mt-8 inline-flex items-center gap-2 rounded-lg bg-[#1ba94c] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#159143] disabled:opacity-50"
                     >
                         <Camera className="h-4 w-4" />
-                        Enable camera and start
+                        {copy.start}
                     </button>
                     <div className="mt-4">
                         <Link href="/coding-lab" className="text-xs text-white/45 hover:text-white">
@@ -427,6 +437,7 @@ export default function CodingAssessmentPage() {
                             <option value="javascript">JavaScript</option>
                             <option value="python">Python</option>
                             {active.ioMode === "stdio" && <option value="java">Java</option>}
+                            {active.ioMode === "stdio" && <option value="cpp">C++</option>}
                         </select>
                         <button
                             type="button"

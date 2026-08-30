@@ -95,7 +95,12 @@ export function useAssessmentProctor(active: boolean) {
             }
         };
         const onBlur = () => {
-            addWarning("Window focus lost. Do not leave the assessment window.");
+            if (Date.now() - armedAtRef.current < 4000) return;
+            if (document.hidden) return;
+            window.setTimeout(() => {
+                if (document.hasFocus() || document.hidden) return;
+                addWarning("Window focus lost. Do not leave the assessment window.");
+            }, 400);
         };
         const onFullscreen = () => {
             if (!document.fullscreenElement) {

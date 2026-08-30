@@ -35,6 +35,7 @@ export default function FacultyExamsPage() {
     const [title, setTitle] = useState("Campus coding exam");
     const [minutes, setMinutes] = useState(60);
     const [count, setCount] = useState(3);
+    const [roster, setRoster] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [copied, setCopied] = useState("");
@@ -62,6 +63,7 @@ export default function FacultyExamsPage() {
                     title,
                     durationSec: minutes * 60,
                     problemCount: count,
+                    roster,
                 }),
             });
             const data = await res.json();
@@ -126,7 +128,25 @@ export default function FacultyExamsPage() {
                         Create
                     </button>
                 </div>
-                <p className="mt-1 text-[11px] text-white/35">Minutes · problem count (2–4 random mixed-platform questions)</p>
+                <textarea
+                    value={roster}
+                    onChange={(e) => setRoster(e.target.value)}
+                    placeholder="Optional student roster (one email per line) for a campus batch"
+                    className="mt-3 w-full min-h-[72px] rounded-lg border border-white/15 bg-[#0b141a] px-3 py-2 text-xs"
+                />
+                <p className="mt-1 text-[11px] text-white/35">Minutes · problem count (2–4). Free accounts: 3 exams, then Pro.</p>
+                <button
+                    type="button"
+                    className="mt-2 text-xs font-bold text-emerald-400"
+                    onClick={async () => {
+                        const res = await fetch("/api/demo/seed", { method: "POST" });
+                        const data = await res.json();
+                        if (res.ok) await refresh();
+                        else setError(data.error || "Seed failed");
+                    }}
+                >
+                    Seed demo exam
+                </button>
                 {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
 
                 <div className="mt-8 space-y-4">
@@ -147,6 +167,29 @@ export default function FacultyExamsPage() {
                                 >
                                     <ClipboardCopy className="h-3.5 w-3.5" />
                                     {copied === exam.code ? "Copied" : "Copy student link"}
+                                </button>
+                                <button
+                                    type="button"
+                                    className="text-xs font-bold text-white/60"
+                                    onClick={() => {
+                                        const rows = [
+                                            "name,avg,flags,status",
+                                            ...exam.attempts.map((a) => {
+                                                const avg = avgScore(a.scores);
+                                                const status = a.terminated ? "terminated" : a.submittedAt ? "submitted" : "in_progress";
+                                                return `${JSON.stringify(a.displayName)},${avg},${a.events.length},${status}`;
+                                            }),
+                                        ];
+                                        const blob = new Blob([rows.join("\n")], { type: "text/csv" });
+                                        const url = URL.createObjectURL(blob);
+                                        const a = document.createElement("a");
+                                        a.href = url;
+                                        a.download = `${exam.code}.csv`;
+                                        a.click();
+                                        URL.revokeObjectURL(url);
+                                    }}
+                                >
+                                    Export CSV
                                 </button>
                             </div>
                             <div className="mt-3 overflow-x-auto">

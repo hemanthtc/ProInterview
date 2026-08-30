@@ -1032,6 +1032,19 @@ export default function CommunityPage() {
                                                     <Heart className="w-3.5 h-3.5" fill={(m.likes || []).includes(mePublicId) ? "currentColor" : "none"} />
                                                     { (m.likes || []).length > 0 && <span>{(m.likes || []).length}</span> }
                                                 </button>
+                                                <button
+                                                    type="button"
+                                                    className="text-[10px] text-white/30 hover:text-rose-300"
+                                                    onClick={() => {
+                                                        void fetch("/api/community/report", {
+                                                            method: "POST",
+                                                            headers: { "Content-Type": "application/json" },
+                                                            body: JSON.stringify({ messageId: m.id, reason: "abuse" }),
+                                                        });
+                                                    }}
+                                                >
+                                                    Report
+                                                </button>
                                             </div>
                                         </div>
                                     </div>

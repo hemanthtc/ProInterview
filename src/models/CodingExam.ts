@@ -21,6 +21,7 @@ export interface ICodingExam extends Document {
     createdBy: string;
     durationSec: number;
     problemIds: string[];
+    roster: string[];
     attempts: ICodingExamAttempt[];
     createdAt: Date;
     updatedAt: Date;
@@ -51,6 +52,7 @@ const CodingExamSchema: Schema<ICodingExam> = new Schema(
         createdBy: { type: String, required: true, index: true },
         durationSec: { type: Number, default: 3600 },
         problemIds: { type: [String], default: [] },
+        roster: { type: [String], default: [] },
         attempts: { type: [AttemptSchema], default: [] },
     },
     { timestamps: true, collection: "coding_exams" }

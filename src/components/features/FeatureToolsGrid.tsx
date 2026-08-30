@@ -237,6 +237,15 @@ export default function FeatureToolsGrid({
                     color: "cyan",
                     badges: ["New", "Sign-in"],
                 },
+                {
+                    id: "peer_mock",
+                    href: "/peer-mock",
+                    title: "Peer Mock",
+                    desc: "Pair practice + Film Room review",
+                    icon: Users,
+                    color: "violet",
+                    badges: ["New"],
+                },
             ],
         },
         {

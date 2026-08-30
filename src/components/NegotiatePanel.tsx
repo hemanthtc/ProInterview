@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { Handshake, Loader2, Send, Sparkles, ChevronDown, ChevronUp, RotateCcw, Copy, Check, ShieldAlert } from "lucide-react";
+import { saveNegotiateScript } from "@/utils/savedScripts";
 
 type Mode = "simulate" | "coach";
 
@@ -409,6 +410,13 @@ export default function NegotiatePanel({
                                         >
                                             {copiedScriptIndex === i ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                                             {copiedScriptIndex === i ? "Copied!" : "Copy Script"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => saveNegotiateScript({ company, role, script: turn.suggestedScript! })}
+                                            className="flex items-center gap-1 text-[11px] bg-white/10 hover:bg-white/20 text-white px-2 py-0.5 rounded"
+                                        >
+                                            Save
                                         </button>
                                     </div>
                                     <p className="italic leading-relaxed text-emerald-100/90 font-mono bg-black/30 p-2.5 rounded-lg border border-emerald-500/20">

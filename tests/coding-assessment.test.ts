@@ -5,6 +5,9 @@ import { buildFunctionHarness, compareOutputs, normalizeStdout } from "../src/ut
 import { estimateFaceFromImageData } from "../src/utils/localFacePresence";
 import { pistonLangConfig } from "../src/utils/piston";
 import { buildOfflineInterviewReply } from "../src/utils/interviewFallback";
+import { isProPlan } from "../src/utils/planFlags";
+import { assessmentCopy } from "../src/utils/uiLocale";
+import { analyticsFunnel, recordAnalyticsEvent } from "../src/utils/analytics";
 
 describe("assessment problem bank", () => {
     it("covers all four platforms", () => {
@@ -28,6 +31,23 @@ describe("piston languages", () => {
     it("maps java to Main.java", () => {
         expect(pistonLangConfig("java").filename).toBe("Main.java");
         expect(pistonLangConfig("python").language).toBe("python");
+        expect(pistonLangConfig("cpp").filename).toBe("main.cpp");
+    });
+});
+
+describe("pro gates and locale", () => {
+    it("treats elite as pro", () => {
+        expect(isProPlan("Free Tier")).toBe(false);
+        expect(isProPlan("Elite Plan")).toBe(true);
+    });
+
+    it("has Hindi assessment copy", () => {
+        expect(assessmentCopy("hi").start).toContain("कैमरा");
+    });
+
+    it("counts analytics funnel", () => {
+        recordAnalyticsEvent({ name: "signup", at: Date.now() });
+        expect(analyticsFunnel().signups).toBeGreaterThanOrEqual(1);
     });
 });
 

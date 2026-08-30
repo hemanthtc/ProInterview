@@ -445,6 +445,17 @@ export function getProblemPublic(id: string) {
     if (rest.ioMode === "stdio" && !starterCode.java) {
         starterCode.java = JAVA_STDIO_STARTER;
     }
+    if (rest.ioMode === "stdio" && !starterCode.cpp) {
+        starterCode.cpp = `#include <bits/stdc++.h>
+using namespace std;
+int main() {
+  ios::sync_with_stdio(false);
+  cin.tie(nullptr);
+  // Read stdin and print the answer
+  return 0;
+}
+`;
+    }
     return { ...rest, starterCode, hiddenTestCount: hiddenTests.length };
 }
 

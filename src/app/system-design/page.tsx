@@ -40,6 +40,7 @@ export default function SystemDesignPage() {
     const [info, setInfo] = useState("");
 
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const [roundSec, setRoundSec] = useState(25 * 60);
 
     useEffect(() => {
         const savedTheme = localStorage.getItem("prointerview_theme") as "dark" | "light" | "eyeprotect" | null;
@@ -55,6 +56,11 @@ export default function SystemDesignPage() {
             textarea.style.height = `${textarea.scrollHeight}px`;
         }
     }, [prompt]);
+
+    useEffect(() => {
+        const id = window.setInterval(() => setRoundSec((s) => (s > 0 ? s - 1 : 0)), 1000);
+        return () => window.clearInterval(id);
+    }, []);
 
     const isLight = theme === "light" || theme === "eyeprotect";
 
@@ -227,7 +233,12 @@ export default function SystemDesignPage() {
                     </div>
 
                     <div>
-                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">Interactive whiteboard + online eval</h1>
+                        <h1 className="text-xl sm:text-2xl font-bold tracking-tight mt-0.5">
+                            Interactive whiteboard + online eval
+                            <span className="ml-3 text-sm font-mono text-amber-400">
+                                {String(Math.floor(roundSec / 60)).padStart(2, "0")}:{String(roundSec % 60).padStart(2, "0")}
+                            </span>
+                        </h1>
                         <p className={`text-xs sm:text-sm mt-1 max-w-xl ${isLight ? "text-slate-600 font-medium" : "text-white/45"}`}>
                             Pull random prompts online, drag shapes or draw freestyle, then grade the design online only.
                         </p>

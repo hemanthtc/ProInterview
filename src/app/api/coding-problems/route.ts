@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
         }
 
         const lang = String(language || "javascript").toLowerCase();
-        if (lang === "java" && problem.ioMode !== "stdio") {
+        if ((lang === "java" || lang === "cpp" || lang === "c++") && problem.ioMode !== "stdio") {
             return NextResponse.json(
                 { error: "Java is available for stdin/stdout contest problems. Use JS or Python for function problems." },
                 { status: 400 }

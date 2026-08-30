@@ -204,8 +204,7 @@ export default function JobsPage() {
             setResumeText("");
             setResumeFileName("");
 
-            // Load tracked jobs (Disabled for now)
-            // await loadTrackedJobs();
+            await loadTrackedJobs();
             setIsCheckingAuth(false);
         }
         void init();
@@ -592,6 +591,11 @@ export default function JobsPage() {
         }
         window.open(base, "_blank", "noopener,noreferrer");
         void trackJob(job);
+        void fetch("/api/analytics", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: "job_tracked" }),
+        }).catch(() => undefined);
     }
 
     // Tracker stats calculations
@@ -921,18 +925,61 @@ export default function JobsPage() {
                         </button>
                     </div>
 
-                    {/* Section 3: Job Application Tracker (Coming Soon) */}
-                    <div className={`rounded-2xl border px-4 py-3 flex items-center gap-3 ${
+                    <div className={`rounded-2xl border px-4 py-3 space-y-3 ${
                         theme === "light"
-                            ? "bg-amber-50 border-amber-200"
+                            ? "bg-white border-slate-200"
                             : theme === "eyeprotect"
-                            ? "bg-[#f5efe6] border-[#8c8578]"
-                            : "bg-amber-500/5 border-amber-500/15"
+                            ? "bg-[#fffcf5] border-[#8c8578]"
+                            : "bg-white/5 border-white/10"
                     }`}>
-                        <Briefcase className={`w-4 h-4 shrink-0 ${isLight ? "text-amber-600" : "text-amber-400"}`} />
-                        <p className={`text-xs font-semibold ${isLight ? "text-amber-800" : "text-amber-300"}`}>
-                            My Job Application Tracker is coming soon!
-                        </p>
+                        <div className="flex items-center justify-between gap-2">
+                            <p className={`text-xs font-bold flex items-center gap-2 ${isLight ? "text-slate-800" : "text-white"}`}>
+                                <Briefcase className={`w-4 h-4 ${isLight ? "text-amber-600" : "text-amber-400"}`} />
+                                Application tracker
+                            </p>
+                            <span className={`text-[10px] font-bold ${isLight ? "text-slate-500" : "text-white/40"}`}>
+                                {stats.total} saved
+                            </span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 text-[10px] font-bold">
+                            <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5">{stats.pending} pending</span>
+                            <span className="rounded-full bg-sky-500/15 text-sky-300 px-2 py-0.5">{stats.applied} applied</span>
+                            <span className="rounded-full bg-indigo-500/15 text-indigo-300 px-2 py-0.5">{stats.interviewing} interview</span>
+                            <span className="rounded-full bg-rose-500/15 text-rose-300 px-2 py-0.5">{stats.rejected} rejected</span>
+                        </div>
+                        {trackingLoading && <p className="text-[11px] text-white/40">Loading saved applications…</p>}
+                        {trackedJobs.length === 0 && !trackingLoading && (
+                            <p className={`text-[11px] ${isLight ? "text-slate-500" : "text-white/40"}`}>
+                                Click Apply on a matched role to start tracking it here.
+                            </p>
+                        )}
+                        <ul className="space-y-2 max-h-56 overflow-y-auto">
+                            {trackedJobs.slice(0, 12).map((job) => (
+                                <li key={job.jobId} className={`rounded-lg border px-2.5 py-2 text-xs ${isLight ? "border-slate-200" : "border-white/10"}`}>
+                                    <div className="font-bold">{job.role}</div>
+                                    <div className={isLight ? "text-slate-500" : "text-white/45"}>{job.company} · {job.location}</div>
+                                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                        <select
+                                            value={job.status}
+                                            onChange={(e) => void updateJobStatus(job.jobId, e.target.value as TrackedJob["status"])}
+                                            className={`rounded-md border px-1.5 py-0.5 text-[10px] ${isLight ? "bg-white border-slate-300" : "bg-black/40 border-white/15"}`}
+                                        >
+                                            <option value="pending">Pending</option>
+                                            <option value="applied">Applied</option>
+                                            <option value="interviewing">Interviewing</option>
+                                            <option value="rejected">Rejected</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </select>
+                                        <a href={job.applyUrl} target="_blank" rel="noreferrer" className="text-[10px] font-bold text-emerald-400 hover:underline">
+                                            Open
+                                        </a>
+                                        <button type="button" onClick={() => void deleteTrackedJob(job.jobId)} className="text-[10px] text-rose-300">
+                                            Remove
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                     </>
                 )}
