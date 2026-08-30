@@ -4340,16 +4340,22 @@ if (!isAuthChecked) return null;
                             }}
                         />
                     ) : activeModal === "negotiate" ? (
-                        <div className="w-full max-w-4xl lg:max-w-full overflow-x-hidden negotiate-modal-lock px-1 sm:px-3 pt-[130px] lg:pt-0 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
-                            {/* Mobile Top Controls Bar (Positioned cleanly below main site navbar) */}
-                            <div className="lg:hidden fixed top-20 left-0 right-0 z-40 flex items-center justify-between gap-2 px-3 py-2 bg-[#0c0c12]/95 backdrop-blur-md border-b border-white/10 shadow-2xl">
+                        <div className="w-full max-w-4xl lg:max-w-full overflow-x-hidden negotiate-modal-lock px-1 sm:px-3 pt-1 lg:pt-0 mx-auto flex flex-col lg:flex-row items-start justify-between gap-3 lg:gap-6 z-10 relative">
+                            {/* Mobile/Tablet Top Controls Bar */}
+                            <div className={`lg:hidden sticky top-0 z-40 w-full mb-3 flex items-center justify-between gap-2 px-3 py-2.5 rounded-2xl border shadow-xl backdrop-blur-md transition-colors ${
+                                theme === "light"
+                                    ? "bg-white/95 border-slate-200 text-slate-900"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5]/95 border-[#8c8578] text-[#1c1917]"
+                                    : "bg-[#0c0c12]/95 border-white/10 text-white"
+                            }`}>
                                 <div className="flex items-center gap-1 flex-1 min-w-0">
                                     <button
                                         type="button"
                                         onClick={() => setMobileNegotiateTab("levers")}
                                         className={`flex-1 py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${mobileNegotiateTab === "levers"
                                             ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
-                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                            : isLight ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100" : "text-white/60 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         <Sparkles className="w-3.5 h-3.5 shrink-0" /> Levers
@@ -4359,7 +4365,7 @@ if (!isAuthChecked) return null;
                                         onClick={() => setMobileNegotiateTab("calculator")}
                                         className={`flex-1 py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${mobileNegotiateTab === "calculator"
                                             ? "bg-emerald-600 text-white shadow-md shadow-emerald-600/30"
-                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                            : isLight ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100" : "text-white/60 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         <Handshake className="w-3.5 h-3.5 shrink-0" /> Offer &amp; Chat
@@ -4369,7 +4375,7 @@ if (!isAuthChecked) return null;
                                         onClick={() => setMobileNegotiateTab("redlines")}
                                         className={`flex-1 py-2 px-1 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer truncate ${mobileNegotiateTab === "redlines"
                                             ? "bg-red-600 text-white shadow-md shadow-red-600/30"
-                                            : "text-white/60 hover:text-white hover:bg-white/5"
+                                            : isLight ? "text-slate-600 hover:text-slate-900 hover:bg-slate-100" : "text-white/60 hover:text-white hover:bg-white/5"
                                             }`}
                                     >
                                         <ShieldAlert className="w-3.5 h-3.5 shrink-0" /> Red Lines
@@ -4378,7 +4384,11 @@ if (!isAuthChecked) return null;
                                 <button
                                     type="button"
                                     onClick={() => setActiveModal(null)}
-                                    className="text-white/50 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-xl border border-white/10 transition-colors shrink-0 cursor-pointer"
+                                    className={`p-2 rounded-xl border transition-colors shrink-0 cursor-pointer ${
+                                        isLight
+                                            ? "text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 border-slate-200"
+                                            : "text-white/50 hover:text-white bg-white/5 hover:bg-white/10 border-white/10"
+                                    }`}
                                     title="Close modal"
                                 >
                                     <X className="w-4 h-4" />

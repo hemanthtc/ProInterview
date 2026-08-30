@@ -220,30 +220,11 @@ export async function sendGeminiMessageWithRetry(
         });
     };
 
-    let result: any;
-    for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-            result = await chat.sendMessage(nextParts);
-            break;
-        } catch (retryErr: any) {
-            if (retryErr?.status === 429) {
-                if (attempt < 2) {
-                    const delay = (attempt + 1) * 5000;
-                    console.warn(`Gemini 429 rate limit hit, retrying in ${delay}ms...`);
-                    await new Promise((r) => setTimeout(r, delay));
-                } else {
-                    console.warn(`Gemini quota exhausted for ${logContext}; returning fallback response.`);
-                    return quotaFallback();
-                }
-            } else {
-                throw retryErr;
-            }
-        }
-    }
-
-    if (!result) {
+    try {
+        const result = await chat.sendMessage(nextParts);
+        return result.response.text();
+    } catch (retryErr: any) {
+        console.warn(`Gemini error for ${logContext}; returning fallback response.`, retryErr?.message || retryErr);
         return quotaFallback();
     }
-
-    return result.response.text();
 }

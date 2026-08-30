@@ -465,10 +465,16 @@ function CompField({
                 <select
                     value={currency}
                     onChange={(e) => onCurrencyChange(e.target.value)}
-                    className="bg-[#1c1c1c] text-white text-[11px] sm:text-xs font-semibold px-1.5 sm:px-2.5 py-2 sm:py-2.5 border-r border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors shrink-0"
+                    style={{ colorScheme: "dark", backgroundColor: "#18181b", color: "#ffffff" }}
+                    className="bg-[#18181b] text-white text-[11px] sm:text-xs font-semibold px-2 sm:px-2.5 py-2 sm:py-2.5 border-r border-white/10 outline-none cursor-pointer hover:bg-neutral-800 focus:bg-[#18181b] transition-colors shrink-0 [color-scheme:dark]"
                 >
                     {CURRENCY_OPTIONS.map((c) => (
-                        <option key={c.code} value={c.code}>
+                        <option 
+                            key={c.code} 
+                            value={c.code}
+                            style={{ backgroundColor: "#18181b", color: "#ffffff" }}
+                            className="bg-[#18181b] text-white py-1.5 px-2"
+                        >
                             {c.symbol} {c.code}
                         </option>
                     ))}
@@ -486,10 +492,11 @@ function CompField({
                 <select
                     value={payPeriod}
                     onChange={(e) => onPayPeriodChange(e.target.value as "annually" | "monthly")}
-                    className="bg-[#1c1c1c] text-white text-[11px] sm:text-xs px-1.5 sm:px-2.5 py-2 sm:py-2.5 border-l border-white/10 outline-none cursor-pointer hover:bg-white/10 transition-colors shrink-0"
+                    style={{ colorScheme: "dark", backgroundColor: "#18181b", color: "#ffffff" }}
+                    className="bg-[#18181b] text-white text-[11px] sm:text-xs px-2 sm:px-2.5 py-2 sm:py-2.5 border-l border-white/10 outline-none cursor-pointer hover:bg-neutral-800 focus:bg-[#18181b] transition-colors shrink-0 [color-scheme:dark]"
                 >
-                    <option value="annually">/yr</option>
-                    <option value="monthly">/mo</option>
+                    <option value="annually" style={{ backgroundColor: "#18181b", color: "#ffffff" }} className="bg-[#18181b] text-white py-1">/yr</option>
+                    <option value="monthly" style={{ backgroundColor: "#18181b", color: "#ffffff" }} className="bg-[#18181b] text-white py-1">/mo</option>
                 </select>
             </div>
         </label>

@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback } from "@/utils/gemini";
 import { companyBankPromptBlock, resolveCompanyBank } from "@/data/companyBanks";
 import { domainPackPromptBlock, resolveDomainPack } from "@/data/domainPacks";
 import {
     buildHrPersonaBlock,
     buildCandidateProfileInfo,
     formatGeminiParts,
-    sendGeminiMessageWithRetry,
 } from "@/utils/interviewHelper";
 import { getSarvamKey, sarvamChatCompletion } from "@/utils/sarvam";
 import { getVerifiedSession } from "@/utils/auth";
@@ -149,28 +148,27 @@ ${ANTI_LEAK_SUFFIX}`;
             // fall through to Gemini if Sarvam chat fails
         }
 
-        if (!GEMINI_API_KEY) {
-            throw new Error("Missing GEMINI_API_KEY in environment variables.");
-        }
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.7 } });
+        const conversationContents = [
+            { role: "user", parts: [{ text: systemPrompt }] },
+            { role: "model", parts: [{ text: "[MODE:CHAT] Understood. I'm ready to begin." }] },
+            ...history.map((msg: any) => ({
+                role: msg.role === "assistant" ? "model" : "user",
+                parts: formatGeminiParts(msg.content, msg.attachment)
+            })),
+            { role: "user", parts: formatGeminiParts(message || "Hello!", attachment) }
+        ];
 
-        const chat = model.startChat({
-            history: [
-                { role: "user", parts: [{ text: systemPrompt }] },
-                { role: "model", parts: [{ text: "[MODE:CHAT] Understood. I'm ready to begin." }] },
-                ...history.map((msg: any) => ({
-                    role: msg.role === "assistant" ? "model" : "user",
-                    parts: formatGeminiParts(msg.content, msg.attachment)
-                }))
-            ],
-        });
-
-        const nextParts = formatGeminiParts(message || "Hello!", attachment);
-        const responseResult = await sendGeminiMessageWithRetry(chat, nextParts, "standard interview generation");
-
-        if (typeof responseResult !== "string") {
-            return responseResult; // NextResponse fallback object
+        let responseResult: string;
+        try {
+            responseResult = await generateWithFallback(conversationContents as any, {
+                model: "gemini-2.0-flash",
+                generationConfig: { temperature: 0.7 }
+            });
+        } catch (genErr: any) {
+            console.warn("Interviewer Gemini error, using fallback message:", genErr?.message || genErr);
+            return NextResponse.json({
+                message: "[MODE:CHAT] I’m having trouble reaching the interview engine right now. Please try again shortly."
+            });
         }
 
         return NextResponse.json({ message: responseResult, provider: useSarvam ? "gemini_fallback" : "gemini" });

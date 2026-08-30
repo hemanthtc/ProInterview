@@ -882,3 +882,9 @@ html.theme-eyeprotect .bg-red-50\/80 {
   overflow-x: hidden !important;
   touch-action: pan-y !important;
 }
+
+/* Contrast Protection for Select & Option Dropdowns */
+select option {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+}
