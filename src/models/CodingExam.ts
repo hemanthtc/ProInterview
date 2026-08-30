@@ -13,6 +13,8 @@ export interface ICodingExamAttempt {
     terminated?: boolean;
     scores: Record<string, number>;
     events: ICodingExamEvent[];
+    fingerprints?: Record<string, string>;
+    plagiarism?: { identifier: string; score: number }[];
 }
 
 export interface ICodingExam extends Document {
@@ -41,6 +43,8 @@ const AttemptSchema = new Schema<ICodingExamAttempt>(
         terminated: { type: Boolean, default: false },
         scores: { type: Schema.Types.Mixed, default: {} },
         events: { type: [EventSchema], default: [] },
+        fingerprints: { type: Schema.Types.Mixed, default: {} },
+        plagiarism: { type: Schema.Types.Mixed, default: [] },
     },
     { _id: false }
 );

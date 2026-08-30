@@ -8,6 +8,7 @@ import { buildOfflineInterviewReply } from "../src/utils/interviewFallback";
 import { isProPlan } from "../src/utils/planFlags";
 import { assessmentCopy } from "../src/utils/uiLocale";
 import { analyticsFunnel, recordAnalyticsEvent } from "../src/utils/analytics";
+import { codeSimilarity } from "../src/utils/codeSimilarity";
 
 describe("assessment problem bank", () => {
     it("covers all four platforms", () => {
@@ -48,6 +49,12 @@ describe("pro gates and locale", () => {
     it("counts analytics funnel", () => {
         recordAnalyticsEvent({ name: "signup", at: Date.now() });
         expect(analyticsFunnel().signups).toBeGreaterThanOrEqual(1);
+    });
+
+    it("flags near-duplicate code", () => {
+        const a = "function twoSum(n,t){return [0,1]}";
+        const b = "function twoSum(n, t) { return [0, 1]; }";
+        expect(codeSimilarity(a, b)).toBeGreaterThan(0.8);
     });
 });
 

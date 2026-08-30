@@ -12,6 +12,7 @@ interface Attempt {
     terminated?: boolean;
     scores: Record<string, number>;
     events: { at: number; reason: string }[];
+    plagiarism?: { identifier: string; score: number }[];
 }
 
 interface Exam {
@@ -38,6 +39,7 @@ export default function FacultyExamsPage() {
     const [roster, setRoster] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
+    const [cfHint, setCfHint] = useState("");
     const [copied, setCopied] = useState("");
 
     async function refresh() {
@@ -147,6 +149,18 @@ export default function FacultyExamsPage() {
                 >
                     Seed demo exam
                 </button>
+                <button
+                    type="button"
+                    className="mt-2 ml-4 text-xs font-bold text-sky-300"
+                    onClick={async () => {
+                        const res = await fetch("/api/codeforces");
+                        const data = await res.json();
+                        setCfHint(data.url ? `${data.title} — ${data.url}` : data.error || "");
+                    }}
+                >
+                    Pull live Codeforces problem
+                </button>
+                {cfHint && <p className="mt-2 text-xs text-sky-200/80 break-all">{cfHint}</p>}
                 {error && <p className="mt-3 text-sm text-rose-300">{error}</p>}
 
                 <div className="mt-8 space-y-4">
@@ -225,6 +239,11 @@ export default function FacultyExamsPage() {
                                                     )}
                                                     {a.events[0] && (
                                                         <div className="text-white/35 mt-0.5">{a.events[a.events.length - 1]?.reason}</div>
+                                                    )}
+                                                    {a.plagiarism && a.plagiarism[0] && (
+                                                        <div className="text-rose-300 mt-0.5">
+                                                            Similar to {a.plagiarism[0].identifier} ({Math.round(a.plagiarism[0].score * 100)}%)
+                                                        </div>
                                                     )}
                                                 </td>
                                             </tr>

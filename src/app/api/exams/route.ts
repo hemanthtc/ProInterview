@@ -105,10 +105,19 @@ export async function POST(req: NextRequest) {
                           .map(([k, v]) => [k, Number(v)])
                   )
                 : {};
+        const fingerprints =
+            body.fingerprints && typeof body.fingerprints === "object"
+                ? Object.fromEntries(
+                      Object.entries(body.fingerprints as Record<string, unknown>)
+                          .filter(([, v]) => typeof v === "string")
+                          .map(([k, v]) => [k, String(v).slice(0, 20_000)])
+                  )
+                : undefined;
         const updated = await upsertAttempt(exam.code, session.identifier, {
             displayName: String(body.displayName || session.identifier),
             events,
             scores,
+            fingerprints,
             terminated: Boolean(body.terminated),
             submittedAt: body.submitted ? Date.now() : undefined,
         });

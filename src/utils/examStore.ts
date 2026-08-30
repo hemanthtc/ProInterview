@@ -1,5 +1,6 @@
 import connectDB from "@/utils/db";
 import CodingExam, { type ICodingExamAttempt } from "@/models/CodingExam";
+import { plagiarismHits } from "@/utils/codeSimilarity";
 
 export interface ExamAttemptView {
     identifier: string;
@@ -9,6 +10,8 @@ export interface ExamAttemptView {
     terminated?: boolean;
     scores: Record<string, number>;
     events: { at: number; reason: string }[];
+    fingerprints?: Record<string, string>;
+    plagiarism?: { identifier: string; score: number }[];
 }
 
 export interface ExamRecord {
@@ -57,6 +60,8 @@ function toView(doc: {
             terminated: a.terminated,
             scores: a.scores || {},
             events: a.events || [],
+            fingerprints: a.fingerprints,
+            plagiarism: a.plagiarism,
         })),
     };
 }
@@ -152,7 +157,20 @@ export async function upsertAttempt(
         terminated: patch.terminated ?? existing?.terminated,
         scores: { ...(existing?.scores || {}), ...(patch.scores || {}) },
         events: [...(existing?.events || []), ...(patch.events || [])].slice(-40),
+        fingerprints: { ...(existing?.fingerprints || {}), ...(patch.fingerprints || {}) },
+        plagiarism: patch.plagiarism ?? existing?.plagiarism,
     };
+
+    if (patch.fingerprints) {
+        const others = exam.attempts
+            .filter((a) => a.identifier !== identifier)
+            .flatMap((a) =>
+                Object.values(a.fingerprints || {}).map((code) => ({ identifier: a.identifier, code }))
+            );
+        const mine = Object.values(next.fingerprints || {});
+        const hits = mine.flatMap((code) => plagiarismHits(code, others));
+        next.plagiarism = hits.slice(0, 5);
+    }
 
     const attempts = existing
         ? exam.attempts.map((a) => (a.identifier === identifier ? next : a))

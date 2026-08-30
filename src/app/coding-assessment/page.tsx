@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Camera, Clock, Loader2, ShieldAlert, ShieldCheck } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
+import CodeEditor from "@/components/coding/CodeEditor";
 import { MAX_INTEGRITY_WARNINGS, useAssessmentProctor } from "@/hooks/useAssessmentProctor";
 import { assessmentCopy, type UiLang } from "@/utils/uiLocale";
 
@@ -148,6 +149,7 @@ export default function CodingAssessmentPage() {
                 scores,
                 submitted: extra.submitted,
                 terminated: extra.terminated,
+                fingerprints: extra.submitted ? codeByProblem : undefined,
             }),
         }).catch(() => undefined);
     }
@@ -464,10 +466,9 @@ export default function CodingAssessmentPage() {
                             className="w-full min-h-[56px] resize-y bg-[#121212] px-3 py-2 font-mono text-xs text-white/70 border-b border-white/10 focus:outline-none"
                         />
                     )}
-                    <textarea
+                    <CodeEditor
                         value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        spellCheck={false}
+                        onChange={setCode}
                         className="flex-1 min-h-[280px] w-full resize-none bg-[#1b1b1b] p-4 font-mono text-sm text-[#d4d4d4] focus:outline-none"
                     />
                     {customOut && (

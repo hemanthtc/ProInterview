@@ -21,6 +21,11 @@ export interface SessionPayload {
     isOrganization: boolean;
 }
 
+export interface SessionMeta {
+    exp: number;
+    iat: number;
+}
+
 /**
  * Creates a signed JWT using native Node.js crypto (HMAC-SHA256).
  */
@@ -28,7 +33,8 @@ export function createToken(payload: SessionPayload, isPwa?: boolean): string {
     const JWT_SECRET = getJwtSecret();
     const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
     const duration = isPwa ? 365 * 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
-    const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + duration })).toString("base64url");
+    const now = Date.now();
+    const data = Buffer.from(JSON.stringify({ ...payload, iat: now, exp: now + duration })).toString("base64url");
     const signature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${data}`).digest("base64url");
     return `${header}.${data}.${signature}`;
 }
@@ -100,7 +106,36 @@ export async function getVerifiedSession(): Promise<SessionPayload | null> {
         const cookieStore = await cookies();
         const token = cookieStore.get("session")?.value;
         if (!token) return null;
-        return verifyToken(token);
+        const session = verifyToken(token);
+        if (!session) return null;
+        const meta = readTokenMeta(token);
+        const remaining = (meta?.exp || 0) - Date.now();
+        if (meta && remaining > 0 && remaining < 2 * 24 * 60 * 60 * 1000) {
+            await setSessionCookie(session);
+        }
+        return session;
+    } catch {
+        return null;
+    }
+}
+
+function readTokenMeta(token: string): SessionMeta | null {
+    try {
+        const parts = token.split(".");
+        if (parts.length !== 3) return null;
+        const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8"));
+        return { exp: Number(payload.exp) || 0, iat: Number(payload.iat) || 0 };
+    } catch {
+        return null;
+    }
+}
+
+export async function verifyTokenMeta(): Promise<SessionMeta | null> {
+    try {
+        const cookieStore = await cookies();
+        const token = cookieStore.get("session")?.value;
+        if (!token || !verifyToken(token)) return null;
+        return readTokenMeta(token);
     } catch {
         return null;
     }
