@@ -42,6 +42,10 @@ async function loadTierConfigs(): Promise<Record<string, TierConfig>> {
         return cachedTierConfigs;
     }
 
+    if (!process.env.MONGODB_URI) {
+        return HARDCODED_DEFAULTS;
+    }
+
     try {
         // Dynamic import to avoid circular dependency and allow usage in non-DB contexts
         const { default: connectDB } = await import("@/utils/db");
