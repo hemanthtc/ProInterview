@@ -29,20 +29,41 @@ function MobileDashboardContent({
     onStartInterview,
     onSelectProgress,
 }: MobileDashboardContentProps) {
-    const [pastSessions, setPastSessions] = useState<any[]>([]);
-    const [snap, setSnap] = useState<any>(null);
-
-    useEffect(() => {
+    const [pastSessions, setPastSessions] = useState<any[]>(() => {
+        if (typeof window === "undefined") return [];
         const stored = getStorageItem("interviewSessions");
         if (stored) {
             try {
-                const sessions = JSON.parse(stored);
-                setPastSessions(sessions);
-            } catch (e) {
-                console.error(e);
+                return JSON.parse(stored) || [];
+            } catch {
+                return [];
             }
         }
-        setSnap(buildPrepSnapshot());
+        return [];
+    });
+    const [snap, setSnap] = useState<any>(() => {
+        if (typeof window === "undefined") return null;
+        return buildPrepSnapshot();
+    });
+
+    useEffect(() => {
+        const syncSessions = () => {
+            const stored = getStorageItem("interviewSessions");
+            if (stored) {
+                try {
+                    setPastSessions(JSON.parse(stored) || []);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            setSnap(buildPrepSnapshot());
+        };
+        window.addEventListener("ai-storage-change", syncSessions);
+        window.addEventListener("storage", syncSessions);
+        return () => {
+            window.removeEventListener("ai-storage-change", syncSessions);
+            window.removeEventListener("storage", syncSessions);
+        };
     }, []);
 
     // Filter sessions to find this month's attempts

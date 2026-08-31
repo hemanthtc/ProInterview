@@ -74,14 +74,25 @@ export default function FilmRoomClient() {
     const router = useRouter();
     const tParam = searchParams.get("t");
 
-    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">(() => {
+        if (typeof window === "undefined") return "dark";
+        const savedTheme = localStorage.getItem("globalTheme") as "dark" | "light" | "eyeprotect" | null;
+        if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+            return savedTheme;
+        }
+        return "dark";
+    });
     const isLight = theme === "light" || theme === "eyeprotect";
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem("globalTheme") as any;
-        if (savedTheme) {
-            setTheme(savedTheme);
-        }
+        const syncTheme = () => {
+            const savedTheme = localStorage.getItem("globalTheme") as "dark" | "light" | "eyeprotect" | null;
+            if (savedTheme && ["dark", "light", "eyeprotect"].includes(savedTheme)) {
+                setTheme(savedTheme);
+            }
+        };
+        window.addEventListener("storage", syncTheme);
+        return () => window.removeEventListener("storage", syncTheme);
     }, []);
 
     const session = useMemo(() => {
@@ -107,7 +118,7 @@ export default function FilmRoomClient() {
             const currentUserName = getStorageItem("userName") || "";
 
             return list
-                .filter((s: any) => {
+                .filter((s: InterviewSession) => {
                     if (now - s.timestamp >= ONE_YEAR_MS) return false;
                     if (!s.userName && !s.userIdentifier) return true;
                     if (currentIdentifier && s.userIdentifier === currentIdentifier) return true;
@@ -119,22 +130,22 @@ export default function FilmRoomClient() {
         } catch {
             return [];
         }
-    }, [tParam]);
+    }, []);
 
     const totalInterviews = allSessions.length;
-    const avgScore = (() => {
+    const avgScore = useMemo(() => {
         if (allSessions.length === 0) return 0;
         const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
         const now = Date.now();
         let weightedSum = 0, totalWeight = 0;
-        allSessions.forEach((s: any) => {
+        allSessions.forEach((s: InterviewSession) => {
             const ageMs = now - s.timestamp;
             const weight = Math.max(0, 1 - ageMs / ONE_YEAR_MS);
             weightedSum += (s.finalScore || 0) * weight;
             totalWeight += weight;
         });
         return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
-    })();
+    }, [allSessions]);
     const benchmark = avgScore >= 80 ? "Top Tier Candidate" : avgScore >= 60 ? "Proficient" : avgScore > 0 ? "Needs Improvement" : "No Data Yet";
     const benchmarkColor = avgScore >= 80 ? "text-emerald-400" : avgScore >= 60 ? "text-amber-400" : avgScore > 0 ? "text-rose-400" : "text-white/40";
 

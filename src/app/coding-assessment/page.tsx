@@ -64,11 +64,15 @@ export default function CodingAssessmentPage() {
     const {
         videoRef,
         canvasRef,
+        cameraError,
         expression,
         faceVisible,
         attention,
         warningCount,
+        lastWarning,
+        terminated,
         startCamera,
+        stopCamera,
         requestFullscreen,
     } = useAssessmentProctor(phase === "live", onProctorTerminate);
     const active = problems[activeIndex] || null;
@@ -141,7 +145,7 @@ export default function CodingAssessmentPage() {
 
     function finish() {
         setPhase("submitted");
-        proctor.stopCamera();
+        stopCamera();
         if (document.fullscreenElement) {
             void document.exitFullscreen().catch(() => undefined);
         }
@@ -157,7 +161,7 @@ export default function CodingAssessmentPage() {
         return (
             <div className="min-h-screen bg-[#0b141a] text-white flex items-center justify-center p-6">
                 <div className="max-w-lg w-full rounded-2xl border border-white/10 bg-[#111c24] p-8 text-center">
-                    {proctor.terminated ? (
+                    {terminated ? (
                         <>
                             <ShieldAlert className="mx-auto h-12 w-12 text-red-400" />
                             <h1 className="mt-4 text-2xl font-bold text-red-300">Assessment terminated</h1>
@@ -184,7 +188,7 @@ export default function CodingAssessmentPage() {
                             </li>
                         ))}
                     </ul>
-                    <p className="mt-4 text-xs text-white/40">Integrity warnings: {proctor.warningCount}</p>
+                    <p className="mt-4 text-xs text-white/40">Integrity warnings: {warningCount}</p>
                     <Link href="/coding-lab" className="mt-6 inline-block text-sm font-bold text-emerald-400 hover:underline">
                         Back to coding lab
                     </Link>
@@ -214,7 +218,7 @@ export default function CodingAssessmentPage() {
                         </div>
                     </div>
                     {loadError && <p className="mt-4 text-sm text-rose-300">{loadError}</p>}
-                    {proctor.cameraError && <p className="mt-4 text-sm text-rose-300">{proctor.cameraError}</p>}
+                    {cameraError && <p className="mt-4 text-sm text-rose-300">{cameraError}</p>}
                     <button
                         type="button"
                         disabled={problems.length === 0}
@@ -258,10 +262,10 @@ export default function CodingAssessmentPage() {
                 </div>
             </header>
 
-            {proctor.lastWarning && (
+            {lastWarning && (
                 <div className="flex items-center gap-2 bg-red-600/90 px-4 py-1.5 text-xs font-semibold">
                     <AlertTriangle className="h-3.5 w-3.5" />
-                    Warning {proctor.warningCount}/{MAX_INTEGRITY_WARNINGS}: {proctor.lastWarning}
+                    Warning {warningCount}/{MAX_INTEGRITY_WARNINGS}: {lastWarning}
                 </div>
             )}
 

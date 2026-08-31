@@ -46,20 +46,41 @@ function MobileDashboardContent({
     onStartInterview,
     onSelectProgress,
 }: MobileDashboardContentProps) {
-    const [pastSessions, setPastSessions] = useState<any[]>([]);
-    const [snap, setSnap] = useState<any>(null);
-
-    useEffect(() => {
+    const [pastSessions, setPastSessions] = useState<any[]>(() => {
+        if (typeof window === "undefined") return [];
         const stored = getStorageItem("interviewSessions");
         if (stored) {
             try {
-                const sessions = JSON.parse(stored);
-                setPastSessions(sessions);
-            } catch (e) {
-                console.error(e);
+                return JSON.parse(stored) || [];
+            } catch {
+                return [];
             }
         }
-        setSnap(buildPrepSnapshot());
+        return [];
+    });
+    const [snap, setSnap] = useState<any>(() => {
+        if (typeof window === "undefined") return null;
+        return buildPrepSnapshot();
+    });
+
+    useEffect(() => {
+        const syncSessions = () => {
+            const stored = getStorageItem("interviewSessions");
+            if (stored) {
+                try {
+                    setPastSessions(JSON.parse(stored) || []);
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+            setSnap(buildPrepSnapshot());
+        };
+        window.addEventListener("ai-storage-change", syncSessions);
+        window.addEventListener("storage", syncSessions);
+        return () => {
+            window.removeEventListener("ai-storage-change", syncSessions);
+            window.removeEventListener("storage", syncSessions);
+        };
     }, []);
 
     // Filter sessions to find this month's attempts
@@ -77,26 +98,30 @@ function MobileDashboardContent({
     const dayStreak = 5; // fallback to 5
 
     // Get display sessions: if empty, show the mock sessions from the screenshot
-    const displaySessions = pastSessions.length > 0 ? pastSessions.slice(0, 2) : [
-        {
-            id: "mock1",
-            role: "Frontend Developer",
-            timestamp: Date.now() - 24 * 60 * 65 * 1000, // yesterday
-            finalScore: 78,
-            duration: "45 min",
-            difficulty: "Advanced",
-            isMock: true
-        },
-        {
-            id: "mock2",
-            role: "System Design",
-            timestamp: Date.now() - 2 * 24 * 60 * 65 * 1000, // 2 days ago
-            finalScore: 85,
-            duration: "60 min",
-            difficulty: "Intermediate",
-            isMock: true
-        }
-    ];
+    const displaySessions = useMemo(() => {
+        if (pastSessions.length > 0) return pastSessions.slice(0, 2);
+        const now = Date.now();
+        return [
+            {
+                id: "mock1",
+                role: "Frontend Developer",
+                timestamp: now - 24 * 60 * 65 * 1000, // yesterday
+                finalScore: 78,
+                duration: "45 min",
+                difficulty: "Advanced",
+                isMock: true
+            },
+            {
+                id: "mock2",
+                role: "System Design",
+                timestamp: now - 2 * 24 * 60 * 65 * 1000, // 2 days ago
+                finalScore: 85,
+                duration: "60 min",
+                difficulty: "Intermediate",
+                isMock: true
+            }
+        ];
+    }, [pastSessions]);
 
     return (
         <div className="w-full max-w-md mx-auto flex flex-col gap-4 px-1 animate-in fade-in duration-300">
@@ -173,11 +198,44 @@ function FeaturesContent() {
     const [loading, setLoading] = useState(false);
     const [targetCompanies, setTargetCompanies] = useState<string[]>([]);
     const [preferredRoles, setPreferredRoles] = useState<string[]>([]);
-    const [pastSessions, setPastSessions] = useState<any[]>([]);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isGuest, setIsGuest] = useState(false);
-    const [pausedSession, setPausedSession] = useState<PausedInterviewSession | null>(null);
-    const [isRealisticMode, setIsRealisticMode] = useState(false);
+    const [pastSessions, setPastSessions] = useState<any[]>(() => {
+        if (typeof window === "undefined") return [];
+        const stored = getStorageItem("interviewSessions");
+        if (stored) {
+            try {
+                const sessions = JSON.parse(stored);
+                const oneHourAgo = Date.now() - 60 * 60 * 1000;
+                return sessions.filter((s: any) => s.timestamp > oneHourAgo);
+            } catch {
+                return [];
+            }
+        }
+        return [];
+    });
+    const [isLoggedIn, setIsLoggedIn] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return getStorageItem("userLoggedIn") === "true";
+    });
+    const [isGuest, setIsGuest] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return getStorageItem("userLoggedIn") === "guest";
+    });
+    const [pausedSession, setPausedSession] = useState<PausedInterviewSession | null>(() => {
+        if (typeof window === "undefined") return null;
+        const storedPaused = getStorageItem("pausedInterviewSession");
+        if (storedPaused) {
+            try {
+                return JSON.parse(storedPaused);
+            } catch {
+                return null;
+            }
+        }
+        return null;
+    });
+    const [isRealisticMode, setIsRealisticMode] = useState(() => {
+        if (typeof window === "undefined") return false;
+        return getStorageItem("globalInterviewMode") === "realistic";
+    });
     const [isMobile, setIsMobile] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const isLight = theme === "light" || theme === "eyeprotect";
@@ -779,20 +837,35 @@ function FeaturesContent() {
     useEffect(() => {
         const loggedIn = getStorageItem("userLoggedIn") === "true";
         const guest = getStorageItem("userLoggedIn") === "guest";
-        setIsLoggedIn(loggedIn);
-        setIsGuest(guest);
         if (!loggedIn && !guest) {
             router.push("/login");
             return;
         }
         setIsAuthChecked(true);
 
+        const syncState = () => {
+            const l = getStorageItem("userLoggedIn") === "true";
+            const g = getStorageItem("userLoggedIn") === "guest";
+            setIsLoggedIn(l);
+            setIsGuest(g);
+            setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
+            const stored = getStorageItem("interviewSessions");
+            if (stored) {
+                try {
+                    const sessions = JSON.parse(stored);
+                    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+                    setPastSessions(sessions.filter((s: any) => s.timestamp > oneHourAgo));
+                } catch {}
+            }
+        };
+
+        window.addEventListener("ai-storage-change", syncState);
+        window.addEventListener("storage", syncState);
+
         if (!guest) {
             void pullSessionsFromCloud();
         }
 
-        const isRealistic = getStorageItem("globalInterviewMode") === "realistic";
-        setIsRealisticMode(isRealistic);
         syncAccountDetailsFromStorage();
 
         const savedTheme = localStorage.getItem("globalTheme") as any;
@@ -800,27 +873,6 @@ function FeaturesContent() {
             setTheme(savedTheme);
             document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
             document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-        }
-
-        const stored = getStorageItem("interviewSessions");
-        if (stored) {
-            try {
-                const sessions = JSON.parse(stored);
-                const oneHourAgo = Date.now() - 60 * 60 * 1000;
-                const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
-                setPastSessions(recentSessions);
-            } catch (e) {
-                console.error("Failed to parse sessions", e);
-            }
-        }
-
-        const storedPaused = getStorageItem("pausedInterviewSession");
-        if (storedPaused) {
-            try {
-                setPausedSession(JSON.parse(storedPaused));
-            } catch (e) {
-                console.error(e);
-            }
         }
 
         // Auto-open analysis tool if redirected from Home page
@@ -832,7 +884,12 @@ function FeaturesContent() {
             setShowAnalysis(false);
             setShowResume(false);
         }
-    }, []);
+
+        return () => {
+            window.removeEventListener("ai-storage-change", syncState);
+            window.removeEventListener("storage", syncState);
+        };
+    }, [router]);
 
     // Global countdown timer for Aptitude Quiz Simulator
     useEffect(() => {
