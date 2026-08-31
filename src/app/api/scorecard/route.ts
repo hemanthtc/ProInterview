@@ -4,6 +4,7 @@ import connectDB from "@/utils/db";
 import Scorecard from "@/models/Scorecard";
 import { getVerifiedSession } from "@/utils/auth";
 import { isS3Configured, getJSON, uploadJSON, pingS3, getS3ScorecardKey } from "@/utils/s3";
+import { jsonError, enforceRateLimit } from "@/utils/http";
 
 function normalizePortfolio(value: unknown): number | string {
     if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -123,6 +124,9 @@ export async function POST(req: NextRequest) {
 
 export async function GET(req: NextRequest) {
     try {
+        const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "anon";
+        const blocked = enforceRateLimit(`scorecard-get:${ip}`, { limit: 60, windowMs: 15 * 60 * 1000 }, "scorecard lookups");
+        if (blocked) return blocked;
         const { searchParams } = new URL(req.url);
         const id = searchParams.get("id");
         if (!id) {
@@ -184,6 +188,6 @@ export async function GET(req: NextRequest) {
         });
     } catch (error: any) {
         console.error("Scorecard GET error:", error);
-        return NextResponse.json({ error: error.message || "Failed to fetch scorecard" }, { status: 500 });
+        return jsonError(error, 500, "Failed to fetch scorecard");
     }
 }

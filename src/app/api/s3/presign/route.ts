@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedSession } from "@/utils/auth";
 import { rateLimit } from "@/utils/rateLimit";
+import { jsonError } from "@/utils/http";
 import {
     buildObjectKey,
     createPresignedUploadUrl,
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        if (!ALLOWED_CONTENT_TYPES.includes(contentType) && !contentType.startsWith("image/")) {
+        if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
             return NextResponse.json({ error: `Unsupported content type: ${contentType}` }, { status: 400 });
         }
 
@@ -87,12 +88,15 @@ export async function POST(req: NextRequest) {
         });
     } catch (error: unknown) {
         console.error("s3/presign", error);
-        const message = error instanceof Error ? error.message : "Failed to create upload URL";
-        return NextResponse.json({ error: message }, { status: 500 });
+        return jsonError(error, 500, "Failed to create upload URL");
     }
 }
 
 export async function GET() {
+    const session = await getVerifiedSession();
+    if (!session) {
+        return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
+    }
     return NextResponse.json({
         configured: isS3Configured(),
         prefixes: ALLOWED_PREFIXES,

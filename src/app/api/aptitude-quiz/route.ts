@@ -1,6 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
+import { generateContentWithTimeout } from "@/utils/gemini";
+import {
+    aptitudeQuizBodySchema,
+    enforceRateLimit,
+    jsonError,
+    parseJsonBody,
+} from "@/utils/http";
+
+const CATEGORY_LABELS: Record<string, string> = {
+    logicalReasoning: "Logical Reasoning",
+    quantitativeAptitude: "Quantitative Aptitude",
+    technicalCoding: "Technical Coding",
+    domainAssessments: "Domain Assessments",
+    situationalJudgment: "Situational Judgment",
+};
 
 export async function POST(req: NextRequest) {
     try {
@@ -9,11 +24,16 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
 
-        const { category } = await req.json();
+        const blocked = enforceRateLimit(
+            `aptitude-quiz:${session.identifier}`,
+            { limit: 20, windowMs: 15 * 60 * 1000 },
+            "aptitude quizzes"
+        );
+        if (blocked) return blocked;
 
-        if (!category) {
-            return NextResponse.json({ error: "Missing category parameter" }, { status: 400 });
-        }
+        const parsed = await parseJsonBody(req, aptitudeQuizBodySchema);
+        if (!parsed.ok) return parsed.response;
+        const { category } = parsed.data;
 
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
@@ -23,18 +43,10 @@ export async function POST(req: NextRequest) {
         const genAI = new GoogleGenerativeAI(API_KEY);
         const model = genAI.getGenerativeModel({
             model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0.7 }
+            generationConfig: { temperature: 0.7 },
         });
 
-        const categoryLabels: Record<string, string> = {
-            logicalReasoning: "Logical Reasoning",
-            quantitativeAptitude: "Quantitative Aptitude",
-            technicalCoding: "Technical Coding",
-            domainAssessments: "Domain Assessments",
-            situationalJudgment: "Situational Judgment"
-        };
-
-        const categoryLabel = categoryLabels[category] || category;
+        const categoryLabel = CATEGORY_LABELS[category];
 
         const systemPrompt = `You are an expert tutor preparing candidates for technical interviews and aptitude assessments.
 Your task is to generate exactly 3 challenging and highly relevant multiple-choice practice questions for the category: "${categoryLabel}".
@@ -57,7 +69,7 @@ The JSON must adhere to the following schema:
       "question": "Question text here...",
       "codeSnippet": "Optional code snippet here if applicable, or leave empty/omit",
       "options": ["Option A text", "Option B text", "Option C text", "Option D text"],
-      "correctAnswer": 0, // 0-indexed integer corresponding to the index in the options array
+      "correctAnswer": 0,
       "explanation": "Detailed explanation of why this answer is correct."
     }
   ]
@@ -68,15 +80,22 @@ Ensure the questions are realistic, technically accurate, and unique. Provide ex
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                result = await model.generateContent(systemPrompt);
+                result = await generateContentWithTimeout(model.generateContent(systemPrompt), 35000);
                 break;
-            } catch (retryErr: any) {
-                const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
-                                    (retryErr?.message && (retryErr.message.includes("429") || retryErr.message.includes("503") || retryErr.message.includes("demand")));
+            } catch (retryErr: unknown) {
+                const err = retryErr as { status?: number; message?: string };
+                const isTransient =
+                    err?.status === 429 ||
+                    err?.status === 503 ||
+                    (err?.message &&
+                        (err.message.includes("429") ||
+                            err.message.includes("503") ||
+                            err.message.includes("demand") ||
+                            err.message.includes("timed out")));
                 if (isTransient && attempt < 2) {
                     const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error (${retryErr?.status || '503'}), retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
+                    console.warn(`Gemini transient error, retrying in ${delay}ms...`);
+                    await new Promise((r) => setTimeout(r, delay));
                 } else {
                     throw retryErr;
                 }
@@ -88,18 +107,16 @@ Ensure the questions are realistic, technically accurate, and unique. Provide ex
         }
 
         const textResponse = result.response.text().trim();
-        let parsedData;
         try {
             const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-            parsedData = JSON.parse(cleanJson);
-        } catch (e) {
-            console.error("Failed to parse JSON response from Gemini for aptitude quiz:", textResponse);
+            const parsedData = JSON.parse(cleanJson);
+            return NextResponse.json(parsedData);
+        } catch {
+            console.error("Failed to parse JSON response from Gemini for aptitude quiz");
             return NextResponse.json({ error: "Failed to parse questions output from AI" }, { status: 500 });
         }
-
-        return NextResponse.json(parsedData);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Aptitude quiz generation error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        return jsonError(error, 500, "Internal server error");
     }
 }

@@ -145,6 +145,7 @@ async function connectDB() {
             bufferCommands: true,
             serverSelectionTimeoutMS: 8000,
             connectTimeoutMS: 8000,
+            maxPoolSize: 10,
         };
 
         // If in development and using mongodb+srv://, resolve via DoH first to avoid local DNS timeout on blocked UDP port 53.

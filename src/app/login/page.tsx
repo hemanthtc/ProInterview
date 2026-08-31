@@ -1326,7 +1326,8 @@ function LoginContent() {
                     )}
 
                     <p className={`mt-6 text-center text-xs ${ isLight ? "text-slate-400" : "text-white/30" }`}>
-                        Credentials secured in Cloud & Sync cache. End-to-end protected.
+                        Credentials secured in Cloud & Sync cache.{" "}
+                        <Link href="/privacy" className="underline hover:text-indigo-400">Privacy</Link>
                     </p>
                 </div>
             </main>

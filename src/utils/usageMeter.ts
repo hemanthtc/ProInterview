@@ -133,33 +133,51 @@ export async function checkAndIncrementUsage(
     kind: MeterKind,
     plan = "Free Tier"
 ): Promise<{ allowed: boolean; remaining: number; limit: number; retryAfterSec?: number }> {
-    const blob = await ensurePrepProgress(identifier);
+    await ensurePrepProgress(identifier);
     const limits = getPlanLimits(plan);
-    const usage = blob.prepProgress.usage || {
-        geminiCalls: 0,
-        sarvamCalls: 0,
-        coachBookings: 0,
-        periodStart: monthStart(),
-    };
     const key = kind === "gemini" ? "geminiCalls" : kind === "sarvam" ? "sarvamCalls" : "coachBookings";
     const limit = kind === "gemini" ? limits.gemini : kind === "sarvam" ? limits.sarvam : limits.coach;
-    const used = usage[key] || 0;
-    if (used >= limit) {
-        const nextMonth = new Date();
-        nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
-        nextMonth.setHours(0, 0, 0, 0);
-        return {
-            allowed: false,
-            remaining: 0,
-            limit,
-            retryAfterSec: Math.max(60, Math.floor((nextMonth.getTime() - Date.now()) / 1000)),
-        };
+    const usagePath = `prepProgress.usage.${key}`;
+
+    const updated = await CloudSession.findOneAndUpdate(
+        {
+            identifier,
+            [usagePath]: { $lt: limit },
+        },
+        { $inc: { [usagePath]: 1 } },
+        { new: true }
+    );
+
+    if (updated) {
+        const used = Number(updated.prepProgress?.usage?.[key] || 0);
+        return { allowed: true, remaining: Math.max(0, limit - used), limit };
     }
-    usage[key] = used + 1;
-    blob.prepProgress.usage = usage;
-    blob.markModified("prepProgress");
-    await blob.save();
-    return { allowed: true, remaining: limit - used - 1, limit };
+
+    const blob = await CloudSession.findOne({ identifier });
+    const used = Number(blob?.prepProgress?.usage?.[key] || 0);
+    if (used < limit && blob) {
+        const usage = blob.prepProgress.usage || {
+            geminiCalls: 0,
+            sarvamCalls: 0,
+            coachBookings: 0,
+            periodStart: monthStart(),
+        };
+        usage[key] = used + 1;
+        blob.prepProgress.usage = usage;
+        blob.markModified("prepProgress");
+        await blob.save();
+        return { allowed: true, remaining: limit - used - 1, limit };
+    }
+
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1, 1);
+    nextMonth.setHours(0, 0, 0, 0);
+    return {
+        allowed: false,
+        remaining: 0,
+        limit,
+        retryAfterSec: Math.max(60, Math.floor((nextMonth.getTime() - Date.now()) / 1000)),
+    };
 }
 
 export async function addReferralCredits(identifier: string, amount: number) {

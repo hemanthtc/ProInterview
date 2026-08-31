@@ -83,6 +83,7 @@ export async function uploadBuffer(opts: {
         Key: opts.key,
         Body: opts.body,
         ContentType: opts.contentType || "application/octet-stream",
+        ContentDisposition: "attachment",
         Metadata: opts.metadata,
     };
     await getS3Client().send(new PutObjectCommand(input));

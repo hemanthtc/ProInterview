@@ -8,6 +8,9 @@ import mongoose from "mongoose";
 import bcryptjs from "bcryptjs";
 import { getVerifiedSession } from "@/utils/auth";
 import { isS3Configured, getJSON, uploadJSON, deleteObject, pingS3, getS3ProfileKey, getLegacyS3ProfileKey } from "@/utils/s3";
+import { redactLogIdentifier } from "@/utils/pii";
+import { jsonError } from "@/utils/http";
+import { wipeUserOwnedData, deleteAccountRecord } from "@/utils/userDataWipe";
 
 function getModel(accountType: string): mongoose.Model<any> {
     switch (accountType) {
@@ -30,7 +33,7 @@ async function migrateMongoProfileToS3(userIdentifier: string, key: string, s3Pr
         await connectDB();
         const profile = await ProfileData.findOne({ identifier: userIdentifier });
         if (profile) {
-            console.log(`Migrating MongoDB profile details to S3 for ${userIdentifier}...`);
+            console.log(`Migrating MongoDB profile details to S3 for ${redactLogIdentifier(userIdentifier)}...`);
             const merged = {
                 ...s3Profile,
                 profilePhoto: profile.profilePhotoUrl || profile.profilePhoto || s3Profile.profilePhoto || "",
@@ -400,38 +403,22 @@ export async function DELETE(req: NextRequest) {
             }
         }
 
-        // Clean S3 profile files
-        if (isS3Configured()) {
-            const ping = await pingS3();
-            if (ping.ok) {
-                const key = getS3ProfileKey(identifier);
-                await deleteObject(key).catch(() => {});
-            }
-        }
+        await wipeUserOwnedData(identifier);
 
         if (mode === "data_only") {
-            if (accountType === "user") {
-                await ProfileData.findOneAndDelete({ identifier });
-            }
             return NextResponse.json({
                 success: true,
                 message: "All generated profile and resume data wiped successfully from the database and S3."
             });
-        } else {
-            await Model.findOneAndDelete({ identifier });
-            if (accountType === "user") {
-                await ProfileData.findOneAndDelete({ identifier });
-            }
-            if (accountType === "admin") {
-                await OrgEmployee.deleteMany({ adminId: identifier });
-            }
-            return NextResponse.json({
-                success: true,
-                message: "Account and profile data deleted successfully from the database and S3."
-            });
         }
-    } catch (error: any) {
+
+        await deleteAccountRecord(identifier, accountType);
+        return NextResponse.json({
+            success: true,
+            message: "Account and profile data deleted successfully from the database and S3."
+        });
+    } catch (error: unknown) {
         console.error("DELETE Profile API error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        return jsonError(error, 500, "Internal server error");
     }
 }

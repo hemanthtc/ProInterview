@@ -10,15 +10,16 @@ interface Props {
 interface State {
     hasError: boolean;
     message: string;
+    resetKey: number;
 }
 
 /**
  * Catches render errors so one broken panel does not blank the whole app.
  */
 export default class ErrorBoundary extends React.Component<Props, State> {
-    state: State = { hasError: false, message: "" };
+    state: State = { hasError: false, message: "", resetKey: 0 };
 
-    static getDerivedStateFromError(error: Error): State {
+    static getDerivedStateFromError(error: Error): Partial<State> {
         return { hasError: true, message: error?.message || "Something went wrong." };
     }
 
@@ -37,13 +38,15 @@ export default class ErrorBoundary extends React.Component<Props, State> {
                     <button
                         type="button"
                         className="rounded-lg bg-indigo-500/80 hover:bg-indigo-500 px-4 py-2 text-sm text-white"
-                        onClick={() => this.setState({ hasError: false, message: "" })}
+                        onClick={() =>
+                            this.setState((s) => ({ hasError: false, message: "", resetKey: s.resetKey + 1 }))
+                        }
                     >
                         Try again
                     </button>
                 </div>
             );
         }
-        return this.props.children;
+        return <div key={this.state.resetKey}>{this.props.children}</div>;
     }
 }

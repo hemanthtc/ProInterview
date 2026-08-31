@@ -25,7 +25,9 @@ import ProInterviewerApp from "../../components/prointerviewer/ProInterviewerApp
 import ErrorBoundary from "../../components/ErrorBoundary";
 import { offCampusMCQs, offCampusCodingQuestions, MCQQuestion, CodingQuestion } from "../../data/offCampusMockTestData";
 import { onCampusMCQs, onCampusCodingQuestions } from "../../data/onCampusMockTestData";
+import InterviewPrepNavigator from "../../components/interview/InterviewPrepNavigator";
 import { interviewPrepLogic, aptitudeQuestions } from "../../data/aptitudeQuestions";
+import type { CampusPathId } from "../../types/interviewPrep";
 import BrandLogo from "../../components/BrandLogo";
 import NotificationBell from "../../components/NotificationBell";
 import { triggerSelfHealing } from "../../utils/offlineSync";
@@ -273,7 +275,7 @@ function FeaturesContent() {
     }, []);
 
     // Aptitude states
-    const [aptitudePath, setAptitudePath] = useState<"onCampus" | "offCampus" | null>(null);
+    const [aptitudePath, setAptitudePath] = useState<CampusPathId | null>(null);
     const [expandedAptitudeTopics, setExpandedAptitudeTopics] = useState<Record<string, boolean>>({});
     const [checkedAptitudeTopics, setCheckedAptitudeTopics] = useState<Record<string, boolean>>({});
 
@@ -705,6 +707,7 @@ function FeaturesContent() {
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
             if (event.data === "CLOSE_SYNTHETIC_STUDIO" || event.data?.type === "CLOSE_SYNTHETIC_STUDIO") {
                 setActiveModal(null);
             }
@@ -1000,6 +1003,7 @@ function FeaturesContent() {
 
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
+            if (event.origin !== window.location.origin) return;
             if (event.data === "back-to-features") {
                 setActiveModal(null);
                 setActiveTool("analysis");
@@ -4549,12 +4553,17 @@ if (!isLoggedIn && !isGuest) return null;
                             </div>
                         </div>
                     ) : (
-                        <div className={`w-full ${activeModal === "resume" || activeModal === "roadmap_generator" || activeModal === "aptitude" || activeModal === "progress" || (activeModal === "analysis" && !showInterviewCustomizer) ? "max-w-7xl" : "max-w-4xl"} bg-[#111] ${activeModal === "email_analyser" ? "p-3 sm:p-5" : "p-4 sm:p-6 md:p-8"} rounded-2xl border ${activeModal === "analysis" ? "border-indigo-500/20" :
+                        <div
+                            className={`w-full ${activeModal === "resume" || activeModal === "roadmap_generator" || activeModal === "aptitude" || activeModal === "progress" || (activeModal === "analysis" && !showInterviewCustomizer) ? "max-w-7xl" : "max-w-4xl"} bg-[#111] ${activeModal === "email_analyser" ? "p-3 sm:p-5" : "p-4 sm:p-6 md:p-8"} rounded-2xl border ${activeModal === "analysis" ? "border-indigo-500/20" :
                             activeModal === "resume" ? "border-purple-500/20" :
                                 activeModal === "email_analyser" ? "border-teal-500/20" :
                                     activeModal === "aptitude" ? "border-pink-500/20" :
                                         activeModal === "progress" ? "border-sky-500/20" : "border-emerald-500/20"
-                            } shadow-2xl relative z-10 transition-all duration-300`}>
+                            } shadow-2xl relative z-10 transition-all duration-300`}
+                            role={activeModal === "aptitude" ? "dialog" : undefined}
+                            aria-modal={activeModal === "aptitude" ? true : undefined}
+                            aria-labelledby={activeModal === "aptitude" ? "aptitude-dialog-title" : undefined}
+                        >
                             <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${activeModal === "analysis" ? "from-indigo-500 to-indigo-600" :
                                 activeModal === "resume" ? "from-purple-500 to-purple-600" :
                                     activeModal === "email_analyser" ? "from-teal-500 to-teal-600" :
@@ -7125,7 +7134,9 @@ if (!isLoggedIn && !isGuest) return null;
                                     </div>
                                 )}
 
-                                {activeModal === "aptitude" && (() => {
+                                {activeModal === "aptitude" && (
+                                <ErrorBoundary fallbackTitle="Talk to Aptitude failed to load">
+                                {(() => {
                                     const selectedPathData = aptitudePath ? interviewPrepLogic.paths[aptitudePath] : null;
                                     const topics = selectedPathData ? selectedPathData.topics : {};
 
@@ -7398,7 +7409,7 @@ if (!isLoggedIn && !isGuest) return null;
                                                             {"\u2190"} Change Path
                                                         </button>
                                                     )}
-                                                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                                    <h3 id="aptitude-dialog-title" className="text-lg font-bold text-white flex items-center gap-2">
                                                         <ListTodo className="w-5 h-5 text-pink-400 shrink-0" />
                                                         {aptitudePath === null
                                                             ? "Select Interview Preparation Path"
@@ -7409,47 +7420,12 @@ if (!isLoggedIn && !isGuest) return null;
                                             </div>
 
                                             {aptitudePath === null ? (
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    {/* Path Selection Cards */}
-                                                    {Object.entries(interviewPrepLogic.paths).map(([key, data]) => {
-                                                        const isCampus = key === "onCampus";
-                                                        const iconBg = isCampus
-                                                            ? "bg-pink-500/10 border-pink-500/20 text-pink-400"
-                                                            : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400";
-
-                                                        return (
-                                                            <div
-                                                                key={key}
-                                                                onClick={() => setAptitudePath(key as any)}
-                                                                className={`border rounded-2xl p-6 space-y-4 cursor-pointer transition-all duration-300 group ${isLight
-                                                                    ? "bg-white border-slate-200 hover:bg-slate-50/80"
-                                                                    : "bg-[#0d0d12]/50 hover:bg-[#12121a]/70 border-white/5"
-                                                                    } ${isCampus
-                                                                        ? isLight
-                                                                            ? "hover:border-pink-500 hover:shadow-[0_0_30px_rgba(236,72,153,0.06)]"
-                                                                            : "border-pink-500/10 hover:border-pink-500/35 hover:shadow-[0_0_30px_rgba(236,72,153,0.06)]"
-                                                                        : isLight
-                                                                            ? "hover:border-indigo-500 hover:shadow-[0_0_30px_rgba(79,70,229,0.06)]"
-                                                                            : "border-indigo-500/10 hover:border-indigo-500/35 hover:shadow-[0_0_30px_rgba(79,70,229,0.06)]"
-                                                                    }`}
-                                                            >
-                                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 ${iconBg}`}>
-                                                                    {isCampus ? <Briefcase className="w-6 h-6" /> : <Building2 className="w-6 h-6" />}
-                                                                </div>
-                                                                <div className="space-y-1.5 text-left">
-                                                                    <h4 className={`text-base font-extrabold transition-colors ${isLight
-                                                                        ? isCampus ? "text-slate-900 group-hover:text-pink-650" : "text-slate-900 group-hover:text-indigo-650"
-                                                                        : isCampus ? "text-white group-hover:text-pink-400" : "text-white group-hover:text-indigo-400"
-                                                                        }`}>
-                                                                        {data.label} Path
-                                                                    </h4>
-                                                                    <p className={`text-[11px] font-bold ${isLight ? "text-slate-500" : "text-white/40"} uppercase tracking-wider`}>{data.difficulty} {"\u2022"} {data.duration}</p>
-                                                                    <p className={`text-xs ${isLight ? "text-slate-700" : "text-white/55"} leading-relaxed font-semibold`}>{data.evaluation.whatTheyJudge}</p>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
+                                                <InterviewPrepNavigator
+                                                    logic={interviewPrepLogic}
+                                                    selectedPath={aptitudePath}
+                                                    onSelectPath={setAptitudePath}
+                                                    isLight={isLight}
+                                                />
                                             ) : (
                                                 <div className="space-y-8 animate-in fade-in duration-300">
                                                     {/* On-Campus Mock Assessment Banner */}
@@ -7657,6 +7633,8 @@ if (!isLoggedIn && !isGuest) return null;
                                         </div>
                                     );
                                 })()}
+                                </ErrorBoundary>
+                                )}
                                 {activeModal === "progress" && <ProgressPanel isLight={isLight} />}
                             </div>
                         </div>

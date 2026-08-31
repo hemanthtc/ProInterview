@@ -13,6 +13,8 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import { checkAndIncrementUsage } from "@/utils/usageMeter";
 import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
+import { enforceRateLimit, jsonError } from "@/utils/http";
+import { redactPii } from "@/utils/pii";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -25,7 +27,11 @@ export async function POST(req: NextRequest) {
 
         // Logged-in users are metered by account; guests (public practice mode) are metered by IP.
         const session = await getVerifiedSession();
-        const identifier = session?.identifier || `anon:${req.headers.get("x-forwarded-for") || "unknown"}`;
+        const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+        const identifier = session?.identifier || `anon:${forwarded}`;
+        const rlKey = session?.identifier || forwarded;
+        const blocked = enforceRateLimit(`interviewer:${rlKey}`, { limit: 40, windowMs: 15 * 60 * 1000 }, "interviews");
+        if (blocked) return blocked;
         let userPlan = "Free Tier";
         if (session) {
             try {
@@ -91,7 +97,14 @@ ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
         const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
 - You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.`;
 
-        const candidateProfileInfo = await buildCandidateProfileInfo(resume, github, linkedin, portfolioUrl, portfolioRating, portfolioFeedback);
+        const candidateProfileInfo = await buildCandidateProfileInfo(
+            typeof resume === "string" ? redactPii(resume) : resume,
+            github,
+            linkedin,
+            portfolioUrl,
+            portfolioRating,
+            portfolioFeedback
+        );
 
         const systemPrompt = `You are a professional online technical interviewer dynamically evaluating a candidate applying for: ${safeRoles} at ${safeCompany}.
 
@@ -179,6 +192,6 @@ ${ANTI_LEAK_SUFFIX}`;
                 message: "[MODE:CHAT] I’m having trouble reaching the interview engine right now. Please try again shortly."
             });
         }
-        return NextResponse.json({ error: error.message || "Failed to generate AI response" }, { status: 500 });
+        return jsonError(error, 500, "Failed to generate AI response");
     }
 }

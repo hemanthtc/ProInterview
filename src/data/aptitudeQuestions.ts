@@ -1,3 +1,7 @@
+import type { InterviewPrepLogic } from "@/types/interviewPrep";
+
+export type { CampusPathId, EvaluationInfo, PrepPath, InterviewPrepLogic } from "@/types/interviewPrep";
+
 export interface AptitudeQuestion {
     id: number;
     question: string;
@@ -12,7 +16,7 @@ export interface AptitudeCategory {
     questions: AptitudeQuestion[];
 }
 
-export const interviewPrepLogic = {
+export const interviewPrepLogic: InterviewPrepLogic = {
     title: "Talk to Aptitude",
     paths: {
         onCampus: {

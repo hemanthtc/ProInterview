@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
+import { generateContentWithTimeout } from "@/utils/gemini";
+import {
+    analyzeInterviewBodySchema,
+    enforceRateLimit,
+    jsonError,
+    parseJsonBody,
+} from "@/utils/http";
+import { redactPii } from "@/utils/pii";
 
 function getQuotaFallback(transcript: string) {
     return NextResponse.json({
@@ -21,16 +29,26 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
 
+        const blocked = enforceRateLimit(
+            `analyze-interview:${session.identifier}`,
+            { limit: 20, windowMs: 15 * 60 * 1000 },
+            "interview analysis"
+        );
+        if (blocked) return blocked;
+
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
         }
         const genAI = new GoogleGenerativeAI(API_KEY);
 
-        const { messages, snapshots, company, roles, level, companyClone } = await req.json();
+        const parsedBody = await parseJsonBody(req, analyzeInterviewBodySchema, 2_000_000);
+        if (!parsedBody.ok) return parsedBody.response;
+        const { messages, snapshots, company, roles, level, companyClone } = parsedBody.data;
 
-        // Convert messages to transcript format
-        transcript = messages.map((m: any) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n");
+        transcript = redactPii(
+            messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n")
+        );
 
         const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.0 } });
 
@@ -86,7 +104,9 @@ Provide a response in strict JSON format with exactly five keys:
 
 DO NOT wrap the response in markdown blocks like \`\`\`json. Just output raw valid JSON.`;
 
-        const promptParts: any[] = [{ text: systemPrompt }];
+        const promptParts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [
+            { text: systemPrompt },
+        ];
         
         if (snapshots && snapshots.length > 0) {
             promptParts.push({ text: "\nHere are visual snapshots of the candidate taken during the interview. Please analyze their facial expressions, eye contact, and posture for the behavioral score:\n" });
@@ -104,7 +124,7 @@ DO NOT wrap the response in markdown blocks like \`\`\`json. Just output raw val
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                result = await model.generateContent(promptParts);
+                result = await generateContentWithTimeout(model.generateContent(promptParts), 45000);
                 break;
             } catch (retryErr: any) {
                 if (retryErr?.status === 429) {
@@ -143,11 +163,13 @@ DO NOT wrap the response in markdown blocks like \`\`\`json. Just output raw val
         }
 
         return NextResponse.json({ technicalRating, behavioralRating, communicationRating, summary, annotatedTranscript });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Interview Evaluation Error:", error);
-        if (error?.status === 429 || String(error?.message || "").includes("quota")) {
+        const status = typeof error === "object" && error && "status" in error ? (error as { status?: number }).status : undefined;
+        const message = error instanceof Error ? error.message : "";
+        if (status === 429 || message.includes("quota")) {
             return getQuotaFallback(transcript);
         }
-        return NextResponse.json({ error: error.message || "Failed to evaluate interview" }, { status: 500 });
+        return jsonError(error, 500, "Failed to evaluate interview");
     }
 }

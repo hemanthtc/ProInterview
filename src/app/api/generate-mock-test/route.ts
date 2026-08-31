@@ -1,20 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
+import { generateContentWithTimeout } from "@/utils/gemini";
+import {
+    enforceRateLimit,
+    jsonError,
+    mockTestBodySchema,
+    parseJsonBody,
+} from "@/utils/http";
 
 export async function POST(req: NextRequest) {
     try {
-        // Enforce active session
         const session = await getVerifiedSession();
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
 
-        const { aptitudePath } = await req.json();
+        const blocked = enforceRateLimit(
+            `generate-mock-test:${session.identifier}`,
+            { limit: 8, windowMs: 15 * 60 * 1000 },
+            "mock tests"
+        );
+        if (blocked) return blocked;
 
-        if (!aptitudePath || (aptitudePath !== "onCampus" && aptitudePath !== "offCampus")) {
-            return NextResponse.json({ error: "Invalid or missing aptitudePath parameter" }, { status: 400 });
-        }
+        const parsed = await parseJsonBody(req, mockTestBodySchema);
+        if (!parsed.ok) return parsed.response;
+        const { aptitudePath } = parsed.data;
 
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
@@ -96,7 +107,7 @@ Ensure the questions are realistic, technically accurate, and completely unique.
         let result;
         for (let attempt = 0; attempt < 3; attempt++) {
             try {
-                result = await model.generateContent(systemPrompt);
+                result = await generateContentWithTimeout(model.generateContent(systemPrompt), 60000);
                 break;
             } catch (retryErr: any) {
                 const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
@@ -121,13 +132,13 @@ Ensure the questions are realistic, technically accurate, and completely unique.
             const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
             parsedData = JSON.parse(cleanJson);
         } catch (e) {
-            console.error("Failed to parse JSON response from Gemini for mock test generation:", textResponse);
+            console.error("Failed to parse JSON response from Gemini for mock test generation");
             return NextResponse.json({ error: "Failed to parse mock assessment questions output from AI" }, { status: 500 });
         }
 
         return NextResponse.json(parsedData);
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Mock assessment generation error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        return jsonError(error, 500, "Internal server error");
     }
 }

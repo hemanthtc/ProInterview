@@ -1179,6 +1179,7 @@ export default function Home() {
                         Features
                     </button>
                     <Link href="/community" className="hover:text-white text-white/70 transition-colors pb-1">Community</Link>
+                    <Link href="/privacy" className="hover:text-white text-white/70 transition-colors pb-1">Privacy</Link>
                     <button
                         onClick={() => {
                             if (isRealisticMode) {

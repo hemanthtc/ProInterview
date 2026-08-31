@@ -4,12 +4,12 @@ import connectDB from "@/utils/db";
 import CommunityMessage from "@/models/CommunityMessage";
 import { s3GetMessages } from "@/utils/s3Community";
 import { DEFAULT_COMMUNITY_CHANNELS } from "@/utils/community";
+import { isCronAuthorized } from "@/utils/cronAuth";
+import { jsonError } from "@/utils/http";
 
 export async function POST(req: NextRequest) {
     try {
-        const { searchParams } = new URL(req.url);
-        const secret = searchParams.get("secret") || req.headers.get("x-cron-secret");
-        if (process.env.CRON_SECRET && secret !== process.env.CRON_SECRET) {
+        if (!isCronAuthorized(req)) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -97,6 +97,6 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: true, report });
     } catch (error: unknown) {
         console.error("Cleanup cron failed:", error);
-        return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to run cleanup" }, { status: 500 });
+        return jsonError(error, 500, "Failed to run cleanup");
     }
 }

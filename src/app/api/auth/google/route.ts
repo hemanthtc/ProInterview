@@ -48,7 +48,11 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Verify the access token with Google's tokeninfo API
-        const tokenInfoRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?access_token=${accessToken}`);
+        const tokenInfoRes = await fetch("https://oauth2.googleapis.com/tokeninfo", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({ access_token: accessToken }),
+        });
 
         if (!tokenInfoRes.ok) {
             return NextResponse.json({ error: "Invalid or expired access token" }, { status: 400 });

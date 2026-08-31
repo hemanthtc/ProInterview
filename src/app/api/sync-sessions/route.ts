@@ -3,7 +3,15 @@ import connectDB from "@/utils/db";
 import CloudSession from "@/models/CloudSession";
 import { getVerifiedSession } from "@/utils/auth";
 import { isS3Configured, getJSON, uploadJSON, deleteS3Object, pingS3, getS3SessionsKey, getLegacyS3SessionsKey, getS3PrepPacksKey, getS3FilmRoomKey, deleteObject } from "@/utils/s3";
+import { jsonError } from "@/utils/http";
 import { runProgressAutoCleanup } from "@/utils/serverProgressCleanup";
+import {
+    capNewest,
+    MAX_MOCK_APTITUDE_SESSIONS,
+    MAX_SYNCED_DRILLS,
+    MAX_SYNCED_PREP_PACKS,
+    MAX_SYNCED_SESSIONS,
+} from "@/utils/progressCaps";
 
 function sessionKey(s: any): string | null {
     if (!s || typeof s.timestamp !== "number") return null;
@@ -241,7 +249,7 @@ export async function POST(req: NextRequest) {
         // Always merge and save mockAptitudeSessions in MongoDB
         if (incomingMocks.length > 0 || body.mockAptitudeSessions !== undefined) {
             const mergedMocks = mergeById(blob.mockAptitudeSessions || [], incomingMocks);
-            blob.mockAptitudeSessions = mergedMocks;
+            blob.mockAptitudeSessions = capNewest(mergedMocks, MAX_MOCK_APTITUDE_SESSIONS);
             blob.markModified("mockAptitudeSessions");
         }
 
@@ -276,7 +284,10 @@ export async function POST(req: NextRequest) {
                     await deleteS3Object(prepPacksKey);
                     mergedPacks = [];
                 } else {
-                    mergedPacks = hasIncomingPacks && incomingPacks.length > 0 ? incomingPacks : basePacks;
+                    mergedPacks = capNewest(
+                        hasIncomingPacks && incomingPacks.length > 0 ? incomingPacks : basePacks,
+                        MAX_SYNCED_PREP_PACKS
+                    );
                     await uploadJSON(prepPacksKey, mergedPacks);
                 }
                 finalPacks = mergedPacks;
@@ -296,9 +307,9 @@ export async function POST(req: NextRequest) {
                 const mergedDrills = incomingDrills.length > 0 ? mergeById(s3Data.spacedDrills || [], incomingDrills) : s3Data.spacedDrills || [];
 
                 finalData = {
-                    sessions: mergedSessions,
+                    sessions: capNewest(mergedSessions, MAX_SYNCED_SESSIONS),
                     prepPacks: [],
-                    spacedDrills: mergedDrills,
+                    spacedDrills: capNewest(mergedDrills, MAX_SYNCED_DRILLS),
                 };
                 await uploadJSON(sessionsKey, finalData);
 
@@ -319,20 +330,20 @@ export async function POST(req: NextRequest) {
             const mergedPacks = hasIncomingPacks ? incomingPacks : (blob.prepPacks || []);
             const mergedDrills = incomingDrills.length > 0 ? mergeById(blob.spacedDrills || [], incomingDrills) : blob.spacedDrills || [];
 
-            blob.sessions = mergedSessions;
-            blob.prepPacks = mergedPacks;
-            blob.spacedDrills = mergedDrills;
+            blob.sessions = capNewest(mergedSessions, MAX_SYNCED_SESSIONS);
+            blob.prepPacks = capNewest(mergedPacks, MAX_SYNCED_PREP_PACKS);
+            blob.spacedDrills = capNewest(mergedDrills, MAX_SYNCED_DRILLS);
 
             blob.markModified("sessions");
             blob.markModified("prepPacks");
             blob.markModified("spacedDrills");
 
             finalData = {
-                sessions: mergedSessions,
-                prepPacks: mergedPacks,
-                spacedDrills: mergedDrills,
+                sessions: blob.sessions,
+                prepPacks: blob.prepPacks,
+                spacedDrills: blob.spacedDrills,
             };
-            finalPacks = mergedPacks;
+            finalPacks = blob.prepPacks;
         }
 
         await blob.save();
@@ -345,9 +356,9 @@ export async function POST(req: NextRequest) {
             spacedDrills: finalData.spacedDrills,
             retentionDays: blob.retentionDays || 30,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("sync-sessions POST error:", error);
-        return NextResponse.json({ error: error.message || "Failed to sync sessions" }, { status: 500 });
+        return jsonError(error, 500, "Failed to sync sessions");
     }
 }
 
@@ -453,7 +464,7 @@ export async function DELETE(req: NextRequest) {
         });
     } catch (error: any) {
         console.error("sync-sessions DELETE error:", error);
-        return NextResponse.json({ error: error.message || "Failed to delete item" }, { status: 500 });
+        return jsonError(error, 500, "Failed to delete item");
     }
 }
 

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedSession } from "@/utils/auth";
+import {
+    enforceRateLimit,
+    jsonError,
+    parseJsonBody,
+    runCodeBodySchema,
+} from "@/utils/http";
 
 const PISTON_URL = "https://emkc.org/api/v2/piston/execute";
 
@@ -35,9 +41,18 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
 
-        const body = await req.json();
-        const code = typeof body.code === "string" ? body.code : "";
-        const stdin = typeof body.stdin === "string" ? body.stdin : "";
+        const blocked = enforceRateLimit(
+            `run-code:${session.identifier}`,
+            { limit: 40, windowMs: 15 * 60 * 1000 },
+            "code execution"
+        );
+        if (blocked) return blocked;
+
+        const parsed = await parseJsonBody(req, runCodeBodySchema);
+        if (!parsed.ok) return parsed.response;
+        const body = parsed.data;
+        const code = body.code;
+        const stdin = body.stdin || "";
         const langKey = normalizeLanguage(String(body.language || body.lang || ""));
 
         if (!code.trim()) {
@@ -63,6 +78,7 @@ export async function POST(req: NextRequest) {
                 compile_timeout: 10000,
                 run_timeout: 10000,
             }),
+            signal: AbortSignal.timeout(20000),
         });
 
         if (!pistonRes.ok) {
@@ -99,8 +115,8 @@ export async function POST(req: NextRequest) {
                   }
                 : null,
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("run-code error:", error);
-        return NextResponse.json({ error: error.message || "Failed to execute code" }, { status: 500 });
+        return jsonError(error, 500, "Failed to execute code");
     }
 }

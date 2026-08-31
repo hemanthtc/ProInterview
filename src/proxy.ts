@@ -14,6 +14,7 @@ const PUBLIC_PATHS = [
     "/ats-match",
     "/scorecard",
     "/film-room",
+    "/privacy",
 ];
 
 export function proxy(req: NextRequest) {
