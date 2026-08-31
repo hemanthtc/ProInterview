@@ -35,6 +35,7 @@ interface InterviewSession {
     communicationRating?: number;
     portfolioRating?: number | string;
     userName?: string;
+    userIdentifier?: string;
     company?: string;
     role?: string;
 }
