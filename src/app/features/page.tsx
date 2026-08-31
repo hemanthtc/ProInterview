@@ -100,12 +100,11 @@ function MobileDashboardContent({
     // Get display sessions: if empty, show the mock sessions from the screenshot
     const displaySessions = useMemo(() => {
         if (pastSessions.length > 0) return pastSessions.slice(0, 2);
-        const now = Date.now();
         return [
             {
                 id: "mock1",
                 role: "Frontend Developer",
-                timestamp: now - 24 * 60 * 65 * 1000, // yesterday
+                timestamp: 1740000000000, // yesterday
                 finalScore: 78,
                 duration: "45 min",
                 difficulty: "Advanced",
@@ -114,7 +113,7 @@ function MobileDashboardContent({
             {
                 id: "mock2",
                 role: "System Design",
-                timestamp: now - 2 * 24 * 60 * 65 * 1000, // 2 days ago
+                timestamp: 1739900000000, // 2 days ago
                 finalScore: 85,
                 duration: "60 min",
                 difficulty: "Intermediate",
@@ -255,7 +254,6 @@ function FeaturesContent() {
         rawSetActiveModal(modal);
     };
 
-    const [isAuthChecked, setIsAuthChecked] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [roadmapToDelete, setRoadmapToDelete] = useState<string | null>(null);
     const [isAtsWarningActive, setIsAtsWarningActive] = useState<boolean>(false);
@@ -841,7 +839,6 @@ function FeaturesContent() {
             router.push("/login");
             return;
         }
-        setIsAuthChecked(true);
 
         const syncState = () => {
             const l = getStorageItem("userLoggedIn") === "true";
@@ -4002,7 +3999,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
             </div>
         );
     };
-if (!isAuthChecked) return null;
+if (!isLoggedIn && !isGuest) return null;
 
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans w-full max-w-full overflow-x-hidden ${(activeModal === "prointerviewer" || activeModal === "study_materials" || activeModal === "synthetic_data") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>

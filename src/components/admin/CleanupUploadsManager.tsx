@@ -40,9 +40,6 @@ export default function CleanupUploadsManager() {
     const [showConfirm, setShowConfirm] = useState(false);
 
     const loadExpiredFiles = useCallback(async () => {
-        setLoading(true);
-        setError("");
-        setSuccessMessage("");
         try {
             const res = await fetch("/api/admin/cleanup-uploads");
             const data = await res.json();
@@ -52,8 +49,8 @@ export default function CleanupUploadsManager() {
             setConfigured(data.configured);
             setFiles(data.files || []);
             setTotalFiles(data.totalFiles || 0);
-        } catch (err: any) {
-            setError(err.message || "Failed to connect to administration api.");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Failed to connect to administration api.");
         } finally {
             setLoading(false);
         }
@@ -81,9 +78,10 @@ export default function CleanupUploadsManager() {
             setFiles([]);
             setTotalFiles(prev => Math.max(0, prev - data.deletedCount));
             // reload file status
+            setLoading(true);
             void loadExpiredFiles();
-        } catch (err: any) {
-            setError(err.message || "Deletion failed");
+        } catch (err: unknown) {
+            setError(err instanceof Error ? err.message : "Deletion failed");
         } finally {
             setActionLoading(false);
         }

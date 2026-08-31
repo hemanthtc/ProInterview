@@ -19,14 +19,82 @@ export async function GET(req: NextRequest) {
         const userId = auth.session.identifier;
         const { searchParams } = new URL(req.url);
         const parentId = searchParams.get("parentId") || null;
+        const folderId = searchParams.get("folderId") || null;
         const type = searchParams.get("type") || null;
+        const scope = searchParams.get("scope"); // "my" | "public" | "all"
+        const search = searchParams.get("search");
+        const favorite = searchParams.get("favorite");
 
-        const query: any = { userId };
-        if (parentId !== "all") {
-            query.parentId = parentId === "root" || !parentId ? null : parentId;
+        const targetFolder = folderId || (parentId && parentId !== "all" && parentId !== "root" ? parentId : null);
+
+        let query: any = {};
+
+        if (targetFolder) {
+            // Specific user folder
+            query = { userId, folderId: targetFolder };
+        } else if (parentId === "root") {
+            if (scope === "my" || scope === "private") {
+                query = { userId, folderId: { $in: [null, ""] } };
+            } else if (scope === "public") {
+                query = { visibility: "public" };
+            } else {
+                query = {
+                    $or: [
+                        { userId, folderId: { $in: [null, ""] } },
+                        { visibility: "public" },
+                    ],
+                };
+            }
+        } else {
+            // General / All Files view
+            if (scope === "my" || scope === "private") {
+                query = { userId };
+            } else if (scope === "public") {
+                query = { visibility: "public" };
+            } else {
+                // Default: Include user's own files + all public files created by others
+                query = {
+                    $or: [
+                        { userId },
+                        { visibility: "public" },
+                    ],
+                };
+            }
         }
+
         if (type) {
             query.contentType = type;
+        }
+
+        if (favorite === "true") {
+            query.userId = userId;
+            query.favorite = true;
+            delete query.$or;
+            delete query.visibility;
+        }
+
+        if (search && search.trim()) {
+            const regex = new RegExp(search.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+            const searchClause = {
+                $or: [
+                    { title: regex },
+                    { filename: regex },
+                    { topic: regex },
+                    { tags: regex },
+                ],
+            };
+            if (query.$or) {
+                query = {
+                    $and: [
+                        { $or: query.$or },
+                        searchClause,
+                    ],
+                };
+                if (type) query.$and.push({ contentType: type });
+            } else {
+                query.$and = [searchClause];
+                if (type) query.$and.push({ contentType: type });
+            }
         }
 
         const files = await SyntheticFile.find(query).sort({ modifiedAt: -1 });

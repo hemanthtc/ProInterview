@@ -40,9 +40,11 @@ export async function GET(req: NextRequest, ctx: Ctx) {
 
         if (id === "root") {
             const files = await SyntheticFile.find({
-                userId,
-                $or: [{ folderId: null }, { folderId: "" }],
-            }).lean();
+                $or: [
+                    { userId, folderId: { $in: [null, ""] } },
+                    { visibility: "public" },
+                ],
+            }).sort({ modifiedAt: -1 }).lean();
             return NextResponse.json({
                 folder: { id: "root", name: "Root", parentId: null },
                 path: "Root",

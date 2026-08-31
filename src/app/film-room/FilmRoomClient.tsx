@@ -83,6 +83,7 @@ export default function FilmRoomClient() {
         }
         return "dark";
     });
+    const [mountTime] = useState(() => (typeof window !== "undefined" ? Date.now() : 0));
     const isLight = theme === "light" || theme === "eyeprotect";
 
     useEffect(() => {
@@ -114,13 +115,12 @@ export default function FilmRoomClient() {
             const raw = getStorageItem("interviewSessions");
             const list: InterviewSession[] = raw ? JSON.parse(raw) : [];
             const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-            const now = Date.now();
             const currentIdentifier = getStorageItem("userIdentifier") || "";
             const currentUserName = getStorageItem("userName") || "";
 
             return list
                 .filter((s: InterviewSession) => {
-                    if (now - s.timestamp >= ONE_YEAR_MS) return false;
+                    if (mountTime && mountTime - s.timestamp >= ONE_YEAR_MS) return false;
                     if (!s.userName && !s.userIdentifier) return true;
                     if (currentIdentifier && s.userIdentifier === currentIdentifier) return true;
                     if (s.userName === currentUserName) return true;
@@ -131,22 +131,21 @@ export default function FilmRoomClient() {
         } catch {
             return [];
         }
-    }, []);
+    }, [mountTime]);
 
     const totalInterviews = allSessions.length;
     const avgScore = useMemo(() => {
         if (allSessions.length === 0) return 0;
         const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-        const now = Date.now();
         let weightedSum = 0, totalWeight = 0;
         allSessions.forEach((s: InterviewSession) => {
-            const ageMs = now - s.timestamp;
+            const ageMs = mountTime ? mountTime - s.timestamp : 0;
             const weight = Math.max(0, 1 - ageMs / ONE_YEAR_MS);
             weightedSum += (s.finalScore || 0) * weight;
             totalWeight += weight;
         });
         return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
-    }, [allSessions]);
+    }, [allSessions, mountTime]);
     const benchmark = avgScore >= 80 ? "Top Tier Candidate" : avgScore >= 60 ? "Proficient" : avgScore > 0 ? "Needs Improvement" : "No Data Yet";
     const benchmarkColor = avgScore >= 80 ? "text-emerald-400" : avgScore >= 60 ? "text-amber-400" : avgScore > 0 ? "text-rose-400" : "text-white/40";
 

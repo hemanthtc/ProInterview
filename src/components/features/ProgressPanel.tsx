@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Award, ChevronDown, ChevronUp, Clock, TrendingUp, Video, Film, Share2, Download, Loader2, Sparkles, X, ShieldCheck, Trash2, AlertTriangle } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
@@ -20,6 +20,19 @@ interface DeleteModalState {
     title?: string;
 }
 
+function formatSessionDate(timestamp?: number | string | null): string {
+    if (!timestamp) return "Recent";
+    const d = new Date(timestamp);
+    if (isNaN(d.getTime())) return "Recent";
+    return d.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
 /** "My Progress" dashboard — interview attempt history + mock aptitude assessment history, read from localStorage. */
 export default function ProgressPanel({ isLight, defaultTab = "interview", onClose }: ProgressPanelProps) {
     const [progressTab, setProgressTab] = useState<"filmroom" | "interview" | "aptitude">(defaultTab);
@@ -35,12 +48,20 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
     const [mockData, setMockData] = useState<any[]>([]);
     const [deleteModal, setDeleteModal] = useState<DeleteModalState | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [mountTime] = useState(() => (typeof window !== "undefined" ? Date.now() : 0));
+
+    const loadData = () => {
+        try {
+            const rawInterviews = getStorageItem("interviewSessions");
+            if (rawInterviews) setInterviewData(JSON.parse(rawInterviews));
+            const rawMocks = getStorageItem("mockAptitudeSessions");
+            if (rawMocks) setMockData(JSON.parse(rawMocks));
+        } catch (e) {
+            console.error("Failed to parse progress data", e);
+        }
+    };
 
     useEffect(() => {
-        const loadData = () => {
-            setInterviewData(JSON.parse(getStorageItem("interviewSessions") || "[]"));
-            setMockData(JSON.parse(getStorageItem("mockAptitudeSessions") || "[]"));
-        };
         loadData();
 
         void pullSessionsFromCloud().then(() => {
@@ -49,19 +70,18 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
     }, []);
 
     const totalInterviews = interviewData.length;
-    const avgScore = (() => {
+    const avgScore = useMemo(() => {
         if (interviewData.length === 0) return 0;
         const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
-        const now = Date.now();
         let weightedSum = 0, totalWeight = 0;
         interviewData.forEach((s: any) => {
-            const ageMs = now - s.timestamp;
+            const ageMs = mountTime ? mountTime - s.timestamp : 0;
             const weight = Math.max(0, 1 - ageMs / ONE_YEAR_MS);
             weightedSum += (s.finalScore || s.interviewRating || 0) * weight;
             totalWeight += weight;
         });
         return totalWeight > 0 ? Math.round(weightedSum / totalWeight) : 0;
-    })();
+    }, [interviewData, mountTime]);
 
     const benchmark = avgScore >= 80 ? "Top Tier Candidate" : avgScore >= 60 ? "Proficient" : avgScore > 0 ? "Needs Improvement" : "No Data Yet";
     const benchmarkColor = avgScore >= 80 ? "text-green-400" : avgScore >= 60 ? "text-yellow-400" : avgScore > 0 ? "text-red-400" : "text-white/40";
@@ -331,13 +351,7 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                             ) : (
                                 <div className="grid grid-cols-1 gap-3">
                                     {interviewData.map((sess: any) => {
-                                        const dateString = new Date(sess.timestamp || Date.now()).toLocaleDateString("en-US", {
-                                            month: "short",
-                                            day: "numeric",
-                                            year: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit"
-                                        });
+                                        const dateString = formatSessionDate(sess.timestamp);
 
                                         const index = interviewData.findIndex((s: any) => s.timestamp === sess.timestamp);
                                         const sessId = sess.id || `idx_${index}`;
@@ -412,13 +426,7 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                     {interviewData.map((sess: any, index: number) => {
                                         const isExpanded = expandedProgressInterviewId === sess.id || expandedProgressInterviewId === `idx_${index}`;
                                         const sessId = sess.id || `idx_${index}`;
-                                        const dateString = new Date(sess.timestamp || Date.now()).toLocaleDateString("en-US", {
-                                            month: "short",
-                                            day: "numeric",
-                                            year: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit"
-                                        });
+                                        const dateString = formatSessionDate(sess.timestamp);
 
                                         return (
                                             <div key={sessId} className={`border rounded-xl transition-all duration-200 overflow-hidden ${isLight ? "bg-white border-slate-200" : "bg-[#16161f] border-white/5"
@@ -571,13 +579,7 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
                                 <div className="space-y-3.5">
                                     {mockData.map((sess: any, index: number) => {
                                         const isExpanded = expandedProgressMockId === sess.id;
-                                        const dateString = new Date(sess.timestamp || Date.now()).toLocaleDateString("en-US", {
-                                            month: "short",
-                                            day: "numeric",
-                                            year: "numeric",
-                                            hour: "2-digit",
-                                            minute: "2-digit"
-                                        });
+                                        const dateString = formatSessionDate(sess.timestamp);
 
                                         return (
                                             <div key={sess.id || index} className={`border rounded-xl transition-all duration-200 overflow-hidden ${isLight ? "bg-white border-slate-200" : "bg-[#16161f] border-white/5"

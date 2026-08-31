@@ -229,7 +229,6 @@ export default function LabsVisibilityManager() {
     );
 
     const fetchVisibility = useCallback(async () => {
-        setLoading(true);
         try {
             const res = await fetch("/api/admin/labs-visibility");
             const data = await res.json();

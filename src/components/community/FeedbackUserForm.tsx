@@ -85,13 +85,12 @@ export default function FeedbackUserForm({ theme = "dark" }: { theme?: "dark" | 
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const [history, setHistory] = useState<FeedbackItem[]>([]);
-    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [loadingHistory, setLoadingHistory] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const loadHistory = async () => {
-        setLoadingHistory(true);
         try {
             const res = await fetch("/api/feedback");
             if (res.ok) {

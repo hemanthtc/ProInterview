@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => {};
 import { 
     ArrowRight, FileText, Settings, ShieldCheck, MessageSquare, Download, Play, Trash2, Sparkles, Sun, Moon, Eye, Menu, X,
     Compass, TrendingUp, Database, Code, CalendarClock, Award, Flame, User, Home as HomeIcon, FlaskConical,
@@ -457,8 +459,8 @@ export default function Home() {
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
     const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
+    const isHydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [isHydrated, setIsHydrated] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [showModeSwitchModal, setShowModeSwitchModal] = useState<{ isOpen: boolean; targetUrl: string; targetLabel: string } | null>(null);
@@ -469,8 +471,6 @@ export default function Home() {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
         window.addEventListener("resize", checkMobile);
-
-        setIsHydrated(true);
 
         const syncAuthStateAndData = () => {
             const loggedIn = getStorageItem("userLoggedIn") === "true";

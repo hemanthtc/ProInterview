@@ -102,7 +102,6 @@ export default function FeedbackAdminPanel() {
     const [deletingId, setDeletingId] = useState<string | null>(null);
 
     const loadFeedbacks = useCallback(async () => {
-        setLoading(true);
         try {
             const params = new URLSearchParams();
             if (fieldFilter !== "All Fields") params.set("fieldOfStudy", fieldFilter);
@@ -163,8 +162,8 @@ export default function FeedbackAdminPanel() {
             );
             setReplyingFeedback(null);
             setReplyText("");
-        } catch (err: any) {
-            alert(err.message || "Failed to submit response.");
+        } catch (err: unknown) {
+            alert(err instanceof Error ? err.message : "Failed to submit response.");
         } finally {
             setSendingReply(false);
         }
@@ -525,7 +524,7 @@ export default function FeedbackAdminPanel() {
                                 </label>
                                 <select
                                     value={newStatus}
-                                    onChange={(e) => setNewStatus(e.target.value as any)}
+                                    onChange={(e) => setNewStatus(e.target.value as "pending" | "under_review" | "replied" | "resolved")}
                                     className="w-full p-3 rounded-xl bg-slate-900 border border-white/15 text-xs text-white font-medium focus:outline-none focus:border-indigo-500"
                                 >
                                     <option value="under_review">Under Review</option>

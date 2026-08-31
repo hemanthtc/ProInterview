@@ -38,7 +38,6 @@ export default function ProfilePage() {
 
     const [userIdentifier, setUserIdentifier] = useState("");
     const [memberSince, setMemberSince] = useState("");
-    const [mounted, setMounted] = useState(false);
     const [editingName, setEditingName] = useState(false);
     const [editNameValue, setEditNameValue] = useState("");
 
@@ -159,7 +158,6 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        setMounted(true);
         const savedTheme = localStorage.getItem("globalTheme") as any;
         if (savedTheme) {
             setTheme(savedTheme);
@@ -1528,7 +1526,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                         {/* Static detail rows */}
                         {[
                             { label: "Account ID", value: userIdentifier || "Google / Guest" },
-                            { label: "Member Since", value: memberSince || (mounted ? new Date().toLocaleDateString("en-US") : "7/1/2026") },
+                            { label: "Member Since", value: memberSince || "Recently" },
                             { label: "Login Method", value: userIdentifier?.includes("@") ? "Email" : userIdentifier?.startsWith("+") ? "Phone" : "Google" },
                             { label: "Total Sessions", value: `${totalInterviews} interview${totalInterviews !== 1 ? "s" : ""}` },
                             { label: "Weighted Avg Score", value: `${avgScore} / 100` },
