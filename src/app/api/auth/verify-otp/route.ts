@@ -3,7 +3,7 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
-import { setSessionCookie } from "@/utils/auth";
+import { setSessionCookie, createToken } from "@/utils/auth";
 import { verifyOtp } from "@/utils/otp";
 import { rateLimit } from "@/utils/rateLimit";
 import type { AccountType, AuthFlowType } from "@/types/auth";
@@ -92,7 +92,15 @@ export async function POST(req: NextRequest) {
                 );
             }
 
-            return NextResponse.json({
+            const token = createToken({
+                identifier: account.identifier,
+                role: accountType as AccountType,
+                isOrganization
+            }, isPwa);
+
+            const durationSec = isPwa ? 365 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+
+            const response = NextResponse.json({
                 success: true,
                 message: "Authentication successful.",
                 user: {
@@ -110,6 +118,24 @@ export async function POST(req: NextRequest) {
                     adminId: (account as { adminId?: string }).adminId || "",
                 }
             });
+
+            // Explicitly set both HttpOnly session cookie and client-readable userLoggedIn cookie
+            response.cookies.set("session", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "lax",
+                path: "/",
+                maxAge: durationSec
+            });
+
+            response.cookies.set("userLoggedIn", "true", {
+                path: "/",
+                maxAge: durationSec,
+                sameSite: "lax",
+                secure: process.env.NODE_ENV === "production"
+            });
+
+            return response;
         }
 
         // For forgot-password flow: accept OTP but do not clear it yet

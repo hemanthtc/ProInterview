@@ -166,6 +166,9 @@ function LoginContent() {
         setLoginSuccess(true);
         setSuccessName(name);
 
+        if (typeof document !== "undefined") {
+            document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+        }
         setStorageItem("userLoggedIn", "true");
         setStorageItem("userName", name);
         setStorageItem("userIdentifier", identifier);

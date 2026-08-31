@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
-import { setSessionCookie } from "@/utils/auth";
+import { setSessionCookie, createToken } from "@/utils/auth";
 import { rateLimit } from "@/utils/rateLimit";
 
 export async function POST(req: NextRequest) {
@@ -107,8 +107,16 @@ export async function POST(req: NextRequest) {
         const { checkAndDegradeSubscription } = await import("@/utils/subscription");
         await checkAndDegradeSubscription(user);
 
+        const durationSec = isPwa ? 365 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+        let token = "";
+
         // Set secure HttpOnly session cookie
         try {
+            token = createToken({
+                identifier: user.identifier,
+                role: "user",
+                isOrganization: false
+            }, isPwa);
             await setSessionCookie({
                 identifier: user.identifier,
                 role: "user",
@@ -134,10 +142,21 @@ export async function POST(req: NextRequest) {
             subscriptionExpiresAt: user.subscriptionExpiresAt,
         });
 
+        // Set HttpOnly session cookie directly on response for rock-solid sync
+        if (token) {
+            response.cookies.set("session", token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "lax",
+                path: "/",
+                maxAge: durationSec
+            });
+        }
+
         // Set readable userLoggedIn cookie on the HTTP response for cross-browser synchronization
         response.cookies.set("userLoggedIn", "true", {
             path: "/",
-            maxAge: 604800,
+            maxAge: durationSec,
             sameSite: "lax",
             secure: process.env.NODE_ENV === "production"
         });
