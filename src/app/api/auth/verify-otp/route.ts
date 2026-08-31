@@ -116,6 +116,15 @@ export async function POST(req: NextRequest) {
                     organizationName: (account as { organizationName?: string }).organizationName || "",
                     department: (account as { department?: string }).department || "",
                     adminId: (account as { adminId?: string }).adminId || "",
+                    profilePhoto: (account as any).profilePhoto || "",
+                    additionalEmail: (account as any).additionalEmail || "",
+                    github: (account as any).github || "",
+                    linkedin: (account as any).linkedin || "",
+                    portfolioUrl: (account as any).portfolioUrl || "",
+                    resumeCvName: (account as any).resumeCvName || "",
+                    resumeCvText: (account as any).resumeCvText || "",
+                    phone: (account as any).phone || "",
+                    educationData: (account as any).educationData || null,
                 }
             });
 

@@ -209,7 +209,7 @@ function LoginContent() {
         // Keep popup open for 1.2 seconds to allow full success animations to finish
         await new Promise(resolve => setTimeout(resolve, 1200));
 
-        let destination = "/";
+        let destination = "/features";
         if (role === "admin") {
             destination = "/admin";
         } else if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") && redirectParam !== "/login") {
