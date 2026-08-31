@@ -2,8 +2,8 @@
 
 > **Document Classification:** Technical Architecture Report & Academic Research Specification  
 > **Platform Name:** ProInterview — A Full-Stack Cloud-Native AI Career Acceleration and Technical Interview Platform  
-> **Version:** 3.5 (Production & Academic Edition)  
-> **Core Architecture:** Next.js 16 Monolith (React 19, TypeScript, Tailwind CSS v4, MongoDB Atlas, AWS S3, Google Gemini 2.5 Flash, Gemini Vision, Sarvam AI, Piston Runner)  
+> **Version:** 4.0 (Production & Academic Edition)  
+> **Core Architecture:** Next.js 16 Monolith (React 19, TypeScript 5.9, Tailwind CSS v4, MongoDB Atlas, AWS S3 SDK v3, Google Gemini 2.5 Flash, Gemini Vision, Sarvam AI, Piston Polyglot Runner)  
 
 ---
 
@@ -11,27 +11,28 @@
 
 1. [Executive Summary](#1-executive-summary)
 2. [Introduction & Significance](#2-introduction--significance)
-   - 2.1 Motivation and Context
+   - 2.1 Motivation and Industry Context
    - 2.2 Shortcomings in Existing Technical Preparation Tools
    - 2.3 The Role of Multimodal Generative AI
 3. [System Objectives](#3-system-objectives)
-4. [Comprehensive System Methodology](#4-comprehensive-system-methodology)
+4. [Comprehensive System Methodology & Workflows](#4-comprehensive-system-methodology--workflows)
    - 4.1 Phase 1: Candidate Pre-Analysis Engine
    - 4.2 Phase 2: Resume Processing & Dynamic Configuration
    - 4.3 Phase 3: Adaptive Interaction State Machine (Tag-Interception Protocol)
-   - 4.4 Phase 4: Speech Recognition & Biometrics Analysis
+   - 4.4 Phase 4: Speech Recognition & Biometrics Telemetry
    - 4.5 Phase 5: Visual Blueprint & System Design Evaluation
    - 4.6 Phase 6: In-Browser Sandboxed Code Execution & Grading
    - 4.7 Phase 7: Dual-Vector Mathematical Scoring Pipeline
    - 4.8 Phase 8: Career Acceleration & Supplemental Ecosystem
-5. [Materials, Equipment, and Software Utilized](#5-materials-equipment-and-software-utilized)
-   - 5.1 Frontend Framework & Rendering Engine
-   - 5.2 Artificial Intelligence & Computer Vision Models
-   - 5.3 Voice Synthesis, Audio Telemetry & Streaming Protocols
-   - 5.4 Data Storage, Cloud Persistence & Synchronization
-   - 5.5 Document Parsing, Archive Inspection & Serialization
-   - 5.6 Sandboxed Code Execution Subsystem
-6. [Techniques & Deep-Dive Implementation Details](#6-techniques--deep-dive-implementation-details)
+5. [Complete Library & Software Inventory](#5-complete-library--software-inventory)
+   - 5.1 Frontend Framework, Rendering & UI Component Libraries
+   - 5.2 Artificial Intelligence, Multimodal Vision & Speech Models
+   - 5.3 Cloud Infrastructure, Database & Storage SDKs
+   - 5.4 Document Parsing, Archive Inspection & Serialization
+   - 5.5 Security, Cryptography & Validation Libraries
+   - 5.6 Sandboxed Execution & External APIs
+   - 5.7 Testing, Linting & Build Tooling
+6. [Deep-Dive Implementation & Algorithmic Details](#6-deep-dive-implementation--algorithmic-details)
    - 6.1 In-Memory Archive Parsing with `jszip`
    - 6.2 Stream-Safe Text Extraction with `pdf-parse`
    - 6.3 Multimodal Architectural Blueprint Analysis with Gemini Vision
@@ -39,10 +40,13 @@
    - 6.5 Sandboxed Remote Code Compilation via Piston Engine
    - 6.6 Zero-Database Real-Time Community Messaging on AWS S3
    - 6.7 Conflict-Free Cross-Device State Merging (CRDT-Style Sync)
+   - 6.8 Unified Email OTP & Authentication Handshake Pipeline
+   - 6.9 SSR Hydration-Safe Mobile Navigation & Resilient Storage
 7. [System Architecture & Security Model](#7-system-architecture--security-model)
-   - 7.1 Multi-Tier Routing Architecture
+   - 7.1 Multi-Tier Routing & Serverless Architecture
    - 7.2 Session Isolation & Sandboxed Guest Bubble
    - 7.3 Rate-Limiting & Memory Leak Protection
+   - 7.4 Input Sanitization & XSS Defense
 8. [Significance, Impact & Benchmark Evaluation](#8-significance-impact--benchmark-evaluation)
    - 8.1 Democratization & Cost Efficiency
    - 8.2 Candidate Readiness & Pedagogical Efficacy
@@ -55,7 +59,7 @@
 
 **ProInterview** is an enterprise-grade, cloud-native multimodal artificial intelligence platform designed to autonomously simulate, evaluate, and accelerate technical software engineering interviews. Traditional hiring preparation is characterized by passive algorithmic memorization, fragmented tooling, and prohibitively expensive human coaching. ProInterview unifies resume analytics, code repository inspection, live multi-turn spoken dialogue, computer-vision-based system design whiteboard analysis, sandboxed multi-language code compilation, and weighted diagnostic scoring into a single real-time web application.
 
-The platform is engineered as a Next.js 16 monolith running React 19 and TypeScript, powered by Google Gemini 2.5 Flash, Gemini Multimodal Vision API, Sarvam Indic Voice, MongoDB Atlas, AWS S3, and the Piston Sandboxed Execution Engine. This report documents the theoretical principles, architectural methodology, mathematical grading models, software dependencies, and commercial impact of the platform.
+The platform is engineered as a Next.js 16 monolith running React 19 and TypeScript 5.9, powered by Google Gemini 2.5 Flash, Gemini Multimodal Vision API, Sarvam Indic Voice, MongoDB Atlas, AWS S3, and the Piston Sandboxed Execution Engine. This report documents the theoretical principles, architectural methodology, mathematical grading models, deep library specifications, and commercial impact of the platform.
 
 ```
 +-----------------------------------------------------------------------------------------+
@@ -80,7 +84,7 @@ The platform is engineered as a Next.js 16 monolith running React 19 and TypeScr
 
 # 2. Introduction & Significance
 
-## 2.1 Motivation and Context
+## 2.1 Motivation and Industry Context
 The modern technical hiring landscape is intensely competitive. Candidates interviewing for Software Engineering (SWE), Site Reliability Engineering (SRE), Machine Learning (MLE), and Technical Architecture roles are subjected to rigorous multi-stage interviews encompassing:
 1. **Algorithmic Problem-Solving:** Live data-structure manipulation under real-time observation.
 2. **Distributed System Design:** Architectural trade-off analysis, scalability planning, and whiteboard sketching.
@@ -110,14 +114,15 @@ The primary engineering and pedagogical objectives of ProInterview are:
 4. **Dual-Vector Composite Scoring:** Formulate a scientifically sound evaluation model that combines pre-interview proof of work ($35\%$) with live interview pressure-handling ($65\%$).
 5. **Comprehensive Career Acceleration Ecosystem:** Provide integrated utility tools including ATS resume matching, AI email/offer letter verification, spaced-repetition drills, dynamic learning roadmaps, and an AWS S3-native serverless community.
 6. **Sub-Millisecond Multi-Language Code Compilation:** Execute and benchmark candidate code across Python, JavaScript, TypeScript, C++, and Java within a secure sandboxed runtime.
+7. **Zero-Friction Authentication & Session Security:** Provide robust single-step session establishment on Email OTP verification and Google OAuth, eliminating multi-step login gates across mobile and desktop devices.
 
 ---
 
-# 4. Comprehensive System Methodology
+# 4. Comprehensive System Methodology & Workflows
 
 ```mermaid
 flowchart TD
-    A[Candidate Input: Resume, GitHub, Portfolio Zip] --> B[Phase 1: Pre-Analysis Engine]
+    A[Candidate Input: Resume PDF, GitHub, Portfolio Zip] --> B[Phase 1: Pre-Analysis Engine]
     B -->|Calculates Baseline Rating 0-100| C[Phase 2: Configuration & Persona Setup]
     C --> D[Phase 3: Live Multimodal Interview Loop]
     
@@ -138,7 +143,7 @@ flowchart TD
 
 ## 4.1 Phase 1: Candidate Pre-Analysis Engine
 * **API Endpoint:** `POST /api/analyze-portfolio`
-* **Mechanism:** The candidate begins by submitting external profile URLs (GitHub, LinkedIn, personal portfolio) or dragging-and-dropping a compressed `.zip` archive containing their project source code.
+* **Mechanism:** The candidate submits external profile URLs (GitHub, LinkedIn, personal portfolio) or uploads a compressed `.zip` archive containing raw project source code.
 * **Technique:**
   1. For `.zip` uploads, the backend employs `jszip` to extract directory trees in-memory, filtering out vendor directories (`node_modules`, `dist`, `.git`).
   2. The source files, README files, package configurations, and architectural layers are sent to Google Gemini 2.5 Flash.
@@ -186,7 +191,7 @@ if (aiResponseChunk.includes("[MODE:CODE]")) {
 
 ---
 
-## 4.4 Phase 4: Speech Recognition & Biometrics Analysis
+## 4.4 Phase 4: Speech Recognition & Biometrics Telemetry
 * **Component:** `src/app/star-coach/page.tsx` & `src/app/interview/page.tsx`
 * **Speech Ingestion:** Spoken candidate input is captured continuously via the Web Speech API (`webkitSpeechRecognition`).
 * **Real-Time Acoustic & Biometric Telemetry:**
@@ -245,7 +250,6 @@ This formula ensures that while a strong portfolio grants an initial advantage (
 ---
 
 ## 4.8 Phase 8: Career Acceleration & Supplemental Ecosystem
-The platform extends beyond mock interviews into a full career acceleration suite:
 * **AI Email Analyser & Anti-Scam Shield (`/api/analyze-email`):** Ingests recruiter emails and offer letters. Extracts role, CTC salary components, joining deadlines, and assigns an authenticity credibility score ($0\text{--}100$) against phishing and recruitment scams.
 * **ATS Keyword & Semantic Matcher (`/ats-match`):** Ingests resume PDFs and target Job Descriptions (JDs), performing semantic vector cosine similarity matching to highlight missing keywords.
 * **Spaced Repetition Drills (`/prep`):** Implements an exponential forgetting curve scheduler to re-test candidate weak spots before interview day.
@@ -254,39 +258,50 @@ The platform extends beyond mock interviews into a full career acceleration suit
 
 ---
 
-# 5. Materials, Equipment, and Software Utilized
+# 5. Complete Library & Software Inventory
 
 ```
-+---------------------------------------------------------------------------------------+
-|                              SOFTWARE & HARDWARE INVENTORY                            |
-+---------------------------------------------------------------------------------------+
-| LAYER               | TECHNOLOGY                  | PRIMARY ROLE                      |
-+---------------------+-----------------------------+-----------------------------------+
-| Web Framework       | Next.js 16 (App Router)      | Full-stack SSR, API routing       |
-| UI & Styling        | React 19, Tailwind CSS v4   | Reactive components, cyber theme  |
-| Animation & Icons   | Framer Motion, Lucide React | Micro-interactions, clean SVG UI  |
-| Language Engine     | TypeScript 5.8              | End-to-end type safety            |
-| Primary LLM         | Google Gemini 2.5 Flash     | Multi-turn conversation & scoring |
-| Vision AI           | Gemini 2.5 Multimodal API   | Whiteboard diagram evaluation     |
-| Indic Regional TTS  | Sarvam AI                   | Low-latency native Indian accents |
-| Speech Capture      | Web Speech API              | Zero-latency in-browser STT       |
-| Avatar Streaming    | Tavus / D-ID WebRTC         | Talking-head visual realism       |
-| Primary Database    | MongoDB Atlas (Mongoose)    | Users, profiles, cloud sessions   |
-| Object Storage      | Amazon Web Services (S3)    | Resumes, community chat, uploads  |
-| Client Persistence  | LocalStorage & In-Memory    | PWA offline state, guest sandbox  |
-| PDF Parsing         | pdf-parse                   | In-memory resume text extraction  |
-| Archive Inspection  | jszip                       | In-memory .zip code analysis      |
-| Markdown Parser     | marked                      | Converts AI reports to HTML/Word  |
-| PDF Rendering       | html2canvas                 | Client-side scorecard PDF export  |
-| Sandboxed Execution | Piston Polyglot Engine      | Multi-language code execution     |
-| Payment Gateway     | Razorpay & Dynamic UPI      | Subscription & coach checkout     |
-| Cloud Deployment    | AWS Amplify / Linux Node.js | Scalable edge production runtime  |
-+---------------------------------------------------------------------------------------+
++--------------------------------------------------------------------------------------------------------+
+|                                    COMPLETE DEPENDENCY & MODULE MATRIX                                 |
++--------------------------------------------------------------------------------------------------------+
+| PACKAGE / LIBRARY             | VERSION       | SUBSYSTEM / PURPOSE                                    |
++-------------------------------+---------------+--------------------------------------------------------+
+| next                          | ^16.2.9       | Core full-stack web framework (App Router & SSR)       |
+| react                         | ^19.2.4       | Reactive component UI & concurrent render engine       |
+| react-dom                     | ^19.2.4       | DOM bindings & client hydration layer                  |
+| typescript                    | ^5.9.3        | Static type checking & interface definitions           |
+| tailwindcss                   | ^4.2.1        | Next-generation utility CSS engine & theme token system|
+| @tailwindcss/postcss          | ^4.2.1        | PostCSS bundling for Tailwind v4                       |
+| framer-motion                 | ^12.0.0       | Physics-based animations, layout transitions & modals  |
+| lucide-react                  | ^0.577.0      | Comprehensive SVG icon set for workbench tools         |
+| @dnd-kit/core                 | ^6.3.1        | Drag and drop foundation for resume builder sections   |
+| @dnd-kit/sortable             | ^10.0.0       | Sortable list interactions for resume & questions      |
+| @dnd-kit/utilities            | ^3.2.2        | CSS transform and coordinate utilities for DND         |
+| react-select                  | ^5.10.2       | Accessible, customizable searchable dropdown controls  |
+| dompurify                     | ^3.4.13       | Zero-vulnerability client-side HTML sanitization (XSS) |
+| marked                        | ^17.0.6       | Real-time markdown parser for AI dialogue & scorecards |
+| heic2any                      | ^0.0.4        | Client-side Apple HEIC to PNG/JPEG conversion          |
+| @google/generative-ai         | ^0.24.0       | Google Gemini 2.5 Flash SDK & Vision API               |
+| @react-oauth/google           | ^0.13.5       | Google OAuth2 single-sign-on client integration        |
+| mongoose                      | ^9.9.1        | MongoDB ODM for schemas (User, Admin, Scorecards)      |
+| @aws-sdk/client-s3            | ^3.1106.0     | AWS S3 SDK for direct presigned uploads & chat JSON    |
+| @aws-sdk/s3-request-presigner | ^3.1106.0     | Secure presigned S3 URL generator for client uploads   |
+| aws-amplify                   | ^6.20.0       | Cloud backend connectors & edge deployment             |
+| bcryptjs                      | ^3.0.3        | Cryptographic password hashing (10 salt rounds)        |
+| nodemailer                    | ^9.0.3        | Transactional SMTP email delivery for OTP verification |
+| pdf-parse                     | ^1.1.1        | Stream-safe binary PDF text extraction                 |
+| jszip                         | ^3.10.1       | In-memory ZIP archive decompression for repositories   |
+| zod                           | ^3.25.17      | Runtime schema parsing & API request validation        |
+| razorpay                      | ^2.9.6        | Payment gateway for subscriptions & coach bookings     |
+| vitest                        | ^3.2.4        | High-speed ESM unit testing framework (213 tests)      |
+| eslint                        | ^9.39.5       | Modern flat-config JavaScript & TypeScript linter      |
+| eslint-config-next            | ^16.3.0       | Next.js specific linting rules                         |
++--------------------------------------------------------------------------------------------------------+
 ```
 
 ---
 
-# 6. Techniques & Deep-Dive Implementation Details
+# 6. Deep-Dive Implementation & Algorithmic Details
 
 ## 6.1 In-Memory Archive Parsing with `jszip`
 When candidates submit portfolio `.zip` archives, traditional servers extract files to disk, creating I/O bottlenecks and security vulnerabilities (such as Zip-Slip path traversals). ProInterview executes all archive processing entirely in RAM using `jszip`. The system traverses file buffers, filters out binary assets, and concatenates code files into structured markdown context windows for Gemini.
@@ -324,6 +339,20 @@ To synchronize candidate study progress, STAR drill completions, and bookmarks a
 * **Last-Write-Wins (LWW):** Applied to individual scalar fields based on `updatedAt` ISO timestamps.
 * **Max-Union Strategy:** Applied to monotonic counters (e.g., total drills completed, minutes practiced).
 * **Array Deduplication:** Applied to saved resume templates and bookmarked drill IDs.
+
+## 6.8 Unified Email OTP & Authentication Handshake Pipeline
+To eliminate multi-step verification friction and secondary login prompts:
+1. **Account Registration:** User enters Name, Email, and Password. Password is encrypted with `bcryptjs` (10 salt rounds) and saved to MongoDB with `isVerified: false`.
+2. **OTP Dispatch:** An in-memory/cryptographic 6-digit OTP is generated and transmitted via `nodemailer` using Gmail SMTP.
+3. **Complete Single-Step Connection:**
+   - In `/api/auth/verify-otp`, upon verifying the 6-digit code, the backend sets `isVerified: true`, constructs the HMAC-SHA256 JWT session token, and attaches both the `session` HttpOnly cookie (`maxAge: 7 days`, `sameSite: lax`) and the client `userLoggedIn=true` cookie.
+   - The user payload is returned with all profile fields (`displayName`, `identifier`, `subscriptionPlan`, `organizationName`, `profilePhoto`, etc.).
+   - The client writes all credentials to `localStorage` and redirects directly to `/features`.
+   - **All sections (Practice, Labs, Profile) are immediately unlocked and connected without requiring any additional login.**
+
+## 6.9 SSR Hydration-Safe Mobile Navigation & Resilient Storage
+* **SSR Hydration Decoupling:** Converted mobile footer navigation links and dashboard action buttons from inline ternary conditionals (`href={isLoggedIn ? "/profile" : "/login..."}`) to direct, unconditional route targets (`/profile`, `/features`, `/labs`). This eliminates mobile browser hydration lag where static server HTML falsely navigated to `/login`.
+* **Multi-Tiered Storage Safety:** Wrapped all `localStorage` access in [src/utils/storage.ts](file:///d:/Project%20repo/Ai-interviewer-main/src/utils/storage.ts) with safe `try/catch` fallbacks to memory cache and document cookies, preventing `DOMException` or storage quota crashes on Mobile Chrome and strict privacy modes.
 
 ---
 
@@ -370,6 +399,9 @@ Next.js 16 serverless route handlers encapsulate all backend operations. Server-
 
 ## 7.3 Rate-Limiting & Memory Leak Protection
 All public and AI-invoking endpoints implement an in-memory sliding-window rate limiter (e.g., 15 requests per 15-minute window for authentication; 20 requests per minute for Gemini). To prevent memory exhaustion in long-running Node.js worker processes, a garbage collection daemon purges expired tracking keys whenever the key registry exceeds 1,000 records.
+
+## 7.4 Input Sanitization & XSS Defense
+All dynamic markdown content rendered from AI endpoints is sanitized through `dompurify` prior to DOM insertion. User-supplied HTML strings, resume texts, and recruiter emails are strictly sanitized to prevent stored and reflected Cross-Site Scripting (XSS).
 
 ---
 
