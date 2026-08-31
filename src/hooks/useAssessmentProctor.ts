@@ -19,7 +19,7 @@ export interface IntegrityEvent {
     reason: string;
 }
 
-export function useAssessmentProctor(active: boolean) {
+export function useAssessmentProctor(active: boolean, onTerminate?: () => void) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
@@ -38,6 +38,13 @@ export function useAssessmentProctor(active: boolean) {
 
     const armedAtRef = useRef(0);
 
+    const stopCamera = useCallback(() => {
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        if (videoRef.current) videoRef.current.srcObject = null;
+        setCameraReady(false);
+    }, []);
+
     const addWarning = useCallback((reason: string) => {
         if (!active || terminated) return;
         if (Date.now() - armedAtRef.current < 2000) return;
@@ -48,8 +55,10 @@ export function useAssessmentProctor(active: boolean) {
         setEvents((prev) => [...prev.slice(-19), { at: Date.now(), reason }]);
         if (count >= MAX_INTEGRITY_WARNINGS) {
             setTerminated(true);
+            stopCamera();
+            onTerminate?.();
         }
-    }, [active, terminated]);
+    }, [active, terminated, stopCamera, onTerminate]);
 
     const startCamera = useCallback(async () => {
         setCameraError("");
@@ -70,13 +79,6 @@ export function useAssessmentProctor(active: boolean) {
             setCameraReady(false);
             return false;
         }
-    }, []);
-
-    const stopCamera = useCallback(() => {
-        streamRef.current?.getTracks().forEach((t) => t.stop());
-        streamRef.current = null;
-        if (videoRef.current) videoRef.current.srcObject = null;
-        setCameraReady(false);
     }, []);
 
     useEffect(() => {

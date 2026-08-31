@@ -4,7 +4,22 @@ const GLOBAL_KEYS = [
     "userName",
     "userIdentifier",
     "userType",
-    "userRole"
+    "userRole",
+    "userSubscriptionPlan",
+    "userProfilePhoto",
+    "userOrgName",
+    "userAdminId",
+    "userDepartment",
+    "userAdditionalEmail",
+    "userGithub",
+    "userLinkedin",
+    "userPortfolio",
+    "userResumeCvName",
+    "userResumeCvText",
+    "userPhone",
+    "userEducationData",
+    "globalTheme",
+    "globalInterviewMode"
 ];
 
 const STORAGE_CHANGE_EVENT = "ai-storage-change";

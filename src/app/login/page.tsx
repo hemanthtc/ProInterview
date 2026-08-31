@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { ArrowLeft, Video, Loader2, Lock, Mail, AlertCircle, CheckCircle, User, Sun, Moon, Eye } from "lucide-react";
-import { useState, useMemo, useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useMemo, useCallback, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from "framer-motion";
 import BrandLogo from "@/components/BrandLogo";
-import { setStorageItem, purgeAllUserLocalCaches } from "@/utils/storage";
+import { setStorageItem } from "@/utils/storage";
 
 const COUNTRIES = [
     { name: "United States", code: "+1", iso: "US" },
@@ -100,13 +100,19 @@ function LoginContent() {
         document.documentElement.style.colorScheme = nextTheme === "eyeprotect" ? "light" : nextTheme;
     };
 
+    const searchParams = useSearchParams();
+    const redirectParam = searchParams ? searchParams.get("redirect") : null;
+
     const handleGuestModeLogin = useCallback(() => {
         setStorageItem("userLoggedIn", "guest");
         setStorageItem("userIdentifier", "guest_user");
         setStorageItem("userName", "Guest User");
         document.cookie = "userLoggedIn=guest; path=/; max-age=86400; SameSite=Lax";
-        router.push("/features");
-    }, [router]);
+        const dest = (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") && redirectParam !== "/login")
+            ? redirectParam
+            : "/features";
+        window.location.href = dest;
+    }, [redirectParam]);
 
     // Auth States
     const [displayName, setDisplayName] = useState("");
@@ -160,58 +166,56 @@ function LoginContent() {
         setLoginSuccess(true);
         setSuccessName(name);
 
-        purgeAllUserLocalCaches();
         setStorageItem("userLoggedIn", "true");
-        document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
-        localStorage.setItem("userName", name);
-        localStorage.setItem("userIdentifier", identifier);
+        setStorageItem("userName", name);
+        setStorageItem("userIdentifier", identifier);
         // Derive userType from the resolved role to avoid stale loginMode closure
         const resolvedType = (role === "admin" || role === "employee") ? "organization" : "user";
-        localStorage.setItem("userType", resolvedType);
-        localStorage.setItem("userRole", role || "user");
+        setStorageItem("userType", resolvedType);
+        setStorageItem("userRole", role || "user");
 
         if (details) {
-            localStorage.setItem("userSubscriptionPlan", details.subscriptionPlan || "Free Tier");
-            // Store org-specific fields
-            localStorage.setItem("userOrgName", details.organizationName || "");
-            localStorage.setItem("userAdminId", details.adminId || "");
-            localStorage.setItem("userDepartment", details.department || "");
-            // Store individual user profile fields
-            localStorage.setItem("userProfilePhoto", details.profilePhoto || "");
-            localStorage.setItem("userAdditionalEmail", details.additionalEmail || "");
-            localStorage.setItem("userGithub", details.github || "");
-            localStorage.setItem("userLinkedin", details.linkedin || "");
-            localStorage.setItem("userPortfolio", details.portfolioUrl || "");
-            localStorage.setItem("userResumeCvName", details.resumeCvName || "");
-            localStorage.setItem("userResumeCvText", details.resumeCvText || "");
-            localStorage.setItem("userPhone", details.phone || "");
-            localStorage.setItem("userEducationData", details.educationData ? JSON.stringify(details.educationData) : "");
+            setStorageItem("userSubscriptionPlan", details.subscriptionPlan || "Free Tier");
+            setStorageItem("userOrgName", details.organizationName || "");
+            setStorageItem("userAdminId", details.adminId || "");
+            setStorageItem("userDepartment", details.department || "");
+            setStorageItem("userProfilePhoto", details.profilePhoto || "");
+            setStorageItem("userAdditionalEmail", details.additionalEmail || "");
+            setStorageItem("userGithub", details.github || "");
+            setStorageItem("userLinkedin", details.linkedin || "");
+            setStorageItem("userPortfolio", details.portfolioUrl || "");
+            setStorageItem("userResumeCvName", details.resumeCvName || "");
+            setStorageItem("userResumeCvText", details.resumeCvText || "");
+            setStorageItem("userPhone", details.phone || "");
+            setStorageItem("userEducationData", details.educationData ? JSON.stringify(details.educationData) : "");
         } else {
-            // Reset fields if details not present
-            localStorage.setItem("userOrgName", "");
-            localStorage.setItem("userAdminId", "");
-            localStorage.setItem("userDepartment", "");
-            localStorage.setItem("userProfilePhoto", "");
-            localStorage.setItem("userAdditionalEmail", "");
-            localStorage.setItem("userGithub", "");
-            localStorage.setItem("userLinkedin", "");
-            localStorage.setItem("userPortfolio", "");
-            localStorage.setItem("userResumeCvName", "");
-            localStorage.setItem("userResumeCvText", "");
-            localStorage.setItem("userPhone", "");
-            localStorage.setItem("userEducationData", "");
+            setStorageItem("userOrgName", "");
+            setStorageItem("userAdminId", "");
+            setStorageItem("userDepartment", "");
+            setStorageItem("userProfilePhoto", "");
+            setStorageItem("userAdditionalEmail", "");
+            setStorageItem("userGithub", "");
+            setStorageItem("userLinkedin", "");
+            setStorageItem("userPortfolio", "");
+            setStorageItem("userResumeCvName", "");
+            setStorageItem("userResumeCvText", "");
+            setStorageItem("userPhone", "");
+            setStorageItem("userEducationData", "");
         }
 
-        // Keep popup open for 1.8 seconds to allow full success animations to finish
-        await new Promise(resolve => setTimeout(resolve, 1800));
+        // Keep popup open for 1.2 seconds to allow full success animations to finish
+        await new Promise(resolve => setTimeout(resolve, 1200));
 
-        // Admins go to the dedicated admin dashboard; everyone else goes to home
+        let destination = "/";
         if (role === "admin") {
-            router.push("/admin");
-        } else {
-            router.push("/");
+            destination = "/admin";
+        } else if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") && redirectParam !== "/login") {
+            destination = redirectParam;
         }
-    }, [router]);
+
+        // Perform hard navigation to prevent stale router caches across browsers
+        window.location.href = destination;
+    }, [redirectParam]);
 
     const googleLogin = useGoogleLogin({
         onSuccess: async (tokenResponse) => {
@@ -240,8 +244,9 @@ function LoginContent() {
                 setLoading(false);
             }
         },
-        onError: () => {
-            setError("Google Login failed. Please check your credentials.");
+        onError: (err) => {
+            console.error("Google login error:", err);
+            setError("Google Login failed or popup was closed. Please enable popups if prompted and try again.");
             setLoading(false);
         }
     });
@@ -1329,8 +1334,10 @@ function LoginContent() {
 export default function LoginPage() {
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "dummy-client-id";
     return (
-        <GoogleOAuthProvider clientId={clientId}>
-            <LoginContent />
-        </GoogleOAuthProvider>
+        <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-white"><Loader2 className="w-8 h-8 animate-spin text-indigo-500" /></div>}>
+            <GoogleOAuthProvider clientId={clientId}>
+                <LoginContent />
+            </GoogleOAuthProvider>
+        </Suspense>
     );
 }

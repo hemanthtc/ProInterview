@@ -21,9 +21,13 @@ export async function POST(req: NextRequest) {
         const tokenInfo = await tokenInfoRes.json();
 
         // 2. Validate that the token was generated for our Client ID
-        const configuredClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-        if (configuredClientId && tokenInfo.azp !== configuredClientId) {
-            return NextResponse.json({ error: "Access token client ID mismatch" }, { status: 403 });
+        const configuredClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID?.trim();
+        if (configuredClientId && configuredClientId !== "YOUR_GOOGLE_CLIENT_ID" && configuredClientId !== "dummy-client-id") {
+            const tokenAud = tokenInfo.aud?.trim();
+            const tokenAzp = tokenInfo.azp?.trim();
+            if (tokenAzp !== configuredClientId && tokenAud !== configuredClientId) {
+                return NextResponse.json({ error: "Access token client ID mismatch" }, { status: 403 });
+            }
         }
 
         // 3. Fetch user info from Google's userinfo API
@@ -78,8 +82,8 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Return user credentials to the client
-        return NextResponse.json({
+        // Return user credentials to the client and set userLoggedIn cookie on response
+        const response = NextResponse.json({
             success: true,
             name: user.displayName,
             email: user.identifier,
@@ -89,6 +93,16 @@ export async function POST(req: NextRequest) {
             subscriptionStartedAt: user.subscriptionStartedAt,
             subscriptionExpiresAt: user.subscriptionExpiresAt,
         });
+
+        // Set readable userLoggedIn cookie on the HTTP response for cross-browser synchronization
+        response.cookies.set("userLoggedIn", "true", {
+            path: "/",
+            maxAge: 604800,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production"
+        });
+
+        return response;
 
     } catch (error: any) {
         console.error("Google authentication API error:", error);

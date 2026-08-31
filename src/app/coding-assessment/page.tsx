@@ -57,7 +57,20 @@ export default function CodingAssessmentPage() {
     const [durationSec, setDurationSec] = useState(60 * 60);
     const [loadError, setLoadError] = useState("");
 
-    const proctor = useAssessmentProctor(phase === "live");
+    const onProctorTerminate = useCallback(() => {
+        setPhase("submitted");
+    }, []);
+
+    const {
+        videoRef,
+        canvasRef,
+        expression,
+        faceVisible,
+        attention,
+        warningCount,
+        startCamera,
+        requestFullscreen,
+    } = useAssessmentProctor(phase === "live", onProctorTerminate);
     const active = problems[activeIndex] || null;
     const code = active ? codeByProblem[active.id] || "" : "";
 
@@ -92,20 +105,13 @@ export default function CodingAssessmentPage() {
         return () => window.clearInterval(id);
     }, [phase]);
 
-    useEffect(() => {
-        if (proctor.terminated && phase === "live") {
-            setPhase("submitted");
-            proctor.stopCamera();
-        }
-    }, [proctor.terminated, phase, proctor.stopCamera]);
-
     const startAssessment = useCallback(async () => {
-        const cam = await proctor.startCamera();
+        const cam = await startCamera();
         if (!cam) return;
-        await proctor.requestFullscreen();
+        await requestFullscreen();
         setPhase("live");
         setRemaining(durationSec);
-    }, [proctor, durationSec]);
+    }, [startCamera, requestFullscreen, durationSec]);
 
     const setCode = (value: string) => {
         if (!active) return;
@@ -346,24 +352,24 @@ export default function CodingAssessmentPage() {
                 <aside className="lg:w-[200px] border-t lg:border-t-0 lg:border-l border-white/10 p-3 space-y-3">
                     <p className="text-[10px] uppercase tracking-wider text-white/40 font-bold">AI proctor</p>
                     <div className="relative overflow-hidden rounded-lg border border-white/15 bg-black">
-                        <video ref={proctor.videoRef} muted playsInline className="h-32 w-full object-cover" />
-                        <canvas ref={proctor.canvasRef} className="hidden" />
+                        <video ref={videoRef} muted playsInline className="h-32 w-full object-cover" />
+                        <canvas ref={canvasRef} className="hidden" />
                     </div>
                     <div className="text-xs space-y-1">
                         <div>
                             Face:{" "}
-                            <span className={proctor.faceVisible ? "text-emerald-400" : "text-red-400"}>
-                                {proctor.faceVisible ? "visible" : "missing"}
+                            <span className={faceVisible ? "text-emerald-400" : "text-red-400"}>
+                                {faceVisible ? "visible" : "missing"}
                             </span>
                         </div>
                         <div>
-                            Expression: <span className="text-amber-200">{EXPRESSION_LABEL[proctor.expression] || proctor.expression}</span>
+                            Expression: <span className="text-amber-200">{EXPRESSION_LABEL[expression] || expression}</span>
                         </div>
                         <div>
-                            Attention: <span className="text-white/70">{proctor.attention.replace("_", " ")}</span>
+                            Attention: <span className="text-white/70">{attention.replace("_", " ")}</span>
                         </div>
                         <div>
-                            Warnings: {proctor.warningCount}/{MAX_INTEGRITY_WARNINGS}
+                            Warnings: {warningCount}/{MAX_INTEGRITY_WARNINGS}
                         </div>
                     </div>
                 </aside>

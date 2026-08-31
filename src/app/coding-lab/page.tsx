@@ -281,7 +281,7 @@ export default function CodingLabPage() {
                                             </button>
                                         )}
                                         <ul className={`mt-2 space-y-1 font-medium ${isLight ? "text-slate-700" : "text-white/70"}`}>
-                                            {(result.results || []).map((r: any, i: number) => (
+                                            {(result.results || []).map((r, i: number) => (
                                                 <li key={i}>
                                                     {r.passed ? "✓" : "✗"} {r.hidden ? "Hidden test" : "Public test"}
                                                 </li>

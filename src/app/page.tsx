@@ -450,46 +450,64 @@ export default function Home() {
         window.addEventListener("resize", checkMobile);
 
         setIsHydrated(true);
-        const loggedIn = getStorageItem("userLoggedIn") === "true";
-        const guest = getStorageItem("userLoggedIn") === "guest";
-        const role = localStorage.getItem("userRole");
-        if (loggedIn && role === "admin") {
-            router.push("/admin");
-            return;
-        }
+
+        const syncAuthStateAndData = () => {
+            const loggedIn = getStorageItem("userLoggedIn") === "true";
+            const guest = getStorageItem("userLoggedIn") === "guest";
+            const role = localStorage.getItem("userRole");
+            if (loggedIn && role === "admin") {
+                router.push("/admin");
+                return;
+            }
+
+            setIsLoggedIn(loggedIn);
+            setIsGuest(guest);
+            setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
+
+            const stored = getStorageItem("interviewSessions");
+            if (stored) {
+                try {
+                    const sessions = JSON.parse(stored);
+                    const oneHourAgo = Date.now() - 60 * 60 * 1000;
+                    const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
+                    setPastSessions(recentSessions);
+                } catch (e) {
+                    console.error("Failed to parse sessions", e);
+                }
+            }
+
+            const storedPaused = getStorageItem("pausedInterviewSession");
+            if (storedPaused) {
+                try {
+                    setPausedSession(JSON.parse(storedPaused));
+                } catch (e) {
+                    console.error(e);
+                }
+            }
+
+            setSnap(buildPrepSnapshot());
+        };
+
+        syncAuthStateAndData();
 
         const savedTheme = localStorage.getItem("globalTheme") as any;
-        setIsLoggedIn(loggedIn);
-        setIsGuest(guest);
-        setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
         if (savedTheme) {
             setTheme(savedTheme);
             document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
             document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
         }
 
-        const stored = getStorageItem("interviewSessions");
-        if (stored) {
-            try {
-                const sessions = JSON.parse(stored);
-                const oneHourAgo = Date.now() - 60 * 60 * 1000;
-                const recentSessions = sessions.filter((s: any) => s.timestamp > oneHourAgo);
-                setPastSessions(recentSessions);
-            } catch (e) {
-                console.error("Failed to parse sessions", e);
+        // Real-time synchronization listeners for instantaneous cross-tab and in-tab updates
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === "visible") {
+                syncAuthStateAndData();
             }
-        }
+        };
 
-        const storedPaused = getStorageItem("pausedInterviewSession");
-        if (storedPaused) {
-            try {
-                setPausedSession(JSON.parse(storedPaused));
-            } catch (e) {
-                console.error(e);
-            }
-        }
-
-        setSnap(buildPrepSnapshot());
+        window.addEventListener("ai-storage-change", syncAuthStateAndData);
+        window.addEventListener("storage", syncAuthStateAndData);
+        window.addEventListener("focus", syncAuthStateAndData);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
         // Dynamic scrollspy active indicators
         const handleHashChange = () => {
@@ -517,10 +535,14 @@ export default function Home() {
 
         return () => {
             window.removeEventListener("resize", checkMobile);
+            window.removeEventListener("ai-storage-change", syncAuthStateAndData);
+            window.removeEventListener("storage", syncAuthStateAndData);
+            window.removeEventListener("focus", syncAuthStateAndData);
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
             window.removeEventListener("hashchange", handleHashChange);
             window.removeEventListener("scroll", handleScroll);
         };
-    }, []);
+    }, [router]);
 
     const toggleMode = () => {
         const newMode = !isRealisticMode;
@@ -827,18 +849,19 @@ export default function Home() {
 
                         <button 
                             onClick={() => {
+                                const hasAuth = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest" || isLoggedIn || isGuest;
                                 if (isRealisticMode) {
                                     setShowModeSwitchModal({
                                         isOpen: true,
-                                        targetUrl: (isLoggedIn || isGuest) ? "/features" : "/login",
+                                        targetUrl: hasAuth ? "/features" : "/login?redirect=/features",
                                         targetLabel: "Practice & Features"
                                     });
                                     return;
                                 }
-                                if (isLoggedIn || isGuest) {
+                                if (hasAuth) {
                                     router.push("/features");
                                 } else {
-                                    router.push("/login");
+                                    router.push("/login?redirect=/features");
                                 }
                             }}
                             className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
@@ -879,10 +902,11 @@ export default function Home() {
 
                         <button 
                             onClick={() => {
-                                if (isLoggedIn || isGuest) {
+                                const hasAuth = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest" || isLoggedIn || isGuest;
+                                if (hasAuth) {
                                     setActiveModal("progress");
                                 } else {
-                                    router.push("/login");
+                                    router.push("/login?redirect=/");
                                 }
                             }}
                             className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeModal === "progress" 
@@ -898,7 +922,7 @@ export default function Home() {
                         </button>
 
                         <Link 
-                            href={isLoggedIn || isGuest ? "/profile" : "/login"}
+                            href={isLoggedIn || isGuest || getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest" ? "/profile" : "/login?redirect=/profile"}
                             className={`flex flex-col items-center justify-center gap-1 transition-colors ${
                                 theme === "light" 
                                 ? "text-slate-400 hover:text-slate-600" 
