@@ -52,6 +52,25 @@ export function getGeminiModel(model = "gemini-2.5-flash") {
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
 }
 
+/**
+ * Executes a Gemini model request with an explicit timeout to prevent hanging request threads.
+ */
+export async function generateContentWithTimeout<T = any>(
+    modelCall: Promise<T>,
+    timeoutMs = 30000,
+    errorMessage = "AI gateway request timed out"
+): Promise<T> {
+    let timer: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(errorMessage)), timeoutMs);
+    });
+    try {
+        return await Promise.race([modelCall, timeoutPromise]);
+    } finally {
+        clearTimeout(timer!);
+    }
+}
+
 /** Stable hash for cache keys so truncated prefixes cannot collide. */
 export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
     const hash = crypto.createHash("sha256");

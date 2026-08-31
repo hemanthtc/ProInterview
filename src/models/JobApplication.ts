@@ -35,6 +35,7 @@ const JobApplicationSchema: Schema<IJobApplication> = new Schema(
 
 // Compound index to ensure uniqueness per user per job application
 JobApplicationSchema.index({ identifier: 1, jobId: 1 }, { unique: true });
+JobApplicationSchema.index({ identifier: 1, appliedAt: -1 });
 
 const JobApplication: Model<IJobApplication> =
     mongoose.models.JobApplication ||

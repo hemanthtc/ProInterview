@@ -96,19 +96,13 @@ export async function POST(req: NextRequest) {
             if (orgSubMode === "admin") {
                 account = await OrgAdmin.findOne(lookupFilter);
                 if (!account) {
-                    return NextResponse.json(
-                        { error: "Invalid credentials for organization Administration login." },
-                        { status: 401 }
-                    );
+                    return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
                 }
                 resolvedOrgRole = "admin";
             } else if (orgSubMode === "employee") {
                 account = await OrgEmployee.findOne(lookupFilter);
                 if (!account) {
-                    return NextResponse.json(
-                        { error: "Invalid credentials for organization Employee login." },
-                        { status: 401 }
-                    );
+                    return NextResponse.json({ error: "Invalid credentials." }, { status: 401 });
                 }
                 resolvedOrgRole = "employee";
             } else {

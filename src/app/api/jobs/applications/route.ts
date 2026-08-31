@@ -81,9 +81,9 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        // MongoDB fallback
+        // MongoDB fallback (capped at 200 applications)
         await connectDB();
-        const apps = await JobApplication.find({ identifier: session.identifier }).sort({ appliedAt: -1 });
+        const apps = await JobApplication.find({ identifier: session.identifier }).sort({ appliedAt: -1 }).limit(200);
         return NextResponse.json(apps);
     } catch (error: any) {
         console.error("GET /api/jobs/applications error:", error);

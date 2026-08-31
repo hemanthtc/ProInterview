@@ -77,16 +77,19 @@ export async function GET(req: NextRequest) {
         // ── Unverified users list ─────────────────────────────────────────────
         const unverifiedUsers = await User.find({ isVerified: false, isOrganization: { $ne: true } as any })
             .sort({ createdAt: -1 })
+            .limit(100)
             .select("displayName identifier createdAt type");
 
         // ── All verified users ────────────────────────────────────────────────
         const allUsers = await User.find({ isVerified: true, isOrganization: { $ne: true } as any })
             .sort({ createdAt: -1 })
+            .limit(100)
             .select("displayName identifier subscriptionPlan createdAt");
 
         // ── Monthly signups users ─────────────────────────────────────────────
         const monthlyUsers = await User.find({ isVerified: true, isOrganization: { $ne: true } as any, createdAt: { $gte: lastMonth } })
             .sort({ createdAt: -1 })
+            .limit(100)
             .select("displayName identifier subscriptionPlan createdAt");
 
         // ── Employees under this admin ────────────────────────────────────────

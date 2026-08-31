@@ -147,10 +147,11 @@ async function connectDB() {
             connectTimeoutMS: 8000,
         };
 
-        // If using mongodb+srv://, resolve via DoH first to avoid 8s local DNS timeout on blocked UDP port 53
+        // If in development and using mongodb+srv://, resolve via DoH first to avoid local DNS timeout on blocked UDP port 53.
+        // In production, connect directly to prevent leaking internal Atlas cluster hostnames to third-party DoH.
         cached.promise = (async () => {
             let targetUri = mongoUri;
-            if (mongoUri.startsWith("mongodb+srv://")) {
+            if (process.env.NODE_ENV !== "production" && mongoUri.startsWith("mongodb+srv://")) {
                 try {
                     targetUri = await resolveSrvConnectionString(mongoUri);
                 } catch (dohError) {

@@ -102,6 +102,8 @@ const FeedbackSchema = new Schema<IFeedback>(
 );
 
 FeedbackSchema.index({ createdAt: -1 });
+FeedbackSchema.index({ userIdentifier: 1, createdAt: -1 });
+FeedbackSchema.index({ status: 1, rating: 1 });
 
 const Feedback: Model<IFeedback> =
     mongoose.models.Feedback || mongoose.model<IFeedback>("Feedback", FeedbackSchema);

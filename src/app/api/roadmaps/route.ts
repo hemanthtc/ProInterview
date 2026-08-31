@@ -17,8 +17,8 @@ export async function GET() {
         // Run user-specific cleanup and warn of upcoming expirations
         await runRoadmapCleanup(session.identifier);
 
-        // Fetch remaining roadmaps
-        const list = await Roadmap.find({ userIdentifier: session.identifier }).sort({ createdAt: -1 });
+        // Fetch remaining roadmaps (capped at 100 per user)
+        const list = await Roadmap.find({ userIdentifier: session.identifier }).sort({ createdAt: -1 }).limit(100);
 
         const now = Date.now();
         const results = list.map((r) => {

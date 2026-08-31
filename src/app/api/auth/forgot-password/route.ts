@@ -49,32 +49,21 @@ export async function POST(req: NextRequest) {
             save: () => Promise<unknown>;
         } | null;
 
-        if (!account || !account.isVerified) {
-            return NextResponse.json({ error: "No verified account found with this credential." }, { status: 404 });
-        }
+        if (account && account.isVerified) {
+            const generatedOtp = generateOtp();
+            account.otpCode = await hashOtp(generatedOtp);
+            account.otpExpires = otpExpiry();
+            await account.save();
 
-        const generatedOtp = generateOtp();
-        account.otpCode = await hashOtp(generatedOtp);
-        account.otpExpires = otpExpiry();
-        await account.save();
-
-        if (account.type === "email") {
-            const sent = await sendVerificationEmail(account.identifier, generatedOtp, account.displayName);
-            if (!sent) {
-                return NextResponse.json(
-                    { error: "Failed to send verification email. Please check your GMAIL_USER and GMAIL_APP_PASSWORD configurations." },
-                    { status: 500 }
-                );
+            if (account.type === "email") {
+                await sendVerificationEmail(account.identifier, generatedOtp, account.displayName);
             }
         }
 
         const responseData: OtpSendResponse = {
             success: true,
-            message: "Recovery code sent.",
+            message: "If an account exists with this credential, a recovery code has been dispatched.",
         };
-        if (accountType !== "admin" && accountType !== "employee" && account.type !== "email") {
-            responseData.otpCode = generatedOtp;
-        }
 
         return NextResponse.json(responseData);
     } catch (error: unknown) {

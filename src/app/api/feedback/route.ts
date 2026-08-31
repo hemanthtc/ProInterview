@@ -4,6 +4,10 @@ import Feedback from "@/models/Feedback";
 import { getVerifiedSession } from "@/utils/auth";
 import User from "@/models/User";
 
+function escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 export async function POST(req: NextRequest) {
     try {
         const session = await getVerifiedSession();
@@ -95,7 +99,7 @@ export async function GET(req: NextRequest) {
         } else {
             // Admin query filters
             if (field && field !== "all") {
-                filter.fieldOfStudy = new RegExp(`^${field}$`, "i");
+                filter.fieldOfStudy = new RegExp(`^${escapeRegex(field)}$`, "i");
             }
             if (category && category !== "all") {
                 filter.category = category;
@@ -107,7 +111,7 @@ export async function GET(req: NextRequest) {
                 filter.rating = Number(rating);
             }
             if (search && search.trim()) {
-                const s = search.trim();
+                const s = escapeRegex(search.trim());
                 filter.$or = [
                     { problemStatement: { $regex: s, $options: "i" } },
                     { problemDescription: { $regex: s, $options: "i" } },
@@ -120,23 +124,27 @@ export async function GET(req: NextRequest) {
 
         const feedbacks = await Feedback.find(filter).sort({ createdAt: -1 }).limit(150);
 
-        // Also calculate admin stats if admin
+        // Calculate admin stats via database aggregation to avoid full-collection memory scan
         let stats = null;
         if (isAdmin) {
-            const allItems = await Feedback.find({});
-            const total = allItems.length;
-            const pending = allItems.filter(f => f.status === "pending").length;
-            const resolved = allItems.filter(f => f.status === "resolved" || f.status === "replied").length;
-            const avgRating = total > 0
-                ? Number((allItems.reduce((acc, f) => acc + (f.rating || 5), 0) / total).toFixed(1))
-                : 5.0;
+            const [statsAgg] = await Feedback.aggregate([
+                {
+                    $group: {
+                        _id: null,
+                        total: { $sum: 1 },
+                        pending: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+                        resolved: { $sum: { $cond: [{ $in: ["$status", ["resolved", "replied"]] }, 1, 0] } },
+                        avgRating: { $avg: "$rating" }
+                    }
+                }
+            ]);
 
-            stats = {
-                total,
-                pending,
-                resolved,
-                avgRating,
-            };
+            stats = statsAgg ? {
+                total: statsAgg.total || 0,
+                pending: statsAgg.pending || 0,
+                resolved: statsAgg.resolved || 0,
+                avgRating: Number((statsAgg.avgRating || 5.0).toFixed(1)),
+            } : { total: 0, pending: 0, resolved: 0, avgRating: 5.0 };
         }
 
         return NextResponse.json({
