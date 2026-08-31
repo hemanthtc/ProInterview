@@ -815,29 +815,17 @@ export default function Home() {
                             theme={theme}
                             isRealisticMode={isRealisticMode}
                             onSelectAnalysis={() => {
-                                if (isLoggedIn || isGuest) {
-                                    router.push("/features?tool=analysis");
-                                } else {
-                                    router.push("/login");
-                                }
+                                router.push("/features?tool=analysis");
                             }}
                             onStartInterview={() => {
-                                if (isLoggedIn || isGuest) {
-                                    if (isRealisticMode) {
-                                        router.push("/setup");
-                                    } else {
-                                        router.push("/features?start=true");
-                                    }
+                                if (isRealisticMode) {
+                                    router.push("/setup");
                                 } else {
-                                    router.push("/login");
+                                    router.push("/features?start=true");
                                 }
                             }}
                             onSelectProgress={() => {
-                                if (isLoggedIn || isGuest) {
-                                    setActiveModal("progress");
-                                } else {
-                                    router.push("/login");
-                                }
+                                setActiveModal("progress");
                             }}
                         />
                     )}
@@ -870,20 +858,15 @@ export default function Home() {
 
                         <button 
                             onClick={() => {
-                                const hasAuth = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest" || isLoggedIn || isGuest;
                                 if (isRealisticMode) {
                                     setShowModeSwitchModal({
                                         isOpen: true,
-                                        targetUrl: hasAuth ? "/features" : "/login?redirect=/features",
+                                        targetUrl: "/features",
                                         targetLabel: "Practice & Features"
                                     });
                                     return;
                                 }
-                                if (hasAuth) {
-                                    router.push("/features");
-                                } else {
-                                    router.push("/login?redirect=/features");
-                                }
+                                router.push("/features");
                             }}
                             className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
                                 theme === "light"
@@ -923,12 +906,7 @@ export default function Home() {
 
                         <button 
                             onClick={() => {
-                                const hasAuth = getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest" || isLoggedIn || isGuest;
-                                if (hasAuth) {
-                                    setActiveModal("progress");
-                                } else {
-                                    router.push("/login?redirect=/");
-                                }
+                                setActiveModal("progress");
                             }}
                             className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeModal === "progress" 
                                 ? "text-[#a855f7] font-extrabold" 
@@ -943,7 +921,7 @@ export default function Home() {
                         </button>
 
                         <Link 
-                            href={isLoggedIn || isGuest || getStorageItem("userLoggedIn") === "true" || getStorageItem("userLoggedIn") === "guest" ? "/profile" : "/login?redirect=/profile"}
+                            href="/profile"
                             className={`flex flex-col items-center justify-center gap-1 transition-colors ${
                                 theme === "light" 
                                 ? "text-slate-400 hover:text-slate-600" 
@@ -1531,7 +1509,7 @@ export default function Home() {
 
                                     <div className="pt-2">
                                         <Link 
-                                            href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
+                                            href={isRealisticMode ? "/setup" : "/features"}
                                             className="group relative inline-flex items-center justify-center px-8 py-4 font-bold text-white transition-all duration-200 bg-indigo-600 font-pj rounded-xl hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 shadow-xl shadow-indigo-500/20"
                                         >
                                             {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
@@ -1778,7 +1756,7 @@ export default function Home() {
                                     </p>
 
                                     <Link 
-                                        href={isLoggedIn ? (isRealisticMode ? "/setup" : "/features") : "/login"}
+                                        href={isRealisticMode ? "/setup" : "/features"}
                                         className="inline-flex items-center justify-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition-all text-[11px] cursor-pointer shadow-[0_3px_12px_rgba(79,70,229,0.2)]"
                                     >
                                         {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}

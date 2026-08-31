@@ -37,7 +37,10 @@ export function getScopedKey(key: string): string {
     if (GLOBAL_KEYS.includes(key)) {
         return key;
     }
-    const userIdentifier = localStorage.getItem("userIdentifier") || "guest";
+    let userIdentifier = "guest";
+    try {
+        userIdentifier = localStorage.getItem("userIdentifier") || "guest";
+    } catch {}
     return `${key}_${userIdentifier}`;
 }
 
@@ -45,9 +48,11 @@ export function getStorageItem(key: string): string | null {
     if (typeof window === "undefined") return null;
 
     if (key === "userLoggedIn") {
-        const fromLocal = localStorage.getItem("userLoggedIn");
-        if (fromLocal === "true") return "true";
-        if (fromLocal === "guest") return "guest";
+        try {
+            const fromLocal = localStorage.getItem("userLoggedIn");
+            if (fromLocal === "true") return "true";
+            if (fromLocal === "guest") return "guest";
+        } catch {}
         const fromTemp = tempMemory["userLoggedIn"];
         if (fromTemp === "true") return "true";
         if (fromTemp === "guest") return "guest";
@@ -60,20 +65,35 @@ export function getStorageItem(key: string): string | null {
 
     // Global un-scoped keys (userName, userIdentifier, userType, userRole, etc.)
     if (GLOBAL_KEYS.includes(key)) {
-        const val = localStorage.getItem(key) || tempMemory[key];
-        if (val !== null && val !== undefined) return val;
+        try {
+            const val = localStorage.getItem(key);
+            if (val !== null && val !== undefined) return val;
+        } catch {}
+        const fromTemp = tempMemory[key];
+        if (fromTemp !== null && fromTemp !== undefined) return fromTemp;
     }
 
-    const isLoggedIn =
-        localStorage.getItem("userLoggedIn") === "true" ||
-        tempMemory["userLoggedIn"] === "true" ||
-        (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+    let isLoggedIn = false;
+    try {
+        isLoggedIn =
+            localStorage.getItem("userLoggedIn") === "true" ||
+            tempMemory["userLoggedIn"] === "true" ||
+            (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+    } catch {
+        isLoggedIn =
+            tempMemory["userLoggedIn"] === "true" ||
+            (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+    }
 
     const scopedKey = getScopedKey(key);
-    if (isLoggedIn) {
-        return localStorage.getItem(scopedKey) || tempMemory[scopedKey] || localStorage.getItem(key) || null;
-    } else {
-        return tempMemory[scopedKey] || localStorage.getItem(key) || null;
+    try {
+        if (isLoggedIn) {
+            return localStorage.getItem(scopedKey) || tempMemory[scopedKey] || localStorage.getItem(key) || null;
+        } else {
+            return tempMemory[scopedKey] || localStorage.getItem(key) || null;
+        }
+    } catch {
+        return tempMemory[scopedKey] || null;
     }
 }
 
@@ -81,19 +101,19 @@ export function setStorageItem(key: string, value: string): void {
     if (typeof window === "undefined") return;
     if (key === "userLoggedIn") {
         if (value === "true") {
-            localStorage.setItem("userLoggedIn", "true");
+            try { localStorage.setItem("userLoggedIn", "true"); } catch {}
             tempMemory["userLoggedIn"] = "true";
             if (typeof document !== "undefined") {
                 document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
             }
         } else if (value === "guest") {
-            localStorage.setItem("userLoggedIn", "guest");
+            try { localStorage.setItem("userLoggedIn", "guest"); } catch {}
             tempMemory["userLoggedIn"] = "guest";
             if (typeof document !== "undefined") {
                 document.cookie = "userLoggedIn=guest; path=/; max-age=86400; SameSite=Lax";
             }
         } else {
-            localStorage.removeItem("userLoggedIn");
+            try { localStorage.removeItem("userLoggedIn"); } catch {}
             delete tempMemory["userLoggedIn"];
             if (typeof document !== "undefined") {
                 document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
@@ -104,20 +124,31 @@ export function setStorageItem(key: string, value: string): void {
     }
 
     if (GLOBAL_KEYS.includes(key)) {
-        localStorage.setItem(key, value);
+        try { localStorage.setItem(key, value); } catch {}
         tempMemory[key] = value;
         emitStorageChange(key);
         return;
     }
 
-    const isLoggedIn =
-        localStorage.getItem("userLoggedIn") === "true" ||
-        tempMemory["userLoggedIn"] === "true" ||
-        (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
+    let isLoggedIn = false;
+    try {
+        isLoggedIn =
+            localStorage.getItem("userLoggedIn") === "true" ||
+            tempMemory["userLoggedIn"] === "true" ||
+            (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
+    } catch {
+        isLoggedIn =
+            tempMemory["userLoggedIn"] === "true" ||
+            (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
+    }
 
-    if (isLoggedIn) {
-        localStorage.setItem(getScopedKey(key), value);
-    } else {
+    try {
+        if (isLoggedIn) {
+            localStorage.setItem(getScopedKey(key), value);
+        } else {
+            tempMemory[getScopedKey(key)] = value;
+        }
+    } catch {
         tempMemory[getScopedKey(key)] = value;
     }
     emitStorageChange(key);
