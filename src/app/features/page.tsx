@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical, Code2, Clapperboard, FileSearch, Lock, Unlock, Trophy, CheckCircle2, HelpCircle, RefreshCw } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buildPrepSnapshot } from "../../utils/labProgress";
