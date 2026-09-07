@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { deferEffectWork } from "@/utils/deferEffect";
 import {
     Star,
     Send,
@@ -104,9 +105,9 @@ export default function FeedbackUserForm({ theme = "dark" }: { theme?: "dark" | 
         }
     };
 
-    useEffect(() => {
-        loadHistory();
-    }, []);
+    useEffect(() => deferEffectWork(() => {
+        void loadHistory();
+    }), []);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { deferEffectWork } from "@/utils/deferEffect";
 import {
     Trash2,
     AlertTriangle,
@@ -56,9 +57,9 @@ export default function CleanupUploadsManager() {
         }
     }, []);
 
-    useEffect(() => {
+    useEffect(() => deferEffectWork(() => {
         void loadExpiredFiles();
-    }, [loadExpiredFiles]);
+    }), [loadExpiredFiles]);
 
     const handlePurge = async () => {
         setActionLoading(true);

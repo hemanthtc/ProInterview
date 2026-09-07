@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { deferEffectWork } from "@/utils/deferEffect";
 import {
     DndContext,
     DragOverlay,
@@ -243,9 +244,9 @@ export default function LabsVisibilityManager() {
         }
     }, []);
 
-    useEffect(() => {
-        fetchVisibility();
-    }, [fetchVisibility]);
+    useEffect(() => deferEffectWork(() => {
+        void fetchVisibility();
+    }), [fetchVisibility]);
 
     const hasChanges = JSON.stringify([...hiddenTools].sort()) !== JSON.stringify([...originalHiddenTools].sort());
 
