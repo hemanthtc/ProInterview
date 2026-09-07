@@ -461,7 +461,7 @@ export default function Home() {
     const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
     const isHydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [isMobile, setIsMobile] = useState(false);
+    const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth < 768 : false));
     const [activeModal, setActiveModal] = useState<string | null>(null);
     const [showModeSwitchModal, setShowModeSwitchModal] = useState<{ isOpen: boolean; targetUrl: string; targetLabel: string } | null>(null);
     const [snap, setSnap] = useState<any>(null);

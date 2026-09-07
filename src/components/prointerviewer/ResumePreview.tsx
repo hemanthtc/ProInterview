@@ -816,7 +816,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
     const isMenuOpen = activeItemMenuId === itemId;
 
     return (
-      <div className="no-print resume-item-controls-wrapper" style={{ position: 'absolute', top: '0px', right: '-32px', zIndex: 30 }}>
+      <div className="no-print resume-item-controls-wrapper" style={{ position: 'absolute', top: '0px', right: '0px', zIndex: 30 }}>
         <button
           type="button"
           className="control-toggle-btn"
@@ -1722,7 +1722,7 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
         }
         .resume-item-wrap {
           position: relative;
-          padding-right: 0px;
+          padding-right: 28px;
         }
         .resume-item-date {
           position: relative !important;
@@ -1908,6 +1908,9 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           .resume-item-hidden,
           .skill-visibility-btn {
             display: none !important;
+          }
+          .resume-item-wrap {
+            padding-right: 0px !important;
           }
           .editable-element[data-placeholder]:empty::before {
             display: none !important;

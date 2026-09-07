@@ -28,6 +28,10 @@ import {
     Moon,
     Sun,
     Eye,
+    Home,
+    Compass,
+    FlaskConical,
+    User,
 } from "lucide-react";
 
 type Badge = "New" | "Beta" | "Sign-in" | "Public";
@@ -463,7 +467,7 @@ export default function LabsPage() {
     })).filter((cat) => cat.items.length > 0);
 
     return (
-        <div className={`min-h-screen transition-colors duration-300 ${
+        <div className={`min-h-screen pb-24 transition-colors duration-300 ${
             theme === "light"
                 ? "bg-slate-100 text-slate-900"
                 : theme === "eyeprotect"
@@ -611,6 +615,64 @@ export default function LabsPage() {
                             </section>
                         );
                     })}
+                </div>
+            </div>
+
+            {/* Sticky Bottom Navigation Bar for Mobile */}
+            <div 
+                className="md:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-lg pb-safe-bottom transition-all duration-300 border-t"
+                style={{
+                    backgroundColor: theme === "light" ? "rgba(255, 255, 255, 0.95)" : theme === "eyeprotect" ? "rgba(244, 234, 225, 0.95)" : "rgba(6, 6, 12, 0.9)",
+                    borderColor: theme === "light" ? "rgba(15, 23, 42, 0.08)" : theme === "eyeprotect" ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.1)"
+                }}
+            >
+                <div className="max-w-md mx-auto flex items-center justify-around h-16 px-4">
+                    <button 
+                        onClick={() => router.push("/")}
+                        className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                            theme === "light" 
+                            ? "text-slate-400 hover:text-slate-600" 
+                            : theme === "eyeprotect" 
+                            ? "text-stone-400 hover:text-stone-600" 
+                            : "text-white/40 hover:text-white/60"}`}
+                    >
+                        <Home className="w-5 h-5" />
+                        <span className="text-[10px]">Home</span>
+                    </button>
+
+                    <button 
+                        onClick={() => router.push("/features")}
+                        className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                            theme === "light" 
+                            ? "text-slate-400 hover:text-slate-600" 
+                            : theme === "eyeprotect" 
+                            ? "text-stone-400 hover:text-stone-600" 
+                            : "text-white/40 hover:text-white/60"}`}
+                    >
+                        <Compass className="w-5 h-5" />
+                        <span className="text-[10px]">Practice</span>
+                    </button>
+
+                    <button 
+                        onClick={() => router.push("/labs")}
+                        className="flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer text-[#a855f7] font-extrabold"
+                    >
+                        <FlaskConical className="w-5 h-5" />
+                        <span className="text-[10px]">Labs</span>
+                    </button>
+
+                    <button 
+                        onClick={() => router.push("/profile")}
+                        className={`flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${
+                            theme === "light" 
+                            ? "text-slate-400 hover:text-slate-600" 
+                            : theme === "eyeprotect" 
+                            ? "text-stone-400 hover:text-stone-600" 
+                            : "text-white/40 hover:text-white/60"}`}
+                    >
+                        <User className="w-5 h-5" />
+                        <span className="text-[10px]">Profile</span>
+                    </button>
                 </div>
             </div>
         </div>

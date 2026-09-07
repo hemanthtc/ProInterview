@@ -2598,12 +2598,13 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           <div 
             style={{
               flex: 1,
-              overflowY: 'auto',
+              overflow: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
+              touchAction: 'pan-x pan-y pinch-zoom',
               width: '100%',
               paddingTop: '10px', // Exact 10px spacing from the header bottom edge
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center'
+              display: 'block'
             }}
           >
             {/* Centering Wrapper and Scaled A4 sheets */}
@@ -2611,26 +2612,31 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               ref={containerRef}
               className="resume-preview-container-wrapper"
               style={{
-                width: '100%',
+                minWidth: '100%',
+                width: 'max-content',
                 minHeight: `${contentHeight * zoom}px`,
                 position: 'relative',
-                display: 'block',
-                textAlign: 'center',
-                overflowX: 'hidden',
-                overflowY: 'hidden',
-                paddingBottom: '2.5rem'
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                margin: '0 auto',
+                paddingLeft: '16px',
+                paddingRight: '16px',
+                paddingBottom: '2.5rem',
+                boxSizing: 'border-box'
               }}
             >
               <div
                 className="resume-pages-scaler"
                 style={{
-                  display: 'inline-block',
+                  display: 'block',
                   textAlign: 'left',
                   width: `${794 * zoom}px`,
                   height: `${contentHeight * zoom}px`,
-                  overflow: 'hidden',
                   position: 'relative',
-                  verticalAlign: 'top'
+                  verticalAlign: 'top',
+                  flexShrink: 0,
+                  margin: '0 auto'
                 }}
               >
                 <div 
