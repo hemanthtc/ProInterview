@@ -13,6 +13,8 @@ import { useRouter } from "next/navigation";
 import { buildPrepSnapshot } from "../utils/labProgress";
 import { marked } from "marked";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
+import { createInitialThemeState, persistTheme, type ThemeMode } from "../utils/theme";
+import { deferEffectWork } from "../utils/deferEffect";
 import BrandLogo from "../components/BrandLogo";
 import NotificationBell from "../components/NotificationBell";
 import ProgressPanel from "../components/features/ProgressPanel";
@@ -457,7 +459,7 @@ export default function Home() {
     const [isGuest, setIsGuest] = useState(false);
     const [pausedSession, setPausedSession] = useState<any>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
-    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const [theme, setTheme] = useState<ThemeMode>(createInitialThemeState);
     const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
     const isHydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -469,7 +471,6 @@ export default function Home() {
 
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
-        checkMobile();
         window.addEventListener("resize", checkMobile);
 
         const syncAuthStateAndData = () => {
@@ -509,14 +510,10 @@ export default function Home() {
             setSnap(buildPrepSnapshot());
         };
 
-        syncAuthStateAndData();
-
-        const savedTheme = localStorage.getItem("globalTheme") as any;
-        if (savedTheme) {
-            setTheme(savedTheme);
-            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-        }
+        const cancelDeferred = deferEffectWork(() => {
+            checkMobile();
+            syncAuthStateAndData();
+        });
 
         // Real-time synchronization listeners for instantaneous cross-tab and in-tab updates
         const handleVisibilityChange = () => {
@@ -555,6 +552,7 @@ export default function Home() {
         handleScroll();
 
         return () => {
+            cancelDeferred();
             window.removeEventListener("resize", checkMobile);
             window.removeEventListener("ai-storage-change", syncAuthStateAndData);
             window.removeEventListener("storage", syncAuthStateAndData);
@@ -572,14 +570,12 @@ export default function Home() {
     };
 
     const cycleTheme = () => {
-        let nextTheme: "dark" | "light" | "eyeprotect" = "dark";
+        let nextTheme: ThemeMode = "dark";
         if (theme === "dark") nextTheme = "light";
         else if (theme === "light") nextTheme = "eyeprotect";
-        
+
         setTheme(nextTheme);
-        localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
-        document.documentElement.style.colorScheme = nextTheme === "eyeprotect" ? "light" : nextTheme;
+        persistTheme(nextTheme);
     };
 
     const handleResume = () => {

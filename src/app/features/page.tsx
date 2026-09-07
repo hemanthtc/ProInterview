@@ -18,6 +18,8 @@ import FeatureToolsGrid from "../../components/features/FeatureToolsGrid";
 import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
+import { createInitialThemeState, persistTheme, type ThemeMode } from "../../utils/theme";
+import { deferEffectWork } from "../../utils/deferEffect";
 import { buildPrepPackFromEmail, extractMeetingUrl } from "../../utils/prepPack";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
@@ -238,7 +240,7 @@ function FeaturesContent() {
         return getStorageItem("globalInterviewMode") === "realistic";
     });
     const [isMobile, setIsMobile] = useState(false);
-    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
+    const [theme, setTheme] = useState<ThemeMode>(createInitialThemeState);
     const isLight = theme === "light" || theme === "eyeprotect";
     const [activeTool, setActiveTool] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack">("analysis");
     const [activeModal, rawSetActiveModal] = useState<"analysis" | "resume" | "email_analyser" | "roadmap_generator" | "prointerviewer" | "study_materials" | "synthetic_data" | "aptitude" | "progress" | "negotiate" | "drills" | "prep_pack" | null>(null);
@@ -866,26 +868,21 @@ function FeaturesContent() {
             void pullSessionsFromCloud();
         }
 
-        syncAccountDetailsFromStorage();
+        const cancelDeferred = deferEffectWork(() => {
+            syncAccountDetailsFromStorage();
 
-        const savedTheme = localStorage.getItem("globalTheme") as any;
-        if (savedTheme) {
-            setTheme(savedTheme);
-            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-        }
-
-        // Auto-open analysis tool if redirected from Home page
-        const searchParams = new URLSearchParams(window.location.search);
-        const tool = searchParams.get("tool");
-        if (tool === "analysis") {
-            setActiveModal("analysis");
-            setActiveTool("analysis");
-            setShowAnalysis(false);
-            setShowResume(false);
-        }
+            const searchParams = new URLSearchParams(window.location.search);
+            const tool = searchParams.get("tool");
+            if (tool === "analysis") {
+                setActiveModal("analysis");
+                setActiveTool("analysis");
+                setShowAnalysis(false);
+                setShowResume(false);
+            }
+        });
 
         return () => {
+            cancelDeferred();
             window.removeEventListener("ai-storage-change", syncState);
             window.removeEventListener("storage", syncState);
         };
@@ -1407,14 +1404,12 @@ function FeaturesContent() {
     };
 
     const cycleTheme = () => {
-        let nextTheme: "dark" | "light" | "eyeprotect" = "dark";
+        let nextTheme: ThemeMode = "dark";
         if (theme === "dark") nextTheme = "light";
         else if (theme === "light") nextTheme = "eyeprotect";
 
         setTheme(nextTheme);
-        localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
-        document.documentElement.style.colorScheme = nextTheme === "eyeprotect" ? "light" : nextTheme;
+        persistTheme(nextTheme);
     };
 
     const handleResume = () => {
