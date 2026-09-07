@@ -7,6 +7,8 @@ import type { ProfileInterviewSession, ProfileToastState } from "../../types/pro
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStorageItem, setStorageItem, removeStorageItem, clearUserScopedData } from "../../utils/storage";
+import { createInitialThemeState, persistTheme, type ThemeMode } from "../../utils/theme";
+import { deferEffectWork } from "../../utils/deferEffect";
 import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSync";
 import BrandLogo from "../../components/BrandLogo";
 import PhotoCropperModal from "../../components/profile/PhotoCropperModal";
@@ -24,8 +26,10 @@ function dataUrlToFile(dataUrl: string, filename: string): File {
 
 export default function ProfilePage() {
     const router = useRouter();
-    const [theme, setTheme] = useState<"dark" | "light" | "eyeprotect">("dark");
-    const [isRealisticMode, setIsRealisticMode] = useState(false);
+    const [theme, setTheme] = useState<ThemeMode>(createInitialThemeState);
+    const [isRealisticMode, setIsRealisticMode] = useState(
+        () => getStorageItem("globalInterviewMode") === "realistic"
+    );
     const [sessions, setSessions] = useState<ProfileInterviewSession[]>([]);
     const [userName, setUserName] = useState<string>("Guest");
     const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -158,14 +162,7 @@ export default function ProfilePage() {
     };
 
     useEffect(() => {
-        const savedTheme = localStorage.getItem("globalTheme") as any;
-        if (savedTheme) {
-            setTheme(savedTheme);
-            document.documentElement.className = savedTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${savedTheme}`;
-            document.documentElement.style.colorScheme = savedTheme === "eyeprotect" ? "light" : savedTheme;
-        }
-        setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
-
+        const cancelDeferred = deferEffectWork(() => {
         if (getStorageItem("userLoggedIn") !== "true") {
             router.push("/login");
             return;
@@ -320,6 +317,9 @@ export default function ProfilePage() {
                 loadSessions(exactUser);
             };
             void hydrateSessions();
+        });
+
+        return cancelDeferred;
     }, [router]);
 
     // Prompt user before navigating/refreshing during active upload
@@ -394,14 +394,12 @@ export default function ProfilePage() {
     };
 
     const cycleTheme = () => {
-        let nextTheme: "dark" | "light" | "eyeprotect" = "dark";
+        let nextTheme: ThemeMode = "dark";
         if (theme === "dark") nextTheme = "light";
         else if (theme === "light") nextTheme = "eyeprotect";
-        
+
         setTheme(nextTheme);
-        localStorage.setItem("globalTheme", nextTheme);
-        document.documentElement.className = nextTheme === "eyeprotect" ? "theme-light theme-eyeprotect" : `theme-${nextTheme}`;
-        document.documentElement.style.colorScheme = nextTheme === "eyeprotect" ? "light" : nextTheme;
+        persistTheme(nextTheme);
     };
 
     const handleLogout = async () => {

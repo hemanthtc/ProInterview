@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import { deferEffectWork } from "@/utils/deferEffect";
 import {
     Loader2,
     Send,
@@ -125,9 +126,9 @@ export default function FeedbackAdminPanel() {
         }
     }, [fieldFilter, categoryFilter, statusFilter, ratingFilter, search]);
 
-    useEffect(() => {
-        loadFeedbacks();
-    }, [loadFeedbacks]);
+    useEffect(() => deferEffectWork(() => {
+        void loadFeedbacks();
+    }), [loadFeedbacks]);
 
     const handleOpenReplyModal = (item: FeedbackItem) => {
         setReplyingFeedback(item);

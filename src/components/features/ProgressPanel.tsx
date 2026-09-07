@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Award, ChevronDown, ChevronUp, Clock, TrendingUp, Video, Film, Share2, Download, Loader2, Sparkles, X, ShieldCheck, Trash2, AlertTriangle } from "lucide-react";
 import { getStorageItem } from "../../utils/storage";
+import { deferEffectWork } from "../../utils/deferEffect";
 import { deleteSessionFromCloud, deleteMockAptitudeFromCloud, clearTabHistoryFromCloud, pullSessionsFromCloud } from "../../utils/cloudSync";
 
 interface ProgressPanelProps {
@@ -61,13 +62,13 @@ export default function ProgressPanel({ isLight, defaultTab = "interview", onClo
         }
     };
 
-    useEffect(() => {
+    useEffect(() => deferEffectWork(() => {
         loadData();
 
         void pullSessionsFromCloud().then(() => {
             loadData();
         });
-    }, []);
+    }), []);
 
     const totalInterviews = interviewData.length;
     const avgScore = useMemo(() => {
