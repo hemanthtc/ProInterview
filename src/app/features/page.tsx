@@ -861,6 +861,7 @@ function FeaturesContent() {
             }
         };
 
+        syncState();
         window.addEventListener("ai-storage-change", syncState);
         window.addEventListener("storage", syncState);
 
@@ -3998,7 +3999,8 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
             </div>
         );
     };
-if (!isLoggedIn && !isGuest) return null;
+
+    if (!isMounted || (!isLoggedIn && !isGuest)) return null;
 
     return (
         <div className={`text-white selection:bg-indigo-500/30 flex flex-col font-sans w-full max-w-full overflow-x-hidden ${(activeModal === "prointerviewer" || activeModal === "study_materials" || activeModal === "synthetic_data") ? "h-[100dvh] overflow-hidden" : "min-h-screen"} bg-[#050505]`}>
@@ -4046,35 +4048,14 @@ if (!isLoggedIn && !isGuest) return null;
                         </header>
                     ) : (
                         <header className="px-4 sm:px-8 h-20 flex flex-row items-center justify-between border-b border-white/10 backdrop-blur-md sticky top-0 z-50 bg-[#050505]/80">
-                            <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-3">
-                                <div className="flex items-center gap-3">
-                                    <BrandLogo />
-                                    {studyMaterialsProgress && (
-                                        <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 animate-pulse ml-2">
-                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                            <span className="text-[11px] font-bold">
-                                                Generating: &quot;{studyMaterialsProgress.topicName}&quot; ({studyMaterialsProgress.current}/{studyMaterialsProgress.total})
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                                {activeModal === "prointerviewer" && isAtsWarningActive && (
-                                    <div
-                                        className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-lg lg:ml-4 animate-fade-in shadow-[0_4px_12px_rgba(0,0,0,0.05)] w-fit"
-                                        style={{
-                                            fontSize: '0.82rem',
-                                            fontWeight: 600,
-                                            color: isLight ? (theme === "eyeprotect" ? "#000000" : "#1e1b4b") : "#e0e7ff",
-                                            backgroundColor: isLight ? (theme === "eyeprotect" ? "rgba(245, 158, 11, 0.15)" : "rgba(79, 70, 229, 0.08)") : "rgba(99, 102, 241, 0.12)",
-                                            border: `1.5px solid ${isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "rgba(99, 102, 241, 0.3)"}`
-                                        }}
-                                    >
-                                        <AlertTriangle
-                                            size={14}
-                                            color={isLight ? (theme === "eyeprotect" ? "#d97706" : "#4f46e5") : "#818cf8"}
-                                            style={{ flexShrink: 0 }}
-                                        />
-                                        <span>If you are a fresher or a college student, then select ATS templates.</span>
+                            <div className="flex items-center gap-3">
+                                <BrandLogo />
+                                {studyMaterialsProgress && (
+                                    <div className="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 animate-pulse ml-2">
+                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                        <span className="text-[11px] font-bold">
+                                            Generating: &quot;{studyMaterialsProgress.topicName}&quot; ({studyMaterialsProgress.current}/{studyMaterialsProgress.total})
+                                        </span>
                                     </div>
                                 )}
                             </div>

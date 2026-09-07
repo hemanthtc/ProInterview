@@ -9,7 +9,7 @@ import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
 import { getStorageItem, setStorageItem, removeStorageItem } from '../../utils/storage';
 import { 
-  FileText, Palette, Sliders, Printer, RotateCcw, Download, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2, Globe, Plus
+  FileText, Palette, Sliders, Printer, RotateCcw, Download, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2, Globe, Plus, PenLine
 } from 'lucide-react';
 
 interface ProInterviewerAppProps {
@@ -1230,71 +1230,93 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
   return (
     <div className={`resume-builder-pro ${isFullscreen ? 'fullscreen-mode' : ''}`}>
-      {/* Mobile Toggle View Tabs (No Print) */}
-      <div className="mobile-view-selector no-print">
-        <button 
-          type="button" 
-          className={`view-btn ${mobileView === 'editor' ? 'active' : ''}`}
-          onClick={() => setMobileView('editor')}
-        >
-          Editor
-        </button>
-        <button 
-          type="button" 
-          className={`view-btn ${mobileView === 'preview' ? 'active' : ''}`}
-          onClick={() => setMobileView('preview')}
-        >
-          Preview
-        </button>
+      {/* 1. Resume Builder Header (Identity & Action Buttons) */}
+      <div className="nav-header no-print">
+        <div className="brand">
+          <FileText className="brand-icon" size={18} />
+          <h1>Resume Builder Pro</h1>
+        </div>
+        <div className="nav-actions">
+          <button 
+            type="button"
+            className="btn btn-secondary btn-header-action" 
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            title={isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            <span>{isFullscreen ? "Exit" : "Full"}</span>
+          </button>
+
+          {onClose && (
+            <button 
+              type="button"
+              className="btn btn-secondary btn-header-action btn-exit" 
+              onClick={onClose}
+              title="Close Resume Builder"
+            >
+              <X size={13} />
+              <span>Exit</span>
+            </button>
+          )}
+        </div>
       </div>
+
+      {/* 2. Mobile View Switcher (Sleek Segmented Pill) */}
+      <div className="mobile-view-selector no-print">
+        <div className="mobile-segmented-control">
+          <button 
+            type="button" 
+            className={`view-btn ${mobileView === 'editor' ? 'active' : ''}`}
+            onClick={() => setMobileView('editor')}
+          >
+            <PenLine size={13} />
+            <span>Editor</span>
+          </button>
+          <button 
+            type="button" 
+            className={`view-btn ${mobileView === 'preview' ? 'active' : ''}`}
+            onClick={() => setMobileView('preview')}
+          >
+            <Eye size={13} />
+            <span>Preview</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 3. ATS Advisory Notice (Ultra-compact, minimum spacing) */}
+      {showAtsWarning && mobileView !== 'preview' && (
+        <div className="ats-notice-bar no-print">
+          <div className="ats-notice-content">
+            <AlertTriangle size={12} className="ats-notice-icon" />
+            <span className="ats-notice-text">
+              If you are a fresher or a college student, then select ATS templates.
+              <button 
+                type="button"
+                className="ats-notice-cta"
+                onClick={() => {
+                  setActiveTab('templates');
+                  setSelectedTemplateCategory('ATS Friendly');
+                  triggerToast('Filtered ATS Friendly templates');
+                }}
+              >
+                Select ATS &rarr;
+              </button>
+            </span>
+          </div>
+          <button 
+            type="button"
+            className="ats-notice-dismiss"
+            onClick={() => setShowAtsWarning(false)}
+            title="Dismiss notice"
+          >
+            <X size={11} />
+          </button>
+        </div>
+      )}
 
       <div className="app-container">
         {/* 1. LEFT SIDEBAR PANEL */}
         <aside className={`sidebar-panel no-print ${mobileView === 'editor' ? 'mobile-visible' : 'mobile-hidden'}`} style={{ position: 'relative' }}>
-          {/* Navigation / Branding */}
-          <div className="nav-header">
-            <div className="brand">
-              <FileText className="brand-icon" size={20} />
-              <h1>Resume Builder Pro</h1>
-            </div>
-            <div className="nav-actions" style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-              <button 
-                type="button"
-                className="btn btn-secondary" 
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                title={isFullscreen ? "Exit Fullscreen" : "Go Fullscreen"}
-                style={{ padding: '0.35rem 0.5rem', display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}
-              >
-                {isFullscreen ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-                <span>{isFullscreen ? "Exit" : "Full"}</span>
-              </button>
-
-              {onClose && (
-                <button 
-                  type="button"
-                  className="btn btn-secondary" 
-                  onClick={onClose}
-                  title="Close Resume Builder"
-                  style={{ 
-                    padding: '0.35rem 0.5rem', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '0.25rem',
-                    fontSize: '0.75rem',
-                    backgroundColor: 'rgba(239, 68, 68, 0.1)', 
-                    borderColor: 'rgba(239, 68, 68, 0.2)',
-                    color: '#ef4444'
-                  }}
-                >
-                  <X size={13} />
-                  <span>Exit</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Warning banner note moved to global header */}
-
           {/* Tab Controllers */}
           <nav className="panel-tabs">
             <button 
