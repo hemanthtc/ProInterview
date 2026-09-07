@@ -89,6 +89,13 @@ export async function clearSessionCookie() {
         path: "/",
         expires: new Date(0)
     });
+    cookieStore.set("userLoggedIn", "", {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        path: "/",
+        expires: new Date(0)
+    });
 }
 
 /**

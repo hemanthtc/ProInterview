@@ -1,6 +1,7 @@
 const GLOBAL_KEYS = [
     "appUsersDb",
     "userLoggedIn",
+    "userSessionExpiresAt",
     "userName",
     "userIdentifier",
     "userType",
@@ -48,6 +49,18 @@ export function getStorageItem(key: string): string | null {
     if (typeof window === "undefined") return null;
 
     if (key === "userLoggedIn") {
+        // 1. Check expiration timestamp if stored
+        try {
+            const exp = localStorage.getItem("userSessionExpiresAt") || tempMemory["userSessionExpiresAt"];
+            if (exp) {
+                if (Date.now() > Number(exp)) {
+                    // Session expired! Auto-logout and cleanup
+                    removeStorageItem("userLoggedIn");
+                    return null;
+                }
+            }
+        } catch {}
+
         try {
             const fromLocal = localStorage.getItem("userLoggedIn");
             if (fromLocal === "true") return "true";
@@ -101,20 +114,36 @@ export function setStorageItem(key: string, value: string): void {
     if (typeof window === "undefined") return;
     if (key === "userLoggedIn") {
         if (value === "true") {
-            try { localStorage.setItem("userLoggedIn", "true"); } catch {}
+            const durationMs = 7 * 24 * 60 * 60 * 1000; // 7 days
+            const expiresAt = String(Date.now() + durationMs);
+            try {
+                localStorage.setItem("userLoggedIn", "true");
+                localStorage.setItem("userSessionExpiresAt", expiresAt);
+            } catch {}
             tempMemory["userLoggedIn"] = "true";
+            tempMemory["userSessionExpiresAt"] = expiresAt;
             if (typeof document !== "undefined") {
                 document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
             }
         } else if (value === "guest") {
-            try { localStorage.setItem("userLoggedIn", "guest"); } catch {}
+            const durationMs = 24 * 60 * 60 * 1000; // 24 hours
+            const expiresAt = String(Date.now() + durationMs);
+            try {
+                localStorage.setItem("userLoggedIn", "guest");
+                localStorage.setItem("userSessionExpiresAt", expiresAt);
+            } catch {}
             tempMemory["userLoggedIn"] = "guest";
+            tempMemory["userSessionExpiresAt"] = expiresAt;
             if (typeof document !== "undefined") {
                 document.cookie = "userLoggedIn=guest; path=/; max-age=86400; SameSite=Lax";
             }
         } else {
-            try { localStorage.removeItem("userLoggedIn"); } catch {}
+            try {
+                localStorage.removeItem("userLoggedIn");
+                localStorage.removeItem("userSessionExpiresAt");
+            } catch {}
             delete tempMemory["userLoggedIn"];
+            delete tempMemory["userSessionExpiresAt"];
             if (typeof document !== "undefined") {
                 document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
             }
@@ -180,9 +209,11 @@ export function removeStorageItem(key: string): void {
     if (typeof window === "undefined") return;
     if (key === "userLoggedIn") {
         localStorage.removeItem("userLoggedIn");
+        localStorage.removeItem("userSessionExpiresAt");
         localStorage.removeItem("userIdentifier");
         localStorage.removeItem("userName");
         delete tempMemory["userLoggedIn"];
+        delete tempMemory["userSessionExpiresAt"];
         delete tempMemory["userIdentifier"];
         delete tempMemory["userName"];
         if (typeof document !== "undefined") {

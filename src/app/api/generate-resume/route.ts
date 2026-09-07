@@ -3,37 +3,47 @@ import JSZip from "jszip";
 import { getVerifiedSession } from "@/utils/auth";
 import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
 
     if (name.endsWith(".pdf") || file.type === "application/pdf") {
         try {
-            const fs = await import("fs");
-            const path = await import("path");
-            const logPath = path.resolve(process.cwd(), "pdf-debug.log");
-            fs.appendFileSync(logPath, `[PDF Debug] Starting parse for file: ${file.name}, size: ${file.size}\n`);
-
             // @ts-expect-error pdf-parse does not have default type definitions
             const pdfParseModule = await import("pdf-parse");
             const pdfParse = pdfParseModule.default ?? pdfParseModule;
-            fs.appendFileSync(logPath, `[PDF Debug] Imported pdf-parse successfully.\n`);
 
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const data = await pdfParse(buffer);
-            const textContent = data.text || "";
-            fs.appendFileSync(logPath, `[PDF Debug] Extraction successful. Text length: ${textContent.length}\n`);
+            const textContent = (data.text || "").trim();
 
             return `--- [File: ${file.name}] ---\n${textContent}\n`;
         } catch(e: any) {
-            try {
-                const fs = await import("fs");
-                const path = await import("path");
-                const logPath = path.resolve(process.cwd(), "pdf-debug.log");
-                fs.appendFileSync(logPath, `[PDF Debug] Extraction failed: ${e.message || e}\n${e.stack || ""}\n`);
-            } catch {}
-            console.error("PDF extraction failed for " + file.name + ":", e);
+            console.error("PDF extraction failed for " + file.name + ":", e?.message || e);
             return "";
+        }
+    }
+
+    if (name.endsWith(".docx") || file.type.includes("wordprocessingml") || name.endsWith(".doc")) {
+        try {
+            const arrayBuffer = await file.arrayBuffer();
+            const zip = await JSZip.loadAsync(arrayBuffer);
+            const docXml = await zip.file("word/document.xml")?.async("string");
+            if (docXml) {
+                const cleanText = docXml
+                    .replace(/<w:p[^>]*>/g, "\n")
+                    .replace(/<w:tab[^>]*>/g, "\t")
+                    .replace(/<[^>]+>/g, " ")
+                    .replace(/[ \t]+/g, " ")
+                    .replace(/\n\s*\n/g, "\n")
+                    .trim();
+                return `--- [File: ${file.name}] ---\n${cleanText}\n`;
+            }
+        } catch (e: any) {
+            console.error("DOCX extraction failed for " + file.name + ":", e?.message || e);
         }
     }
 
@@ -70,7 +80,7 @@ async function fetchUrlText(url: string) {
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5"
             },
-            signal: AbortSignal.timeout(15000)
+            signal: AbortSignal.timeout(6000)
         });
         if (!res.ok) {
             throw new Error(`HTTP ${res.status}`);
@@ -83,7 +93,7 @@ async function fetchUrlText(url: string) {
             .trim();
         return `\n--- [Website: ${url}] ---\n${cleanText.substring(0, 5000)}\n`;
     } catch (e: any) {
-        console.error(`Failed to fetch website ${url}:`, e.message || e);
+        console.warn(`Failed to fetch website ${url}:`, e?.message || e);
         return `\n--- [Failed to fetch website: ${url}] ---\n`;
     }
 }
@@ -115,75 +125,62 @@ export async function POST(req: NextRequest) {
         let resumeFileText = "";
         let resumePart: any = null;
 
-        if (resumeUrl) {
-            try {
-                const response = await fetch(resumeUrl, { signal: AbortSignal.timeout(15000) });
-                if (response.ok) {
-                    const arrayBuffer = await response.arrayBuffer();
+        // Extract from uploaded file first
+        if (resumeFile) {
+            resumeFileText = await extractTextFromFile(resumeFile);
+
+            // If file is a PDF and text extraction yielded little/no text (e.g. scanned image PDF), create visual part fallback
+            const plainExtracted = resumeFileText.replace(/--- \[File:.*?\] ---/, '').trim();
+            if ((resumeFile.name.toLowerCase().endsWith(".pdf") || resumeFile.type === "application/pdf") && plainExtracted.length < 100) {
+                try {
+                    const arrayBuffer = await resumeFile.arrayBuffer();
                     const buffer = Buffer.from(arrayBuffer);
                     const base64 = buffer.toString("base64");
-                    
-                    // Create visual part for Gemini layout analysis
                     resumePart = {
                         inlineData: {
                             data: base64,
                             mimeType: "application/pdf"
                         }
                     };
+                } catch (pdfErr) {
+                    console.warn("Failed to encode PDF for visual fallback:", pdfErr);
+                }
+            }
+        } else if (resumeUrl) {
+            // Only fetch from remote URL if no local file was uploaded
+            try {
+                const response = await fetch(resumeUrl, { signal: AbortSignal.timeout(6000) });
+                if (response.ok) {
+                    const arrayBuffer = await response.arrayBuffer();
+                    const buffer = Buffer.from(arrayBuffer);
 
-                    // Extract exact text characters to prevent spelling/transcription gaps
                     try {
                         // @ts-expect-error pdf-parse does not have default type definitions
                         const pdfParseModule = await import("pdf-parse");
                         const pdfParse = pdfParseModule.default ?? pdfParseModule;
                         const data = await pdfParse(buffer);
-                        resumeFileText = `--- [File: Account_Resume.pdf] ---\n${data.text || ""}\n`;
+                        const extracted = (data.text || "").trim();
+                        if (extracted.length > 50) {
+                            resumeFileText = `--- [File: Account_Resume.pdf] ---\n${extracted}\n`;
+                        } else {
+                            resumePart = {
+                                inlineData: {
+                                    data: buffer.toString("base64"),
+                                    mimeType: "application/pdf"
+                                }
+                            };
+                        }
                     } catch (parseErr) {
-                        console.warn("Failed to parse text from fetched account resume:", parseErr);
-                    }
-                } else {
-                    console.warn("Failed to fetch account resume from URL, falling back to uploaded file.");
-                }
-            } catch (err) {
-                console.warn("Failed to fetch/parse account resume from S3 URL:", err);
-            }
-        }
-
-        if (resumeFile) {
-            if (resumeFile.name.toLowerCase().endsWith(".pdf") || resumeFile.type === "application/pdf") {
-                try {
-                    const arrayBuffer = await resumeFile.arrayBuffer();
-                    const buffer = Buffer.from(arrayBuffer);
-                    const base64 = buffer.toString("base64");
-                    
-                    // Visual PDF part (takes precedence only if not already fetched from S3)
-                    if (!resumePart) {
                         resumePart = {
                             inlineData: {
-                                data: base64,
+                                data: buffer.toString("base64"),
                                 mimeType: "application/pdf"
                             }
                         };
                     }
-
-                    // Always extract raw text characters to back it up
-                    if (!resumeFileText) {
-                        // @ts-expect-error pdf-parse does not have default type definitions
-                        const pdfParseModule = await import("pdf-parse");
-                        const pdfParse = pdfParseModule.default ?? pdfParseModule;
-                        const data = await pdfParse(buffer);
-                        resumeFileText = `--- [File: ${resumeFile.name}] ---\n${data.text || ""}\n`;
-                    }
-                } catch (err) {
-                    console.error("Failed to read/parse PDF file as buffer, falling back to standard extraction:", err);
-                    if (!resumeFileText) {
-                        resumeFileText = await extractTextFromFile(resumeFile);
-                    }
                 }
-            } else {
-                if (!resumeFileText) {
-                    resumeFileText = await extractTextFromFile(resumeFile);
-                }
+            } catch (err) {
+                console.warn("Failed to fetch/parse resume from URL:", err);
             }
         }
 
@@ -191,8 +188,10 @@ export async function POST(req: NextRequest) {
         for (const file of projectFiles) {
             projectText += await extractTextFromFile(file);
         }
+
         let portfolioText = "";
-        if (portfolioUrl) {
+        // Only fetch external website if the user selected portfolio or both mode
+        if (portfolioUrl && (sourceMode === "portfolio" || sourceMode === "both")) {
             portfolioText = await fetchUrlText(portfolioUrl);
             projectText += portfolioText;
         }
@@ -359,6 +358,8 @@ CRITICAL ATS OPTIMIZATION RULES:
         }
 
         const rawText = (await generateWithFallback(promptParts, { 
+            model: "gemini-2.5-flash",
+            timeout: 25000,
             generationConfig: { 
                 temperature: 0.7,
                 responseMimeType: "application/json"

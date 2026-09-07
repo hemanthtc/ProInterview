@@ -24,7 +24,22 @@ export async function POST(req: NextRequest) {
         // Clear secure HttpOnly session cookie
         await clearSessionCookie();
 
-        return NextResponse.json({ success: true, message: "Logged out successfully from server." });
+        const response = NextResponse.json({ success: true, message: "Logged out successfully from server." });
+        response.cookies.set("session", "", {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            expires: new Date(0)
+        });
+        response.cookies.set("userLoggedIn", "", {
+            httpOnly: false,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            path: "/",
+            expires: new Date(0)
+        });
+        return response;
     } catch (error: any) {
         console.error("Logout API error:", error);
         return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });

@@ -90,4 +90,59 @@ describe("auth JWT", () => {
         const bad = token.slice(0, -4) + "xxxx";
         expect(verifyToken(bad)).toBeNull();
     });
+
+    it("rejects expired tokens", () => {
+        const payload = {
+            identifier: "user@example.com",
+            role: "user" as const,
+            isOrganization: false,
+        };
+        // Construct token expired 1 hour ago
+        const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+        const data = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() - 3600000 })).toString("base64url");
+        const crypto = require("crypto");
+        const sig = crypto.createHmac("sha256", process.env.JWT_SECRET!).update(`${header}.${data}`).digest("base64url");
+        const expiredToken = `${header}.${data}.${sig}`;
+
+        expect(verifyToken(expiredToken)).toBeNull();
+    });
+});
+
+describe("storage session auto-logout sync", () => {
+    it("auto-logs out when userSessionExpiresAt is in the past", async () => {
+        const mockStorage: Record<string, string> = {};
+        const { vi } = await import("vitest");
+        vi.stubGlobal("window", {
+            dispatchEvent: vi.fn(),
+            CustomEvent: class {},
+        });
+        vi.stubGlobal("localStorage", {
+            getItem: (key: string) => mockStorage[key] || null,
+            setItem: (key: string, val: string) => {
+                mockStorage[key] = val;
+            },
+            removeItem: (key: string) => {
+                delete mockStorage[key];
+            },
+            get length() {
+                return Object.keys(mockStorage).length;
+            },
+            key: (i: number) => Object.keys(mockStorage)[i] || null,
+        });
+
+        const { getStorageItem, setStorageItem } = await import("../src/utils/storage");
+        setStorageItem("userLoggedIn", "true");
+        expect(getStorageItem("userLoggedIn")).toBe("true");
+
+        // Simulate session expiry (set to 1 second in the past)
+        const past = String(Date.now() - 1000);
+        mockStorage["userSessionExpiresAt"] = past;
+
+        // Verify that expired session triggers auto-logout and returns null
+        const status = getStorageItem("userLoggedIn");
+        expect(status).toBeNull();
+        expect(getStorageItem("userSessionExpiresAt")).toBeNull();
+
+        vi.unstubAllGlobals();
+    });
 });

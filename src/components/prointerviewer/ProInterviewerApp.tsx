@@ -137,18 +137,32 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   useEffect(() => {
     if (isManualZoom || !containerRef.current) return;
 
+    let rafId: number | null = null;
+    const targetElement = containerRef.current.parentElement || containerRef.current;
+
     const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const { width } = entry.contentRect;
-        if (width > 0) {
-          const calculatedZoom = (width - 32) / 794;
-          setZoom(Math.max(0.35, Math.min(1.2, calculatedZoom)));
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        for (const entry of entries) {
+          const width = entry.contentRect.width;
+          if (width > 0) {
+            const calculatedZoom = Math.max(0.35, Math.min(1.2, (width - 32) / 794));
+            const currentZoom = zoomRef.current;
+            // Hysteresis deadband: Only update if change exceeds 0.035
+            // This prevents scrollbars (~15px = ~0.018 zoom) or subpixel rounding from creating an infinite zoom-in/zoom-out loop
+            if (Math.abs(calculatedZoom - currentZoom) > 0.035) {
+              setZoom(calculatedZoom);
+            }
+          }
         }
-      }
+      });
     });
 
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
+    observer.observe(targetElement);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      observer.disconnect();
+    };
   }, [isManualZoom]);
   const [showAIModal, setShowAIModal] = useState<boolean>(false);
   const [aiModalStep, setAiModalStep] = useState<'choice' | 'upload' | 'notes' | 'portfolio_input' | 'both_input'>('choice');
@@ -929,7 +943,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('sourceMode', aiSourceMode);
       formData.append('github', resumeData.personalInfo.github || getStorageItem("userGithub") || '');
       formData.append('linkedin', resumeData.personalInfo.linkedin || getStorageItem("userLinkedin") || '');
-      formData.append('portfolioUrl', portfolioInputUrl || resumeData.personalInfo.website || getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || '');
+      if (aiSourceMode === 'portfolio' || aiSourceMode === 'both') {
+        formData.append('portfolioUrl', portfolioInputUrl || resumeData.personalInfo.website || getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || '');
+      }
       formData.append('preferredRoles', aiRoleMode === 'fresher' ? 'Entry-Level / Fresher' : (aiTargetRoles || resumeData.personalInfo.title || ''));
       formData.append('targetCompanies', aiRoleMode === 'fresher' ? 'Open Opportunity' : (aiTargetCompanies || ''));
       formData.append('roleMode', aiRoleMode);
@@ -943,10 +959,19 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       }
 
       const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
+      if (res.status === 401) {
+        removeStorageItem("userLoggedIn");
+        alert("Your session has expired. Please sign in again to continue.");
+        window.location.href = "/login?redirect=/features";
+        return;
+      }
+
       let result: any;
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         result = await res.json();
+      } else if (res.status === 504) {
+        throw new Error("The AI server timed out while processing your resume. Please try again or re-upload your resume.");
       } else {
         const text = await res.text();
         throw new Error(text || `Server returned HTTP ${res.status}`);
@@ -1085,10 +1110,19 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('userInput', JSON.stringify(optimizationPrompt));
 
       const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
+      if (res.status === 401) {
+        removeStorageItem("userLoggedIn");
+        alert("Your session has expired. Please sign in again to continue.");
+        window.location.href = "/login?redirect=/features";
+        return;
+      }
+
       let result: any;
       const contentType = res.headers.get('content-type') || '';
       if (contentType.includes('application/json')) {
         result = await res.json();
+      } else if (res.status === 504) {
+        throw new Error("The AI server timed out while optimizing your resume. Please try again.");
       } else {
         const text = await res.text();
         throw new Error(text || `Server returned HTTP ${res.status}`);
@@ -2580,7 +2614,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 position: 'relative',
                 display: 'block',
                 textAlign: 'center',
-                overflowX: 'auto',
+                overflowX: 'hidden',
                 overflowY: 'hidden',
                 paddingBottom: '2.5rem'
               }}
@@ -2607,7 +2641,6 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     position: 'absolute',
                     top: 0,
                     left: 0,
-                    transition: 'transform 0.15s ease',
                     boxSizing: 'border-box'
                   }}
                 >

@@ -139,6 +139,7 @@ export async function fetchKeySupportedModels(apiKey?: string): Promise<string[]
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`, {
             method: "GET",
             headers: { "Content-Type": "application/json" },
+            signal: AbortSignal.timeout(4000),
         });
         if (!res.ok) return [];
         const json = await res.json();
@@ -158,12 +159,13 @@ export async function fetchKeySupportedModels(apiKey?: string): Promise<string[]
 
 export async function generateWithFallback(
     prompt: string | Array<any>,
-    options: { model?: string; generationConfig?: any } = {}
+    options: { model?: string; generationConfig?: any; timeout?: number } = {}
 ): Promise<string> {
     const keys = getAllGeminiApiKeys();
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
     const primaryModel = options.model || "gemini-2.0-flash";
+    const perModelTimeout = options.timeout ?? 25000;
     const now = Date.now();
 
     // Iterate through all configured API keys (multi-key failover)
@@ -183,7 +185,6 @@ export async function generateWithFallback(
             primaryModel,
             "gemini-2.5-flash",
             "gemini-flash-latest",
-            "gemini-3.6-flash",
             "gemini-2.0-flash",
             "gemini-1.5-flash",
             ...ADVANCED_CANDIDATE_MODELS,
@@ -198,13 +199,14 @@ export async function generateWithFallback(
             return !exhaustedAt || now - exhaustedAt >= 60 * 1000;
         });
 
-        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 4);
+        // Limit attempts per key to at most 2 candidate models to stay well within gateway timeout budgets
+        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 2);
 
         for (const modelName of modelsToTry) {
             try {
                 const model = genAI.getGenerativeModel(
                     { model: modelName, generationConfig: options.generationConfig },
-                    { timeout: 8000 }
+                    { timeout: perModelTimeout }
                 );
                 const result = await model.generateContent(prompt);
                 return result.response.text();
