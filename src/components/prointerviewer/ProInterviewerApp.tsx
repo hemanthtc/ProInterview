@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 import { initialResumeData } from './initialData';
 import { TEMPLATES } from './templates';
 import type { ResumeData, ResumeStyle, ResumeTemplate, Education } from './types';
@@ -18,6 +19,7 @@ interface ProInterviewerAppProps {
 }
 
 export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobileViewChange }: ProInterviewerAppProps) {
+  const router = useRouter();
   const [resumeData, setResumeData] = useState<ResumeData>(initialResumeData);
   const [activeTemplateId, setActiveTemplateId] = useState<string>(TEMPLATES[0].id);
   const [currentStyle, setCurrentStyle] = useState<ResumeStyle>(TEMPLATES[0].style);
@@ -962,7 +964,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       if (res.status === 401) {
         removeStorageItem("userLoggedIn");
         alert("Your session has expired. Please sign in again to continue.");
-        window.location.href = "/login?redirect=/features";
+        router.push("/login?redirect=/features");
         return;
       }
 
@@ -1113,7 +1115,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       if (res.status === 401) {
         removeStorageItem("userLoggedIn");
         alert("Your session has expired. Please sign in again to continue.");
-        window.location.href = "/login?redirect=/features";
+        router.push("/login?redirect=/features");
         return;
       }
 
