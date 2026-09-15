@@ -1,6 +1,7 @@
 const GLOBAL_KEYS = [
     "appUsersDb",
     "userLoggedIn",
+    "sessionToken",
     "userSessionExpiresAt",
     "userName",
     "userIdentifier",

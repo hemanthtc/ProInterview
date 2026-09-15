@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
             const response = NextResponse.json({
                 success: true,
                 message: "Authentication successful.",
+                token,
                 user: {
                     displayName: account.displayName,
                     identifier: account.identifier,

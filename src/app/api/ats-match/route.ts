@@ -59,16 +59,26 @@ export async function POST(req: NextRequest) {
     let jobDescription = "";
 
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
 
         const body = await req.json().catch(() => ({}));
         resumeText = (body.resumeText || "").trim();
-        jobDescription = (body.jobDescription || "").trim();
         company = (body.company || "").trim();
         role = (body.role || "").trim();
+
+        // Sanitize job description: strip raw HTML tags, unescape, normalize whitespace
+        const rawJd = (body.jobDescription || "").trim();
+        jobDescription = rawJd
+            .replace(/<[^>]*>?/gm, " ")
+            .replace(/&nbsp;/gi, " ")
+            .replace(/&amp;/gi, "&")
+            .replace(/&lt;/gi, "<")
+            .replace(/&gt;/gi, ">")
+            .replace(/\s+/g, " ")
+            .trim();
 
         if (!resumeText) {
             return NextResponse.json({ error: "Please provide your resume text to compute ATS match." }, { status: 400 });

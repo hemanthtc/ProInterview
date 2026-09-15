@@ -33,6 +33,7 @@ import type { CampusPathId } from "../../types/interviewPrep";
 import BrandLogo from "../../components/BrandLogo";
 import NotificationBell from "../../components/NotificationBell";
 import { triggerSelfHealing } from "../../utils/offlineSync";
+import { authFetch, handleSessionExpired } from "../../utils/authExpiry";
 
 import type { SavedResume, SavedRoadmap, PortfolioAnalysisCache, RoadmapData, PausedInterviewSession } from "../../types/features";
 import type { EmailAnalysisResult } from "../../types/analysis";
@@ -1098,7 +1099,7 @@ function FeaturesContent() {
             const isLoggedIn = getStorageItem("userLoggedIn") === "true";
             if (isLoggedIn) {
                 try {
-                    const res = await fetch("/api/roadmaps");
+                    const res = await authFetch("/api/roadmaps");
                     if (res.ok) {
                         const parsed = await res.json() as SavedRoadmap[];
                         setSavedRoadmaps(parsed);
@@ -3009,7 +3010,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                 if (portfolioUrl.trim()) formData.append("portfolioUrl", portfolioUrl.trim());
 
                 try {
-                    const res = await fetch("/api/upload", {
+                    const res = await authFetch("/api/upload", {
                         method: "POST",
                         body: formData,
                     });

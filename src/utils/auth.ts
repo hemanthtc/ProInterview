@@ -1,5 +1,6 @@
 import crypto from "crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
+import type { NextRequest } from "next/server";
 import type { AccountType } from "@/types/auth";
 
 function getJwtSecret(): string {
@@ -100,12 +101,42 @@ export async function clearSessionCookie() {
 
 /**
  * Helper to verify requests inside Next.js route handlers.
- * Verifies the HttpOnly session cookie.
+ * Verifies the HttpOnly session cookie first, and falls back to
+ * Authorization: Bearer <token> or x-session-token headers for robust
+ * cloud hosting (e.g. AWS Amplify / CloudFront edge proxies).
  */
-export async function getVerifiedSession(): Promise<SessionPayload | null> {
+export async function getVerifiedSession(req?: NextRequest): Promise<SessionPayload | null> {
     try {
-        const cookieStore = await cookies();
-        const token = cookieStore.get("session")?.value;
+        let token: string | undefined;
+
+        // 1. Try to read from HttpOnly session cookie
+        try {
+            const cookieStore = await cookies();
+            token = cookieStore.get("session")?.value;
+        } catch {}
+
+        // 2. If no cookie, try to read from Authorization header or custom header
+        if (!token) {
+            let authHeader: string | null = null;
+            if (req) {
+                authHeader = req.headers.get("authorization") || req.headers.get("x-session-token");
+            }
+            if (!authHeader) {
+                try {
+                    const headerStore = await headers();
+                    authHeader = headerStore.get("authorization") || headerStore.get("x-session-token");
+                } catch {}
+            }
+
+            if (authHeader) {
+                if (authHeader.startsWith("Bearer ")) {
+                    token = authHeader.slice(7).trim();
+                } else {
+                    token = authHeader.trim();
+                }
+            }
+        }
+
         if (!token) return null;
         return verifyToken(token);
     } catch {

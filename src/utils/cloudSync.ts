@@ -3,12 +3,13 @@ import { buildSpacedDrills } from "./spacedDrills";
 import { applyCloudPrepProgress, buildLocalPrepProgress } from "./labProgress";
 import { cleanExpiredLocalProgress } from "./progressCleanup";
 import type { PrepProgressBlob } from "@/models/CloudSession";
+import { authFetch } from "./authExpiry";
 
 export async function syncPrepProgressToCloud(): Promise<{ ok: boolean; prepProgress?: PrepProgressBlob }> {
     if (typeof window === "undefined") return { ok: false };
     if (getStorageItem("userLoggedIn") !== "true") return { ok: false };
     try {
-        const res = await fetch("/api/sync-prep", {
+        const res = await authFetch("/api/sync-prep", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ prepProgress: buildLocalPrepProgress() }),
@@ -26,12 +27,12 @@ export async function pullPrepProgressFromCloud(): Promise<boolean> {
     if (typeof window === "undefined") return false;
     if (getStorageItem("userLoggedIn") !== "true") return false;
     try {
-        const res = await fetch("/api/sync-prep");
+        const res = await authFetch("/api/sync-prep");
         if (!res.ok) return false;
         const data = await res.json();
         if (data.prepProgress) {
             // Merge local into cloud then apply merged result
-            const mergeRes = await fetch("/api/sync-prep", {
+            const mergeRes = await authFetch("/api/sync-prep", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ prepProgress: buildLocalPrepProgress() }),
@@ -64,7 +65,7 @@ export async function syncSessionsToCloud(options?: {
         const drills = options?.pushDrills !== false ? buildSpacedDrills(localSessions) : undefined;
         if (drills) setStorageItem("spacedDrills", JSON.stringify(drills));
 
-        const res = await fetch("/api/sync-sessions", {
+        const res = await authFetch("/api/sync-sessions", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -96,7 +97,7 @@ export async function pullSessionsFromCloud(): Promise<boolean> {
 
     if (getStorageItem("userLoggedIn") !== "true") return false;
     try {
-        const res = await fetch("/api/sync-sessions");
+        const res = await authFetch("/api/sync-sessions");
         if (!res.ok) return false;
         const data = await res.json();
         
@@ -177,7 +178,7 @@ export async function deleteSessionFromCloud(sessionId?: string, timestamp?: num
     // 2. Call cloud delete API if logged in
     if (getStorageItem("userLoggedIn") === "true") {
         try {
-            await fetch("/api/sync-sessions", {
+            await authFetch("/api/sync-sessions", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type: "interview", id: sessionId, timestamp }),
@@ -207,7 +208,7 @@ export async function deleteMockAptitudeFromCloud(mockId?: string, timestamp?: n
     // 2. Call cloud delete API if logged in
     if (getStorageItem("userLoggedIn") === "true") {
         try {
-            await fetch("/api/sync-sessions", {
+            await authFetch("/api/sync-sessions", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type: "mock_aptitude", id: mockId, timestamp }),
@@ -235,7 +236,7 @@ export async function clearTabHistoryFromCloud(tab: "interview" | "filmroom" | "
 
     if (getStorageItem("userLoggedIn") === "true") {
         try {
-            await fetch("/api/sync-sessions", {
+            await authFetch("/api/sync-sessions", {
                 method: "DELETE",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ type: "clear_tab", tab }),

@@ -145,4 +145,29 @@ describe("storage session auto-logout sync", () => {
 
         vi.unstubAllGlobals();
     });
+
+    it("verifies getVerifiedSession accepts Authorization Bearer header fallback", async () => {
+        const { createToken, getVerifiedSession } = await import("../src/utils/auth");
+        process.env.JWT_SECRET = "test-secret-key-with-at-least-32-chars!!";
+        const token = createToken({
+            identifier: "bearer-user@example.com",
+            role: "user",
+            isOrganization: false,
+        });
+
+        // Mock NextRequest with Authorization header and no cookie
+        const fakeReq = {
+            headers: new Headers({
+                authorization: `Bearer ${token}`,
+            }),
+            cookies: {
+                get: () => undefined,
+            },
+        } as any;
+
+        const session = await getVerifiedSession(fakeReq);
+        expect(session).not.toBeNull();
+        expect(session?.identifier).toBe("bearer-user@example.com");
+    });
 });
+

@@ -137,6 +137,7 @@ export async function POST(req: NextRequest) {
         // Return user credentials to the client and set userLoggedIn cookie on response
         const response = NextResponse.json({
             success: true,
+            token,
             name: user.displayName,
             email: user.identifier,
             picture: userInfo.picture,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FileSearch, Loader2, Moon, Sun, Eye, FileUp, UserCheck, Trash2, X, Image as ImageIcon, Info } from "lucide-react";
+import { authFetch, handleSessionExpired } from "@/utils/authExpiry";
 
 export default function AtsMatchPage() {
     const [resumeText, setResumeText] = useState("");
@@ -146,7 +147,7 @@ export default function AtsMatchPage() {
                     localStorage.getItem("userEmail") ||
                     "";
                 if (identifier) {
-                    const res = await fetch(`/api/auth/profile?identifier=${encodeURIComponent(identifier)}`);
+                    const res = await authFetch(`/api/auth/profile?identifier=${encodeURIComponent(identifier)}`);
                     if (res.ok) {
                         const data = await res.json();
                         if (data.user?.resumeCvText) {
@@ -189,7 +190,11 @@ export default function AtsMatchPage() {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            const res = await authFetch("/api/upload", { method: "POST", body: formData });
+            if (res.status === 401) {
+                handleSessionExpired("Your session has expired. Please sign in again to upload files.");
+                return;
+            }
             let data: any = {};
             try {
                 data = await res.json();
@@ -240,11 +245,15 @@ export default function AtsMatchPage() {
         setLoading(true);
         setError("");
         try {
-            const res = await fetch("/api/ats-match", {
+            const res = await authFetch("/api/ats-match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ resumeText, jobDescription, company, role }),
             });
+            if (res.status === 401) {
+                handleSessionExpired("Your session has expired. Please sign in again to compute ATS match.");
+                return;
+            }
             let data: any;
             const contentType = res.headers.get("content-type") || "";
             if (contentType.includes("application/json")) {

@@ -22,6 +22,7 @@ import {
     UploadCloud,
     ChevronDown,
 } from "lucide-react";
+import { authFetch, handleSessionExpired } from "@/utils/authExpiry";
 
 type ExperienceFilter = "all" | "fresher" | "intern" | "1year" | "2year" | "3plus" | "on_campus" | "off_campus" | "custom";
 type WorkModeFilter = "all" | "onsite" | "offsite" | "remote";
@@ -467,7 +468,7 @@ export default function JobsPage() {
 
         try {
             const descriptionToPass = (job.description || "").trim() || `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Focus: Full Stack Development, Problem Solving, Software Architecture.`;
-            const res = await fetch("/api/ats-match", {
+            const res = await authFetch("/api/ats-match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -477,9 +478,15 @@ export default function JobsPage() {
                     role: job.role
                 })
             });
+
+            if (res.status === 401) {
+                handleSessionExpired("Your session has expired. Please sign in again to compute ATS match.");
+                return;
+            }
+
             const data = await res.json().catch(() => ({}));
             if (!res.ok) {
-                throw new Error(data.error || "Failed to compute match");
+                throw new Error(data.error || "Failed to compute match. Please retry.");
             }
             setAtsMatches(prev => ({
                 ...prev,
@@ -497,7 +504,7 @@ export default function JobsPage() {
                 ...prev,
                 [job.id]: {
                     loading: false,
-                    error: err.message || "Failed to analyze"
+                    error: err.message || "Failed to analyze. Please click recheck to try again."
                 }
             }));
         }
@@ -511,7 +518,8 @@ export default function JobsPage() {
 
         setExpandedAts(prev => ({ ...prev, [job.id]: true }));
 
-        if (!atsMatches[job.id]) {
+        // If not analyzed yet or if the previous analysis errored, compute it
+        if (!atsMatches[job.id] || atsMatches[job.id]?.error) {
             await runAtsMatchForJob(job);
         }
     };
@@ -1256,7 +1264,22 @@ export default function JobsPage() {
                                                     Evaluating Resume vs Job Description...
                                                 </div>
                                             ) : atsMatches[job.id]?.error ? (
-                                                <p className="text-red-400 text-xs">{atsMatches[job.id]?.error}</p>
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                                                    <p className="text-red-400 text-xs font-medium">
+                                                        {atsMatches[job.id]?.error}
+                                                    </p>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            runAtsMatchForJob(job);
+                                                        }}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-500/10 text-sky-400 border border-sky-500/30 hover:bg-sky-500/20 active:scale-95 transition cursor-pointer self-start sm:self-auto shrink-0 shadow-sm"
+                                                        title="Click to retry ATS match calculation"
+                                                    >
+                                                        <RefreshCw className="w-3.5 h-3.5" /> Recheck ATS Match
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <div className="space-y-3">
                                                     <div className="flex items-center gap-2">

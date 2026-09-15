@@ -153,6 +153,20 @@ function LoginContent() {
         return () => clearInterval(timer);
     }, [otpStep, otpTimer]);
 
+    useEffect(() => {
+        if (searchParams && searchParams.get("expired") === "1") {
+            const customMsg = typeof window !== "undefined" ? sessionStorage.getItem("session_expired_message") : null;
+            if (customMsg) {
+                try {
+                    sessionStorage.removeItem("session_expired_message");
+                } catch {}
+                setError(customMsg);
+            } else {
+                setError("Your session has expired. Please sign in again.");
+            }
+        }
+    }, [searchParams]);
+
     const filteredCountries = useMemo(() => {
         const search = countrySearch.toLowerCase().trim();
         return COUNTRIES.filter(c =>
@@ -178,6 +192,9 @@ function LoginContent() {
         setStorageItem("userRole", role || "user");
 
         if (details) {
+            if (details.token) {
+                setStorageItem("sessionToken", details.token);
+            }
             setStorageItem("userSubscriptionPlan", details.subscriptionPlan || "Free Tier");
             setStorageItem("userOrgName", details.organizationName || "");
             setStorageItem("userAdminId", details.adminId || "");
@@ -441,7 +458,7 @@ function LoginContent() {
                 // Login or Register flow completed!
                 const userObj = data.user;
                 const role = userObj.isOrganization ? userObj.orgRole : "user";
-                await completeLogin(userObj.displayName, userObj.identifier, role, userObj);
+                await completeLogin(userObj.displayName, userObj.identifier, role, { ...userObj, token: data.token });
             } else {
                 // Forgot Password flow: transition to password input
                 setOtpStep("reset_password");
