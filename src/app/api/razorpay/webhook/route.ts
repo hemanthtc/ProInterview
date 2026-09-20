@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
         const booking = await CoachBooking.findOneAndUpdate(
             query,
             { status: "confirmed", razorpayPaymentId: payment.id },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         if (booking) {

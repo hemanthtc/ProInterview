@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play } from "lucide-react";
+import { Mic, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play, ChevronDown, ChevronUp } from "lucide-react";
 import { motion } from "framer-motion";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -15,6 +15,8 @@ import { syncSessionsToCloud } from "../../utils/cloudSync";
 import { buildSpacedDrills } from "../../utils/spacedDrills";
 import { resolveCompanyBank } from "../../data/companyBanks";
 import { speakInterviewText, stopSpeechInterviewText } from "../../utils/speakInterview";
+import InteractiveWhiteboard, { type InteractiveWhiteboardHandle } from "@/components/system-design/InteractiveWhiteboard";
+import type { BoardShape } from "@/utils/systemDesignBoard";
 
 export default function InterviewRoom() {
     const router = useRouter();
@@ -57,11 +59,18 @@ export default function InterviewRoom() {
     const [isAuthChecked, setIsAuthChecked] = useState(false);
 
     const [interactionMode, setInteractionMode] = useState<"chat" | "code" | "draw">("chat");
+    const [activePracticalTask, setActivePracticalTask] = useState<{ type: "code" | "draw"; questionText: string } | null>(null);
     const [mobileWorkspaceView, setMobileWorkspaceView] = useState<"transcript" | "workspace">("workspace");
     const [codeContent, setCodeContent] = useState("");
     const [codeLanguage, setCodeLanguage] = useState("python");
     const [codeOutput, setCodeOutput] = useState("");
     const [codeBusy, setCodeBusy] = useState(false);
+
+    // System Design Whiteboard states
+    const whiteboardRef = useRef<InteractiveWhiteboardHandle>(null);
+    const [boardShapes, setBoardShapes] = useState<BoardShape[]>([]);
+    const [boardHasFreehand, setBoardHasFreehand] = useState(false);
+    const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(false);
     const [voiceCoach, setVoiceCoach] = useState<VoiceCoachSnapshot | null>(null);
     const [shareUrl, setShareUrl] = useState("");
     const [shareBusy, setShareBusy] = useState(false);
@@ -330,7 +339,14 @@ export default function InterviewRoom() {
             if (savedCompleted) {
                 try {
                     const parsed = JSON.parse(savedCompleted);
-                    if (parsed?.scores) setFinalScores(parsed.scores);
+                    if (parsed?.scores) {
+                        const s = parsed.scores;
+                        setFinalScores({
+                            ...s,
+                            summary: Array.isArray(s.summary) ? s.summary.join('\n\n') : typeof s.summary === 'string' ? s.summary : (s.summary ? JSON.stringify(s.summary) : ''),
+                            annotatedTranscript: Array.isArray(s.annotatedTranscript) ? s.annotatedTranscript.join('\n\n') : typeof s.annotatedTranscript === 'string' ? s.annotatedTranscript : (s.annotatedTranscript ? JSON.stringify(s.annotatedTranscript) : '')
+                        });
+                    }
                     if (parsed?.messages) setMessages(parsed.messages);
                     if (parsed?.blobUrl) setRecordedBlobUrl(parsed.blobUrl);
                 } catch (e) {
@@ -439,10 +455,17 @@ export default function InterviewRoom() {
             };
 
             recognitionRef.current.onerror = (event: any) => {
-                console.error("Speech recognition error:", event.error);
-                if (event.error === "not-allowed") {
-                    setIsListening(false);
+                const err = event?.error;
+                // "no-speech" and "aborted" are normal browser lifecycle events (e.g. silence or pause)
+                if (err === "no-speech" || err === "aborted") {
+                    return;
                 }
+                if (err === "not-allowed" || err === "audio-capture") {
+                    setIsListening(false);
+                    isListeningRef.current = false;
+                    return;
+                }
+                console.warn("Speech recognition notice:", err);
             };
 
             recognitionRef.current.onend = () => {
@@ -557,6 +580,10 @@ export default function InterviewRoom() {
                     portfolioFeedback = parsed.feedback || "";
                 }
             } catch { /* ignore */ }
+            if (!portfolioRating) {
+                const pR = getStorageItem("portfolioRating");
+                if (pR && pR !== "N/A") portfolioRating = pR;
+            }
 
             const res = await fetch("/api/interviewer", {
                 method: "POST",
@@ -593,12 +620,22 @@ export default function InterviewRoom() {
                 if (aiMessage.includes("[MODE:CODE]")) {
                     setInteractionMode("code");
                     aiMessage = aiMessage.replace("[MODE:CODE]", "").trim();
+                    const codeBlockMatch = aiMessage.match(/```(?:[a-zA-Z0-9_-]+)?\s*([\s\S]*?)```/);
+                    if (codeBlockMatch && codeBlockMatch[1]) {
+                        const starter = codeBlockMatch[1].trim();
+                        if (starter) {
+                            setCodeContent(starter);
+                        }
+                    }
+                    setActivePracticalTask({ type: "code", questionText: aiMessage });
                 } else if (aiMessage.includes("[MODE:DRAW]")) {
                     setInteractionMode("draw");
                     aiMessage = aiMessage.replace("[MODE:DRAW]", "").trim();
+                    setActivePracticalTask({ type: "draw", questionText: aiMessage });
                 } else if (aiMessage.includes("[MODE:CHAT]")) {
                     setInteractionMode("chat");
                     aiMessage = aiMessage.replace("[MODE:CHAT]", "").trim();
+                    setActivePracticalTask(null);
                 }
 
                 if (aiMessage.includes("[TERMINATE]")) {
@@ -696,6 +733,16 @@ export default function InterviewRoom() {
     // Update recognition callbacks every render for fresh refs
     useEffect(() => {
         if (recognitionRef.current) {
+            recognitionRef.current.onerror = (event: any) => {
+                const err = event?.error;
+                if (err === "no-speech" || err === "aborted") return;
+                if (err === "not-allowed" || err === "audio-capture") {
+                    setIsListening(false);
+                    isListeningRef.current = false;
+                    return;
+                }
+                console.warn("Speech recognition notice:", err);
+            };
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             recognitionRef.current.onresult = (event: any) => {
                 let latestTranscript = "";
@@ -781,6 +828,7 @@ export default function InterviewRoom() {
             await handleSendMessage(feedback);
             setCodeContent("");
             setCodeOutput("");
+            setActivePracticalTask(null);
             setInteractionMode("chat");
         } catch (e) {
             setCodeOutput(`Grade error: ${(e as Error).message}`);
@@ -805,7 +853,7 @@ export default function InterviewRoom() {
                     behavioralRating: finalScores.behavioral,
                     communicationRating: finalScores.communication,
                     portfolioRating: finalScores.portfolio,
-                    summary: finalScores.summary || "",
+                    summary: Array.isArray(finalScores.summary) ? finalScores.summary.join('\n\n') : String(finalScores.summary || ""),
                     highlights: endCallHabits(voiceCoachRef.current || voiceCoach),
                 }),
             });
@@ -905,8 +953,16 @@ export default function InterviewRoom() {
             const tScore = typeof data.technicalRating === "number" ? Math.max(0, Math.min(100, data.technicalRating)) : 0;
             const bScore = typeof data.behavioralRating === "number" ? Math.max(0, Math.min(100, data.behavioralRating)) : 0;
             const cScore = typeof data.communicationRating === "number" ? Math.max(0, Math.min(100, data.communicationRating)) : 0;
-            const sessionSummary = data.summary || "";
-            const annotatedTranscript = data.annotatedTranscript || "";
+            const sessionSummary = Array.isArray(data.summary)
+                ? data.summary.map((s: any) => (typeof s === 'string' ? s : JSON.stringify(s))).join('\n\n')
+                : typeof data.summary === 'string'
+                    ? data.summary
+                    : (data.summary ? JSON.stringify(data.summary) : "");
+            const annotatedTranscript = Array.isArray(data.annotatedTranscript)
+                ? data.annotatedTranscript.map((t: any) => (typeof t === 'string' ? t : JSON.stringify(t))).join('\n\n')
+                : typeof data.annotatedTranscript === 'string'
+                    ? data.annotatedTranscript
+                    : (data.annotatedTranscript ? JSON.stringify(data.annotatedTranscript) : "");
 
             // Dynamic weighting: reflect the candidate's actual profile
             // Technical gets more weight if scores vary a lot (differentiates strong vs weak candidates)
@@ -1103,7 +1159,11 @@ export default function InterviewRoom() {
                                     <div className="bg-indigo-500/10 border border-indigo-500/20 rounded-xl p-6 mb-6 text-left">
                                         <h3 className="text-sm font-bold text-indigo-300 mb-3 block">What you should improve:</h3>
                                         <div className="text-white/80 text-sm whitespace-pre-wrap leading-relaxed">
-                                            {finalScores.summary}
+                                            {Array.isArray(finalScores.summary)
+                                                ? (finalScores.summary as any[]).join('\n\n')
+                                                : typeof finalScores.summary === 'object'
+                                                    ? JSON.stringify(finalScores.summary, null, 2)
+                                                    : String(finalScores.summary)}
                                         </div>
                                     </div>
                                 )}
@@ -1178,7 +1238,14 @@ export default function InterviewRoom() {
                                 <div 
                                     className={`prose ${theme === 'dark' ? 'prose-invert' : ''} prose-sm max-w-none transcript-display`}
                                     dangerouslySetInnerHTML={{ 
-                                        __html: DOMPurify.sanitize(String(marked.parse(finalScores.annotatedTranscript, { gfm: true, breaks: true })))
+                                        __html: DOMPurify.sanitize(String(marked.parse(
+                                            typeof finalScores.annotatedTranscript === 'string'
+                                                ? finalScores.annotatedTranscript
+                                                : Array.isArray(finalScores.annotatedTranscript)
+                                                ? (finalScores.annotatedTranscript as any[]).join('\n\n')
+                                                : String(finalScores.annotatedTranscript || ''),
+                                            { gfm: true, breaks: true }
+                                        )))
                                     }}
                                 />
                             ) : (
@@ -1231,7 +1298,12 @@ export default function InterviewRoom() {
                     <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full">
                         <button
                             onClick={() => {
-                                const transcriptContent = finalScores?.annotatedTranscript || messages.map(m => `${m.role === 'user' ? 'YOU' : 'AI'}: ${m.content}`).join('\n\n\n\n');
+                                const rawTranscript = finalScores?.annotatedTranscript || messages.map(m => `${m.role === 'user' ? 'YOU' : 'AI'}: ${m.content}`).join('\n\n\n\n');
+                                const transcriptContent = Array.isArray(rawTranscript)
+                                    ? rawTranscript.join('\n\n\n\n')
+                                    : typeof rawTranscript === 'string'
+                                        ? rawTranscript
+                                        : String(rawTranscript || '');
                                 
                                 // Configure marked to handle common interview transcript formatting
                                 marked.setOptions({
@@ -1242,7 +1314,14 @@ export default function InterviewRoom() {
                                 // Preserve the special 3-line gaps (4 newlines) by converting them to multiple BR tags before parsing
                                 const formattedTranscript = transcriptContent.replace(/\n\n\n\n/g, '<br/><br/><br/><br/>');
                                 const renderedTranscript = marked.parse(formattedTranscript);
-                                const renderedSummary = marked.parse(finalScores?.summary || 'No summary available');
+
+                                const rawSummary = finalScores?.summary || 'No summary available';
+                                const summaryContent = Array.isArray(rawSummary)
+                                    ? rawSummary.join('\n\n')
+                                    : typeof rawSummary === 'string'
+                                        ? rawSummary
+                                        : (rawSummary ? JSON.stringify(rawSummary) : 'No summary available');
+                                const renderedSummary = marked.parse(summaryContent);
 
                                 const htmlContent = `
                                     <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
@@ -1309,7 +1388,7 @@ export default function InterviewRoom() {
     if (!isAuthChecked) return null;
 
     return (
-        <div className="min-h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
+        <div className="min-h-screen lg:h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
             {/* Ambient dynamic glassmorphism background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen opacity-50 animate-[pulse_8s_ease-in-out_infinite]"></div>
@@ -1334,6 +1413,29 @@ export default function InterviewRoom() {
                     )}
                     <div className="text-white/50 text-sm">Session recording...</div>
                     
+                    {/* Return to Practical Button (only active when candidate stepped back to chat) */}
+                    {activePracticalTask && interactionMode === "chat" && (
+                        <motion.button
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            onClick={() => setInteractionMode(activePracticalTask.type)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 border border-indigo-400/40 transition-all cursor-pointer animate-pulse shrink-0"
+                            title="Resume active practical problem"
+                        >
+                            {activePracticalTask.type === "code" ? (
+                                <>
+                                    <CodeIcon className="w-3.5 h-3.5" />
+                                    <span>Resume Code Editor</span>
+                                </>
+                            ) : (
+                                <>
+                                    <PenTool className="w-3.5 h-3.5" />
+                                    <span>Resume Whiteboard</span>
+                                </>
+                            )}
+                        </motion.button>
+                    )}
+
                     {/* Theme Toggle Button */}
                     <button 
                         onClick={cycleTheme}
@@ -1360,7 +1462,7 @@ export default function InterviewRoom() {
                 </motion.div>
             )}
 
-            <main className={`flex-grow flex flex-col lg:flex-row p-4 lg:p-6 gap-4 lg:gap-6 relative ${interactionMode !== "chat" ? "max-w-none px-4 lg:px-6" : "max-w-7xl"} mx-auto w-full min-h-0`}>
+            <main className={`flex-grow flex flex-col lg:flex-row p-4 lg:p-6 gap-4 lg:gap-6 relative ${interactionMode !== "chat" ? "max-w-none px-4 lg:px-6 lg:overflow-hidden" : "max-w-7xl"} mx-auto w-full min-h-0`}>
                 {interactionMode === "chat" ? (
                     <>
                         {/* Videos Section */}
@@ -1474,6 +1576,23 @@ export default function InterviewRoom() {
                                     <Mic className="w-3 h-3 text-white/40" /> Voice/Text Chat
                                 </span>
                             </div>
+                            {activePracticalTask && interactionMode === "chat" && (
+                                <div className="mx-3 mt-3 p-2.5 rounded-xl bg-indigo-500/15 border border-indigo-500/30 flex items-center justify-between gap-2 shrink-0">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping shrink-0" />
+                                        <span className="text-xs text-indigo-200 font-medium truncate">
+                                            {activePracticalTask.type === "code" ? "Coding problem active" : "Whiteboard task active"}
+                                        </span>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => setInteractionMode(activePracticalTask.type)}
+                                        className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-bold transition-all shrink-0 cursor-pointer shadow-sm"
+                                    >
+                                        Return to {activePracticalTask.type === "code" ? "Editor" : "Whiteboard"}
+                                    </button>
+                                </div>
+                            )}
                             {(hrPersonaName || companyCloneName) && (
                                 <div className="px-3 pt-3 space-y-1.5 shrink-0">
                                     {hrPersonaName && (
@@ -1563,7 +1682,7 @@ export default function InterviewRoom() {
                         </div>
                     </>
                 ) : (
-                    <div id="practical-split-container" className="flex-grow flex flex-col lg:flex-row gap-2 relative w-full h-full min-h-0">
+                    <div id="practical-split-container" className="flex-grow flex flex-col lg:flex-row gap-2 relative w-full h-full min-h-0 lg:overflow-hidden">
                         {/* Mobilized toggle tabs for workspace modes */}
                         <div className="lg:hidden flex border border-white/10 rounded-xl overflow-hidden mb-2 shrink-0">
                             <button
@@ -1731,7 +1850,7 @@ export default function InterviewRoom() {
                                     ) : (
                                         <div className="flex items-center gap-2 text-orange-400">
                                             <PenTool className="w-4 h-4" />
-                                            <span className="font-bold text-sm">Drawing Canvas</span>
+                                            <span className="font-bold text-sm">Architecture Whiteboard</span>
                                         </div>
                                     )}
                                     <span className="text-xs text-white/30 ml-2">Practical Question Active</span>
@@ -1746,7 +1865,7 @@ export default function InterviewRoom() {
 
                             {/* Code Editor Panel */}
                             {interactionMode === "code" && (
-                                <div className="flex-grow flex flex-col p-4 gap-3 min-h-0">
+                                <div className="flex-grow flex flex-col p-4 gap-3 min-h-0 overflow-y-auto">
                                     <div className="flex items-center gap-2 shrink-0">
                                         <label className="text-xs text-white/50 font-medium">Language</label>
                                         <select
@@ -1796,6 +1915,7 @@ export default function InterviewRoom() {
                                                 handleSendMessage(codeMsg);
                                                 setCodeContent("");
                                                 setCodeOutput("");
+                                                setActivePracticalTask(null);
                                                 setInteractionMode("chat");
                                             }}
                                             disabled={!codeContent.trim() || isLoading}
@@ -1813,67 +1933,83 @@ export default function InterviewRoom() {
                                 </div>
                             )}
 
-                            {/* Drawing Canvas Panel */}
+                            {/* Architecture & System Design Whiteboard Panel */}
                             {interactionMode === "draw" && (
-                                <div className="flex-grow flex flex-col p-4 gap-3 min-h-0">
-                                    <div className="flex-grow bg-white rounded-xl overflow-hidden border border-white/10 relative min-h-0">
-                                        <canvas
-                                            ref={drawCanvasRef}
-                                            width={800}
-                                            height={500}
-                                            className="w-full h-full bg-white cursor-crosshair"
-                                            onMouseDown={(e) => {
-                                                setIsDrawing(true);
-                                                const ctx = drawCanvasRef.current?.getContext("2d");
-                                                if(ctx && drawCanvasRef.current) {
-                                                    ctx.strokeStyle = "black";
-                                                    ctx.lineWidth = 2;
-                                                    ctx.beginPath();
-                                                    const rect = drawCanvasRef.current.getBoundingClientRect();
-                                                    const scaleX = drawCanvasRef.current.width / rect.width;
-                                                    const scaleY = drawCanvasRef.current.height / rect.height;
-                                                    ctx.moveTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
-                                                }
-                                            }}
-                                            onMouseMove={(e) => {
-                                                if (!isDrawing) return;
-                                                const ctx = drawCanvasRef.current?.getContext("2d");
-                                                if(ctx && drawCanvasRef.current) {
-                                                    const rect = drawCanvasRef.current.getBoundingClientRect();
-                                                    const scaleX = drawCanvasRef.current.width / rect.width;
-                                                    const scaleY = drawCanvasRef.current.height / rect.height;
-                                                    ctx.lineTo((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
-                                                    ctx.stroke();
-                                                }
-                                            }}
-                                            onMouseUp={() => setIsDrawing(false)}
-                                            onMouseLeave={() => setIsDrawing(false)}
-                                        ></canvas>
+                                <div className="flex-grow flex flex-col p-3 sm:p-4 gap-3 min-h-0 overflow-y-auto">
+                                    {/* Single active question banner */}
+                                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 shrink-0 flex flex-col gap-1.5 shadow-sm">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <PenTool className="w-4 h-4 text-orange-400" />
+                                                <span className="text-xs font-bold text-orange-300 uppercase tracking-wider">
+                                                    Architecture / Diagram Challenge
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)}
+                                                className="text-[11px] text-white/50 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                                            >
+                                                {isQuestionCollapsed ? (
+                                                    <>
+                                                        <span>Show Question</span>
+                                                        <ChevronDown className="w-3.5 h-3.5" />
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span>Collapse</span>
+                                                        <ChevronUp className="w-3.5 h-3.5" />
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                        {!isQuestionCollapsed && (
+                                            <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-medium">
+                                                {activePracticalTask?.questionText ||
+                                                    [...messages].reverse().find(m => m.role === "assistant")?.content ||
+                                                    "Please draw the requested architecture or diagram on the whiteboard below."}
+                                            </p>
+                                        )}
                                     </div>
-                                    <div className="flex items-center gap-3 shrink-0">
+
+                                    {/* Interactive Whiteboard Canvas */}
+                                    <div className="flex-grow rounded-xl overflow-hidden border border-white/10 relative min-h-[380px] flex flex-col bg-slate-950">
+                                        <InteractiveWhiteboard
+                                            ref={whiteboardRef}
+                                            shapes={boardShapes}
+                                            onShapesChange={setBoardShapes}
+                                            onFreehandChange={setBoardHasFreehand}
+                                            theme={theme}
+                                            isLight={theme === "light"}
+                                        />
+                                    </div>
+
+                                    {/* Bottom Action Controls */}
+                                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                                         <button
+                                            type="button"
                                             onClick={() => {
-                                                if(drawCanvasRef.current) {
-                                                    const dataUrl = drawCanvasRef.current.toDataURL("image/png");
-                                                    handleSendMessage("I have attached my drawing for the circuit/diagram.", dataUrl);
-                                                    setInteractionMode("chat");
+                                                const dataUrl = whiteboardRef.current?.getPngDataUrl();
+                                                if (dataUrl) {
+                                                    handleSendMessage("I have completed and attached my architectural diagram / schematic for review.", dataUrl);
+                                                } else {
+                                                    handleSendMessage("I have completed the diagram on the whiteboard.");
                                                 }
+                                                setBoardShapes([]);
+                                                setActivePracticalTask(null);
+                                                setInteractionMode("chat");
                                             }}
                                             disabled={isLoading}
-                                            className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                                            className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer text-sm text-white shadow-lg shadow-orange-600/25"
                                         >
-                                            <Save className="w-4 h-4"/> Submit Drawing
+                                            <Save className="w-4 h-4" /> Submit Diagram to Interviewer
                                         </button>
                                         <button
-                                            onClick={() => {
-                                                const ctx = drawCanvasRef.current?.getContext("2d");
-                                                if(ctx && drawCanvasRef.current) {
-                                                    ctx.clearRect(0, 0, drawCanvasRef.current.width, drawCanvasRef.current.height);
-                                                }
-                                            }}
-                                            className="px-6 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium transition-colors cursor-pointer"
+                                            type="button"
+                                            onClick={() => setBoardShapes([])}
+                                            className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium transition-colors cursor-pointer text-sm text-white/80"
                                         >
-                                            Clear
+                                            Clear Board
                                         </button>
                                     </div>
                                 </div>

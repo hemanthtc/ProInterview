@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     sortTodosByPriority,
     applyDateRollover,
+    getTodayDateString,
     type TodoItem,
 } from "../src/utils/todoStorage";
 
@@ -44,19 +45,20 @@ describe("Simplified To-Do List logic", () => {
     });
 
     it("automatically rolls over incomplete tasks from previous dates to today", () => {
+        const todayStr = getTodayDateString();
         const pastTodos: TodoItem[] = [
             {
                 _id: "p1",
                 title: "Unfinished interview prep from yesterday",
                 priority: "medium",
-                targetDate: "2026-09-18",
+                targetDate: "2020-01-01",
                 rolledOver: false,
             },
             {
                 _id: "p2",
                 title: "Task already set for today",
                 priority: "high",
-                targetDate: new Date().toISOString().split("T")[0],
+                targetDate: todayStr,
                 rolledOver: false,
             },
         ];
@@ -67,7 +69,7 @@ describe("Simplified To-Do List logic", () => {
         const rolledItem = updated.find((t) => t._id === "p1");
         expect(rolledItem).toBeDefined();
         expect(rolledItem?.rolledOver).toBe(true);
-        expect(rolledItem?.targetDate).toBe(new Date().toISOString().split("T")[0]);
+        expect(rolledItem?.targetDate).toBe(todayStr);
 
         // High priority task should still be listed first
         expect(updated[0]._id).toBe("p2");

@@ -132,8 +132,8 @@ CRITICAL RULES FOR RESPONSES:
    - NO HASHES (do NOT use # for headers).
    - NO BACKTICKS in conversational parts (do NOT write code blocks in plain speech).
    - All conversational responses must be plain, clean, unformatted sentences.
-3. WHEN YOU ASK FOR COMPOSING CODE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CODE] ".
-4. WHEN YOU ASK FOR DRAWING A CIRCUIT OR DIAGRAM, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:DRAW] ".
+3. WHEN YOU ASK FOR COMPOSING OR EDITING CODE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CODE] ". Frame the coding challenge realistically like a live senior technical interviewer: provide a concrete practical scenario or bug/feature context, state clear expected requirements/edge cases (e.g. reference mutation, boundary values, or performance trade-offs), and optionally provide a clean starter snippet or function signature inside a markdown code block (\`\`\`language ... \`\`\`) at the end of your message so the candidate can directly edit it in their code editor.
+4. WHEN YOU ASK FOR SYSTEM ARCHITECTURE, DATABASE SCHEMA (ERD), CLOUD TOPOLOGY, OR CIRCUIT DIAGRAMS, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:DRAW] ". Clearly state the architectural goals and key components (e.g. services, databases, caches, queues, load balancers, or logic gates) and ask the candidate to visually diagram them on the interactive whiteboard.
 5. OTHERWISE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CHAT] ".
 6. If you decide to terminate the interview, prepend "[TERMINATE] ".
 7. DO NOT say "Welcome" or "Hello" unless the conversation history is completely empty.
@@ -173,8 +173,8 @@ ${ANTI_LEAK_SUFFIX}`;
 
         let responseResult: string;
         try {
-            responseResult = await generateWithFallback(conversationContents as any, {
-                model: "gemini-2.0-flash",
+            responseResult = await generateWithFallback({ contents: conversationContents }, {
+                model: "gemini-2.5-flash",
                 generationConfig: { temperature: 0.7 }
             });
         } catch (genErr: any) {

@@ -65,8 +65,9 @@ export async function GET(req: NextRequest) {
     try {
         await connectDB();
         const { searchParams } = new URL(req.url);
-        const identifier = searchParams.get("identifier");
-        const accountType = searchParams.get("accountType") || "user";
+        const session = await getVerifiedSession();
+        const identifier = searchParams.get("identifier") || session?.identifier;
+        const accountType = searchParams.get("accountType") || (session as any)?.accountType || "user";
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
@@ -316,7 +317,7 @@ export async function POST(req: NextRequest) {
                 updatedProfile = await ProfileData.findOneAndUpdate(
                     { identifier },
                     { $set: profileUpdateFields },
-                    { upsert: true, new: true }
+                    { upsert: true, returnDocument: 'after' }
                 );
             }
         }

@@ -110,7 +110,7 @@ export async function POST(req: NextRequest) {
                     features,
                     updatedBy: session.identifier
                 },
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: 'after' }
             );
         }
 

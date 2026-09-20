@@ -1766,7 +1766,9 @@ function FeaturesContent() {
         setIsFetchingLinks(true);
         setFetchLinksError(null);
         try {
-            const res = await fetch("/api/auth/profile");
+            const storedId = getStorageItem("userIdentifier") || getStorageItem("userEmail");
+            const profileUrl = storedId ? `/api/auth/profile?identifier=${encodeURIComponent(storedId)}` : "/api/auth/profile";
+            const res = await fetch(profileUrl);
             let finalGithub = "";
             let finalLinkedin = "";
             let finalPortfolio = "";
@@ -1778,6 +1780,12 @@ function FeaturesContent() {
                     finalGithub = u.github || "";
                     finalLinkedin = u.linkedin || "";
                     finalPortfolio = u.portfolioUrl || "";
+                    if (u.resumeCvText) {
+                        setStorageItem("userResumeCvText", u.resumeCvText);
+                    }
+                    if (u.resumeCvName) {
+                        setStorageItem("userResumeCvName", u.resumeCvName);
+                    }
                 }
             }
 
@@ -3076,10 +3084,22 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
             breaks: true
         });
 
-        const transcriptContent = (session.transcript || "");
+        const rawTranscript = session.transcript || "";
+        const transcriptContent = Array.isArray(rawTranscript)
+            ? rawTranscript.join('\n\n\n\n')
+            : typeof rawTranscript === 'string'
+                ? rawTranscript
+                : String(rawTranscript || '');
         const formattedTranscript = transcriptContent.replace(/\n\n\n\n/g, '<br/><br/><br/><br/>');
         const renderedTranscript = marked.parse(formattedTranscript);
-        const renderedSummary = marked.parse(session.summary || "No summary available.");
+
+        const rawSummary = session.summary || "No summary available.";
+        const summaryContent = Array.isArray(rawSummary)
+            ? rawSummary.join('\n\n')
+            : typeof rawSummary === 'string'
+                ? rawSummary
+                : (rawSummary ? JSON.stringify(rawSummary) : "No summary available.");
+        const renderedSummary = marked.parse(summaryContent);
 
         const htmlContent = `
             <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>

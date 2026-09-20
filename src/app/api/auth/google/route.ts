@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
                     subscriptionPlan: "Free Tier",
                 },
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
         const { checkAndDegradeSubscription } = await import("@/utils/subscription");

@@ -183,7 +183,7 @@ export async function PATCH(req: NextRequest) {
         const updated = await Todo.findOneAndUpdate(
             { _id: id, userIdentifier: session.identifier },
             { $set: updateFields },
-            { new: true }
+            { returnDocument: 'after' }
         ).lean();
 
         if (!updated) {

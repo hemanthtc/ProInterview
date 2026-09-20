@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
                 subscriptionStartedAt: finalPlanName === "Free Tier" ? null : now,
                 subscriptionExpiresAt: expiresAt
             },
-            { new: true }
+            { returnDocument: 'after' }
         );
 
         if (!user) {

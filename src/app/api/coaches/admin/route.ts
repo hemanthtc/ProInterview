@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
         const coach = await Coach.findOneAndUpdate({ coachId }, update, {
             upsert: true,
-            new: true,
+            returnDocument: 'after',
             setDefaultsOnInsert: true,
         });
 

@@ -126,7 +126,9 @@ export default function SetupPage() {
 
         const fetchUserProfile = async () => {
             try {
-                const res = await fetch("/api/auth/profile");
+                const storedId = getStorageItem("userIdentifier") || getStorageItem("userEmail");
+                const profileUrl = storedId ? `/api/auth/profile?identifier=${encodeURIComponent(storedId)}` : "/api/auth/profile";
+                const res = await fetch(profileUrl);
                 if (res.ok) {
                     const data = await res.json();
                     if (data.success && data.user) {
@@ -276,23 +278,32 @@ export default function SetupPage() {
                 extractedText = getInterviewResumeText() || "";
             }
 
-            if (!extractedText.trim() && files.length > 0) {
+            if (files.length > 0 || (portfolioUrl.trim() && !extractedText.trim())) {
                 const formData = new FormData();
                 files.forEach((f) => formData.append("file", f));
                 if (portfolioUrl.trim()) formData.append("portfolioUrl", portfolioUrl.trim());
 
-                const res = await fetch("/api/upload", {
-                    method: "POST",
-                    body: formData,
-                });
-                const data = await res.json();
-
-                if (!res.ok) {
-                    throw new Error(data.error || "Failed to parse resume");
+                try {
+                    const res = await fetch("/api/upload", {
+                        method: "POST",
+                        body: formData,
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        if (data.text) {
+                            extractedText = extractedText ? `${extractedText}\n\n${data.text}` : data.text;
+                            setResumeCvText(extractedText);
+                        }
+                    } else {
+                        const data = await res.json().catch(() => ({}));
+                        if (!extractedText.trim()) {
+                            throw new Error(data.error || "Failed to parse resume or portfolio files");
+                        }
+                    }
+                } catch (e: any) {
+                    if (!extractedText.trim()) throw e;
+                    console.error("Failed to parse files or portfolio in setup", e);
                 }
-
-                extractedText = data.text || "";
-                setResumeCvText(extractedText);
             }
 
             const github = getStorageItem("userGithub") || "";
@@ -304,9 +315,75 @@ export default function SetupPage() {
                 throw new Error("No resume or portfolio details found. Please provide at least one source (upload a resume/CV or add a portfolio link) to run the interview.");
             }
 
-            // Read global mode from cached home screen toggle
+            const finalCompany = targetCompanies.length > 0 ? targetCompanies.join(", ") : "Generic Tech Company";
+            const finalRoles = preferredRoles.length > 0 ? preferredRoles.join(", ") : "Software Engineer";
             const globalMode = getStorageItem("globalInterviewMode") || "technical";
-            setStorageItem("resumeText", extractedText);
+
+            // If portfolio details exist, ensure pre-interview portfolio analysis is available
+            let portfolioRating = getStorageItem("portfolioRating") || "";
+            let portfolioFeedback = "";
+            const cachedAnalysis = getStorageItem("portfolioAnalysisResult");
+            if (cachedAnalysis) {
+                try {
+                    const parsed = JSON.parse(cachedAnalysis);
+                    portfolioRating = parsed.rating?.toString() || portfolioRating;
+                    portfolioFeedback = parsed.feedback || "";
+                } catch { /* ignore */ }
+            }
+
+            if (hasPortfolio && (!portfolioRating || portfolioRating === "N/A")) {
+                try {
+                    const analyzeFormData = new FormData();
+                    if (extractedText) analyzeFormData.append("resumeText", extractedText);
+                    if (github) analyzeFormData.append("github", github);
+                    if (linkedin) analyzeFormData.append("linkedin", linkedin);
+                    if (portfolio) analyzeFormData.append("portfolioUrl", portfolio);
+                    files.forEach((f) => analyzeFormData.append("projectFiles", f));
+                    analyzeFormData.append("targetCompanies", finalCompany);
+                    analyzeFormData.append("preferredRoles", finalRoles);
+                    analyzeFormData.append("isRealisticMode", String(globalMode === "realistic"));
+
+                    const aRes = await fetch("/api/analyze-portfolio", {
+                        method: "POST",
+                        body: analyzeFormData,
+                    });
+                    if (aRes.ok) {
+                        const aData = await aRes.json();
+                        if (aData.rating !== undefined) {
+                            portfolioRating = String(aData.rating);
+                            portfolioFeedback = aData.feedback || "";
+                            setStorageItem("portfolioRating", portfolioRating);
+                            setStorageItem("portfolioAnalysisResult", JSON.stringify({
+                                rating: aData.rating,
+                                feedback: portfolioFeedback
+                            }));
+                        }
+                    }
+                } catch (analysisErr) {
+                    console.warn("Auto portfolio analysis skipped on setup start:", analysisErr);
+                }
+            }
+
+            const enablePortfolioScoring = Boolean(hasPortfolio && portfolioRating && portfolioRating !== "N/A");
+            setStorageItem("portfolioScoringEnabled", enablePortfolioScoring ? "true" : "false");
+
+            let finalResumeText = "";
+            if (portfolioRating && portfolioRating !== "N/A") {
+                finalResumeText += `Pre-Interview Portfolio Score: ${portfolioRating}/100\n`;
+            }
+            if (portfolioFeedback) {
+                finalResumeText += `Pre-Interview Analysis Feedback:\n${portfolioFeedback}\n\n`;
+            }
+            if (github) finalResumeText += `Candidate GitHub: ${github}\n`;
+            if (linkedin) finalResumeText += `Candidate LinkedIn: ${linkedin}\n`;
+            if (portfolio) finalResumeText += `Candidate Portfolio Website: ${portfolio}\n`;
+            if (finalResumeText) finalResumeText += "\n";
+
+            if (extractedText) {
+                finalResumeText += `Candidate Resume / Experience details:\n${extractedText}\n`;
+            }
+
+            setStorageItem("resumeText", finalResumeText.trim() ? finalResumeText : extractedText);
             setStorageItem("interviewLevel", level);
             setStorageItem("interviewType", globalMode);
             setStorageItem("aiProvider", provider);
@@ -314,13 +391,11 @@ export default function SetupPage() {
             if (portfolioUrl.trim()) {
                 setStorageItem("userPortfolio", portfolioUrl.trim());
             }
-            
-            const finalCompany = targetCompanies.length > 0 ? targetCompanies.join(", ") : "Generic Tech Company";
-            const finalRoles = preferredRoles.length > 0 ? preferredRoles.join(", ") : "Software Engineer";
-            
+            if (github) setStorageItem("userGithub", github);
+            if (linkedin) setStorageItem("userLinkedin", linkedin);
+
             setStorageItem("targetCompany", finalCompany);
             setStorageItem("preferredRoles", finalRoles);
-            setStorageItem("portfolioScoringEnabled", "false");
             setStorageItem("companyCloneMode", companyCloneMode ? "true" : "false");
             setStorageItem("campusPath", campusPath);
 

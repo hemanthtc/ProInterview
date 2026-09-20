@@ -87,16 +87,11 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 // needs no code change.
 export const ADVANCED_CANDIDATE_MODELS = [
   "gemini-2.5-flash",
-  "gemini-2.5-flash-lite",
   "gemini-flash-latest",
-  "gemini-2.0-flash",
-  "gemini-2.0-flash-lite",
+  "gemini-3.6-flash",
   "gemini-flash-lite-latest",
   "gemini-pro-latest",
   "gemini-2.5-pro",
-  "gemini-1.5-flash",
-  "gemini-1.5-flash-8b",
-  "gemini-1.5-pro",
 ];
 
 /**
@@ -108,10 +103,9 @@ export function preferTextModels(models: string[]): string[] {
     !/(embedding|image|imagen|tts|audio|live|vision|aqa|learnlm|veo|robotics)/i.test(m);
   const score = (m: string) => {
     let s = 0;
-    if (m === "gemini-2.5-flash") s -= 25;
-    if (m === "gemini-2.0-flash") s -= 20;
-    if (m === "gemini-1.5-flash") s -= 18;
-    if (m === "gemini-3.6-flash") s -= 15;
+    if (m === "gemini-2.5-flash") s -= 30;
+    if (m === "gemini-flash-latest") s -= 25;
+    if (m === "gemini-3.6-flash") s -= 20;
     if (m.includes("flash")) s -= 10;
     if (m.includes("latest")) s -= 5;
     if (m.includes("lite")) s += 1;
@@ -158,13 +152,13 @@ export async function fetchKeySupportedModels(apiKey?: string): Promise<string[]
 }
 
 export async function generateWithFallback(
-    prompt: string | Array<any>,
+    prompt: string | Array<any> | { contents: any[] },
     options: { model?: string; generationConfig?: any; timeout?: number } = {}
 ): Promise<string> {
     const keys = getAllGeminiApiKeys();
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
-    const primaryModel = options.model || "gemini-2.0-flash";
+    const primaryModel = options.model && !options.model.includes("2.0-flash") ? options.model : "gemini-2.5-flash";
     const perModelTimeout = options.timeout ?? 25000;
     const now = Date.now();
 
@@ -185,10 +179,12 @@ export async function generateWithFallback(
             primaryModel,
             "gemini-2.5-flash",
             "gemini-flash-latest",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
+            "gemini-3.6-flash",
+            "gemini-flash-lite-latest",
             ...ADVANCED_CANDIDATE_MODELS,
         ])).filter(m => 
+            !m.includes("2.0-flash") &&
+            !m.includes("1.5-flash") &&
             m !== "gemini-2.5-flash-lite" && 
             m !== "gemini-2.0-pro-exp-02-05" &&
             m !== "gemini-2.0-flash-thinking-exp-01-21"
@@ -199,8 +195,17 @@ export async function generateWithFallback(
             return !exhaustedAt || now - exhaustedAt >= 60 * 1000;
         });
 
-        // Limit attempts per key to at most 2 candidate models to stay well within gateway timeout budgets
-        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 2);
+        // Try up to 4 candidate models to guarantee recovery from per-model rate limits
+        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 4);
+
+        // Automatically detect multi-turn conversation arrays ([{ role, parts }]) and wrap in { contents }
+        // so the GoogleGenerativeAI SDK does not erroneously serialize { role, parts } as nested Part objects
+        const requestPayload: any =
+            (typeof prompt === "object" && prompt !== null && "contents" in prompt)
+                ? prompt
+                : (Array.isArray(prompt) && prompt.length > 0 && typeof prompt[0] === "object" && prompt[0] !== null && "role" in prompt[0])
+                    ? { contents: prompt }
+                    : prompt;
 
         for (const modelName of modelsToTry) {
             try {
@@ -208,7 +213,7 @@ export async function generateWithFallback(
                     { model: modelName, generationConfig: options.generationConfig },
                     { timeout: perModelTimeout }
                 );
-                const result = await model.generateContent(prompt);
+                const result = await model.generateContent(requestPayload);
                 return result.response.text();
             } catch (err: any) {
                 const is404 = err?.status === 404 || (err?.message && (err.message.includes("404") || err.message.includes("not found") || err.message.includes("no longer available")));

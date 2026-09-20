@@ -97,8 +97,8 @@ INTERVIEW FLOW:
 - Phase 3 (Wrap-up): After 8-12 substantial questions, thank the user for their time, ask if they have any questions for you, and conclude professionally.
 
 PRACTICAL QUESTION RULES:
-- When you want the candidate to WRITE CODE, begin your response with exactly "[MODE:CODE] ".
-- When you want the candidate to DRAW a diagram, circuit, or architecture, begin your response with exactly "[MODE:DRAW] ".
+- When you want the candidate to WRITE OR EDIT CODE, begin your response with exactly "[MODE:CODE] ". Frame the coding challenge realistically like a live senior technical interviewer: provide a concrete practical scenario or bug/feature context, state clear expected requirements/edge cases (e.g. reference mutation, boundary values, or performance trade-offs), and optionally provide a clean starter snippet or function signature inside a markdown code block (\`\`\`language ... \`\`\`) at the end of your message so the candidate can directly edit it in their code editor.
+- When you want the candidate to DRAW a system architecture, database schema (ERD), cloud topology, or circuit diagram, begin your response with exactly "[MODE:DRAW] ". Clearly state the architectural goals and key components (e.g. services, databases, caches, queues, load balancers, or logic gates) and ask the candidate to visually diagram them on the interactive whiteboard.
 - For all other conversational responses, begin with exactly "[MODE:CHAT] ".
 - If you decide to end the interview, prepend "[TERMINATE] " to your final response.
 - If the conversation history is NOT empty and the candidate says "I am back," do NOT re-welcome them. Just jump straight into the next question.
@@ -133,8 +133,8 @@ ${ANTI_LEAK_SUFFIX}`;
 
         let responseResult: string;
         try {
-            responseResult = await generateWithFallback(conversationContents as any, {
-                model: "gemini-2.0-flash",
+            responseResult = await generateWithFallback({ contents: conversationContents }, {
+                model: "gemini-2.5-flash",
                 generationConfig: { temperature: 0.7 }
             });
         } catch (genErr: any) {

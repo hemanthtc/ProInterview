@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
                 otpExpires,
                 isVerified: false,
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
         if (type === "email") {

@@ -196,7 +196,7 @@ export async function POST(req: NextRequest) {
                         createdBy: me,
                     },
                 },
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: 'after' }
             );
 
             return NextResponse.json({

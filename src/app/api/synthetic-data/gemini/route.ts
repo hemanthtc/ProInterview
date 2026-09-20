@@ -9,7 +9,10 @@ import {
 import { getVerifiedSession } from "@/utils/auth";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const UPSTREAM_TIMEOUT_MS = 15000;
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
+
+const UPSTREAM_TIMEOUT_MS = 30000;
 
 export async function POST(req: NextRequest) {
   try {
@@ -66,34 +69,46 @@ export async function POST(req: NextRequest) {
 
     let lastErrorMsg = "";
 
+    // Map obsolete or retired model names to current valid models
+    let targetModel = requestedModel;
+    if (
+      !targetModel ||
+      targetModel.includes("1.5-flash") ||
+      targetModel.includes("2.0-flash") ||
+      targetModel.includes("2.5-flash-lite")
+    ) {
+      targetModel = "gemini-2.5-flash";
+    }
+
     for (const key of candidateKeys) {
       const genAI = new GoogleGenerativeAI(key);
-      const detectedModels = preferTextModels(await fetchKeySupportedModels(key));
+      const detectedKeyModels = await fetchKeySupportedModels(key);
+      const validTextModels = preferTextModels(detectedKeyModels);
 
       const candidateList = Array.from(new Set([
-        ...(requestedModel && detectedModels.includes(requestedModel) ? [requestedModel] : []),
-        ...detectedModels,
-        "gemini-2.0-flash",
+        targetModel,
+        ...validTextModels,
         "gemini-2.5-flash",
-        "gemini-1.5-flash",
         "gemini-flash-latest",
         "gemini-3.6-flash",
-        ...ADVANCED_CANDIDATE_MODELS,
-      ])).filter(m => 
-        m !== "gemini-2.5-flash-lite" && 
-        m !== "gemini-2.0-pro-exp-02-05" &&
-        m !== "gemini-2.0-flash-thinking-exp-01-21"
+        "gemini-flash-lite-latest",
+      ])).filter((m) =>
+        !m.includes("2.0-flash") &&
+        !m.includes("1.5-flash") &&
+        m !== "gemini-2.5-flash-lite"
       ).slice(0, 4);
 
       for (const modelName of candidateList) {
         try {
+          const generationConfig: any = { temperature };
+          if (jsonMode) {
+            generationConfig.responseMimeType = "application/json";
+          }
+
           const model = genAI.getGenerativeModel(
             {
               model: modelName,
-              generationConfig: {
-                temperature,
-                responseMimeType: jsonMode ? "application/json" : "text/plain",
-              },
+              generationConfig,
             },
             { timeout: UPSTREAM_TIMEOUT_MS }
           );

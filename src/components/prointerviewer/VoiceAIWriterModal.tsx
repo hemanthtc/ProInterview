@@ -197,13 +197,14 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
 
       rec.onerror = (e: any) => {
         const errorType = e.error || '';
-        console.error("Speech recognition error event:", errorType, e);
         
         // Ignore aborted and no-speech as they are part of normal interaction flow
         if (errorType === 'aborted' || errorType === 'no-speech') {
           setIsListening(false);
           return;
         }
+
+        console.warn("Speech recognition error event:", errorType, e);
 
         if (errorType === 'not-allowed') {
           setErrorMessage("Microphone permission denied. Please enable microphone permissions in your browser settings.");

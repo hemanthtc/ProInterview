@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
                 status: newApp.status,
                 updatedAt: new Date()
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
         return NextResponse.json({ success: true, app });

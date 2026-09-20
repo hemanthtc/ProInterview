@@ -145,7 +145,7 @@ export async function checkAndIncrementUsage(
             [usagePath]: { $lt: limit },
         },
         { $inc: { [usagePath]: 1 } },
-        { new: true }
+        { returnDocument: 'after' }
     );
 
     if (updated) {

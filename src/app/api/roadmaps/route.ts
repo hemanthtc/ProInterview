@@ -84,7 +84,7 @@ export async function POST(req: NextRequest) {
                 expiresAt,
                 notifiedNearExpiry: false,
             },
-            { new: true, upsert: true }
+            { returnDocument: 'after', upsert: true }
         );
 
         const daysRemaining = Math.max(0, Math.ceil((r.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24)));

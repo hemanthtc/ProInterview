@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
                 isEnabled: activeEnabled,
                 updatedBy: session.identifier,
             },
-            { upsert: true, new: true }
+            { upsert: true, returnDocument: 'after' }
         );
 
         // Invalidate the in-memory cache so new limits take effect immediately

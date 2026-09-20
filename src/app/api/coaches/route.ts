@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
                             razorpayPaymentId: razorpay_payment_id,
                             googleCalendarLink: calendarLink,
                         },
-                        { new: true }
+                        { returnDocument: 'after' }
                     );
                     if (updated) {
                         meet = updated.meetLink;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
-import { generateContentWithTimeout } from "@/utils/gemini";
+import { generateWithFallback, generateContentWithTimeout } from "@/utils/gemini";
 import {
     analyzeInterviewBodySchema,
     enforceRateLimit,
@@ -49,8 +49,6 @@ export async function POST(req: NextRequest) {
         transcript = redactPii(
             messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join("\n\n")
         );
-
-        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.0 } });
 
         let mappedType = "off-campus";
         if (companyClone === false) {
@@ -120,30 +118,21 @@ DO NOT wrap the response in markdown blocks like \`\`\`json. Just output raw val
             });
         }
 
-        // Retry logic for 429 rate-limit errors
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await generateContentWithTimeout(model.generateContent(promptParts), 45000);
-                break;
-            } catch (retryErr: any) {
-                if (retryErr?.status === 429) {
-                    console.warn("Gemini quota exhausted for interview evaluation; returning fallback analysis.");
-                    return getQuotaFallback(transcript);
-                }
-
-                if (retryErr?.status === 429 && attempt < 2) {
-                    const delay = (attempt + 1) * 5000; // 5s, 10s
-                    console.warn(`Gemini 429 rate limit hit, retrying in ${delay}ms (attempt ${attempt + 1}/3)`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-        if (!result) {
+        let rawResponseText = "";
+        try {
+            rawResponseText = await generateWithFallback(promptParts, {
+                generationConfig: { temperature: 0.0 },
+                timeout: 45000,
+            });
+        } catch (genErr: any) {
+            console.warn("generateWithFallback analyze-interview error:", genErr?.message || genErr);
             return getQuotaFallback(transcript);
         }
+
+        if (!rawResponseText) {
+            return getQuotaFallback(transcript);
+        }
+
         let technicalRating = 0;
         let behavioralRating = 0;
         let communicationRating = 0;
@@ -151,15 +140,23 @@ DO NOT wrap the response in markdown blocks like \`\`\`json. Just output raw val
         let annotatedTranscript = transcript;
         
         try {
-            const rawText = result.response.text().trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
+            const rawText = rawResponseText.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/i, "").trim();
             const parsed = JSON.parse(rawText);
             technicalRating = typeof parsed.technicalRating === "number" ? Math.max(0, Math.min(100, parsed.technicalRating)) : 0;
             behavioralRating = typeof parsed.behavioralRating === "number" ? Math.max(0, Math.min(100, parsed.behavioralRating)) : 0;
             communicationRating = typeof parsed.communicationRating === "number" ? Math.max(0, Math.min(100, parsed.communicationRating)) : 0;
-            summary = parsed.summary || "";
-            annotatedTranscript = parsed.annotatedTranscript || transcript;
+            if (Array.isArray(parsed.summary)) {
+                summary = parsed.summary.map((s: any) => `- ${typeof s === 'string' ? s : JSON.stringify(s)}`).join("\n");
+            } else {
+                summary = typeof parsed.summary === "string" ? parsed.summary : (parsed.summary ? JSON.stringify(parsed.summary) : "");
+            }
+            if (Array.isArray(parsed.annotatedTranscript)) {
+                annotatedTranscript = parsed.annotatedTranscript.map((t: any) => typeof t === 'string' ? t : JSON.stringify(t)).join("\n\n");
+            } else {
+                annotatedTranscript = typeof parsed.annotatedTranscript === "string" ? parsed.annotatedTranscript : transcript;
+            }
         } catch (e) {
-            console.error("Failed to parse JSON from Gemini:", result.response.text().substring(0, 500));
+            console.error("Failed to parse JSON from Gemini:", rawResponseText.substring(0, 500));
         }
 
         return NextResponse.json({ technicalRating, behavioralRating, communicationRating, summary, annotatedTranscript });

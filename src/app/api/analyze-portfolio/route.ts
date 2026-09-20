@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback } from "@/utils/gemini";
 import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
 import { getVerifiedSession } from "@/utils/auth";
@@ -114,9 +115,6 @@ export async function POST(req: NextRequest) {
         if (!API_KEY) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
         }
-        const genAI = new GoogleGenerativeAI(API_KEY);
-
-        const model = genAI.getGenerativeModel({ model: "gemini-3.1-flash-lite", generationConfig: { temperature: 0.0 } });
 
         const buildFallbackResponse = (reason: string) => {
             const hasSignal = Boolean(hasResume || github || linkedin || portfolioUrl);
@@ -172,32 +170,21 @@ Return a JSON object with:
 
 Respond ONLY with a valid JSON block containing the fields "rating" and "feedback". Do not write any markdown code blocks or explanatory text outside of the JSON.`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(systemPrompt);
-                break;
-            } catch (retryErr: any) {
-                if (retryErr?.status === 429) {
-                    console.warn("Gemini quota exhausted for portfolio analysis; returning fallback evaluation.");
-                    return buildFallbackResponse("Please retry later once the quota resets.");
-                }
-
-                const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
-                                    (retryErr?.message && (retryErr.message.includes("429") || retryErr.message.includes("503") || retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error (${retryErr?.status || '503'}), retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-        if (!result) {
+        let ratingText = "";
+        try {
+            ratingText = (await generateWithFallback(systemPrompt, {
+                generationConfig: { temperature: 0.0 },
+                timeout: 35000,
+            })).trim();
+        } catch (genErr: any) {
+            console.warn("generateWithFallback portfolio analysis error:", genErr?.message || genErr);
             return buildFallbackResponse("Please retry later once the quota resets.");
         }
-        const ratingText = result.response.text().trim();
+
+        if (!ratingText) {
+            return buildFallbackResponse("Please retry later once the quota resets.");
+        }
+
         let rating = 0;
         let feedback = "No detailed feedback generated.";
         try {
@@ -215,6 +202,7 @@ Respond ONLY with a valid JSON block containing the fields "rating" and "feedbac
             }
         }
 
+        rating = Math.max(0, Math.min(100, isNaN(rating) ? 50 : rating));
         return NextResponse.json({ rating, feedback });
     } catch (error: any) {
         console.error("Portfolio Evaluation Error:", error);

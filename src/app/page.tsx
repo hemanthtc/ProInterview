@@ -614,10 +614,22 @@ export default function Home() {
             breaks: true
         });
 
-        const transcriptContent = (session.transcript || "");
+        const rawTranscript = session.transcript || "";
+        const transcriptContent = Array.isArray(rawTranscript)
+            ? rawTranscript.join('\n\n\n\n')
+            : typeof rawTranscript === 'string'
+                ? rawTranscript
+                : String(rawTranscript || '');
         const formattedTranscript = transcriptContent.replace(/\n\n\n\n/g, '<br/><br/><br/><br/>');
         const renderedTranscript = marked.parse(formattedTranscript);
-        const renderedSummary = marked.parse(session.summary || "No summary available.");
+
+        const rawSummary = session.summary || "No summary available.";
+        const summaryContent = Array.isArray(rawSummary)
+            ? rawSummary.join('\n\n')
+            : typeof rawSummary === 'string'
+                ? rawSummary
+                : (rawSummary ? JSON.stringify(rawSummary) : "No summary available.");
+        const renderedSummary = marked.parse(summaryContent);
 
         const htmlContent = `
             <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
