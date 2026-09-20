@@ -18,10 +18,12 @@ import { deferEffectWork } from "../utils/deferEffect";
 import BrandLogo from "../components/BrandLogo";
 import NotificationBell from "../components/NotificationBell";
 import ProgressPanel from "../components/features/ProgressPanel";
+import HomeTodoWidget from "../components/home/HomeTodoWidget";
 
 interface MobileDashboardContentProps {
     theme: "dark" | "light" | "eyeprotect";
     isRealisticMode: boolean;
+    isLoggedIn?: boolean;
     onSelectAnalysis?: () => void;
     onStartInterview: () => void;
     onSelectProgress: () => void;
@@ -30,6 +32,7 @@ interface MobileDashboardContentProps {
 function MobileDashboardContent({
     theme,
     isRealisticMode,
+    isLoggedIn = false,
     onStartInterview,
     onSelectProgress,
 }: MobileDashboardContentProps) {
@@ -180,6 +183,9 @@ function MobileDashboardContent({
                     </button>
                 </div>
             </div>
+
+            {/* Daily Agenda & To-Do List (Visible immediately) */}
+            <HomeTodoWidget theme={theme} isLoggedIn={isLoggedIn} />
 
             {/* Quick Stats Grid (4 Boxes + My Progress) */}
             <div className="grid grid-cols-2 gap-3.5">
@@ -810,6 +816,7 @@ export default function Home() {
                         <MobileDashboardContent 
                             theme={theme}
                             isRealisticMode={isRealisticMode}
+                            isLoggedIn={isLoggedIn}
                             onSelectAnalysis={() => {
                                 router.push("/features?tool=analysis");
                             }}
@@ -1470,6 +1477,7 @@ export default function Home() {
                         <MobileDashboardContent 
                             theme={theme}
                             isRealisticMode={isRealisticMode}
+                            isLoggedIn={isLoggedIn}
                             onSelectAnalysis={() => {
                                 router.push("/features?tool=analysis");
                             }}
@@ -1512,6 +1520,11 @@ export default function Home() {
                                             {isRealisticMode ? "Start Realistic Interview" : "Start Practice Session"}
                                             <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
                                         </Link>
+                                    </div>
+
+                                    {/* Daily Agenda & To-Do List (Priority first, instant delete on completion) */}
+                                    <div className="pt-2 w-full">
+                                        <HomeTodoWidget theme={theme} isLoggedIn={isLoggedIn} />
                                     </div>
 
                                     {/* 4 Stats Cards + Full-Width Dashboard Bar */}

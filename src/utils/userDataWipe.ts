@@ -13,6 +13,7 @@ import CommunityMessage from "@/models/CommunityMessage";
 import Feedback from "@/models/Feedback";
 import SyntheticFile from "@/models/SyntheticFile";
 import SyntheticFolder from "@/models/SyntheticFolder";
+import Todo from "@/models/Todo";
 import {
     isS3Configured,
     pingS3,
@@ -62,6 +63,7 @@ export async function wipeUserOwnedData(identifier: string): Promise<void> {
         Feedback.deleteMany({ userIdentifier: identifier }),
         SyntheticFile.deleteMany({ userId: identifier }),
         SyntheticFolder.deleteMany({ userId: identifier }),
+        Todo.deleteMany({ userIdentifier: identifier }),
     ]);
 
     if (!isS3Configured()) return;
