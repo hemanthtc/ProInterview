@@ -119,7 +119,17 @@ function LoginContent() {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
+    const [error, setError] = useState(() => {
+        if (searchParams && searchParams.get("expired") === "1") {
+            const customMsg = typeof window !== "undefined" ? sessionStorage.getItem("session_expired_message") : null;
+            if (customMsg) {
+                try { sessionStorage.removeItem("session_expired_message"); } catch {}
+                return customMsg;
+            }
+            return "Your session has expired. Please sign in again.";
+        }
+        return "";
+    });
     const [successMessage, setSuccessMessage] = useState("");
     const [loginSuccess, setLoginSuccess] = useState(false);
     const [successName, setSuccessName] = useState("");
@@ -153,19 +163,7 @@ function LoginContent() {
         return () => clearInterval(timer);
     }, [otpStep, otpTimer]);
 
-    useEffect(() => {
-        if (searchParams && searchParams.get("expired") === "1") {
-            const customMsg = typeof window !== "undefined" ? sessionStorage.getItem("session_expired_message") : null;
-            if (customMsg) {
-                try {
-                    sessionStorage.removeItem("session_expired_message");
-                } catch {}
-                setError(customMsg);
-            } else {
-                setError("Your session has expired. Please sign in again.");
-            }
-        }
-    }, [searchParams]);
+
 
     const filteredCountries = useMemo(() => {
         const search = countrySearch.toLowerCase().trim();
