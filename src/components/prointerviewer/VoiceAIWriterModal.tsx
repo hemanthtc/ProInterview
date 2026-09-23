@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Mic, MicOff, Sparkles, X, RotateCcw, Volume2 } from 'lucide-react';
+import { assembleSpeechResults } from '../../utils/speechTranscript';
 
 interface VoiceAIWriterModalProps {
   isOpen: boolean;
@@ -30,6 +31,8 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
+  const baseTranscriptRef = useRef('');
+  const latestFinalTextRef = useRef('');
 
   // Position calculation variables
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
@@ -167,6 +170,9 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
     try {
       stopRecordingInstance();
 
+      baseTranscriptRef.current = transcript.trim();
+      latestFinalTextRef.current = transcript.trim();
+
       const rec = new SpeechRecognition();
       rec.continuous = true;
       rec.interimResults = true;
@@ -178,21 +184,10 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
       };
 
       rec.onresult = (event: any) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          } else {
-            // Can display interim results if needed
-          }
-        }
-        if (finalTranscript) {
-          setTranscript(prev => {
-            const trimmedPrev = prev.trim();
-            const trimmedFinal = finalTranscript.trim();
-            return trimmedPrev ? `${trimmedPrev} ${trimmedFinal}` : trimmedFinal;
-          });
-        }
+        if (!event.results) return;
+        const { fullText, finalOnlyText } = assembleSpeechResults(baseTranscriptRef.current, event.results);
+        latestFinalTextRef.current = finalOnlyText;
+        setTranscript(fullText);
       };
 
       rec.onerror = (e: any) => {
@@ -218,6 +213,10 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
 
       rec.onend = () => {
         setIsListening(false);
+        if (latestFinalTextRef.current) {
+          baseTranscriptRef.current = latestFinalTextRef.current;
+          setTranscript(latestFinalTextRef.current);
+        }
       };
 
       recognitionRef.current = rec;
@@ -239,6 +238,10 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
       clearTimeout(speechTimeoutRef.current);
       speechTimeoutRef.current = null;
     }
+    if (latestFinalTextRef.current) {
+      baseTranscriptRef.current = latestFinalTextRef.current;
+      setTranscript(latestFinalTextRef.current);
+    }
   };
 
   useEffect(() => {
@@ -252,6 +255,7 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
         return;
       }
 
+      window.speechSynthesis.onvoiceschanged = null;
       window.speechSynthesis.cancel(); // Halt previous speech
 
       const cleanTitle = title.replace(/[•\n]/g, ' ').trim();
@@ -295,6 +299,7 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
     // Clean up
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null;
         window.speechSynthesis.cancel();
       }
       stopRecordingInstance();
@@ -313,6 +318,8 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
   const handleReset = () => {
     stopRecordingInstance();
     setTranscript('');
+    baseTranscriptRef.current = '';
+    latestFinalTextRef.current = '';
     setErrorMessage(null);
     startRecording();
   };
@@ -503,7 +510,11 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
             
             <textarea
               value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
+              onChange={(e) => {
+                setTranscript(e.target.value);
+                baseTranscriptRef.current = e.target.value;
+                latestFinalTextRef.current = e.target.value;
+              }}
               disabled={isAiGenerating || ttsSpeaking}
               placeholder={isListening ? "Speak now... what you did in this role, challenges you faced..." : "Your spoken response will appear here in real time. You can also edit it before generating."}
               style={{
