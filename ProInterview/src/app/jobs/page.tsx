@@ -45,11 +45,20 @@ interface MatchedJob {
 }
 
 interface ResumeProfile {
+    careerDomain?: string;
+    subDomain?: string;
     roles: string[];
+    relatedRoles?: string[];
     skills: string[];
+    toolsAndTechnologies?: string[];
     keywords: string[];
     seniority: string;
     summary: string;
+    confidence?: number;
+    targetDomain?: string;
+    isUserSpecified?: boolean;
+    projects?: string[];
+    education?: string[];
 }
 
 interface WebSearchLink {
@@ -76,6 +85,7 @@ export default function JobsPage() {
     const [profile, setProfile] = useState<ResumeProfile | null>(null);
     const [webSearches, setWebSearches] = useState<WebSearchLink[]>([]);
     const [location, setLocation] = useState("");
+    const [targetDomain, setTargetDomain] = useState("");
     const [resumeText, setResumeText] = useState("");
     const [resumeFileName, setResumeFileName] = useState("");
     const [loading, setLoading] = useState(false);
@@ -83,6 +93,7 @@ export default function JobsPage() {
     const [error, setError] = useState("");
     const [scorecardId, setScorecardId] = useState("");
     const [sourcesTried, setSourcesTried] = useState<string[]>([]);
+    const [queries, setQueries] = useState<string[]>([]);
     const [usedFallback, setUsedFallback] = useState(false);
 
     // Multi-step layout states
@@ -236,7 +247,7 @@ export default function JobsPage() {
             }, 800);
             return () => clearTimeout(delayDebounceFn);
         }
-    }, [location, resumeText]);
+    }, [location, resumeText, targetDomain]);
 
     const isLight = theme === "light" || theme === "eyeprotect";
 
@@ -467,7 +478,7 @@ export default function JobsPage() {
         }));
 
         try {
-            const descriptionToPass = (job.description || "").trim() || `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Focus: Full Stack Development, Problem Solving, Software Architecture.`;
+            const descriptionToPass = (job.description || "").trim() || `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Focus: Professional excellence, domain problem solving, and key project execution.`;
             const res = await authFetch("/api/ats-match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -556,6 +567,11 @@ export default function JobsPage() {
         if (!silent) setLoading(true);
         try {
             localStorage.setItem("preferredJobLocation", location.trim());
+            if (targetDomain.trim()) {
+                localStorage.setItem("preferredJobDomain", targetDomain.trim());
+            } else {
+                localStorage.removeItem("preferredJobDomain");
+            }
             // Only persist to localStorage cache if it's not a temporary uploaded resume
             if (!isResumeTemporary) {
                 localStorage.setItem("userResumeCvText", resumeText.trim());
@@ -569,12 +585,14 @@ export default function JobsPage() {
                     resumeText: resumeText.trim(),
                     location: location.trim(),
                     experienceFilter,
+                    targetDomain: targetDomain.trim(),
                 }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || "Job search failed");
             setJobs(data.jobs || []);
             setProfile(data.profile || null);
+            setQueries(data.queries || []);
             setWebSearches(data.webSearches || []);
             setSourcesTried(data.sourcesTried || []);
             setUsedFallback(Boolean(data.usedFallback));
@@ -907,6 +925,55 @@ export default function JobsPage() {
                         </div>
                     </div>
 
+                    {/* Target Job Field / Domain (Optional Typed Input) */}
+                    <div>
+                        <div className="flex items-center justify-between mb-1.5">
+                            <label className={`text-xs uppercase tracking-widest flex items-center gap-1.5 font-bold ${
+                                isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/40"
+                            }`}>
+                                <Briefcase className="w-3.5 h-3.5 text-emerald-500" /> Target Job Field / Domain
+                                <span className={`text-[10px] font-normal normal-case tracking-normal px-2 py-0.5 rounded-full border ${
+                                    isLight ? "bg-slate-100 text-slate-600 border-slate-300" : "bg-white/5 text-white/50 border-white/10"
+                                }`}>
+                                    Optional
+                                </span>
+                            </label>
+                            {targetDomain && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTargetDomain("");
+                                        handleAutoRefresh();
+                                    }}
+                                    className={`text-[10px] font-semibold underline transition cursor-pointer ${
+                                        isLight ? "text-slate-500 hover:text-slate-700" : "text-white/40 hover:text-white/70"
+                                    }`}
+                                >
+                                    Clear
+                                </button>
+                            )}
+                        </div>
+                        <input
+                            type="text"
+                            value={targetDomain}
+                            onChange={(e) => setTargetDomain(e.target.value)}
+                            onBlur={handleAutoRefresh}
+                            placeholder="e.g. Mechanical Engineering, Finance, Civil, Healthcare, UI/UX, Marketing…"
+                            className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                theme === "light"
+                                    ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 shadow-sm"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
+                                    : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500/50"
+                            }`}
+                        />
+                        <p className={`text-[11px] mt-1.5 ${
+                            theme === "light" ? "text-slate-500" : theme === "eyeprotect" ? "text-[#78716c]" : "text-white/40"
+                        }`}>
+                            Type your preferred career field or leave blank to automatically detect it from your resume (education, projects & experience).
+                        </p>
+                    </div>
+
                     {/* Filter Option Below Location */}
                     <div>
                         <label className={`text-xs uppercase tracking-widest flex items-center justify-between mb-2 font-bold ${
@@ -926,7 +993,7 @@ export default function JobsPage() {
                                 { id: "fresher", label: "🌱 Freshers (0 YOE)", desc: "Entry-level & new grads" },
                                 { id: "1year", label: "⚡ 1 Year Exp", desc: "0-1 year experience" },
                                 { id: "2year", label: "🚀 2 Years Exp", desc: "1-2 years experience" },
-                                { id: "3plus", label: "🔥 3+ Years Exp", desc: "Mid & Senior engineers" },
+                                { id: "3plus", label: "🔥 3+ Years Exp", desc: "Mid & Senior professionals" },
                                 { id: "on_campus", label: "🏫 On-Campus", desc: "University hiring drives" },
                                 { id: "off_campus", label: "💼 Off-Campus", desc: "Direct lateral openings" },
                             ].map((f) => (
@@ -1004,7 +1071,10 @@ export default function JobsPage() {
                     <div className="space-y-3 w-full max-w-full">
                     <div className="flex items-center justify-between">
                         <h2 className="text-base font-bold flex items-center gap-2 flex-wrap">
-                            <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" /> Matched job openings ({filteredJobs.length})
+                            <Sparkles className="w-4 h-4 text-emerald-500 shrink-0" />
+                            {profile?.careerDomain
+                                ? `${profile.careerDomain} opportunities (${filteredJobs.length})`
+                                : `Matched job openings (${filteredJobs.length})`}
                             {location && (
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                                     isLight
@@ -1126,9 +1196,59 @@ export default function JobsPage() {
                     )}
 
                     {profile && (
-                        <div className={`p-3 rounded-xl border text-xs leading-relaxed ${isLight ? "bg-white border-slate-200" : "bg-white/5 border-white/5"}`}>
-                            <span className="font-bold">Detected target profile: </span>
-                            {profile.summary || profile.roles.join(", ")} · {profile.skills.slice(0, 8).join(", ")}
+                        <div className={`p-3.5 rounded-xl border text-xs space-y-2 ${isLight ? "bg-white border-slate-200 shadow-sm" : "bg-white/5 border-white/10"}`}>
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-2 border-white/10">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-bold">{profile.isUserSpecified ? "Target Field:" : "Detected Domain:"}</span>
+                                    <span className="px-2 py-0.5 rounded-md font-semibold text-[11px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                                        {profile.isUserSpecified ? "🎯" : "🔍"} {profile.careerDomain || "General / Multidisciplinary"}
+                                        {profile.subDomain ? ` (${profile.subDomain})` : ""}
+                                        {profile.isUserSpecified && <span className="opacity-75 text-[9px] uppercase tracking-wider ml-1">(User Specified)</span>}
+                                    </span>
+                                </div>
+                                <span className="text-[10px] opacity-70">
+                                    Seniority: <span className="font-semibold capitalize">{profile.seniority}</span>
+                                </span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                                <div>
+                                    <span className="text-slate-400 font-medium">Target Roles: </span>
+                                    <span className="font-semibold">{profile.roles.join(", ")}</span>
+                                </div>
+                                {profile.relatedRoles && profile.relatedRoles.length > 0 && (
+                                    <div>
+                                        <span className="text-slate-400 font-medium">Related Roles: </span>
+                                        <span className="font-semibold">{profile.relatedRoles.join(", ")}</span>
+                                    </div>
+                                )}
+                                <div>
+                                    <span className="text-slate-400 font-medium">Key Skills: </span>
+                                    <span>{profile.skills.slice(0, 8).join(", ")}</span>
+                                </div>
+                                {profile.education && profile.education.length > 0 && (
+                                    <div>
+                                        <span className="text-slate-400 font-medium">Education: </span>
+                                        <span>{profile.education.slice(0, 3).join(", ")}</span>
+                                    </div>
+                                )}
+                                {profile.projects && profile.projects.length > 0 && (
+                                    <div>
+                                        <span className="text-slate-400 font-medium">Projects: </span>
+                                        <span>{profile.projects.slice(0, 2).join("; ")}</span>
+                                    </div>
+                                )}
+                                {queries && queries.length > 0 && (
+                                    <div className="sm:col-span-2">
+                                        <span className="text-slate-400 font-medium">Search Queries: </span>
+                                        <span className="font-mono text-[10px]">{queries.slice(0, 4).join(" • ")}</span>
+                                    </div>
+                                )}
+                            </div>
+                            {profile.summary && (
+                                <p className="text-[11px] italic opacity-80 pt-1 border-t border-white/5">
+                                    {profile.summary}
+                                </p>
+                            )}
                         </div>
                     )}
 
