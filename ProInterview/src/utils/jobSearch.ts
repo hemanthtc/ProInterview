@@ -1,7 +1,4 @@
-import { detectCareerDomain } from "./domainTaxonomy";
-
 export type JobType = "full-time" | "intern" | "contract";
-export type SeniorityLevel = "intern" | "entry" | "junior" | "mid" | "senior" | "lead" | "unknown";
 
 export interface MatchedJob {
     id: string;
@@ -21,26 +18,110 @@ export interface MatchedJob {
 }
 
 export interface ResumeProfile {
-    careerDomain: string;
-    subDomain?: string;
     roles: string[];
-    relatedRoles: string[];
     skills: string[];
-    softSkills?: string[];
-    industries?: string[];
-    jobFunctions?: string[];
-    education?: string[];
-    seniority: SeniorityLevel | string;
-    yearsOfExperience?: number;
-    certifications?: string[];
-    toolsAndTechnologies?: string[];
     keywords: string[];
+    seniority: string;
     summary: string;
-    confidence?: number;
-    targetDomain?: string;
-    isUserSpecified?: boolean;
-    projects?: string[];
 }
+
+const TECH_SKILLS = [
+    "javascript",
+    "typescript",
+    "python",
+    "java",
+    "kotlin",
+    "swift",
+    "go",
+    "golang",
+    "rust",
+    "c++",
+    "c#",
+    "ruby",
+    "php",
+    "scala",
+    "react",
+    "next.js",
+    "nextjs",
+    "vue",
+    "angular",
+    "node",
+    "nodejs",
+    "express",
+    "django",
+    "flask",
+    "spring",
+    "fastapi",
+    "aws",
+    "gcp",
+    "azure",
+    "docker",
+    "kubernetes",
+    "k8s",
+    "terraform",
+    "postgres",
+    "postgresql",
+    "mysql",
+    "mongodb",
+    "redis",
+    "graphql",
+    "rest",
+    "sql",
+    "nosql",
+    "machine learning",
+    "ml",
+    "deep learning",
+    "nlp",
+    "pytorch",
+    "tensorflow",
+    "pandas",
+    "spark",
+    "hadoop",
+    "kafka",
+    "ci/cd",
+    "jenkins",
+    "github actions",
+    "linux",
+    "git",
+    "figma",
+    "ui/ux",
+    "product management",
+    "system design",
+    "microservices",
+    "devops",
+    "sre",
+    "android",
+    "ios",
+    "flutter",
+    "react native",
+    "tailwind",
+    "html",
+    "css",
+];
+
+const ROLE_HINTS = [
+    "frontend engineer",
+    "backend engineer",
+    "full stack",
+    "full-stack",
+    "software engineer",
+    "software developer",
+    "sde",
+    "ml engineer",
+    "data scientist",
+    "data engineer",
+    "devops engineer",
+    "sre",
+    "product manager",
+    "product designer",
+    "ui/ux designer",
+    "mobile engineer",
+    "android developer",
+    "ios developer",
+    "qa engineer",
+    "security engineer",
+    "platform engineer",
+];
 
 function stripHtml(html: string): string {
     return html
@@ -85,124 +166,70 @@ function canonicalSkill(skill: string): string {
     if (s === "postgresql" || s === "postgres") return "PostgreSQL";
     if (s === "k8s" || s === "kubernetes") return "Kubernetes";
     if (s === "ml" || s === "machine learning") return "Machine Learning";
-    if (s === "autocad" || s === "cad") return "AutoCAD";
-    if (s === "solidworks") return "SolidWorks";
-    if (s === "staad.pro" || s === "staad pro") return "STAAD.Pro";
-    if (s === "tally" || s === "tally prime") return "Tally";
     return skill;
 }
 
-/** Domain-neutral heuristic resume profile when Gemini is unavailable or fails. Accepts optional user-typed targetDomain. */
-export function extractResumeProfileHeuristic(resumeText: string, userTargetDomain?: string): ResumeProfile {
-    const detected = detectCareerDomain(resumeText, userTargetDomain);
-
-    // Seniority detection
-    let seniority: SeniorityLevel = "mid";
-    if (/\b(intern|internship|trainee|apprentice|student|campus)\b/i.test(resumeText)) {
-        seniority = "intern";
-    } else if (/\b(fresher|entry[- ]level|0[\s-]?year|0[\s-]?yr|graduate|junior)\b/i.test(resumeText)) {
-        seniority = "entry";
-    } else if (/\b(lead|director|vp|principal|head of)\b/i.test(resumeText)) {
-        seniority = "lead";
-    } else if (/\b(senior|sr\.|staff)\b/i.test(resumeText)) {
-        seniority = "senior";
+/** Heuristic resume profile when Gemini is unavailable or fails. */
+export function extractResumeProfileHeuristic(resumeText: string): ResumeProfile {
+    const lower = resumeText.toLowerCase();
+    const matchedRaw = [...TECH_SKILLS]
+        .sort((a, b) => b.length - a.length)
+        .filter((s) => lower.includes(s));
+    const skills: string[] = [];
+    const covered = new Set<string>();
+    for (const raw of matchedRaw) {
+        // Skip short tokens already covered by a longer hit (e.g. "node" inside "nodejs"/"node.js")
+        if ([...covered].some((c) => c.includes(raw) || raw.includes(c))) continue;
+        covered.add(raw);
+        skills.push(canonicalSkill(raw));
     }
+    const roles = ROLE_HINTS.filter((r) => lower.includes(r)).map((r) =>
+        r
+            .split(" ")
+            .map((w) => (w === "ui/ux" || w === "sde" || w === "sre" || w === "ml" ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
+            .join(" ")
+    );
 
-    // Years of experience detection
-    let yearsOfExperience: number | undefined;
-    const expMatch = resumeText.match(/(\d+)\+?\s*(?:years?|yrs?)(?:\s+of)?\s+experience/i) ||
-                     resumeText.match(/experience\s*:\s*(\d+)\+?\s*(?:years?|yrs?)/i);
-    if (expMatch && expMatch[1]) {
-        const parsed = parseInt(expMatch[1], 10);
-        if (!isNaN(parsed) && parsed >= 0 && parsed <= 50) {
-            yearsOfExperience = parsed;
-        }
+    let seniority = "mid";
+    if (/\b(intern|internship|student|fresher|entry[- ]level|junior)\b/i.test(resumeText)) seniority = "junior";
+    else if (/\b(staff|principal|director|lead|senior|sr\.)\b/i.test(resumeText)) seniority = "senior";
+
+    const keywordHits = [...skills, ...roles];
+    if (roles.length === 0) {
+        if (skills.some((s) => /react|vue|angular|frontend|css|html|figma/i.test(s))) roles.push("Frontend Engineer");
+        else if (skills.some((s) => /python|java|go|node|django|spring|backend/i.test(s))) roles.push("Backend Engineer");
+        else if (skills.some((s) => /ml|pytorch|tensorflow|data/i.test(s))) roles.push("ML Engineer");
+        else roles.push("Software Engineer");
     }
-
-    // Education detection: degrees, branches, universities
-    const education: string[] = [];
-    const eduPatterns = [
-        /\b(b\.?e\.?|b\.?tech\.?|m\.?e\.?|m\.?tech\.?|diploma)\s+(?:in\s+)?([a-z\s]+?)(?:,|\.|\n|$)/gi,
-        /\b(b\.?com\.?|m\.?com\.?|mba|bba|pgdm|ca|cfa|cpa|bca|mca|b\.?sc\.?|m\.?sc\.?|mbbs|bds|b\.?pharm|b\.?des\.?|ll\.?b\.?|ll\.?m\.?|b\.?arch)\b/gi,
-    ];
-    for (const pat of eduPatterns) {
-        const matches = resumeText.match(pat);
-        if (matches) {
-            for (const m of matches) {
-                const cleaned = m.trim().replace(/[\r\n]+/g, " ");
-                if (cleaned.length > 2 && !education.includes(cleaned)) {
-                    education.push(cleaned);
-                }
-            }
-        }
-    }
-
-    // Academic & Industry Projects detection
-    const projects: string[] = [];
-    const projectSection = resumeText.match(/(?:projects?|academic projects?|key projects?)\s*[:\n]([\s\S]*?)(?=(?:experience|work history|education|skills|certifications|awards|$))/i);
-    if (projectSection && projectSection[1]) {
-        const lines = projectSection[1].split(/\n/).map((l) => l.trim().replace(/^[-*•\d.]\s*/, "")).filter((l) => l.length > 5 && l.length < 100);
-        projects.push(...lines.slice(0, 4));
-    }
-
-    const keywordHits = uniqueStrings([
-        ...detected.skills.map(canonicalSkill),
-        ...detected.toolsAndTechnologies.map(canonicalSkill),
-        ...detected.roles,
-        ...detected.relatedRoles,
-    ], 20);
-
-    const summary = detected.isUserSpecified
-        ? `Targeting ${detected.careerDomain} with ${seniority}-level experience in ${uniqueStrings(detected.roles, 2).join(", ")}`
-        : `Inferred ${seniority}-level ${detected.careerDomain} profile focused on ${uniqueStrings(detected.roles, 2).join(", ") || detected.careerDomain}`;
 
     return {
-        careerDomain: detected.careerDomain,
-        subDomain: detected.subDomain,
-        roles: uniqueStrings(detected.roles, 5),
-        relatedRoles: uniqueStrings(detected.relatedRoles, 5),
-        skills: uniqueStrings(detected.skills.map(canonicalSkill), 15),
-        toolsAndTechnologies: uniqueStrings(detected.toolsAndTechnologies.map(canonicalSkill), 10),
-        industries: detected.industries,
-        education: education.slice(0, 4),
+        roles: uniqueStrings(roles, 5),
+        skills: uniqueStrings(skills, 15),
+        keywords: uniqueStrings(keywordHits, 20),
         seniority,
-        yearsOfExperience,
-        keywords: keywordHits,
-        summary,
-        confidence: detected.confidence,
-        targetDomain: userTargetDomain?.trim() || undefined,
-        isUserSpecified: detected.isUserSpecified,
-        projects: projects.length ? projects : undefined,
+        summary: `Inferred ${seniority}-level profile focused on ${uniqueStrings(roles, 2).join(", ") || "software"}`,
     };
 }
 
 export function buildSearchQueries(profile: ResumeProfile, location: string, filter?: string): string[] {
     const loc = location.trim();
-    const primaryRole = profile.roles[0] || profile.careerDomain || "Professional";
-    const relatedRole = profile.relatedRoles[0] || (profile.roles.length > 1 ? profile.roles[1] : undefined);
-    const domain = profile.careerDomain;
-    const topSkills = (profile.skills || []).slice(0, 2).join(" ");
+    const primaryRole = profile.roles[0] || "Software Engineer";
+    const topSkills = profile.skills.slice(0, 3).join(" ");
     
     if (filter === "intern") {
-        const queries = [
-            [primaryRole, "Intern", loc].filter(Boolean).join(" ").trim(),
-            relatedRole ? [relatedRole, "Intern", loc].filter(Boolean).join(" ").trim() : "",
-            [domain, "Intern", loc].filter(Boolean).join(" ").trim(),
-            ["Internship", loc].filter(Boolean).join(" ").trim(),
-        ].filter(Boolean);
-        return uniqueStrings(queries, 4);
+        return uniqueStrings([
+            `${primaryRole} Intern ${loc}`.trim(),
+            `Software Engineering Intern ${loc}`.trim(),
+            `Developer Intern ${loc}`.trim(),
+            `Internship ${loc}`.trim(),
+        ], 4);
     }
 
     const queries = [
+        [primaryRole, topSkills, loc].filter(Boolean).join(" ").trim(),
         [primaryRole, loc].filter(Boolean).join(" ").trim(),
-        domain && !primaryRole.toLowerCase().includes(domain.toLowerCase())
-            ? [domain, primaryRole, loc].filter(Boolean).join(" ").trim()
-            : "",
-        topSkills ? [primaryRole, topSkills, loc].filter(Boolean).join(" ").trim() : "",
-        relatedRole ? [relatedRole, loc].filter(Boolean).join(" ").trim() : "",
-        profile.subDomain ? [profile.subDomain, primaryRole, loc].filter(Boolean).join(" ").trim() : "",
+        profile.skills.slice(0, 2).join(" "),
     ].filter(Boolean);
-
     return uniqueStrings(queries, 4);
 }
 
@@ -278,75 +305,34 @@ function scoreJob(
     filter?: string
 ): MatchedJob {
     const hay = `${job.role} ${job.company} ${job.location} ${job.tags.join(" ")} ${job.description}`.toLowerCase();
-    const roleLower = job.role.toLowerCase();
     let score = 0;
     const reasons: string[] = [];
 
-    // Cross-domain mismatch check:
-    // If candidate domain is non-software (e.g. Mechanical, Civil, Finance, HR, Healthcare)
-    // and job is specifically a Software Engineer / SDE / Web Dev role, penalize heavily
-    const candidateIsTech = /software|it|computer|data|analytics|web|full[\s-]?stack/i.test(profile.careerDomain);
-    const jobIsTech = /\b(software engineer|software developer|sde|frontend developer|backend developer|full[\s-]?stack developer|react developer|node\.?js developer|devops engineer)\b/i.test(roleLower);
-
-    if (!candidateIsTech && jobIsTech) {
-        score -= 40;
-    } else {
-        // Role match
-        let roleMatched = false;
-        for (const role of profile.roles) {
-            const r = role.toLowerCase();
-            if (r && hay.includes(r)) {
-                score += 26;
-                reasons.push(`Role match: ${role}`);
-                roleMatched = true;
-                break;
-            }
-            const parts = r.split(/\s+/).filter((p) => p.length > 3);
-            const partHits = parts.filter((p) => hay.includes(p)).length;
-            if (partHits >= 1) {
-                score += 12 + partHits * 3;
-                reasons.push(`Related to ${role}`);
-                roleMatched = true;
-                break;
-            }
+    for (const role of profile.roles) {
+        const r = role.toLowerCase();
+        if (r && hay.includes(r)) {
+            score += 22;
+            reasons.push(`Role overlap: ${role}`);
+            break;
         }
-
-        if (!roleMatched && profile.relatedRoles) {
-            for (const rel of profile.relatedRoles) {
-                const r = rel.toLowerCase();
-                if (r && hay.includes(r)) {
-                    score += 18;
-                    reasons.push(`Related role: ${rel}`);
-                    break;
-                }
-            }
+        const parts = r.split(/\s+/).filter((p) => p.length > 3);
+        const partHits = parts.filter((p) => hay.includes(p)).length;
+        if (partHits >= 1) {
+            score += 10 + partHits * 4;
+            reasons.push(`Related to ${role}`);
+            break;
         }
     }
 
-    // Domain match
-    if (profile.careerDomain && profile.careerDomain !== "General / Multidisciplinary") {
-        const domLower = profile.careerDomain.toLowerCase();
-        if (hay.includes(domLower) || (profile.subDomain && hay.includes(profile.subDomain.toLowerCase()))) {
-            score += 16;
-            reasons.push(`Domain match: ${profile.careerDomain}`);
-        }
-        if (profile.isUserSpecified && profile.targetDomain && hay.includes(profile.targetDomain.toLowerCase())) {
-            score += 10;
-            reasons.push(`Target field match: ${profile.targetDomain}`);
-        }
-    }
-
-    // Skill & tool hits
-    const allCandidateSkills = [...(profile.skills || []), ...(profile.toolsAndTechnologies || [])];
-    const skillHits = allCandidateSkills.filter((s) => s.length > 2 && hay.includes(s.toLowerCase()));
+    const skillHits = profile.skills.filter((s) => hay.includes(s.toLowerCase()));
     if (skillHits.length) {
-        score += Math.min(32, skillHits.length * 5);
+        score += Math.min(36, skillHits.length * 6);
         reasons.push(`Skills: ${skillHits.slice(0, 4).join(", ")}`);
     }
 
-    for (const kw of profile.keywords || []) {
-        if (kw.length > 3 && hay.includes(kw.toLowerCase()) && !skillHits.some((s) => s.toLowerCase() === kw.toLowerCase())) {
-            score += 2;
+    for (const kw of profile.keywords) {
+        if (kw.length > 2 && hay.includes(kw.toLowerCase()) && !skillHits.map((s) => s.toLowerCase()).includes(kw.toLowerCase())) {
+            score += 3;
         }
     }
 
@@ -359,13 +345,11 @@ function scoreJob(
             score += 30;
             reasons.unshift("Internship match");
         }
-    } else if (profile.seniority === "junior" || profile.seniority === "entry" || profile.seniority === "intern") {
-        if (job.type === "intern" || /\b(fresher|entry|trainee|junior|0[\s-]?year)\b/i.test(hay)) {
-            score += 10;
-            reasons.push("Entry-level friendly");
-        }
+    } else if (profile.seniority === "junior" && job.type === "intern") {
+        score += 8;
+        reasons.push("Internship-friendly for junior profile");
     }
-    if (profile.seniority === "senior" && /\b(senior|staff|lead|principal|manager)\b/i.test(job.role)) {
+    if (profile.seniority === "senior" && /\b(senior|staff|lead|principal)\b/i.test(job.role)) {
         score += 8;
         reasons.push("Seniority aligned");
     }
@@ -718,20 +702,16 @@ export async function searchMatchingJobs(
     filter?: string
 ): Promise<{ jobs: MatchedJob[]; sourcesTried: string[]; queries: string[] }> {
     const queries = buildSearchQueries(profile, preferredLocation, filter);
-    const primary = queries[0] || profile.roles[0] || profile.careerDomain || "Professional";
+    const primary = queries[0] || (filter === "intern" ? "Software Engineer Intern" : profile.roles[0] || "software engineer");
     const sourcesTried: string[] = [];
     const collected: Omit<MatchedJob, "matchPercent" | "matchReasons">[] = [];
 
-    // Adzuna query uses candidate's actual role and filter instead of hardcoded software
-    const adzunaQuery = filter === "intern"
-        ? `${profile.roles[0] || profile.careerDomain} Intern`
-        : (profile.roles[0] || profile.careerDomain || "Jobs");
-
+    const adzunaRole = filter === "intern" ? "Software Intern" : profile.roles[0] || "Software Engineer";
     const tasks: Array<{ name: string; run: () => Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> }> = [
         { name: "Remotive", run: () => fetchRemotive(primary) },
         { name: "Arbeitnow", run: () => fetchArbeitnow(primary) },
         { name: "RemoteOK", run: () => fetchRemoteOK(primary) },
-        { name: "Adzuna India", run: () => fetchAdzunaIndia(adzunaQuery, preferredLocation) },
+        { name: "Adzuna India", run: () => fetchAdzunaIndia(adzunaRole, preferredLocation) },
     ];
 
     const settled = await Promise.allSettled(
@@ -749,21 +729,13 @@ export async function searchMatchingJobs(
         if (result.status === "fulfilled") collected.push(...result.value);
     }
 
-    // Deduplicate jobs by unique composite key and url
-    const seen = new Set<string>();
-    const deduplicated: Omit<MatchedJob, "matchPercent" | "matchReasons">[] = [];
+    const byId = new Map<string, Omit<MatchedJob, "matchPercent" | "matchReasons">>();
     for (const job of collected) {
         if (!job.applyUrl) continue;
-        const normKey = `${job.company.toLowerCase().trim()}::${job.role.toLowerCase().trim()}::${job.location.toLowerCase().trim()}`;
-        const urlKey = job.applyUrl.toLowerCase().trim();
-        if (seen.has(normKey) || seen.has(urlKey) || seen.has(job.id)) continue;
-        seen.add(normKey);
-        seen.add(urlKey);
-        seen.add(job.id);
-        deduplicated.push(job);
+        if (!byId.has(job.id)) byId.set(job.id, job);
     }
 
-    const ranked = deduplicated
+    const ranked = [...byId.values()]
         .map((job) => scoreJob(job, profile, preferredLocation, filter))
         .filter((j) => j.matchPercent >= 12)
         .sort((a, b) => b.matchPercent - a.matchPercent)
@@ -773,18 +745,16 @@ export async function searchMatchingJobs(
 }
 
 export function webSearchUrls(profile: ResumeProfile, location: string): { label: string; url: string }[] {
-    const target = profile.roles[0] || profile.careerDomain || "Jobs";
-    const loc = location.trim();
-    const q = encodeURIComponent([target, "jobs", loc].filter(Boolean).join(" "));
+    const q = encodeURIComponent([profile.roles[0] || "software engineer", "jobs", location].filter(Boolean).join(" "));
     return [
         { label: "Google Jobs search", url: `https://www.google.com/search?q=${q}` },
         {
             label: "LinkedIn Jobs search",
-            url: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(target)}&location=${encodeURIComponent(loc)}`,
+            url: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(profile.roles[0] || "software engineer")}&location=${encodeURIComponent(location || "")}`,
         },
         {
             label: "RemoteOK search",
-            url: `https://remoteok.com/remote-jobs?q=${encodeURIComponent(`${target} ${loc}`.trim())}`
+            url: `https://remoteok.com/remote-jobs?q=${encodeURIComponent(`${profile.roles[0] || "software engineer"} ${location || ""}`.trim())}`
         }
     ];
 }
