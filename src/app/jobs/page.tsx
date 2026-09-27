@@ -45,8 +45,30 @@ interface MatchedJob {
 }
 
 interface ResumeProfile {
+    education?: {
+        degree?: string;
+        field?: string;
+        specialization?: string;
+        level?: string;
+        graduationYear?: string;
+        normalizedDegree?: string;
+        normalizedField?: string;
+    };
+    primaryDomains?: string[];
+    secondaryDomains?: string[];
     roles: string[];
     skills: string[];
+    technicalSkills?: string[];
+    professionalSkills?: string[];
+    projects?: {
+        title: string;
+        domain?: string;
+        technologies?: string[];
+        skills?: string[];
+    }[];
+    experience?: string[];
+    certifications?: string[];
+    languages?: string[];
     keywords: string[];
     seniority: string;
     summary: string;
@@ -76,6 +98,7 @@ export default function JobsPage() {
     const [profile, setProfile] = useState<ResumeProfile | null>(null);
     const [webSearches, setWebSearches] = useState<WebSearchLink[]>([]);
     const [location, setLocation] = useState("");
+    const [jobSearchQuery, setJobSearchQuery] = useState("");
     const [resumeText, setResumeText] = useState("");
     const [resumeFileName, setResumeFileName] = useState("");
     const [loading, setLoading] = useState(false);
@@ -236,7 +259,7 @@ export default function JobsPage() {
             }, 800);
             return () => clearTimeout(delayDebounceFn);
         }
-    }, [location, resumeText]);
+    }, [location, resumeText, jobSearchQuery]);
 
     const isLight = theme === "light" || theme === "eyeprotect";
 
@@ -569,6 +592,7 @@ export default function JobsPage() {
                     resumeText: resumeText.trim(),
                     location: location.trim(),
                     experienceFilter,
+                    jobSearchQuery: jobSearchQuery.trim(),
                 }),
             });
             const data = await res.json();
@@ -907,6 +931,36 @@ export default function JobsPage() {
                         </div>
                     </div>
 
+                    {/* Optional Specific Job Search Field */}
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className={`text-xs uppercase tracking-widest flex items-center gap-2 font-bold ${
+                                isLight ? (theme === "eyeprotect" ? "text-[#57534e]" : "text-slate-600") : "text-white/40"
+                            }`}>
+                                <Briefcase className="w-3.5 h-3.5 text-emerald-500" /> Search for a specific job (optional)
+                            </label>
+                            <span className={`text-[10px] ${isLight ? "text-slate-500" : "text-white/40"}`}>
+                                Optional query
+                            </span>
+                        </div>
+                        <input
+                            value={jobSearchQuery}
+                            onChange={(e) => setJobSearchQuery(e.target.value)}
+                            onBlur={handleAutoRefresh}
+                            placeholder="Example: Accountant, Marketing Executive, Data Analyst…"
+                            className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none transition ${
+                                theme === "light"
+                                    ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-emerald-600 shadow-sm"
+                                    : theme === "eyeprotect"
+                                    ? "bg-[#fffcf5] border-[#8c8578] text-[#1c1917] placeholder:text-[#78716c] focus:border-teal-700"
+                                    : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-emerald-500/50"
+                            }`}
+                        />
+                        <p className={`text-[11px] mt-1 ${isLight ? "text-slate-500" : "text-white/40"}`}>
+                            Leave empty to automatically discover roles derived from your education and career domain.
+                        </p>
+                    </div>
+
                     {/* Filter Option Below Location */}
                     <div>
                         <label className={`text-xs uppercase tracking-widest flex items-center justify-between mb-2 font-bold ${
@@ -1126,9 +1180,26 @@ export default function JobsPage() {
                     )}
 
                     {profile && (
-                        <div className={`p-3 rounded-xl border text-xs leading-relaxed ${isLight ? "bg-white border-slate-200" : "bg-white/5 border-white/5"}`}>
-                            <span className="font-bold">Detected target profile: </span>
-                            {profile.summary || profile.roles.join(", ")} · {profile.skills.slice(0, 8).join(", ")}
+                        <div className={`p-3 rounded-xl border text-xs leading-relaxed space-y-1.5 ${isLight ? "bg-white border-slate-200" : "bg-white/5 border-white/5"}`}>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <span className="font-bold">Education Domain:</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30 text-[11px]">
+                                    {profile.education?.normalizedDegree || profile.education?.degree || profile.primaryDomains?.join(" / ") || "Profile"}
+                                </span>
+                                {profile.education?.normalizedField && (
+                                    <span className="opacity-75 text-[11px]">({profile.education.normalizedField})</span>
+                                )}
+                            </div>
+                            <div className="text-[11px] opacity-80">
+                                <span className="font-semibold">Target Job Families: </span>
+                                {profile.roles.slice(0, 5).join(", ")}
+                            </div>
+                            {profile.skills.length > 0 && (
+                                <div className="text-[11px] opacity-70">
+                                    <span className="font-semibold">Key Skills: </span>
+                                    {profile.skills.slice(0, 8).join(", ")}
+                                </div>
+                            )}
                         </div>
                     )}
 
@@ -1203,11 +1274,25 @@ export default function JobsPage() {
                                             <p className={`text-xs mt-2 ${isLight ? "text-slate-700" : "text-white/70"}`}>{job.description}</p>
                                             
                                             {job.matchReasons && job.matchReasons.length > 0 && (
-                                                <ul className={`mt-2 text-[10px] list-disc pl-4 space-y-0.5 ${isLight ? "text-slate-500" : "text-white/45"}`}>
-                                                    {job.matchReasons.map((reason) => (
-                                                        <li key={reason}>{reason}</li>
-                                                    ))}
-                                                </ul>
+                                                <div className={`mt-2.5 p-2 rounded-xl border text-[11px] ${
+                                                    isLight ? "bg-slate-50 border-slate-200" : "bg-white/[0.03] border-white/5"
+                                                }`}>
+                                                    <span className="font-bold text-[10px] uppercase tracking-wider block mb-1 opacity-70">
+                                                        Why this job matches:
+                                                    </span>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-[10px]">
+                                                        {job.matchReasons.map((reason, idx) => (
+                                                            <div key={idx} className="flex items-start gap-1 leading-snug">
+                                                                <span className={reason.startsWith("✓") ? "text-emerald-500 font-bold" : reason.startsWith("△") ? "text-amber-500 font-bold" : "opacity-60"}>
+                                                                    {reason.startsWith("✓") || reason.startsWith("△") ? "" : "• "}
+                                                                </span>
+                                                                <span className={reason.startsWith("✓") ? (isLight ? "text-slate-800" : "text-white/80") : isLight ? "text-slate-600" : "text-white/60"}>
+                                                                    {reason}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
                                             )}
 
                                             <div className="flex flex-wrap gap-1.5 mt-3">
