@@ -991,7 +991,7 @@ export default function JobsPage() {
                                 { id: "fresher", label: "🌱 Freshers (0 YOE)", desc: "Entry-level & new grads" },
                                 { id: "1year", label: "⚡ 1 Year Exp", desc: "0-1 year experience" },
                                 { id: "2year", label: "🚀 2 Years Exp", desc: "1-2 years experience" },
-                                { id: "3plus", label: "🔥 3+ Years Exp", desc: "Mid & Senior engineers" },
+                                { id: "3plus", label: "🔥 3+ Years Exp", desc: "Mid & Senior professionals" },
                                 { id: "on_campus", label: "🏫 On-Campus", desc: "University hiring drives" },
                                 { id: "off_campus", label: "💼 Off-Campus", desc: "Direct lateral openings" },
                             ].map((f) => (
