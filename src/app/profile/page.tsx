@@ -13,6 +13,8 @@ import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSyn
 import BrandLogo from "../../components/BrandLogo";
 import PhotoCropperModal from "../../components/profile/PhotoCropperModal";
 import { uploadFileToS3 } from "../../utils/s3ClientUpload";
+import { authFetch } from "../../utils/authExpiry";
+import { formatResumeDataToText } from "../../utils/formatResume";
 
 function dataUrlToFile(dataUrl: string, filename: string): File {
     const [header, base64] = dataUrl.split(",");
@@ -844,141 +846,6 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         }
     };
 
-    const formatResumeDataToText = (data: any): string => {
-        if (!data) return "";
-        let text = "";
-        
-        // Personal Info
-        const p = data.personalInfo || {};
-        if (p.name) text += `${p.name}\n`;
-        if (p.title) text += `${p.title}\n`;
-        
-        const contactParts: string[] = [];
-        if (p.email) contactParts.push(p.email);
-        if (p.phone) contactParts.push(p.phone);
-        if (p.location) contactParts.push(p.location);
-        if (contactParts.length > 0) {
-            text += contactParts.join(" | ") + "\n";
-        }
-        
-        const socialParts: string[] = [];
-        if (p.linkedin) socialParts.push(p.linkedin);
-        if (p.github) socialParts.push(p.github);
-        if (p.website) socialParts.push(p.website);
-        if (socialParts.length > 0) {
-            text += socialParts.join(" | ") + "\n";
-        }
-        
-        if (p.summary) text += `\nProfessional Summary:\n${p.summary}\n`;
-        
-        // Experience
-        const exp = data.workExperience || data.experience || [];
-        if (exp.length > 0) {
-            text += `\nWork Experience:\n`;
-            exp.forEach((e: any) => {
-                const dateStr = e.startDate || e.endDate 
-                    ? ` (${e.startDate || ""} - ${e.endDate || (e.current ? "Present" : "")})` 
-                    : "";
-                const locStr = e.location ? ` - ${e.location}` : "";
-                text += `- ${e.position || "Role"} at ${e.company || "Company"}${dateStr}${locStr}\n`;
-                if (e.description) text += `  ${e.description}\n`;
-            });
-        }
-        
-        // Education
-        const edu = data.education || [];
-        if (edu.length > 0) {
-            text += `\nEducation:\n`;
-            edu.forEach((e: any) => {
-                const schoolName = e.institution || e.school || "";
-                const dateStr = e.startDate || e.endDate 
-                    ? ` (${e.startDate || ""} - ${e.endDate || ""})` 
-                    : "";
-                const scoreParts: string[] = [];
-                if (e.cgpa) scoreParts.push(`CGPA: ${e.cgpa}`);
-                if (e.percentage) scoreParts.push(`Percentage: ${e.percentage}`);
-                const scoreStr = scoreParts.length > 0 ? ` [${scoreParts.join(", ")}]` : "";
-                const locStr = e.location ? ` - ${e.location}` : "";
-                
-                text += `- ${e.degree || "Degree"} in ${e.fieldOfStudy || "Field"} from ${schoolName}${dateStr}${locStr}${scoreStr}\n`;
-                if (e.description) text += `  ${e.description}\n`;
-            });
-        }
-        
-        // Skills
-        const skills = data.skills || [];
-        if (skills.length > 0) {
-            text += `\nSkills:\n`;
-            const skillList = skills.map((s: any) => {
-                if (typeof s === "string") return s;
-                if (s.name) {
-                    return s.level ? `${s.name} (${s.level})` : s.name;
-                }
-                return "";
-            }).filter(Boolean);
-            text += skillList.join(" | ") + "\n";
-        }
-        
-        // Projects
-        const projects = data.projects || [];
-        if (projects.length > 0) {
-            text += `\nProjects:\n`;
-            projects.forEach((pr: any) => {
-                const projectUrl = pr.link || pr.url || "";
-                const techStr = Array.isArray(pr.technologies) && pr.technologies.length > 0 
-                    ? ` [Tech: ${pr.technologies.join(", ")}]` 
-                    : "";
-                const roleStr = pr.role ? ` (Role: ${pr.role})` : "";
-                
-                text += `- ${pr.name || "Project"}${roleStr}${techStr}${projectUrl ? ` (${projectUrl})` : ""}\n`;
-                if (pr.description) text += `  ${pr.description}\n`;
-            });
-        }
-        
-        // Languages
-        const languages = data.languages || [];
-        if (languages.length > 0) {
-            text += `\nLanguages:\n`;
-            const langList = languages.map((l: any) => {
-                if (typeof l === "string") return l;
-                if (l.name) {
-                    return l.proficiency ? `${l.name} (${l.proficiency})` : l.name;
-                }
-                return "";
-            }).filter(Boolean);
-            text += langList.join(" | ") + "\n";
-        }
-        
-        // Certifications
-        const certifications = data.certifications || [];
-        if (certifications.length > 0) {
-            text += `\nCertifications:\n`;
-            certifications.forEach((c: any) => {
-                const dateStr = c.date ? ` (${c.date})` : "";
-                const urlStr = c.link || c.url ? ` - Link: ${c.link || c.url}` : "";
-                text += `- ${c.name || "Certification"} by ${c.issuer || "Issuer"}${dateStr}${urlStr}\n`;
-            });
-        }
-        
-        // Custom Sections
-        const custom = data.customSections || [];
-        if (custom.length > 0) {
-            custom.forEach((sect: any) => {
-                if (sect.title && sect.items && sect.items.length > 0) {
-                    text += `\n${sect.title}:\n`;
-                    sect.items.forEach((item: any) => {
-                        const dateStr = item.date ? ` (${item.date})` : "";
-                        const subStr = item.subtitle ? ` - ${item.subtitle}` : "";
-                        text += `- ${item.title || "Item"}${subStr}${dateStr}\n`;
-                        if (item.description) text += `  ${item.description}\n`;
-                    });
-                }
-            });
-        }
-        
-        return text;
-    };
-
     const loadBuilderResumes = async () => {
         setLoadingResumes(true);
         setResumeLoadError("");
@@ -989,7 +856,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                 try { localList = JSON.parse(stored); } catch (e) {}
             }
 
-            const res = await fetch("/api/resumes");
+            const res = await authFetch("/api/resumes");
             if (res.ok) {
                 const s3List = await res.json();
                 setBuilderResumes(s3List || []);
@@ -1014,7 +881,8 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         setResumeCvUploading(true);
         setResumeSourceModalOpen(false);
         try {
-            const formattedText = formatResumeDataToText(resume.data);
+            const style = resume.style || resume.data?.style;
+            const formattedText = formatResumeDataToText(resume.data, style);
             const importedName = `[Imported] ${resume.title || "Resume"}`;
 
             setResumeCvName(importedName);
