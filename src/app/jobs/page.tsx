@@ -37,6 +37,7 @@ interface MatchedJob {
     tags: string[];
     salaryRange?: string;
     description: string;
+    fullDescription?: string;
     applyUrl: string;
     postedAt?: string;
     source?: string;
@@ -297,6 +298,7 @@ export default function JobsPage() {
                 setResumeText(text);
                 setResumeFileName(name);
                 setIsResumeTemporary(false);
+                setAtsMatches({});
                 if (text) {
                     localStorage.setItem("userResumeCvText", text);
                     localStorage.setItem("userResumeCvName", name);
@@ -330,6 +332,7 @@ export default function JobsPage() {
             }
             setResumeText(text);
             setIsResumeTemporary(true); // Flagged temporary: will not be written to profile/cache
+            setAtsMatches({});
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "Resume upload failed");
             setResumeFileName("");
@@ -498,7 +501,10 @@ export default function JobsPage() {
         }));
 
         try {
-            const descriptionToPass = (job.description || "").trim() || `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Responsibilities, domain requirements, and qualifications for ${job.role}.`;
+            const descriptionToPass =
+                (job.fullDescription || job.description || "").trim() ||
+                `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Responsibilities, domain requirements, and qualifications for ${job.role}.`;
+
             const res = await authFetch("/api/ats-match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -506,7 +512,8 @@ export default function JobsPage() {
                     resumeText: activeResume,
                     jobDescription: descriptionToPass,
                     company: job.company,
-                    role: job.role
+                    role: job.role,
+                    jobId: job.id
                 })
             });
 
@@ -878,7 +885,10 @@ export default function JobsPage() {
                         </div>
                         <textarea
                             value={resumeText}
-                            onChange={(e) => setResumeText(e.target.value)}
+                            onChange={(e) => {
+                                setResumeText(e.target.value);
+                                setAtsMatches({});
+                            }}
                             onBlur={handleAutoRefresh}
                             rows={8}
                             placeholder="Paste or upload your resume text here…"

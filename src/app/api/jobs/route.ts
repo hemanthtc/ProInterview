@@ -5,6 +5,7 @@ import {
     extractResumeProfileHeuristic,
     searchMatchingJobs,
     scoreJob,
+    deduplicateJobs,
     webSearchUrls,
     INDIA_FALLBACK_JOBS,
     type JobType,
@@ -380,15 +381,10 @@ export async function POST(req: NextRequest) {
 
         // Merge matching curated fallback jobs appropriate for the candidate's education & domain
         const fallback = scoreFallbackJobs(profile, location, filter, jobSearchQuery);
-        const seen = new Set(jobs.map((j) => j.id));
-        for (const f of fallback) {
-            if (!seen.has(f.id)) {
-                jobs.push(f);
-                seen.add(f.id);
-            }
-        }
-
-        jobs = jobs.sort((a, b) => b.matchPercent - a.matchPercent).slice(0, 100);
+        // Robust deduplication across live search and fallback jobs
+        jobs = deduplicateJobs([...jobs, ...fallback])
+            .sort((a, b) => b.matchPercent - a.matchPercent)
+            .slice(0, 100);
 
         return NextResponse.json({
             jobs,

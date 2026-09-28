@@ -1,3 +1,5 @@
+import { matchesSkillToken, normalizeSkillToken } from "./tokenMatching";
+
 export type JobType = "full-time" | "intern" | "contract";
 
 export interface EducationInfo {
@@ -42,6 +44,7 @@ export interface MatchedJob {
     tags: string[];
     salaryRange?: string;
     description: string;
+    fullDescription?: string;
     applyUrl: string;
     postedAt: string;
     source: string;
@@ -73,19 +76,19 @@ export interface ResumeProfile {
 
 const TECHNICAL_SKILLS = [
     // Programming & Frameworks
-    "javascript", "typescript", "python", "java", "kotlin", "swift", "go", "golang",
+    "javascript", "typescript", "python", "java", "kotlin", "swift", "golang", "go",
     "rust", "c++", "c#", "ruby", "php", "scala", "react", "next.js", "nextjs", "vue",
-    "angular", "node", "nodejs", "express", "django", "flask", "spring", "spring boot",
+    "angular", "nodejs", "node.js", "node", "express", "django", "flask", "spring", "spring boot",
     "fastapi", "aws", "gcp", "azure", "docker", "kubernetes", "k8s", "terraform",
-    "postgres", "postgresql", "mysql", "mongodb", "redis", "graphql", "rest", "sql",
-    "nosql", "machine learning", "ml", "deep learning", "nlp", "pytorch", "tensorflow",
+    "postgresql", "postgres", "mysql", "mongodb", "redis", "graphql", "rest api", "sql",
+    "machine learning", "ml", "deep learning", "nlp", "pytorch", "tensorflow",
     "pandas", "numpy", "spark", "hadoop", "kafka", "ci/cd", "jenkins", "github actions",
     "linux", "git", "figma", "ui/ux", "microservices", "devops", "sre", "android",
     "ios", "flutter", "react native", "tailwind", "html", "css",
     // Data & BI Tools
     "power bi", "powerbi", "tableau", "excel", "advanced excel", "vba", "google sheets",
     // Engineering & CAD Tools
-    "autocad", "cad", "solidworks", "catia", "ansys", "matlab", "staad", "staad pro",
+    "autocad", "cad", "solidworks", "catia", "ansys", "matlab", "staad", "staad pro", "staad.pro",
     "revit", "creo", "nx", "gis", "arcgis", "primavera", "etabs",
     // Business & Accounting Tools
     "tally", "tally prime", "tally erp", "sap", "quickbooks", "zoho", "zoho books",
@@ -171,22 +174,7 @@ function uniqueStrings(items: string[], limit = 20): string[] {
 }
 
 export function canonicalSkill(skill: string): string {
-    const s = skill.trim();
-    const lower = s.toLowerCase();
-    if (lower === "nodejs" || lower === "node") return "Node.js";
-    if (lower === "nextjs" || lower === "next.js") return "Next.js";
-    if (lower === "golang" || lower === "go") return "Go";
-    if (lower === "postgresql" || lower === "postgres") return "PostgreSQL";
-    if (lower === "k8s" || lower === "kubernetes") return "Kubernetes";
-    if (lower === "ml" || lower === "machine learning") return "Machine Learning";
-    if (lower === "powerbi" || lower === "power bi") return "Power BI";
-    if (lower === "autocad") return "AutoCAD";
-    if (lower === "staad" || lower === "staad pro") return "STAAD.Pro";
-    if (lower === "tally" || lower === "tally prime" || lower === "tally erp") return "Tally";
-    if (lower === "gst") return "GST";
-    if (lower === "excel" || lower === "advanced excel") return "Excel";
-    if (lower === "ui/ux") return "UI/UX";
-    return s.length <= 4 && !/[aeiou]/i.test(s) ? s.toUpperCase() : s.charAt(0).toUpperCase() + s.slice(1);
+    return normalizeSkillToken(skill);
 }
 
 // --------------------------------------------------------------------------
@@ -385,14 +373,14 @@ const FIELD_RULES: FieldRule[] = [
         domains: ["Electrical", "Electronics", "Embedded Systems", "Hardware"],
         roles: ["Electrical Engineer", "Electronics Engineer", "Embedded Systems Engineer", "Hardware Design Engineer", "Testing Engineer"],
     },
-    // Finance & Accounting (Specifically Finance / Financial Analysis)
+    // Finance & Accounting
     {
         pattern: /\b(finance|financial\s+analysis|financial\s+modeling|valuation|banking|credit\s+analysis|investment\s+banking)\b/i,
         normalizedField: "Finance",
         domains: ["Finance", "Banking", "Business", "Financial Analysis"],
         roles: ["Financial Analyst", "Finance Executive", "Accounts Executive", "Audit Assistant", "Junior Accountant", "Investment Analyst"],
     },
-    // Commerce & Accounting (Specifically Accounting / Commerce)
+    // Commerce & Accounting
     {
         pattern: /\b(commerce|accounting|accountancy|taxation|direct\s+tax|audit|auditing)\b/i,
         normalizedField: "Commerce & Accounting",
@@ -479,7 +467,6 @@ export function extractEducationInfo(resumeText: string): EducationInfo {
     let matchedFieldRule: FieldRule | null = null;
     let rawField = "";
 
-    // Check if degree context has an explicit branch/field like "B.Tech CSE", "MBA Finance", "B.Sc Biology", "B.Com Finance", "Mechanical Engineering"
     for (const rule of FIELD_RULES) {
         if (rule.pattern.test(educationSnippet)) {
             matchedFieldRule = rule;
@@ -489,7 +476,7 @@ export function extractEducationInfo(resumeText: string): EducationInfo {
         }
     }
 
-    // 4. Fallback if no degree found, check for "Mechanical Engineering" or "Civil Engineering" alone
+    // 4. Fallback if no degree found
     if (!matchedDegreeRule && matchedFieldRule) {
         rawDegree = matchedFieldRule.normalizedField;
     } else if (!matchedDegreeRule && !matchedFieldRule) {
@@ -516,7 +503,6 @@ export function extractEducationInfo(resumeText: string): EducationInfo {
     let normalizedDegree = matchedDegreeRule ? matchedDegreeRule.normalizedDegree : degreeName;
     const normalizedField = matchedFieldRule ? matchedFieldRule.normalizedField : (matchedDegreeRule ? matchedDegreeRule.defaultField : fieldName);
 
-    // Normalize compound degree names where appropriate
     if (matchedDegreeRule?.normalizedDegree === "Bachelor of Technology" || matchedDegreeRule?.normalizedDegree === "Bachelor of Engineering") {
         if (normalizedField && normalizedField !== "Engineering") {
             normalizedDegree = `${matchedDegreeRule.normalizedDegree} - ${normalizedField}`;
@@ -526,7 +512,6 @@ export function extractEducationInfo(resumeText: string): EducationInfo {
             normalizedDegree = "Master of Business Administration - Finance";
         }
     } else if (matchedDegreeRule?.normalizedDegree === "Bachelor of Commerce") {
-        // Only append - Finance if "finance" was explicitly mentioned in the education snippet!
         if (/\bfinance\b/i.test(educationSnippet)) {
             normalizedDegree = "Bachelor of Commerce - Finance";
         } else {
@@ -572,7 +557,6 @@ export function deriveCareerDomainsAndRoles(
     const normField = (education.normalizedField || "").toLowerCase();
     const allEduText = `${education.degree || ""} ${education.field || ""} ${normDegree} ${normField}`.toLowerCase();
 
-    // 1. Identify primary domain from education
     let matchedFieldRule: FieldRule | null = null;
     for (const rule of FIELD_RULES) {
         if (rule.pattern.test(normField) || rule.pattern.test(allEduText)) {
@@ -604,7 +588,7 @@ export function deriveCareerDomainsAndRoles(
         primaryDomains.push(field, `${field} Domain`, "Operations");
         roles.push(`${field} Specialist`, `${field} Associate`, `${field} Executive`, `${field} Analyst`);
     } else {
-        // Neutral fallback from skills/projects without forcing Software
+        // Safe token-aware fallback from skills/projects without forcing Software
         const lowerSkills = skills.map((s) => s.toLowerCase());
         if (lowerSkills.some((s) => /accounting|excel|tally|gst|tax|finance|audit/i.test(s))) {
             primaryDomains.push("Commerce", "Accounting", "Finance");
@@ -630,7 +614,7 @@ export function deriveCareerDomainsAndRoles(
         }
     }
 
-    // 2. Career Transitions & Supporting Signals (Requirement 6 & 9)
+    // Skills-based secondary refinement
     const isTechOrCS = primaryDomains.some((d) => /software|computer science|it\b/i.test(d));
     const lowerSkills = skills.map((s) => s.toLowerCase());
     const hasDataSkills = lowerSkills.some((s) => /python|sql|power bi|tableau|data analysis/i.test(s));
@@ -638,7 +622,6 @@ export function deriveCareerDomainsAndRoles(
 
     if (!isTechOrCS && (hasDataSkills || hasAnalyticsProject)) {
         secondaryDomains.push("Data Analysis", "Financial Analytics", "Business Analytics");
-        // Add analytical transition roles at the end of roles
         if (primaryDomains.includes("Finance") || primaryDomains.includes("Commerce")) {
             roles.push("Financial Data Analyst", "Business Analyst", "Data Analyst");
         } else {
@@ -761,39 +744,35 @@ export function extractProjectsFromResume(resumeText: string): ProjectInfo[] {
 }
 
 // --------------------------------------------------------------------------
-// 4. HEURISTIC RESUME PROFILER (Education-First)
+// 4. HEURISTIC RESUME PROFILER (Education-First & Token-Aware)
 // --------------------------------------------------------------------------
 
 export function extractResumeProfileHeuristic(resumeText: string): ResumeProfile {
-    const lower = resumeText.toLowerCase();
-
     // 1. Education extraction
     const education = extractEducationInfo(resumeText);
 
     // 2. Project extraction
     const projects = extractProjectsFromResume(resumeText);
 
-    // 3. Skills extraction
+    // 3. Safe token-aware skills extraction
     const technicalSkills: string[] = [];
-    const technicalHits = [...TECHNICAL_SKILLS]
-        .sort((a, b) => b.length - a.length)
-        .filter((s) => lower.includes(s));
-    const techCovered = new Set<string>();
-    for (const raw of technicalHits) {
-        if ([...techCovered].some((c) => c.includes(raw) || raw.includes(c))) continue;
-        techCovered.add(raw);
-        technicalSkills.push(canonicalSkill(raw));
+    for (const raw of TECHNICAL_SKILLS) {
+        if (matchesSkillToken(resumeText, raw)) {
+            const canon = normalizeSkillToken(raw);
+            if (!technicalSkills.includes(canon)) {
+                technicalSkills.push(canon);
+            }
+        }
     }
 
     const professionalSkills: string[] = [];
-    const profHits = [...PROFESSIONAL_SKILLS]
-        .sort((a, b) => b.length - a.length)
-        .filter((s) => lower.includes(s));
-    const profCovered = new Set<string>();
-    for (const raw of profHits) {
-        if ([...profCovered].some((c) => c.includes(raw) || raw.includes(c))) continue;
-        profCovered.add(raw);
-        professionalSkills.push(canonicalSkill(raw));
+    for (const raw of PROFESSIONAL_SKILLS) {
+        if (matchesSkillToken(resumeText, raw)) {
+            const canon = normalizeSkillToken(raw);
+            if (!professionalSkills.includes(canon)) {
+                professionalSkills.push(canon);
+            }
+        }
     }
 
     const allSkills = uniqueStrings([...professionalSkills, ...technicalSkills], 20);
@@ -854,8 +833,11 @@ export function buildSearchQueries(
     const loc = location.trim();
     const primaryDomain = profile.primaryDomains[0] || "";
     const primaryRole = profile.roles[0] || (primaryDomain ? `${primaryDomain} Professional` : "Professional");
+    const secondaryRole = profile.roles[1] || "";
+    const topSkill = profile.skills[0] || "";
+    const secondSkill = profile.skills[1] || "";
 
-    // Case A: User supplied a specific manual search query
+    // Case A: User supplied a specific manual search query (Discovery only!)
     if (manualQuery && manualQuery.trim()) {
         const q = manualQuery.trim();
         const queries = [
@@ -866,12 +848,12 @@ export function buildSearchQueries(
         return uniqueStrings(queries, 4);
     }
 
-    // Case B: Automatic Education-First Job Discovery
+    // Case B: Filter modifiers (intern / fresher)
     if (filter === "intern") {
         return uniqueStrings([
             `${primaryRole} Intern ${loc}`.trim(),
             `${primaryDomain} Intern ${loc}`.trim(),
-            `${profile.roles[1] || primaryRole} Trainee ${loc}`.trim(),
+            `${secondaryRole || primaryRole} Trainee ${loc}`.trim(),
             `Internship ${loc}`.trim(),
         ], 4);
     }
@@ -879,17 +861,24 @@ export function buildSearchQueries(
     if (filter === "fresher") {
         return uniqueStrings([
             `${primaryRole} Fresher ${loc}`.trim(),
-            `${profile.roles[1] || primaryRole} Entry Level ${loc}`.trim(),
+            `${secondaryRole || primaryRole} Entry Level ${loc}`.trim(),
             `${primaryDomain} Graduate Trainee ${loc}`.trim(),
             `${primaryRole} ${loc}`.trim(),
         ], 4);
     }
 
+    // Case C: Standard multi-query targeting
+    // Query 1: Primary role + location
+    // Query 2: Secondary role + location
+    // Query 3: Primary role + key skill + location
+    // Query 4: Secondary role / domain + second skill + location
     const queries = [
         [primaryRole, loc].filter(Boolean).join(" ").trim(),
-        profile.roles[1] ? [profile.roles[1], loc].filter(Boolean).join(" ").trim() : "",
-        [primaryDomain, loc].filter(Boolean).join(" ").trim(),
-        profile.skills.slice(0, 2).join(" "),
+        secondaryRole ? [secondaryRole, loc].filter(Boolean).join(" ").trim() : "",
+        topSkill ? [primaryRole, topSkill, loc].filter(Boolean).join(" ").trim() : "",
+        (secondaryRole || primaryDomain) && secondSkill
+            ? [secondaryRole || primaryDomain, secondSkill, loc].filter(Boolean).join(" ").trim()
+            : "",
     ].filter(Boolean);
 
     return uniqueStrings(queries, 4);
@@ -961,7 +950,8 @@ function locationMatches(jobLocation: string, preferred: string, remote: boolean
 }
 
 // --------------------------------------------------------------------------
-// 7. MULTI-FACTOR JOB MATCHING & RANKING (Education 40%, Skills 30%, Projects 15%, Exp 10%, Certs 5%)
+// 7. MULTI-FACTOR JOB MATCHING & RANKING
+// Baseline: Education 35%, Skills 30%, Projects 15%, Exp 10%, Certs 5%, Location 5%
 // --------------------------------------------------------------------------
 
 export function scoreJob(
@@ -971,48 +961,48 @@ export function scoreJob(
     filter?: string,
     manualQuery?: string
 ): MatchedJob {
-    const hay = `${job.role} ${job.company} ${job.location} ${job.tags.join(" ")} ${job.description}`.toLowerCase();
+    const hay = `${job.role} ${job.company} ${job.location} ${job.tags.join(" ")} ${job.fullDescription || job.description}`.toLowerCase();
     const reasons: string[] = [];
 
-    // 1. Education / Domain Match Score (Weight: 40%)
+    // 1. Education / Domain Match Score (Weight: 35%)
+    // CRITICAL: Manual query does NOT corrupt candidate's education compatibility score!
     let educationMatchScore = 20;
     let educationExplanation = "General background compatibility";
 
     const degreeName = profile.education.degree || profile.education.normalizedDegree || "";
     const primaryDomain = profile.primaryDomains[0] || "";
 
-    // Check if job matches manual query directly
-    const hasManualMatch = Boolean(manualQuery && manualQuery.trim() && hay.includes(manualQuery.toLowerCase().trim()));
-    if (hasManualMatch) {
-        educationMatchScore = 98;
-        educationExplanation = `Matches specific search: ${manualQuery}`;
-    } else {
-        const matchesPrimaryDomain = profile.primaryDomains.some((d) => hay.includes(d.toLowerCase()));
-        const matchesPrimaryRole = profile.roles.some((r) => {
-            const roleLower = r.toLowerCase();
-            return hay.includes(roleLower) || roleLower.split(/\s+/).some((w) => w.length > 3 && hay.includes(w));
-        });
+    const matchesPrimaryDomain = profile.primaryDomains.some((d) => hay.includes(d.toLowerCase()));
+    const matchesPrimaryRole = profile.roles.some((r) => {
+        const roleLower = r.toLowerCase();
+        return hay.includes(roleLower) || roleLower.split(/\s+/).some((w) => w.length > 3 && hay.includes(w));
+    });
 
-        if (matchesPrimaryRole || matchesPrimaryDomain) {
-            educationMatchScore = 92;
-            educationExplanation = degreeName
-                ? `✓ ${degreeName} is relevant to this role`
-                : `✓ Relevant to ${primaryDomain || "your career domain"}`;
+    const targetRole = profile.roles[0] || primaryDomain || "this role";
+    if (matchesPrimaryRole || matchesPrimaryDomain) {
+        educationMatchScore = 92;
+        educationExplanation = degreeName
+            ? `✓ ${degreeName} is relevant to ${targetRole} roles`
+            : `✓ Relevant to ${primaryDomain || "your career domain"}`;
+    } else {
+        const matchesSecondary = profile.secondaryDomains.some((d) => hay.includes(d.toLowerCase()));
+        if (matchesSecondary) {
+            educationMatchScore = 65;
+            educationExplanation = `✓ Aligns with secondary career transition (${profile.secondaryDomains[0]})`;
         } else {
-            const matchesSecondary = profile.secondaryDomains.some((d) => hay.includes(d.toLowerCase()));
-            if (matchesSecondary) {
-                educationMatchScore = 65;
-                educationExplanation = `✓ Aligns with secondary career transition (${profile.secondaryDomains[0]})`;
-            } else {
-                educationMatchScore = 10;
-                educationExplanation = "△ Different career domain from education";
-            }
+            educationMatchScore = 15;
+            educationExplanation = "△ Different career domain from education";
         }
     }
     reasons.push(educationExplanation);
 
-    // 2. Skills Match Score (Weight: 30%)
-    const skillHits = profile.skills.filter((s) => hay.includes(s.toLowerCase()));
+    if (manualQuery && manualQuery.trim() && hay.includes(manualQuery.toLowerCase().trim())) {
+        reasons.push(`✓ Matches searched role: ${manualQuery.trim()}`);
+    }
+
+    // 2. Safe Token-Aware Skills Match Score (Weight: 30%)
+    // Uses matchesSkillToken to avoid false positives (e.g. Java matching JavaScript)
+    const skillHits = profile.skills.filter((s) => matchesSkillToken(hay, s));
     let skillsMatchScore = 20;
     let skillsExplanation = "";
 
@@ -1032,7 +1022,7 @@ export function scoreJob(
     reasons.push(skillsExplanation);
 
     // 3. Projects Match Score (Weight: 15%)
-    let projectsMatchScore = 55;
+    let projectsMatchScore = 40;
     let projectsExplanation = "△ Limited project relevance";
 
     const matchedProject = profile.projects.find((p) => {
@@ -1047,10 +1037,8 @@ export function scoreJob(
         projectsMatchScore = 95;
         projectsExplanation = `✓ Project: ${matchedProject.title}`;
         reasons.push(projectsExplanation);
-    } else if (profile.projects.length > 0) {
-        projectsMatchScore = 40;
-    } else if (hasManualMatch) {
-        projectsMatchScore = 75;
+    } else if (profile.projects.length === 0) {
+        projectsMatchScore = 50;
     }
 
     // 4. Experience & Seniority Match Score (Weight: 10%)
@@ -1077,27 +1065,50 @@ export function scoreJob(
         reasons.push(experienceExplanation);
     }
 
-    // 5. Location Match
+    // 5. Location Match (Weight: 5%)
     const loc = locationMatches(job.location, preferredLocation, job.remote);
+    const locationScore = loc.score > 25 ? 95 : loc.score > 10 ? 70 : 30;
     if (loc.reason) reasons.push(loc.reason);
 
     // 6. Certifications Score (Weight: 5%)
-    let certificationMatchScore = 40;
-    if (profile.certifications.some((c) => hay.includes(c.toLowerCase()))) {
-        certificationMatchScore = 90;
+    let certificationMatchScore = 50;
+    if (profile.certifications.some((c) => matchesSkillToken(hay, c))) {
+        certificationMatchScore = 95;
     }
 
-    // Weighted Overall Score (Weights: 40% Education, 30% Skills, 15% Projects, 10% Experience, 5% Certs)
-    const rawWeighted =
-        educationMatchScore * 0.40 +
-        skillsMatchScore * 0.30 +
-        projectsMatchScore * 0.15 +
-        experienceMatchScore * 0.10 +
-        certificationMatchScore * 0.05;
+    // Dynamic requirement weighting
+    let wEdu = 0.35;
+    let wSkills = 0.30;
+    let wProj = 0.15;
+    let wExp = 0.10;
+    let wCert = 0.05;
+    let wLoc = 0.05;
 
-    // Adjust for strong location alignment
-    const locationBonus = loc.score > 25 ? 5 : 0;
-    const finalScore = Math.max(5, Math.min(98, Math.round(rawWeighted + locationBonus)));
+    // If job description contains explicit mandatory requirement
+    if (/\b(must\s+have|mandatory|required)\s+(?:a\s+)?(degree|b\.?com|b\.?tech|b\.?e|mba)\b/i.test(hay)) {
+        wEdu = 0.45;
+        wProj = 0.10;
+        wLoc = 0.00;
+    } else if (/\b(\d+)\s*(?:\+|plus)?\s*years?\s+(?:of\s+)?experience\s+required\b/i.test(hay)) {
+        wExp = 0.20;
+        wSkills = 0.25;
+        wLoc = 0.00;
+    } else if (/\b(mandatory\s+certification|certified\s+is\s+required|mandatory\s+cpa|mandatory\s+ca)\b/i.test(hay)) {
+        wCert = 0.15;
+        wProj = 0.10;
+        wLoc = 0.00;
+    }
+
+    // Weighted Overall Score
+    const rawWeighted =
+        educationMatchScore * wEdu +
+        skillsMatchScore * wSkills +
+        projectsMatchScore * wProj +
+        experienceMatchScore * wExp +
+        certificationMatchScore * wCert +
+        locationScore * wLoc;
+
+    const finalScore = Math.max(5, Math.min(98, Math.round(rawWeighted)));
 
     const matchBreakdown: MatchBreakdown = {
         educationMatchScore,
@@ -1122,7 +1133,60 @@ export function scoreJob(
 }
 
 // --------------------------------------------------------------------------
-// 8. DATA SOURCES (Adzuna, Remotive, Arbeitnow, RemoteOK)
+// 8. ROBUST DEDUPLICATION
+// --------------------------------------------------------------------------
+
+export function deduplicateJobs<T extends { id: string; company: string; role: string; location?: string; applyUrl: string; fullDescription?: string; description?: string }>(jobs: T[]): T[] {
+    const seenUrls = new Map<string, T>();
+    const seenSignatures = new Map<string, T>();
+
+    function normalizeString(str: string): string {
+        return str
+            .toLowerCase()
+            .replace(/\b(inc|incorporated|pvt|ltd|limited|llc|gmbh|co|corporation|corp|india)\b/gi, "")
+            .replace(/[^a-z0-9]/gi, "")
+            .trim();
+    }
+
+    const out: T[] = [];
+
+    for (const job of jobs) {
+        if (!job.applyUrl) continue;
+
+        const cleanUrl = job.applyUrl.split("?")[0].replace(/\/+$/, "").toLowerCase();
+        const normCo = normalizeString(job.company);
+        const normRole = normalizeString(job.role);
+        const normLoc = normalizeString((job.location || "").split(/[/,-]/)[0]);
+        const sig = `${normCo}::${normRole}::${normLoc}`;
+
+        const existingByUrl = cleanUrl.length > 10 ? seenUrls.get(cleanUrl) : undefined;
+        const existingBySig = seenSignatures.get(sig);
+        const existing = existingByUrl || existingBySig;
+
+        if (existing) {
+            const existingLen = (existing.fullDescription || existing.description || "").length;
+            const currentLen = (job.fullDescription || job.description || "").length;
+            if (currentLen > existingLen) {
+                const idx = out.indexOf(existing);
+                if (idx !== -1) {
+                    out[idx] = job;
+                    if (cleanUrl.length > 10) seenUrls.set(cleanUrl, job);
+                    seenSignatures.set(sig, job);
+                }
+            }
+            continue;
+        }
+
+        if (cleanUrl.length > 10) seenUrls.set(cleanUrl, job);
+        seenSignatures.set(sig, job);
+        out.push(job);
+    }
+
+    return out;
+}
+
+// --------------------------------------------------------------------------
+// 9. DATA SOURCES (Adzuna, Remotive, Arbeitnow, RemoteOK) with FULL JD PRESERVATION
 // --------------------------------------------------------------------------
 
 async function fetchWithTimeout(url: string, ms = 8000): Promise<Response> {
@@ -1160,20 +1224,24 @@ async function fetchRemotive(query: string): Promise<Omit<MatchedJob, "matchPerc
             description?: string;
         }>;
     };
-    return (data.jobs || []).map((j) => ({
-        id: `remotive_${j.id}`,
-        company: j.company_name || "Unknown",
-        role: j.title || "Role",
-        location: j.candidate_required_location || "Remote",
-        type: normalizeType(j.job_type),
-        remote: true,
-        tags: (j.tags || []).slice(0, 8),
-        salaryRange: j.salary || undefined,
-        description: stripHtml(j.description || "").slice(0, 320),
-        applyUrl: j.url,
-        postedAt: (j.publication_date || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
-        source: "Remotive",
-    }));
+    return (data.jobs || []).map((j) => {
+        const fullDesc = stripHtml(j.description || "").slice(0, 8000);
+        return {
+            id: `remotive_${j.id}`,
+            company: j.company_name || "Unknown",
+            role: j.title || "Role",
+            location: j.candidate_required_location || "Remote",
+            type: normalizeType(j.job_type),
+            remote: true,
+            tags: (j.tags || []).slice(0, 8),
+            salaryRange: j.salary || undefined,
+            description: fullDesc.slice(0, 320),
+            fullDescription: fullDesc,
+            applyUrl: j.url,
+            postedAt: (j.publication_date || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+            source: "Remotive",
+        };
+    });
 }
 
 async function fetchArbeitnow(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> {
@@ -1194,19 +1262,23 @@ async function fetchArbeitnow(query: string): Promise<Omit<MatchedJob, "matchPer
             created_at?: string;
         }>;
     };
-    return (data.data || []).slice(0, 40).map((j) => ({
-        id: `arbeitnow_${j.slug}`,
-        company: j.company_name || "Unknown",
-        role: j.title || "Role",
-        location: j.location || (j.remote ? "Remote" : "Unspecified"),
-        type: normalizeType((j.job_types || [])[0]),
-        remote: Boolean(j.remote),
-        tags: (j.tags || []).slice(0, 8),
-        description: stripHtml(j.description || "").slice(0, 320),
-        applyUrl: j.url,
-        postedAt: (j.created_at || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
-        source: "Arbeitnow",
-    }));
+    return (data.data || []).slice(0, 40).map((j) => {
+        const fullDesc = stripHtml(j.description || "").slice(0, 8000);
+        return {
+            id: `arbeitnow_${j.slug}`,
+            company: j.company_name || "Unknown",
+            role: j.title || "Role",
+            location: j.location || (j.remote ? "Remote" : "Unspecified"),
+            type: normalizeType((j.job_types || [])[0]),
+            remote: Boolean(j.remote),
+            tags: (j.tags || []).slice(0, 8),
+            description: fullDesc.slice(0, 320),
+            fullDescription: fullDesc,
+            applyUrl: j.url,
+            postedAt: (j.created_at || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
+            source: "Arbeitnow",
+        };
+    });
 }
 
 async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> {
@@ -1241,6 +1313,7 @@ async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPerc
             j.salary_min && j.salary_max
                 ? `$${Math.round(j.salary_min / 1000)}k–$${Math.round(j.salary_max / 1000)}k`
                 : undefined;
+        const fullDesc = stripHtml(j.description || "").slice(0, 8000);
         return {
             id: `remoteok_${j.id || j.slug}`,
             company: j.company || "Unknown",
@@ -1250,7 +1323,8 @@ async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPerc
             remote: true,
             tags: (j.tags || []).slice(0, 8),
             salaryRange: salary,
-            description: stripHtml(j.description || "").slice(0, 320),
+            description: fullDesc.slice(0, 320),
+            fullDescription: fullDesc,
             applyUrl: j.apply_url || j.url || `https://remoteok.com/remote-jobs/${j.slug}`,
             postedAt: (j.date || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
             source: "RemoteOK",
@@ -1306,6 +1380,7 @@ async function fetchAdzunaIndia(
                     ? `₹${Math.round(j.salary_min / 1000)}k–₹${Math.round(j.salary_max / 1000)}k`
                     : undefined;
             const jobLocation = j.location?.display_name || "India";
+            const fullDesc = stripHtml(j.description || "").slice(0, 8000);
             return {
                 id: `adzuna_${j.id}`,
                 company: j.company?.display_name || "Unknown",
@@ -1315,7 +1390,8 @@ async function fetchAdzunaIndia(
                 remote: /remote/i.test(jobLocation),
                 tags: j.category?.label ? [j.category.label] : [],
                 salaryRange: salary,
-                description: stripHtml(j.description || "").slice(0, 320),
+                description: fullDesc.slice(0, 320),
+                fullDescription: fullDesc,
                 applyUrl: j.redirect_url || "",
                 postedAt: (j.created || "").slice(0, 10) || new Date().toISOString().slice(0, 10),
                 source: country.toLowerCase() === "in" ? "Adzuna India" : `Adzuna (${country.toUpperCase()})`,
@@ -1324,7 +1400,7 @@ async function fetchAdzunaIndia(
 }
 
 // --------------------------------------------------------------------------
-// 9. DIVERSE CURATED INDIA LISTINGS (Cross-Discipline Fallbacks)
+// 10. DIVERSE CURATED INDIA LISTINGS (Complete Descriptions)
 // --------------------------------------------------------------------------
 
 export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[] = [
@@ -1339,6 +1415,15 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["Accounting", "Excel", "Tally", "GST", "Auditing"],
         salaryRange: "₹5L–₹8L",
         description: "Join Deloitte's audit and enterprise finance practice in Bangalore. Manage financial accounts, ledgers, reconciliations, GST compliance, and audit schedules.",
+        fullDescription: `Role: Accounts Executive / Audit Associate at Deloitte India, Bangalore.
+Requirements:
+- Education: Bachelor of Commerce (B.Com) or Master of Commerce (M.Com) required.
+- Required Skills: Accounting, Financial Accounting, Tally, Advanced Excel, GST compliance, TDS, Bank Reconciliation.
+- Experience: 1 to 3 years in accounting or auditing.
+Responsibilities:
+- Maintain general ledgers, trial balance, and balance sheet schedules.
+- File monthly GST returns and coordinate statutory audit documentation.
+- Preferred: Knowledge of SAP or Power BI for financial reporting.`,
         applyUrl: "https://www2.deloitte.com/in/en/careers.html",
         postedAt: "2026-08-01",
         source: "ProInterview curated (India)",
@@ -1353,6 +1438,13 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["Finance", "GST", "Direct Tax", "Excel", "Accounting"],
         salaryRange: "₹30k–₹45k / month Stipend",
         description: "Internship for B.Com/M.Com/MBA Finance students. Assist with statutory tax filings, financial statements, and client compliance reviews.",
+        fullDescription: `Role: Finance & Taxation Intern at EY India, Hyderabad / Bangalore.
+Requirements:
+- Education: Enrolled in or completed B.Com, M.Com, or MBA Finance.
+- Required Skills: Accounting basics, Excel, GST, Direct Tax calculations.
+- Preferred Skills: Tally, Financial Modeling.
+Responsibilities:
+- Assist audit seniors with tax documentation, voucher verification, and ledger reconciliation.`,
         applyUrl: "https://www.ey.com/en_in/careers",
         postedAt: "2026-08-02",
         source: "ProInterview curated (India)",
@@ -1367,6 +1459,13 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["Financial Analysis", "Excel", "Banking", "Power BI", "Forecasting"],
         salaryRange: "₹6L–₹10L",
         description: "Analyze commercial banking portfolios, credit metrics, and financial forecasting models for business banking divisions.",
+        fullDescription: `Role: Financial Analyst at HDFC Bank.
+Requirements:
+- Education: MBA Finance, B.Com, or CFA candidate.
+- Required Skills: Financial Analysis, Financial Modeling, Advanced Excel, Valuation, Ratio Analysis.
+- Preferred: Power BI, SQL, Python for financial analytics.
+Responsibilities:
+- Evaluate commercial credit portfolios, risk metrics, and prepare executive management dashboards.`,
         applyUrl: "https://www.hdfcbank.com/personal/careers",
         postedAt: "2026-08-03",
         source: "ProInterview curated (India)",
@@ -1382,6 +1481,13 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["AutoCAD", "CAD", "Manufacturing", "SolidWorks", "Machine Design"],
         salaryRange: "₹6.5L–₹9.5L",
         description: "Design automotive sub-assemblies, production fixtures, and CAD component modeling for new generation commercial vehicle platforms.",
+        fullDescription: `Role: Graduate Mechanical Engineer at Tata Motors, Pune / Bangalore.
+Requirements:
+- Education: B.Tech / B.E in Mechanical Engineering (Mandatory).
+- Required Skills: AutoCAD, CAD, SolidWorks, Manufacturing principles, Machine Design, GD&T.
+- Preferred Skills: Ansys, Catia, Lean Six Sigma.
+Responsibilities:
+- Model vehicle chassis and powertrain brackets. Generate 2D manufacturing drawings with tolerances.`,
         applyUrl: "https://www.tatamotors.com/careers/",
         postedAt: "2026-08-01",
         source: "ProInterview curated (India)",
@@ -1396,6 +1502,12 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["AutoCAD", "CAD", "Machine Design", "Manufacturing"],
         salaryRange: "₹25k–₹35k / month Stipend",
         description: "Internship in mechanical equipment modeling, drafting, engineering calculations, and shop-floor manufacturing validation.",
+        fullDescription: `Role: Mechanical Design Intern at L&T Heavy Engineering, Bangalore.
+Requirements:
+- Education: Currently pursuing or recently completed B.Tech / B.E Mechanical Engineering.
+- Required Skills: AutoCAD, 3D modeling, Drafting.
+Responsibilities:
+- Assist engineering team with 3D CAD modeling, bill of materials, and pressure vessel design calculations.`,
         applyUrl: "https://www.larsentoubro.com/careers/",
         postedAt: "2026-08-02",
         source: "ProInterview curated (India)",
@@ -1411,6 +1523,12 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["AutoCAD", "STAAD", "Construction", "Structural Design", "Site Execution"],
         salaryRange: "₹5.5L–₹8.5L",
         description: "Supervise major infrastructure projects, quality audits, site execution, and structural design coordination across urban metro projects.",
+        fullDescription: `Role: Graduate Civil Engineer / Site Trainee at L&T Construction.
+Requirements:
+- Education: B.Tech / B.E in Civil Engineering (Mandatory).
+- Required Skills: AutoCAD, STAAD, Structural Analysis, Construction Site Supervision, Surveying, BOQ.
+Responsibilities:
+- Supervise concrete casting, bar bending schedule verification, structural load testing, and contractor quality audits.`,
         applyUrl: "https://www.lntecc.com/careers/",
         postedAt: "2026-08-02",
         source: "ProInterview curated (India)",
@@ -1426,6 +1544,10 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["Operations", "Marketing", "Supply Chain", "Business Management"],
         salaryRange: "₹8L–₹13L",
         description: "Management trainee role across FMCG consumer operations, brand market strategy, vendor logistics, and channel sales management.",
+        fullDescription: `Role: Operations & Marketing Trainee at Hindustan Unilever, Bangalore.
+Requirements:
+- Education: BBA, MBA, or Bachelor's degree in any discipline.
+- Required Skills: Operations management, Market research, Vendor coordination, Communication, Excel.`,
         applyUrl: "https://www.hul.co.in/careers/",
         postedAt: "2026-08-04",
         source: "ProInterview curated (India)",
@@ -1441,11 +1563,15 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["Pharmacy", "Quality Control", "Chemistry", "GMP", "Formulation"],
         salaryRange: "₹4.5L–₹7L",
         description: "Perform pharmaceutical formulations testing, laboratory analysis, raw material quality checks, and GMP regulatory compliance.",
+        fullDescription: `Role: Quality Control Chemist / Pharmacist at Sun Pharma.
+Requirements:
+- Education: B.Pharm or M.Pharm degree (Mandatory).
+- Required Skills: Pharmacology, HPLC, GMP compliance, Quality Control testing, Drug Formulation.`,
         applyUrl: "https://sunpharma.com/careers/",
         postedAt: "2026-08-05",
         source: "ProInterview curated (India)",
     },
-    // Software / IT / Data (Preserved from original suite)
+    // Software / IT / Data
     {
         id: "job_in_google_intern",
         company: "Google India",
@@ -1456,64 +1582,14 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["C++", "Java", "Python", "Data Structures", "Algorithms"],
         salaryRange: "₹80k–₹1.2L / month Stipend",
         description: "Join Google's engineering teams in Bangalore or Hyderabad as a software intern. Work on scalable distributed systems, developer tools, or AI services.",
+        fullDescription: `Role: Software Engineering Intern at Google India.
+Requirements:
+- Education: B.Tech / B.E in Computer Science, IT, or related technical field.
+- Required Skills: Java or C++ or Python, Data Structures, Algorithms, System Design basics.
+Responsibilities:
+- Write clean, maintainable code for high-throughput distributed systems and cloud services.`,
         applyUrl: "https://careers.google.com/jobs/results/",
         postedAt: "2026-08-01",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_microsoft_intern",
-        company: "Microsoft India",
-        role: "Software Engineering Intern",
-        location: "Hyderabad / Bangalore",
-        type: "intern",
-        remote: false,
-        tags: ["Azure", "C#", "TypeScript", "Problem Solving"],
-        salaryRange: "₹75k–₹1.1L / month Stipend",
-        description: "Summer software engineering internship. Build cloud services, Teams features, and AI developer workflows with engineering mentorship.",
-        applyUrl: "https://careers.microsoft.com/",
-        postedAt: "2026-08-02",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_amazon_intern",
-        company: "Amazon India",
-        role: "SDE Intern (Campus & Off-Campus)",
-        location: "Bangalore / Hyderabad",
-        type: "intern",
-        remote: false,
-        tags: ["Java", "AWS", "DSA", "Distributed Systems"],
-        salaryRange: "₹80k–₹1.1L / month Stipend",
-        description: "Collaborate with senior AWS and retail service engineers to design and ship customer-facing features.",
-        applyUrl: "https://www.amazon.jobs/",
-        postedAt: "2026-08-03",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_razorpay_intern",
-        company: "Razorpay",
-        role: "Full-Stack Engineering Intern",
-        location: "Bangalore / Remote",
-        type: "intern",
-        remote: true,
-        tags: ["React", "Node.js", "Payments", "Web APIs"],
-        salaryRange: "₹45k–₹65k / month Stipend",
-        description: "Work with modern React, Next.js, and Node.js microservices on India's premier payment gateway.",
-        applyUrl: "https://razorpay.com/jobs/",
-        postedAt: "2026-08-05",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_swiggy_fresher",
-        company: "Swiggy",
-        role: "Associate Software Engineer (0-1 Year / Fresher)",
-        location: "Bangalore",
-        type: "full-time",
-        remote: false,
-        tags: ["Java", "Golang", "Microservices", "Fresher"],
-        salaryRange: "₹14L–₹20L",
-        description: "Entry-level engineering role for freshers and 0-1 year developers. Build core ordering and delivery platform microservices.",
-        applyUrl: "https://careers.swiggy.com/",
-        postedAt: "2026-08-04",
         source: "ProInterview curated (India)",
     },
     {
@@ -1526,6 +1602,13 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["Java", "Spring Boot", "Kafka", "MySQL"],
         salaryRange: "₹18L–₹26L",
         description: "High-scale backend engineering for early-career developers. Work on inventory, cart, and high-concurrency checkout services.",
+        fullDescription: `Role: Software Development Engineer 1 at Flipkart, Bangalore.
+Requirements:
+- Education: B.Tech / B.E in Computer Science or related degree.
+- Required Skills: Java, Spring Boot, MySQL, Kafka, REST API design, Microservices.
+- Experience: 1 to 2 years in software development.
+Responsibilities:
+- Build low-latency APIs and order processing microservices handling millions of daily transactions.`,
         applyUrl: "https://www.flipkartcareers.com/",
         postedAt: "2026-07-29",
         source: "ProInterview curated (India)",
@@ -1540,22 +1623,13 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["Node.js", "Payments", "API", "TypeScript"],
         salaryRange: "₹18L–₹32L",
         description: "Build payment and banking infrastructure powering businesses across India with clean architecture and microservices.",
+        fullDescription: `Role: Backend Engineer at Razorpay, Bangalore.
+Requirements:
+- Education: B.Tech / B.E / MCA in Computer Science.
+- Required Skills: Node.js, TypeScript, PostgreSQL, REST APIs, Microservices.
+- Experience: 1 to 3 years building scalable web services.`,
         applyUrl: "https://razorpay.com/jobs/",
         postedAt: "2026-07-28",
-        source: "ProInterview curated (India)",
-    },
-    {
-        id: "job_in_cred_backend",
-        company: "CRED",
-        role: "Senior Backend Engineer (3+ Years)",
-        location: "Bangalore",
-        type: "full-time",
-        remote: false,
-        tags: ["Golang", "Distributed Systems", "Kafka", "PostgreSQL"],
-        salaryRange: "₹35L–₹60L",
-        description: "Design high-reliability, low-latency financial service pipelines with 3+ years experience in distributed backend architectures.",
-        applyUrl: "https://cred.club/careers",
-        postedAt: "2026-08-02",
         source: "ProInterview curated (India)",
     },
     {
@@ -1568,6 +1642,10 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         tags: ["API", "Community", "JavaScript", "TypeScript"],
         salaryRange: "₹18L–₹30L",
         description: "Fully remote position for engineers across India supporting the global API developer community with demos and tutorials.",
+        fullDescription: `Role: Developer Advocate at Postman (Remote India).
+Requirements:
+- Education: Degree in Computer Science or equivalent practical experience.
+- Required Skills: JavaScript, TypeScript, REST APIs, Technical Writing, Developer Relations.`,
         applyUrl: "https://www.postman.com/company/careers/",
         postedAt: "2026-07-30",
         source: "ProInterview curated (India)",
@@ -1575,7 +1653,7 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
 ];
 
 // --------------------------------------------------------------------------
-// 10. SEARCH MATCHING JOBS PIPELINE
+// 11. SEARCH MATCHING JOBS PIPELINE (Multi-Query Execution + Deduplication)
 // --------------------------------------------------------------------------
 
 export async function searchMatchingJobs(
@@ -1586,6 +1664,7 @@ export async function searchMatchingJobs(
 ): Promise<{ jobs: MatchedJob[]; sourcesTried: string[]; queries: string[] }> {
     const queries = buildSearchQueries(profile, preferredLocation, filter, jobSearchQuery);
     const primary = queries[0] || (jobSearchQuery || profile.roles[0] || profile.primaryDomains[0] || "job");
+    const secondary = queries[1] || "";
     const sourcesTried: string[] = [];
     const collected: Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[] = [];
 
@@ -1593,9 +1672,11 @@ export async function searchMatchingJobs(
         (jobSearchQuery || profile.roles[0] || profile.primaryDomains[0] || "associate").trim() +
         (filter === "intern" ? " Intern" : filter === "fresher" ? " Fresher" : "");
 
+    // Multi-query search execution across providers
     const tasks: Array<{ name: string; run: () => Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> }> = [
         { name: "Remotive", run: () => fetchRemotive(primary) },
         { name: "Arbeitnow", run: () => fetchArbeitnow(primary) },
+        ...(secondary && secondary !== primary ? [{ name: "Arbeitnow (Secondary)", run: () => fetchArbeitnow(secondary) }] : []),
         { name: "RemoteOK", run: () => fetchRemoteOK(primary) },
         { name: "Adzuna India", run: () => fetchAdzunaIndia(adzunaRole, preferredLocation) },
     ];
@@ -1606,7 +1687,10 @@ export async function searchMatchingJobs(
                 const rows = await t.run();
                 return rows;
             } finally {
-                sourcesTried.push(t.name);
+                const providerName = t.name.split(" ")[0];
+                if (!sourcesTried.includes(providerName)) {
+                    sourcesTried.push(providerName);
+                }
             }
         })
     );
@@ -1615,13 +1699,11 @@ export async function searchMatchingJobs(
         if (result.status === "fulfilled") collected.push(...result.value);
     }
 
-    const byId = new Map<string, Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">>();
-    for (const job of collected) {
-        if (!job.applyUrl) continue;
-        if (!byId.has(job.id)) byId.set(job.id, job);
-    }
+    // Merge and robustly deduplicate by URL and normalized (company + role + location)
+    const deduplicated = deduplicateJobs(collected);
 
-    const ranked = [...byId.values()]
+    // Score and rank using factual compatibility
+    const ranked = deduplicated
         .map((job) => scoreJob(job, profile, preferredLocation, filter, jobSearchQuery))
         .filter((j) => j.matchPercent >= 10)
         .sort((a, b) => b.matchPercent - a.matchPercent)
