@@ -1,5 +1,37 @@
 export type JobType = "full-time" | "intern" | "contract";
 
+export interface EducationInfo {
+    degree?: string;
+    field?: string;
+    specialization?: string;
+    level?: string; // "undergraduate" | "postgraduate" | "diploma" | "doctorate" | "certification" | "secondary"
+    graduationYear?: string;
+    normalizedDegree?: string;
+    normalizedField?: string;
+}
+
+export interface ProjectInfo {
+    title: string;
+    domain?: string;
+    technologies?: string[];
+    skills?: string[];
+    description?: string;
+}
+
+export interface MatchBreakdown {
+    educationMatchScore: number;
+    skillsMatchScore: number;
+    projectsMatchScore: number;
+    experienceMatchScore: number;
+    certificationMatchScore: number;
+    overallMatchScore: number;
+    educationExplanation: string;
+    skillsExplanation: string;
+    projectsExplanation: string;
+    locationExplanation?: string;
+    experienceExplanation?: string;
+}
+
 export interface MatchedJob {
     id: string;
     company: string;
@@ -15,112 +47,92 @@ export interface MatchedJob {
     source: string;
     matchPercent: number;
     matchReasons: string[];
+    matchBreakdown?: MatchBreakdown;
 }
 
 export interface ResumeProfile {
+    education: EducationInfo;
+    primaryDomains: string[];
+    secondaryDomains: string[];
     roles: string[];
     skills: string[];
+    technicalSkills: string[];
+    professionalSkills: string[];
+    projects: ProjectInfo[];
+    experience: string[];
+    certifications: string[];
+    languages: string[];
     keywords: string[];
     seniority: string;
     summary: string;
 }
 
-const TECH_SKILLS = [
-    "javascript",
-    "typescript",
-    "python",
-    "java",
-    "kotlin",
-    "swift",
-    "go",
-    "golang",
-    "rust",
-    "c++",
-    "c#",
-    "ruby",
-    "php",
-    "scala",
-    "react",
-    "next.js",
-    "nextjs",
-    "vue",
-    "angular",
-    "node",
-    "nodejs",
-    "express",
-    "django",
-    "flask",
-    "spring",
-    "fastapi",
-    "aws",
-    "gcp",
-    "azure",
-    "docker",
-    "kubernetes",
-    "k8s",
-    "terraform",
-    "postgres",
-    "postgresql",
-    "mysql",
-    "mongodb",
-    "redis",
-    "graphql",
-    "rest",
-    "sql",
-    "nosql",
-    "machine learning",
-    "ml",
-    "deep learning",
-    "nlp",
-    "pytorch",
-    "tensorflow",
-    "pandas",
-    "spark",
-    "hadoop",
-    "kafka",
-    "ci/cd",
-    "jenkins",
-    "github actions",
-    "linux",
-    "git",
-    "figma",
-    "ui/ux",
-    "product management",
-    "system design",
-    "microservices",
-    "devops",
-    "sre",
-    "android",
-    "ios",
-    "flutter",
-    "react native",
-    "tailwind",
-    "html",
-    "css",
+// --------------------------------------------------------------------------
+// SKILLS DICTIONARY (Categorized: Technical & Professional)
+// --------------------------------------------------------------------------
+
+const TECHNICAL_SKILLS = [
+    // Programming & Frameworks
+    "javascript", "typescript", "python", "java", "kotlin", "swift", "go", "golang",
+    "rust", "c++", "c#", "ruby", "php", "scala", "react", "next.js", "nextjs", "vue",
+    "angular", "node", "nodejs", "express", "django", "flask", "spring", "spring boot",
+    "fastapi", "aws", "gcp", "azure", "docker", "kubernetes", "k8s", "terraform",
+    "postgres", "postgresql", "mysql", "mongodb", "redis", "graphql", "rest", "sql",
+    "nosql", "machine learning", "ml", "deep learning", "nlp", "pytorch", "tensorflow",
+    "pandas", "numpy", "spark", "hadoop", "kafka", "ci/cd", "jenkins", "github actions",
+    "linux", "git", "figma", "ui/ux", "microservices", "devops", "sre", "android",
+    "ios", "flutter", "react native", "tailwind", "html", "css",
+    // Data & BI Tools
+    "power bi", "powerbi", "tableau", "excel", "advanced excel", "vba", "google sheets",
+    // Engineering & CAD Tools
+    "autocad", "cad", "solidworks", "catia", "ansys", "matlab", "staad", "staad pro",
+    "revit", "creo", "nx", "gis", "arcgis", "primavera", "etabs",
+    // Business & Accounting Tools
+    "tally", "tally prime", "tally erp", "sap", "quickbooks", "zoho", "zoho books",
+    "salesforce", "hubspot", "jira",
+    // Science & Lab Tools
+    "hplc", "gc-ms", "spectrophotometry", "pcr", "gel electrophoresis", "autoclave",
 ];
 
-const ROLE_HINTS = [
-    "frontend engineer",
-    "backend engineer",
-    "full stack",
-    "full-stack",
-    "software engineer",
-    "software developer",
-    "sde",
-    "ml engineer",
-    "data scientist",
-    "data engineer",
-    "devops engineer",
-    "sre",
-    "product manager",
-    "product designer",
-    "ui/ux designer",
-    "mobile engineer",
-    "android developer",
-    "ios developer",
-    "qa engineer",
-    "security engineer",
-    "platform engineer",
+const PROFESSIONAL_SKILLS = [
+    // Accounting & Finance
+    "accounting", "financial accounting", "management accounting", "gst", "taxation",
+    "direct tax", "indirect tax", "tds", "income tax", "auditing", "statutory audit",
+    "internal audit", "financial analysis", "financial modeling", "budgeting",
+    "forecasting", "bank reconciliation", "accounts payable", "accounts receivable",
+    "ledger", "payroll", "balance sheet", "p&l", "cost accounting", "corporate finance",
+    "valuation", "banking", "credit analysis", "risk management", "investment banking",
+    "portfolio management", "wealth management", "compliance",
+    // Business, Management, Marketing, HR
+    "business development", "lead generation", "sales", "client relationship",
+    "account management", "b2b sales", "b2c sales", "digital marketing", "seo", "sem",
+    "social media marketing", "content marketing", "email marketing", "branding",
+    "market research", "competitor analysis", "product management", "operations management",
+    "supply chain", "logistics", "procurement", "inventory management", "vendor management",
+    "human resources", "recruitment", "talent acquisition", "employee engagement",
+    "onboarding", "hr operations", "performance management", "training and development",
+    // Mechanical & Manufacturing
+    "manufacturing", "production planning", "quality control", "quality assurance",
+    "lean manufacturing", "six sigma", "5s", "kaizen", "maintenance", "hvac",
+    "thermodynamics", "machining", "cnc", "assembly", "tool design", "automotive",
+    "hydraulics", "pneumatics", "welding", "plant operations", "process engineering",
+    // Civil & Construction
+    "construction", "site engineering", "site supervision", "structural design",
+    "structural analysis", "surveying", "total station", "quantity estimation",
+    "bill of quantities", "boq", "bar bending schedule", "concrete technology",
+    "geotechnical", "highway engineering", "building codes", "project estimation",
+    // Pharmacy & Life Sciences
+    "pharmaceutical", "pharmacology", "drug formulation", "gmp", "cgmp", "quality control",
+    "quality assurance", "clinical research", "clinical trials", "pharmacovigilance",
+    "microbiology", "biotechnology", "molecular biology", "cell culture", "biochemistry",
+    "lab testing", "assay development", "sample preparation", "medical terminology",
+    // Architecture & Design
+    "architectural design", "interior design", "space planning", "3d modeling",
+    "rendering", "drafting", "building materials", "urban planning", "landscape design",
+    // Writing & Communication
+    "content writing", "copywriting", "creative writing", "technical writing",
+    "proofreading", "editing", "storytelling", "public relations", "press release",
+    "instructional design", "communication", "curriculum development",
 ];
 
 function stripHtml(html: string): string {
@@ -138,7 +150,7 @@ function stripHtml(html: string): string {
 
 function normalizeType(raw: string | undefined): JobType {
     const v = (raw || "").toLowerCase();
-    if (v.includes("intern")) return "intern";
+    if (v.includes("intern") || v.includes("trainee") || v.includes("apprentice")) return "intern";
     if (v.includes("contract") || v.includes("freelance") || v.includes("temporary")) return "contract";
     return "full-time";
 }
@@ -158,90 +170,740 @@ function uniqueStrings(items: string[], limit = 20): string[] {
     return out;
 }
 
-function canonicalSkill(skill: string): string {
-    const s = skill.toLowerCase();
-    if (s === "nodejs" || s === "node") return "Node.js";
-    if (s === "nextjs" || s === "next.js") return "Next.js";
-    if (s === "golang" || s === "go") return "Go";
-    if (s === "postgresql" || s === "postgres") return "PostgreSQL";
-    if (s === "k8s" || s === "kubernetes") return "Kubernetes";
-    if (s === "ml" || s === "machine learning") return "Machine Learning";
-    return skill;
+export function canonicalSkill(skill: string): string {
+    const s = skill.trim();
+    const lower = s.toLowerCase();
+    if (lower === "nodejs" || lower === "node") return "Node.js";
+    if (lower === "nextjs" || lower === "next.js") return "Next.js";
+    if (lower === "golang" || lower === "go") return "Go";
+    if (lower === "postgresql" || lower === "postgres") return "PostgreSQL";
+    if (lower === "k8s" || lower === "kubernetes") return "Kubernetes";
+    if (lower === "ml" || lower === "machine learning") return "Machine Learning";
+    if (lower === "powerbi" || lower === "power bi") return "Power BI";
+    if (lower === "autocad") return "AutoCAD";
+    if (lower === "staad" || lower === "staad pro") return "STAAD.Pro";
+    if (lower === "tally" || lower === "tally prime" || lower === "tally erp") return "Tally";
+    if (lower === "gst") return "GST";
+    if (lower === "excel" || lower === "advanced excel") return "Excel";
+    if (lower === "ui/ux") return "UI/UX";
+    return s.length <= 4 && !/[aeiou]/i.test(s) ? s.toUpperCase() : s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Heuristic resume profile when Gemini is unavailable or fails. */
-export function extractResumeProfileHeuristic(resumeText: string): ResumeProfile {
+// --------------------------------------------------------------------------
+// 1. EDUCATION-FIRST RESUME PARSING & NORMALIZATION
+// --------------------------------------------------------------------------
+
+interface DegreeRule {
+    pattern: RegExp;
+    normalizedDegree: string;
+    level: "undergraduate" | "postgraduate" | "diploma" | "doctorate" | "certification";
+    defaultField: string;
+    defaultDomains: string[];
+    defaultRoles: string[];
+}
+
+const DEGREE_RULES: DegreeRule[] = [
+    // Commerce / Finance Degrees
+    {
+        pattern: /\b(b\.?\s*com(\.?(hons|honours|general))?|bachelor\s+of\s+commerce)\b/i,
+        normalizedDegree: "Bachelor of Commerce",
+        level: "undergraduate",
+        defaultField: "Commerce & Accounting",
+        defaultDomains: ["Commerce", "Accounting", "Finance", "Banking"],
+        defaultRoles: ["Accountant", "Accounts Executive", "Finance Executive", "Audit Assistant", "Junior Accountant", "Tax Associate"],
+    },
+    {
+        pattern: /\b(m\.?\s*com|master\s+of\s+commerce)\b/i,
+        normalizedDegree: "Master of Commerce",
+        level: "postgraduate",
+        defaultField: "Commerce & Finance",
+        defaultDomains: ["Commerce", "Accounting", "Finance", "Banking"],
+        defaultRoles: ["Senior Accountant", "Financial Analyst", "Finance Executive", "Accounts Manager", "Tax Consultant"],
+    },
+    {
+        pattern: /\b(ca|chartered\s+accountant|acca|cpa|cma|cfa|icwa)\b/i,
+        normalizedDegree: "Chartered Accountant / Finance Professional",
+        level: "certification",
+        defaultField: "Accounting & Auditing",
+        defaultDomains: ["Finance", "Accounting", "Auditing", "Taxation"],
+        defaultRoles: ["Chartered Accountant", "Audit Senior", "Financial Controller", "Tax Specialist", "Finance Analyst"],
+    },
+    // Business / Management Degrees
+    {
+        pattern: /\b(bba(\.?(hons|honours))?|b\.?\s*b\.?\s*a|bachelor\s+of\s+business\s+administration|bms|bbm)\b/i,
+        normalizedDegree: "Bachelor of Business Administration",
+        level: "undergraduate",
+        defaultField: "Business Administration",
+        defaultDomains: ["Business", "Management", "Operations", "Marketing", "HR", "Sales"],
+        defaultRoles: ["Business Development Executive", "Operations Executive", "Marketing Executive", "HR Executive", "Management Trainee", "Sales Executive"],
+    },
+    {
+        pattern: /\b(mba|m\.?\s*b\.?\s*a|master\s+of\s+business\s+administration|pgdm)\b/i,
+        normalizedDegree: "Master of Business Administration",
+        level: "postgraduate",
+        defaultField: "Business Administration",
+        defaultDomains: ["Business", "Management", "Operations", "Finance", "Marketing"],
+        defaultRoles: ["Management Trainee", "Business Analyst", "Marketing Manager", "Operations Manager", "HR Specialist"],
+    },
+    // Computer Science / IT Degrees
+    {
+        pattern: /\b(bca|b\.?\s*c\.?\s*a|bachelor\s+of\s+computer\s+applications)\b/i,
+        normalizedDegree: "Bachelor of Computer Applications",
+        level: "undergraduate",
+        defaultField: "Computer Applications",
+        defaultDomains: ["Software", "Computer Science", "IT", "Web Development"],
+        defaultRoles: ["Software Developer", "Web Developer", "QA Analyst", "System Associate", "Junior Developer"],
+    },
+    {
+        pattern: /\b(mca|m\.?\s*c\.?\s*a|master\s+of\s+computer\s+applications)\b/i,
+        normalizedDegree: "Master of Computer Applications",
+        level: "postgraduate",
+        defaultField: "Computer Applications",
+        defaultDomains: ["Software", "Computer Science", "IT", "Data"],
+        defaultRoles: ["Software Engineer", "Backend Developer", "Full Stack Developer", "Application Developer"],
+    },
+    {
+        pattern: /\b(b\.?\s*tech|b\.?\s*e\.?(\b|\s)|bachelor\s+of\s+technology|bachelor\s+of\s+engineering)\b/i,
+        normalizedDegree: "Bachelor of Technology",
+        level: "undergraduate",
+        defaultField: "Engineering",
+        defaultDomains: ["Engineering", "Technology"],
+        defaultRoles: ["Graduate Engineer Trainee", "Associate Engineer", "Technical Specialist"],
+    },
+    {
+        pattern: /\b(m\.?\s*tech|m\.?\s*e\.?(\b|\s)|master\s+of\s+technology|master\s+of\s+engineering)\b/i,
+        normalizedDegree: "Master of Technology",
+        level: "postgraduate",
+        defaultField: "Engineering",
+        defaultDomains: ["Engineering", "Technology", "Research"],
+        defaultRoles: ["Lead Engineer", "Senior Engineer", "R&D Specialist"],
+    },
+    // Science Degrees
+    {
+        pattern: /\b(b\.?\s*sc|bachelor\s+of\s+science|\bbs\b)\b/i,
+        normalizedDegree: "Bachelor of Science",
+        level: "undergraduate",
+        defaultField: "Science",
+        defaultDomains: ["Science", "Research", "Analysis"],
+        defaultRoles: ["Research Assistant", "Laboratory Associate", "Quality Analyst"],
+    },
+    {
+        pattern: /\b(m\.?\s*sc|master\s+of\s+science|\bms\b)\b/i,
+        normalizedDegree: "Master of Science",
+        level: "postgraduate",
+        defaultField: "Science",
+        defaultDomains: ["Science", "Research", "Analysis"],
+        defaultRoles: ["Research Scientist", "Scientific Associate", "Senior Analyst"],
+    },
+    // Pharmacy
+    {
+        pattern: /\b(b\.?\s*pharm|bachelor\s+of\s+pharmacy|pharm\.?\s*d)\b/i,
+        normalizedDegree: "Bachelor of Pharmacy",
+        level: "undergraduate",
+        defaultField: "Pharmacy",
+        defaultDomains: ["Pharmacy", "Pharmaceutical", "Healthcare", "Clinical Research"],
+        defaultRoles: ["Pharmacist", "Medical Representative", "Clinical Research Associate", "Quality Assurance Chemist"],
+    },
+    {
+        pattern: /\b(m\.?\s*pharm|master\s+of\s+pharmacy)\b/i,
+        normalizedDegree: "Master of Pharmacy",
+        level: "postgraduate",
+        defaultField: "Pharmacy",
+        defaultDomains: ["Pharmacy", "Pharmaceutical", "Formulation", "Clinical Research"],
+        defaultRoles: ["Formulation Scientist", "Drug Safety Specialist", "Clinical Research Associate", "Regulatory Affairs Specialist"],
+    },
+    // Architecture
+    {
+        pattern: /\b(b\.?\s*arch|bachelor\s+of\s+architecture)\b/i,
+        normalizedDegree: "Bachelor of Architecture",
+        level: "undergraduate",
+        defaultField: "Architecture",
+        defaultDomains: ["Architecture", "Architectural Design", "Interior Design", "Construction"],
+        defaultRoles: ["Architect", "Architectural Designer", "Interior Designer", "Draftsman", "Project Architect"],
+    },
+    // Arts & Humanities
+    {
+        pattern: /\b(b\.?\s*a(\.?(hons|honours))?|bachelor\s+of\s+arts)\b/i,
+        normalizedDegree: "Bachelor of Arts",
+        level: "undergraduate",
+        defaultField: "Humanities & Arts",
+        defaultDomains: ["Content", "Communication", "Media", "Education"],
+        defaultRoles: ["Content Writer", "Copywriter", "Communications Specialist", "Editorial Assistant", "Public Relations Associate"],
+    },
+    {
+        pattern: /\b(m\.?\s*a|master\s+of\s+arts)\b/i,
+        normalizedDegree: "Master of Arts",
+        level: "postgraduate",
+        defaultField: "Humanities & Arts",
+        defaultDomains: ["Content", "Communication", "Media", "Education"],
+        defaultRoles: ["Senior Content Strategist", "Communications Manager", "Editor", "Instructional Designer"],
+    },
+    // Diploma
+    {
+        pattern: /\b(diploma|polytechnic)\b/i,
+        normalizedDegree: "Diploma",
+        level: "diploma",
+        defaultField: "Technical Diploma",
+        defaultDomains: ["Engineering", "Technical Operations"],
+        defaultRoles: ["Diploma Trainee", "Junior Engineer", "Site Supervisor", "Technical Assistant"],
+    },
+];
+
+interface FieldRule {
+    pattern: RegExp;
+    normalizedField: string;
+    domains: string[];
+    roles: string[];
+}
+
+const FIELD_RULES: FieldRule[] = [
+    // Computer Science & IT
+    {
+        pattern: /\b(computer\s+science|cse|cs\b|software\s+engineering|information\s+technology|it\b|data\s+science|artificial\s+intelligence|ai\s*(&|\+|and)\s*ds|ai\s*(&|\+|and)\s*ml)\b/i,
+        normalizedField: "Computer Science",
+        domains: ["Software", "Computer Science", "IT", "Data", "Cloud"],
+        roles: ["Software Engineer", "Frontend Developer", "Backend Developer", "Full Stack Developer", "Software Developer", "QA Engineer", "DevOps Engineer"],
+    },
+    // Mechanical Engineering
+    {
+        pattern: /\b(mechanical\s+engineering|mechanical|automobile|automotive|production\s+engineering|manufacturing|industrial\s+engineering|cad\s+design|mechatronics)\b/i,
+        normalizedField: "Mechanical Engineering",
+        domains: ["Mechanical", "Manufacturing", "Production", "CAD"],
+        roles: ["Mechanical Engineer", "Design Engineer", "CAD Engineer", "Production Engineer", "Quality Control Engineer", "Manufacturing Engineer"],
+    },
+    // Civil Engineering
+    {
+        pattern: /\b(civil\s+engineering|civil|structural\s+engineering|construction\s+engineering|infrastructure|environmental\s+engineering|geotechnical)\b/i,
+        normalizedField: "Civil Engineering",
+        domains: ["Civil", "Construction", "Infrastructure"],
+        roles: ["Civil Engineer", "Site Engineer", "Structural Engineer", "Construction Supervisor", "Estimation Engineer", "Quality Surveyor"],
+    },
+    // Electrical & Electronics
+    {
+        pattern: /\b(electrical\s+engineering|electronics|ece\b|eee\b|electrical\s*(&|\+|and)\s*electronics|electronics\s*(&|\+|and)\s*communication|telecommunication|instrumentation|embedded\s+systems|vlsi)\b/i,
+        normalizedField: "Electrical & Electronics Engineering",
+        domains: ["Electrical", "Electronics", "Embedded Systems", "Hardware"],
+        roles: ["Electrical Engineer", "Electronics Engineer", "Embedded Systems Engineer", "Hardware Design Engineer", "Testing Engineer"],
+    },
+    // Finance & Accounting (Specifically Finance / Financial Analysis)
+    {
+        pattern: /\b(finance|financial\s+analysis|financial\s+modeling|valuation|banking|credit\s+analysis|investment\s+banking)\b/i,
+        normalizedField: "Finance",
+        domains: ["Finance", "Banking", "Business", "Financial Analysis"],
+        roles: ["Financial Analyst", "Finance Executive", "Accounts Executive", "Audit Assistant", "Junior Accountant", "Investment Analyst"],
+    },
+    // Commerce & Accounting (Specifically Accounting / Commerce)
+    {
+        pattern: /\b(commerce|accounting|accountancy|taxation|direct\s+tax|audit|auditing)\b/i,
+        normalizedField: "Commerce & Accounting",
+        domains: ["Commerce", "Accounting", "Finance", "Banking"],
+        roles: ["Accountant", "Accounts Executive", "Finance Executive", "Audit Assistant", "Junior Accountant", "Tax Associate"],
+    },
+    // Marketing & Sales
+    {
+        pattern: /\b(marketing|digital\s+marketing|brand\s+management|sales|advertising|market\s+research)\b/i,
+        normalizedField: "Marketing",
+        domains: ["Marketing", "Sales", "Business", "Media"],
+        roles: ["Marketing Executive", "Digital Marketing Specialist", "Sales Executive", "Brand Associate", "Market Research Analyst"],
+    },
+    // Human Resources
+    {
+        pattern: /\b(human\s+resources|hr\b|personnel\s+management|talent\s+acquisition)\b/i,
+        normalizedField: "Human Resources",
+        domains: ["Human Resources", "Management", "Operations"],
+        roles: ["HR Executive", "Talent Acquisition Specialist", "HR Generalist", "Recruiter", "People Operations Associate"],
+    },
+    // Operations & Supply Chain
+    {
+        pattern: /\b(operations|supply\s+chain|logistics|procurement|inventory\s+management)\b/i,
+        normalizedField: "Operations",
+        domains: ["Operations", "Supply Chain", "Logistics", "Management"],
+        roles: ["Operations Executive", "Supply Chain Analyst", "Logistics Coordinator", "Inventory Executive", "Operations Trainee"],
+    },
+    // Biology & Life Sciences
+    {
+        pattern: /\b(biology|biotechnology|biotech|microbiology|molecular\s+biology|biochemistry|life\s+sciences|zoology|botany)\b/i,
+        normalizedField: "Biology & Life Sciences",
+        domains: ["Biology", "Laboratory", "Life Sciences", "Biotechnology"],
+        roles: ["Research Assistant", "Laboratory Technician", "Biotechnologist", "Microbiologist", "Quality Analyst"],
+    },
+    // Pharmacy
+    {
+        pattern: /\b(pharmacy|pharmaceutical|pharmacology|pharmaceutics)\b/i,
+        normalizedField: "Pharmacy",
+        domains: ["Pharmacy", "Pharmaceutical", "Clinical Research"],
+        roles: ["Pharmacist", "Medical Representative", "Clinical Research Associate", "Quality Assurance Chemist"],
+    },
+    // Architecture
+    {
+        pattern: /\b(architecture|architectural\s+design|interior\s+design|urban\s+planning)\b/i,
+        normalizedField: "Architecture",
+        domains: ["Architecture", "Architectural Design", "Interior Design"],
+        roles: ["Architect", "Architectural Designer", "Interior Designer", "Draftsman"],
+    },
+    // English & Communication
+    {
+        pattern: /\b(english|english\s+literature|journalism|mass\s+communication|media|communications?|creative\s+writing)\b/i,
+        normalizedField: "English & Communication",
+        domains: ["English", "Communication", "Content", "Education"],
+        roles: ["Content Writer", "Copywriter", "Communications Specialist", "Editorial Assistant", "Public Relations Associate"],
+    },
+];
+
+/** Extract structured education details from resume text. */
+export function extractEducationInfo(resumeText: string): EducationInfo {
     const lower = resumeText.toLowerCase();
-    const matchedRaw = [...TECH_SKILLS]
-        .sort((a, b) => b.length - a.length)
-        .filter((s) => lower.includes(s));
-    const skills: string[] = [];
-    const covered = new Set<string>();
-    for (const raw of matchedRaw) {
-        // Skip short tokens already covered by a longer hit (e.g. "node" inside "nodejs"/"node.js")
-        if ([...covered].some((c) => c.includes(raw) || raw.includes(c))) continue;
-        covered.add(raw);
-        skills.push(canonicalSkill(raw));
+
+    // 1. Identify education section or education context window
+    let educationSnippet = "";
+    const eduMatch = resumeText.match(/education[\s\S]{1,250}?(?=\n\s*(?:skills|experience|projects|certifications|work history)|$)/i);
+    if (eduMatch) {
+        educationSnippet = eduMatch[0];
+    } else {
+        educationSnippet = resumeText.slice(0, 500);
     }
-    const roles = ROLE_HINTS.filter((r) => lower.includes(r)).map((r) =>
-        r
-            .split(" ")
-            .map((w) => (w === "ui/ux" || w === "sde" || w === "sre" || w === "ml" ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1)))
-            .join(" ")
-    );
 
-    let seniority = "mid";
-    if (/\b(intern|internship|student|fresher|entry[- ]level|junior)\b/i.test(resumeText)) seniority = "junior";
-    else if (/\b(staff|principal|director|lead|senior|sr\.)\b/i.test(resumeText)) seniority = "senior";
+    // 2. Find matching degree rule
+    let matchedDegreeRule: DegreeRule | null = null;
+    let rawDegree = "";
+    for (const rule of DEGREE_RULES) {
+        const match = (educationSnippet || resumeText).match(rule.pattern);
+        if (match) {
+            matchedDegreeRule = rule;
+            rawDegree = match[0].trim();
+            break;
+        }
+    }
 
-    const keywordHits = [...skills, ...roles];
-    if (roles.length === 0) {
-        if (skills.some((s) => /react|vue|angular|frontend|css|html|figma/i.test(s))) roles.push("Frontend Engineer");
-        else if (skills.some((s) => /python|java|go|node|django|spring|backend/i.test(s))) roles.push("Backend Engineer");
-        else if (skills.some((s) => /ml|pytorch|tensorflow|data/i.test(s))) roles.push("ML Engineer");
-        else roles.push("Software Engineer");
+    // 3. Find matching field / specialization rule specifically within the education context
+    let matchedFieldRule: FieldRule | null = null;
+    let rawField = "";
+
+    // Check if degree context has an explicit branch/field like "B.Tech CSE", "MBA Finance", "B.Sc Biology", "B.Com Finance", "Mechanical Engineering"
+    for (const rule of FIELD_RULES) {
+        if (rule.pattern.test(educationSnippet)) {
+            matchedFieldRule = rule;
+            const m = educationSnippet.match(rule.pattern);
+            rawField = m ? m[0].trim() : rule.normalizedField;
+            break;
+        }
+    }
+
+    // 4. Fallback if no degree found, check for "Mechanical Engineering" or "Civil Engineering" alone
+    if (!matchedDegreeRule && matchedFieldRule) {
+        rawDegree = matchedFieldRule.normalizedField;
+    } else if (!matchedDegreeRule && !matchedFieldRule) {
+        const eduSection = resumeText.match(/education[:\s-]+([^\n\r,]+)/i);
+        if (eduSection && eduSection[1]) {
+            const raw = eduSection[1].trim();
+            if (raw.length > 2 && raw.length < 60) {
+                rawDegree = raw;
+            }
+        }
+    }
+
+    // 5. Graduation year
+    let graduationYear: string | undefined;
+    const yearMatch = (educationSnippet || resumeText).match(/\b(20[123][0-9]|19[89][0-9])\b/);
+    if (yearMatch) {
+        graduationYear = yearMatch[1];
+    }
+
+    const degreeName = rawDegree || (matchedDegreeRule ? matchedDegreeRule.normalizedDegree : undefined);
+    const fieldName = rawField || (matchedFieldRule ? matchedFieldRule.normalizedField : matchedDegreeRule?.defaultField);
+    const level = matchedDegreeRule?.level || (lower.includes("master") || lower.includes("post graduate") ? "postgraduate" : "undergraduate");
+
+    let normalizedDegree = matchedDegreeRule ? matchedDegreeRule.normalizedDegree : degreeName;
+    const normalizedField = matchedFieldRule ? matchedFieldRule.normalizedField : (matchedDegreeRule ? matchedDegreeRule.defaultField : fieldName);
+
+    // Normalize compound degree names where appropriate
+    if (matchedDegreeRule?.normalizedDegree === "Bachelor of Technology" || matchedDegreeRule?.normalizedDegree === "Bachelor of Engineering") {
+        if (normalizedField && normalizedField !== "Engineering") {
+            normalizedDegree = `${matchedDegreeRule.normalizedDegree} - ${normalizedField}`;
+        }
+    } else if (matchedDegreeRule?.normalizedDegree === "Master of Business Administration") {
+        if (normalizedField && /finance/i.test(normalizedField)) {
+            normalizedDegree = "Master of Business Administration - Finance";
+        }
+    } else if (matchedDegreeRule?.normalizedDegree === "Bachelor of Commerce") {
+        // Only append - Finance if "finance" was explicitly mentioned in the education snippet!
+        if (/\bfinance\b/i.test(educationSnippet)) {
+            normalizedDegree = "Bachelor of Commerce - Finance";
+        } else {
+            normalizedDegree = "Bachelor of Commerce";
+        }
+    } else if (matchedDegreeRule?.normalizedDegree === "Bachelor of Science" && normalizedField) {
+        normalizedDegree = `${matchedDegreeRule.normalizedDegree} - ${normalizedField}`;
+    } else if (matchedDegreeRule?.normalizedDegree === "Bachelor of Arts" && normalizedField) {
+        normalizedDegree = `${matchedDegreeRule.normalizedDegree} - ${normalizedField}`;
     }
 
     return {
-        roles: uniqueStrings(roles, 5),
-        skills: uniqueStrings(skills, 15),
-        keywords: uniqueStrings(keywordHits, 20),
-        seniority,
-        summary: `Inferred ${seniority}-level profile focused on ${uniqueStrings(roles, 2).join(", ") || "software"}`,
+        degree: degreeName,
+        field: fieldName,
+        specialization: fieldName,
+        level,
+        graduationYear,
+        normalizedDegree,
+        normalizedField,
     };
 }
 
-export function buildSearchQueries(profile: ResumeProfile, location: string, filter?: string): string[] {
+// --------------------------------------------------------------------------
+// 2. DYNAMIC CAREER DOMAIN & JOB FAMILIES DERIVATION
+// --------------------------------------------------------------------------
+
+interface CareerDomainResult {
+    primaryDomains: string[];
+    secondaryDomains: string[];
+    roles: string[];
+}
+
+export function deriveCareerDomainsAndRoles(
+    education: EducationInfo,
+    skills: string[],
+    projects: ProjectInfo[]
+): CareerDomainResult {
+    const primaryDomains: string[] = [];
+    const secondaryDomains: string[] = [];
+    const roles: string[] = [];
+
+    const normDegree = (education.normalizedDegree || "").toLowerCase();
+    const normField = (education.normalizedField || "").toLowerCase();
+    const allEduText = `${education.degree || ""} ${education.field || ""} ${normDegree} ${normField}`.toLowerCase();
+
+    // 1. Identify primary domain from education
+    let matchedFieldRule: FieldRule | null = null;
+    for (const rule of FIELD_RULES) {
+        if (rule.pattern.test(normField) || rule.pattern.test(allEduText)) {
+            matchedFieldRule = rule;
+            break;
+        }
+    }
+
+    let matchedDegreeRule: DegreeRule | null = null;
+    for (const rule of DEGREE_RULES) {
+        if (rule.pattern.test(allEduText) || rule.normalizedDegree.toLowerCase() === normDegree) {
+            matchedDegreeRule = rule;
+            break;
+        }
+    }
+
+    // Special handling for B.Com to ensure Commerce & Accounting are primary
+    if (normDegree.includes("commerce") || allEduText.includes("b.com")) {
+        primaryDomains.push("Commerce", "Accounting", "Finance", "Banking");
+        roles.push("Accountant", "Accounts Executive", "Finance Executive", "Audit Assistant", "Junior Accountant", "Tax Associate");
+    } else if (matchedFieldRule) {
+        primaryDomains.push(...matchedFieldRule.domains);
+        roles.push(...matchedFieldRule.roles);
+    } else if (matchedDegreeRule) {
+        primaryDomains.push(...matchedDegreeRule.defaultDomains);
+        roles.push(...matchedDegreeRule.defaultRoles);
+    } else if (education.normalizedField) {
+        const field = education.normalizedField;
+        primaryDomains.push(field, `${field} Domain`, "Operations");
+        roles.push(`${field} Specialist`, `${field} Associate`, `${field} Executive`, `${field} Analyst`);
+    } else {
+        // Neutral fallback from skills/projects without forcing Software
+        const lowerSkills = skills.map((s) => s.toLowerCase());
+        if (lowerSkills.some((s) => /accounting|excel|tally|gst|tax|finance|audit/i.test(s))) {
+            primaryDomains.push("Commerce", "Accounting", "Finance");
+            roles.push("Accountant", "Accounts Executive", "Finance Executive");
+        } else if (lowerSkills.some((s) => /autocad|cad|mechanical|solidworks|manufacturing/i.test(s))) {
+            primaryDomains.push("Mechanical", "Manufacturing", "CAD");
+            roles.push("Mechanical Engineer", "Design Engineer", "CAD Engineer");
+        } else if (lowerSkills.some((s) => /civil|staad|construction|surveying/i.test(s))) {
+            primaryDomains.push("Civil", "Construction", "Infrastructure");
+            roles.push("Civil Engineer", "Site Engineer", "Structural Engineer");
+        } else if (lowerSkills.some((s) => /pharmacy|pharmacology|clinical|biology|chemist/i.test(s))) {
+            primaryDomains.push("Pharmacy", "Life Sciences", "Healthcare");
+            roles.push("Pharmacist", "Clinical Research Associate", "Quality Chemist");
+        } else if (lowerSkills.some((s) => /marketing|sales|business development|operations|hr/i.test(s))) {
+            primaryDomains.push("Marketing", "Business", "Management", "Operations");
+            roles.push("Marketing Executive", "Business Development Executive", "Operations Executive");
+        } else if (lowerSkills.some((s) => /javascript|python|java|react|node|c\+\+|sql|devops/i.test(s))) {
+            primaryDomains.push("Software", "Computer Science", "IT");
+            roles.push("Software Engineer", "Software Developer", "Full Stack Developer");
+        } else {
+            primaryDomains.push("General Professional", "Operations");
+            roles.push("Associate", "Executive", "Operations Associate");
+        }
+    }
+
+    // 2. Career Transitions & Supporting Signals (Requirement 6 & 9)
+    const isTechOrCS = primaryDomains.some((d) => /software|computer science|it\b/i.test(d));
+    const lowerSkills = skills.map((s) => s.toLowerCase());
+    const hasDataSkills = lowerSkills.some((s) => /python|sql|power bi|tableau|data analysis/i.test(s));
+    const hasAnalyticsProject = projects.some((p) => /data|analytics|dashboard|forecasting|analysis/i.test((p.title + " " + (p.domain || "")).toLowerCase()));
+
+    if (!isTechOrCS && (hasDataSkills || hasAnalyticsProject)) {
+        secondaryDomains.push("Data Analysis", "Financial Analytics", "Business Analytics");
+        // Add analytical transition roles at the end of roles
+        if (primaryDomains.includes("Finance") || primaryDomains.includes("Commerce")) {
+            roles.push("Financial Data Analyst", "Business Analyst", "Data Analyst");
+        } else {
+            roles.push("Business Analyst", "Data Analyst");
+        }
+    }
+
+    // Non-technical degree with technical project (e.g. B.Com + React inventory application)
+    const hasWebSkills = lowerSkills.some((s) => /react|node|javascript|typescript|html|css|web/i.test(s));
+    const hasWebProject = projects.some((p) => /react|web|app|application|frontend/i.test((p.title + " " + (p.domain || "")).toLowerCase()));
+    if (!isTechOrCS && (hasWebSkills || hasWebProject)) {
+        secondaryDomains.push("Web & Software Applications");
+        roles.push("Technical Operations Associate", "Junior Web Developer");
+    }
+
+    return {
+        primaryDomains: uniqueStrings(primaryDomains, 6),
+        secondaryDomains: uniqueStrings(secondaryDomains, 6),
+        roles: uniqueStrings(roles, 8),
+    };
+}
+
+// --------------------------------------------------------------------------
+// 3. PROJECT EXTRACTION
+// --------------------------------------------------------------------------
+
+export function extractProjectsFromResume(resumeText: string): ProjectInfo[] {
+    const projects: ProjectInfo[] = [];
+    const lines = resumeText.split(/\r?\n/);
+    let inProjectSection = false;
+    let currentProject: Partial<ProjectInfo> | null = null;
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i].trim();
+        if (!line) continue;
+
+        if (/^(projects|academic projects|personal projects|key projects|capstone projects)/i.test(line)) {
+            inProjectSection = true;
+            continue;
+        }
+
+        if (inProjectSection && /^(education|skills|experience|work history|certifications|languages|achievements|summary)/i.test(line)) {
+            inProjectSection = false;
+            if (currentProject?.title) {
+                projects.push({
+                    title: currentProject.title,
+                    domain: currentProject.domain || "General",
+                    technologies: currentProject.technologies || [],
+                    skills: currentProject.skills || [],
+                    description: currentProject.description,
+                });
+            }
+            currentProject = null;
+            break;
+        }
+
+        if (inProjectSection) {
+            if (line.startsWith("•") || line.startsWith("-") || line.startsWith("*") || (line.length < 50 && !line.includes(":") && !line.endsWith("."))) {
+                const titleCandidate = line.replace(/^[•\-*]\s*/, "").trim();
+                if (/^(technologies|tools|skills|tech stack):/i.test(titleCandidate)) {
+                    if (currentProject) {
+                        const techs = titleCandidate.replace(/^(technologies|tools|skills|tech stack):\s*/i, "").split(/[,/|]+/).map((s) => s.trim());
+                        currentProject.technologies = uniqueStrings([...(currentProject.technologies || []), ...techs]);
+                    }
+                    continue;
+                }
+
+                if (titleCandidate.length > 3 && titleCandidate.length < 70) {
+                    if (currentProject?.title) {
+                        projects.push({
+                            title: currentProject.title,
+                            domain: currentProject.domain || "General",
+                            technologies: currentProject.technologies || [],
+                            skills: currentProject.skills || [],
+                            description: currentProject.description,
+                        });
+                    }
+                    currentProject = {
+                        title: titleCandidate,
+                        technologies: [],
+                        skills: [],
+                        description: "",
+                    };
+                    continue;
+                }
+            }
+
+            if (currentProject) {
+                currentProject.description = ((currentProject.description || "") + " " + line).trim();
+            }
+        }
+    }
+
+    if (currentProject?.title) {
+        projects.push({
+            title: currentProject.title,
+            domain: currentProject.domain || "General",
+            technologies: currentProject.technologies || [],
+            skills: currentProject.skills || [],
+            description: currentProject.description,
+        });
+    }
+
+    if (projects.length === 0) {
+        const inlineMatches = resumeText.matchAll(/project[s]?\s*[:\-]\s*([^\n\r.]+)/gi);
+        for (const m of inlineMatches) {
+            const rawTitle = m[1].trim();
+            if (rawTitle.length > 3 && rawTitle.length < 80) {
+                projects.push({
+                    title: rawTitle,
+                    domain: "General",
+                    technologies: [],
+                    skills: [],
+                });
+            }
+        }
+    }
+
+    return projects.slice(0, 5);
+}
+
+// --------------------------------------------------------------------------
+// 4. HEURISTIC RESUME PROFILER (Education-First)
+// --------------------------------------------------------------------------
+
+export function extractResumeProfileHeuristic(resumeText: string): ResumeProfile {
+    const lower = resumeText.toLowerCase();
+
+    // 1. Education extraction
+    const education = extractEducationInfo(resumeText);
+
+    // 2. Project extraction
+    const projects = extractProjectsFromResume(resumeText);
+
+    // 3. Skills extraction
+    const technicalSkills: string[] = [];
+    const technicalHits = [...TECHNICAL_SKILLS]
+        .sort((a, b) => b.length - a.length)
+        .filter((s) => lower.includes(s));
+    const techCovered = new Set<string>();
+    for (const raw of technicalHits) {
+        if ([...techCovered].some((c) => c.includes(raw) || raw.includes(c))) continue;
+        techCovered.add(raw);
+        technicalSkills.push(canonicalSkill(raw));
+    }
+
+    const professionalSkills: string[] = [];
+    const profHits = [...PROFESSIONAL_SKILLS]
+        .sort((a, b) => b.length - a.length)
+        .filter((s) => lower.includes(s));
+    const profCovered = new Set<string>();
+    for (const raw of profHits) {
+        if ([...profCovered].some((c) => c.includes(raw) || raw.includes(c))) continue;
+        profCovered.add(raw);
+        professionalSkills.push(canonicalSkill(raw));
+    }
+
+    const allSkills = uniqueStrings([...professionalSkills, ...technicalSkills], 20);
+
+    // 4. Domain & Role derivation
+    const { primaryDomains, secondaryDomains, roles } = deriveCareerDomainsAndRoles(education, allSkills, projects);
+
+    // 5. Seniority determination
+    let seniority = "mid";
+    if (/\b(intern|internship|student|fresher|entry[- ]level|junior|trainee|0[\s-]?year)\b/i.test(resumeText)) {
+        seniority = "junior";
+    } else if (/\b(staff|principal|director|lead|senior|sr\.|manager|head)\b/i.test(resumeText)) {
+        seniority = "senior";
+    }
+
+    // 6. Keywords
+    const keywords = uniqueStrings([
+        ...roles,
+        ...allSkills,
+        ...primaryDomains,
+        ...(education.normalizedDegree ? [education.normalizedDegree] : []),
+        ...(education.normalizedField ? [education.normalizedField] : []),
+    ], 25);
+
+    // 7. Summary
+    const eduLabel = education.normalizedDegree || education.degree || "Professional";
+    const domainLabel = primaryDomains.slice(0, 2).join(" / ") || "Career";
+    const summary = `${eduLabel} background specializing in ${domainLabel} (${seniority}-level)`;
+
+    return {
+        education,
+        primaryDomains,
+        secondaryDomains,
+        roles,
+        skills: allSkills,
+        technicalSkills: uniqueStrings(technicalSkills, 15),
+        professionalSkills: uniqueStrings(professionalSkills, 15),
+        projects,
+        experience: [],
+        certifications: [],
+        languages: [],
+        keywords,
+        seniority,
+        summary,
+    };
+}
+
+// --------------------------------------------------------------------------
+// 5. CONTROLLED SEARCH QUERY GENERATION (Education-First + Optional Query)
+// --------------------------------------------------------------------------
+
+export function buildSearchQueries(
+    profile: ResumeProfile,
+    location: string,
+    filter?: string,
+    manualQuery?: string
+): string[] {
     const loc = location.trim();
-    const primaryRole = profile.roles[0] || "Software Engineer";
-    const topSkills = profile.skills.slice(0, 3).join(" ");
-    
+    const primaryDomain = profile.primaryDomains[0] || "";
+    const primaryRole = profile.roles[0] || (primaryDomain ? `${primaryDomain} Professional` : "Professional");
+
+    // Case A: User supplied a specific manual search query
+    if (manualQuery && manualQuery.trim()) {
+        const q = manualQuery.trim();
+        const queries = [
+            [q, loc].filter(Boolean).join(" ").trim(),
+            [q, primaryDomain, loc].filter(Boolean).join(" ").trim(),
+            q,
+        ];
+        return uniqueStrings(queries, 4);
+    }
+
+    // Case B: Automatic Education-First Job Discovery
     if (filter === "intern") {
         return uniqueStrings([
             `${primaryRole} Intern ${loc}`.trim(),
-            `Software Engineering Intern ${loc}`.trim(),
-            `Developer Intern ${loc}`.trim(),
+            `${primaryDomain} Intern ${loc}`.trim(),
+            `${profile.roles[1] || primaryRole} Trainee ${loc}`.trim(),
             `Internship ${loc}`.trim(),
         ], 4);
     }
 
+    if (filter === "fresher") {
+        return uniqueStrings([
+            `${primaryRole} Fresher ${loc}`.trim(),
+            `${profile.roles[1] || primaryRole} Entry Level ${loc}`.trim(),
+            `${primaryDomain} Graduate Trainee ${loc}`.trim(),
+            `${primaryRole} ${loc}`.trim(),
+        ], 4);
+    }
+
     const queries = [
-        [primaryRole, topSkills, loc].filter(Boolean).join(" ").trim(),
         [primaryRole, loc].filter(Boolean).join(" ").trim(),
+        profile.roles[1] ? [profile.roles[1], loc].filter(Boolean).join(" ").trim() : "",
+        [primaryDomain, loc].filter(Boolean).join(" ").trim(),
         profile.skills.slice(0, 2).join(" "),
     ].filter(Boolean);
+
     return uniqueStrings(queries, 4);
 }
 
-/**
- * Synonym groups for major Indian tech hubs so "Bangalore" also matches "Bengaluru",
- * "Gurgaon" matches "Gurugram", NCR listings match "Delhi", etc.
- */
+// --------------------------------------------------------------------------
+// 6. LOCATION MATCHING
+// --------------------------------------------------------------------------
+
 const INDIA_CITY_SYNONYMS: Record<string, string[]> = {
     bangalore: ["bangalore", "bengaluru"],
     bengaluru: ["bangalore", "bengaluru"],
     hyderabad: ["hyderabad", "secunderabad"],
-    mumbai: ["mumbai", "bombay"],
+    mumbai: ["mumbai", "bombay", "navi mumbai", "thane"],
     delhi: ["delhi", "new delhi", "ncr", "gurugram", "gurgaon", "noida"],
     ncr: ["delhi", "new delhi", "ncr", "gurugram", "gurgaon", "noida"],
     pune: ["pune"],
@@ -250,9 +912,9 @@ const INDIA_CITY_SYNONYMS: Record<string, string[]> = {
     gurugram: ["gurgaon", "gurugram", "ncr", "delhi"],
     noida: ["noida", "ncr", "delhi"],
     kolkata: ["kolkata", "calcutta"],
+    ahmedabad: ["ahmedabad"],
 };
 
-/** Returns the synonym group covering `pref` (an India city name), or null if not an India city. */
 function indiaCitySynonyms(pref: string): string[] | null {
     for (const [city, group] of Object.entries(INDIA_CITY_SYNONYMS)) {
         if (pref.includes(city)) return group;
@@ -298,69 +960,170 @@ function locationMatches(jobLocation: string, preferred: string, remote: boolean
     return { score: 0 };
 }
 
-function scoreJob(
-    job: Omit<MatchedJob, "matchPercent" | "matchReasons">,
+// --------------------------------------------------------------------------
+// 7. MULTI-FACTOR JOB MATCHING & RANKING (Education 40%, Skills 30%, Projects 15%, Exp 10%, Certs 5%)
+// --------------------------------------------------------------------------
+
+export function scoreJob(
+    job: Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">,
     profile: ResumeProfile,
     preferredLocation: string,
-    filter?: string
+    filter?: string,
+    manualQuery?: string
 ): MatchedJob {
     const hay = `${job.role} ${job.company} ${job.location} ${job.tags.join(" ")} ${job.description}`.toLowerCase();
-    let score = 0;
     const reasons: string[] = [];
 
-    for (const role of profile.roles) {
-        const r = role.toLowerCase();
-        if (r && hay.includes(r)) {
-            score += 22;
-            reasons.push(`Role overlap: ${role}`);
-            break;
-        }
-        const parts = r.split(/\s+/).filter((p) => p.length > 3);
-        const partHits = parts.filter((p) => hay.includes(p)).length;
-        if (partHits >= 1) {
-            score += 10 + partHits * 4;
-            reasons.push(`Related to ${role}`);
-            break;
+    // 1. Education / Domain Match Score (Weight: 40%)
+    let educationMatchScore = 20;
+    let educationExplanation = "General background compatibility";
+
+    const degreeName = profile.education.degree || profile.education.normalizedDegree || "";
+    const primaryDomain = profile.primaryDomains[0] || "";
+
+    // Check if job matches manual query directly
+    const hasManualMatch = Boolean(manualQuery && manualQuery.trim() && hay.includes(manualQuery.toLowerCase().trim()));
+    if (hasManualMatch) {
+        educationMatchScore = 98;
+        educationExplanation = `Matches specific search: ${manualQuery}`;
+    } else {
+        const matchesPrimaryDomain = profile.primaryDomains.some((d) => hay.includes(d.toLowerCase()));
+        const matchesPrimaryRole = profile.roles.some((r) => {
+            const roleLower = r.toLowerCase();
+            return hay.includes(roleLower) || roleLower.split(/\s+/).some((w) => w.length > 3 && hay.includes(w));
+        });
+
+        if (matchesPrimaryRole || matchesPrimaryDomain) {
+            educationMatchScore = 92;
+            educationExplanation = degreeName
+                ? `✓ ${degreeName} is relevant to this role`
+                : `✓ Relevant to ${primaryDomain || "your career domain"}`;
+        } else {
+            const matchesSecondary = profile.secondaryDomains.some((d) => hay.includes(d.toLowerCase()));
+            if (matchesSecondary) {
+                educationMatchScore = 65;
+                educationExplanation = `✓ Aligns with secondary career transition (${profile.secondaryDomains[0]})`;
+            } else {
+                educationMatchScore = 10;
+                educationExplanation = "△ Different career domain from education";
+            }
         }
     }
+    reasons.push(educationExplanation);
 
+    // 2. Skills Match Score (Weight: 30%)
     const skillHits = profile.skills.filter((s) => hay.includes(s.toLowerCase()));
-    if (skillHits.length) {
-        score += Math.min(36, skillHits.length * 6);
-        reasons.push(`Skills: ${skillHits.slice(0, 4).join(", ")}`);
+    let skillsMatchScore = 20;
+    let skillsExplanation = "";
+
+    if (skillHits.length >= 3) {
+        skillsMatchScore = 95;
+        skillsExplanation = `✓ Skills: ${skillHits.slice(0, 4).join(", ")}`;
+    } else if (skillHits.length === 2) {
+        skillsMatchScore = 80;
+        skillsExplanation = `✓ Skills: ${skillHits.join(", ")}`;
+    } else if (skillHits.length === 1) {
+        skillsMatchScore = 60;
+        skillsExplanation = `✓ Skill: ${skillHits[0]}`;
+    } else {
+        skillsMatchScore = 20;
+        skillsExplanation = "△ Few matching skills identified";
+    }
+    reasons.push(skillsExplanation);
+
+    // 3. Projects Match Score (Weight: 15%)
+    let projectsMatchScore = 55;
+    let projectsExplanation = "△ Limited project relevance";
+
+    const matchedProject = profile.projects.find((p) => {
+        const pText = `${p.title} ${p.domain || ""} ${(p.technologies || []).join(" ")}`.toLowerCase();
+        return (
+            hay.includes(p.title.toLowerCase()) ||
+            pText.split(/[\s,-]+/).some((w) => w.length > 4 && hay.includes(w))
+        );
+    });
+
+    if (matchedProject) {
+        projectsMatchScore = 95;
+        projectsExplanation = `✓ Project: ${matchedProject.title}`;
+        reasons.push(projectsExplanation);
+    } else if (profile.projects.length > 0) {
+        projectsMatchScore = 40;
+    } else if (hasManualMatch) {
+        projectsMatchScore = 75;
     }
 
-    for (const kw of profile.keywords) {
-        if (kw.length > 2 && hay.includes(kw.toLowerCase()) && !skillHits.map((s) => s.toLowerCase()).includes(kw.toLowerCase())) {
-            score += 3;
-        }
-    }
-
-    const loc = locationMatches(job.location, preferredLocation, job.remote);
-    score += loc.score;
-    if (loc.reason) reasons.push(loc.reason);
+    // 4. Experience & Seniority Match Score (Weight: 10%)
+    let experienceMatchScore = 60;
+    let experienceExplanation = "";
 
     if (filter === "intern") {
         if (job.type === "intern" || /\b(intern|internship|trainee|apprentice|student|summer)\b/i.test(hay)) {
-            score += 30;
-            reasons.unshift("Internship match");
+            experienceMatchScore = 95;
+            experienceExplanation = "✓ Internship match";
+            reasons.unshift(experienceExplanation);
         }
-    } else if (profile.seniority === "junior" && job.type === "intern") {
-        score += 8;
-        reasons.push("Internship-friendly for junior profile");
-    }
-    if (profile.seniority === "senior" && /\b(senior|staff|lead|principal)\b/i.test(job.role)) {
-        score += 8;
-        reasons.push("Seniority aligned");
+    } else if (filter === "fresher" && /\b(fresher|entry|0[\s-]?year|graduate|junior)\b/i.test(hay)) {
+        experienceMatchScore = 95;
+        experienceExplanation = "✓ Fresher / Entry-Level friendly";
+        reasons.push(experienceExplanation);
+    } else if (profile.seniority === "junior" && (job.type === "intern" || /\b(fresher|entry|junior)\b/i.test(hay))) {
+        experienceMatchScore = 85;
+        experienceExplanation = "✓ Aligned for junior / entry-level";
+        reasons.push(experienceExplanation);
+    } else if (profile.seniority === "senior" && /\b(senior|staff|lead|principal|manager)\b/i.test(job.role)) {
+        experienceMatchScore = 90;
+        experienceExplanation = "✓ Seniority aligned";
+        reasons.push(experienceExplanation);
     }
 
-    const matchPercent = Math.max(0, Math.min(98, Math.round(score)));
+    // 5. Location Match
+    const loc = locationMatches(job.location, preferredLocation, job.remote);
+    if (loc.reason) reasons.push(loc.reason);
+
+    // 6. Certifications Score (Weight: 5%)
+    let certificationMatchScore = 40;
+    if (profile.certifications.some((c) => hay.includes(c.toLowerCase()))) {
+        certificationMatchScore = 90;
+    }
+
+    // Weighted Overall Score (Weights: 40% Education, 30% Skills, 15% Projects, 10% Experience, 5% Certs)
+    const rawWeighted =
+        educationMatchScore * 0.40 +
+        skillsMatchScore * 0.30 +
+        projectsMatchScore * 0.15 +
+        experienceMatchScore * 0.10 +
+        certificationMatchScore * 0.05;
+
+    // Adjust for strong location alignment
+    const locationBonus = loc.score > 25 ? 5 : 0;
+    const finalScore = Math.max(5, Math.min(98, Math.round(rawWeighted + locationBonus)));
+
+    const matchBreakdown: MatchBreakdown = {
+        educationMatchScore,
+        skillsMatchScore,
+        projectsMatchScore,
+        experienceMatchScore,
+        certificationMatchScore,
+        overallMatchScore: finalScore,
+        educationExplanation,
+        skillsExplanation,
+        projectsExplanation,
+        locationExplanation: loc.reason,
+        experienceExplanation,
+    };
+
     return {
         ...job,
-        matchPercent,
+        matchPercent: finalScore,
         matchReasons: uniqueStrings(reasons, 5),
+        matchBreakdown,
     };
 }
+
+// --------------------------------------------------------------------------
+// 8. DATA SOURCES (Adzuna, Remotive, Arbeitnow, RemoteOK)
+// --------------------------------------------------------------------------
 
 async function fetchWithTimeout(url: string, ms = 8000): Promise<Response> {
     const ctrl = new AbortController();
@@ -369,7 +1132,7 @@ async function fetchWithTimeout(url: string, ms = 8000): Promise<Response> {
         return await fetch(url, {
             signal: ctrl.signal,
             headers: {
-                "User-Agent": "ProInterviewJobMatcher/1.0",
+                "User-Agent": "ProInterviewJobMatcher/2.0",
                 Accept: "application/json",
             },
             next: { revalidate: 0 },
@@ -379,7 +1142,7 @@ async function fetchWithTimeout(url: string, ms = 8000): Promise<Response> {
     }
 }
 
-async function fetchRemotive(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> {
+async function fetchRemotive(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> {
     const url = `https://remotive.com/api/remote-jobs?limit=30${query ? `&search=${encodeURIComponent(query)}` : ""}`;
     const res = await fetchWithTimeout(url);
     if (!res.ok) return [];
@@ -413,7 +1176,7 @@ async function fetchRemotive(query: string): Promise<Omit<MatchedJob, "matchPerc
     }));
 }
 
-async function fetchArbeitnow(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> {
+async function fetchArbeitnow(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> {
     const url = `https://www.arbeitnow.com/api/job-board-api?search=${encodeURIComponent(query)}`;
     const res = await fetchWithTimeout(url);
     if (!res.ok) return [];
@@ -446,7 +1209,7 @@ async function fetchArbeitnow(query: string): Promise<Omit<MatchedJob, "matchPer
     }));
 }
 
-async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> {
+async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> {
     const res = await fetchWithTimeout("https://remoteok.com/api");
     if (!res.ok) return [];
     const data = (await res.json()) as Array<{
@@ -495,12 +1258,10 @@ async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPerc
     });
 }
 
-/**
- * Adzuna India job search (https://developer.adzuna.com). Requires ADZUNA_APP_ID +
- * ADZUNA_APP_KEY; returns an empty list (no network call) when either is missing so
- * callers can include it in sourcesTried without special-casing configuration.
- */
-async function fetchAdzunaIndia(query: string, location: string): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> {
+async function fetchAdzunaIndia(
+    query: string,
+    location: string
+): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> {
     const appId = process.env.ADZUNA_APP_ID;
     const appKey = process.env.ADZUNA_APP_KEY;
     if (!appId || !appKey) return [];
@@ -562,11 +1323,129 @@ async function fetchAdzunaIndia(query: string, location: string): Promise<Omit<M
         });
 }
 
-/**
- * Curated India-focused listings (Bangalore/Hyderabad heavy) used as a top-up when
- * live sources return too few results for an India-based preferred location.
- */
-export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReasons">[] = [
+// --------------------------------------------------------------------------
+// 9. DIVERSE CURATED INDIA LISTINGS (Cross-Discipline Fallbacks)
+// --------------------------------------------------------------------------
+
+export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[] = [
+    // Commerce / Accounting / Finance
+    {
+        id: "job_in_deloitte_accountant",
+        company: "Deloitte India",
+        role: "Accounts Executive / Audit Associate",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["Accounting", "Excel", "Tally", "GST", "Auditing"],
+        salaryRange: "₹5L–₹8L",
+        description: "Join Deloitte's audit and enterprise finance practice in Bangalore. Manage financial accounts, ledgers, reconciliations, GST compliance, and audit schedules.",
+        applyUrl: "https://www2.deloitte.com/in/en/careers.html",
+        postedAt: "2026-08-01",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_ey_finance_intern",
+        company: "EY India",
+        role: "Finance & Taxation Intern",
+        location: "Hyderabad / Bangalore",
+        type: "intern",
+        remote: false,
+        tags: ["Finance", "GST", "Direct Tax", "Excel", "Accounting"],
+        salaryRange: "₹30k–₹45k / month Stipend",
+        description: "Internship for B.Com/M.Com/MBA Finance students. Assist with statutory tax filings, financial statements, and client compliance reviews.",
+        applyUrl: "https://www.ey.com/en_in/careers",
+        postedAt: "2026-08-02",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_hdfc_financial_analyst",
+        company: "HDFC Bank",
+        role: "Financial Analyst / Credit Operations",
+        location: "Bangalore / Mumbai",
+        type: "full-time",
+        remote: false,
+        tags: ["Financial Analysis", "Excel", "Banking", "Power BI", "Forecasting"],
+        salaryRange: "₹6L–₹10L",
+        description: "Analyze commercial banking portfolios, credit metrics, and financial forecasting models for business banking divisions.",
+        applyUrl: "https://www.hdfcbank.com/personal/careers",
+        postedAt: "2026-08-03",
+        source: "ProInterview curated (India)",
+    },
+    // Mechanical Engineering
+    {
+        id: "job_in_tatamotors_mech",
+        company: "Tata Motors",
+        role: "Graduate Mechanical Engineer (CAD & Manufacturing)",
+        location: "Pune / Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["AutoCAD", "CAD", "Manufacturing", "SolidWorks", "Machine Design"],
+        salaryRange: "₹6.5L–₹9.5L",
+        description: "Design automotive sub-assemblies, production fixtures, and CAD component modeling for new generation commercial vehicle platforms.",
+        applyUrl: "https://www.tatamotors.com/careers/",
+        postedAt: "2026-08-01",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_lt_heavy_mech_intern",
+        company: "L&T Heavy Engineering",
+        role: "Mechanical Design Intern",
+        location: "Bangalore",
+        type: "intern",
+        remote: false,
+        tags: ["AutoCAD", "CAD", "Machine Design", "Manufacturing"],
+        salaryRange: "₹25k–₹35k / month Stipend",
+        description: "Internship in mechanical equipment modeling, drafting, engineering calculations, and shop-floor manufacturing validation.",
+        applyUrl: "https://www.larsentoubro.com/careers/",
+        postedAt: "2026-08-02",
+        source: "ProInterview curated (India)",
+    },
+    // Civil Engineering
+    {
+        id: "job_in_lt_civil",
+        company: "L&T Construction",
+        role: "Graduate Civil Engineer / Site Trainee",
+        location: "Bangalore / Hyderabad",
+        type: "full-time",
+        remote: false,
+        tags: ["AutoCAD", "STAAD", "Construction", "Structural Design", "Site Execution"],
+        salaryRange: "₹5.5L–₹8.5L",
+        description: "Supervise major infrastructure projects, quality audits, site execution, and structural design coordination across urban metro projects.",
+        applyUrl: "https://www.lntecc.com/careers/",
+        postedAt: "2026-08-02",
+        source: "ProInterview curated (India)",
+    },
+    // Business / Management / Operations
+    {
+        id: "job_in_unilever_ops",
+        company: "Hindustan Unilever",
+        role: "Operations & Marketing Trainee (Fresher)",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["Operations", "Marketing", "Supply Chain", "Business Management"],
+        salaryRange: "₹8L–₹13L",
+        description: "Management trainee role across FMCG consumer operations, brand market strategy, vendor logistics, and channel sales management.",
+        applyUrl: "https://www.hul.co.in/careers/",
+        postedAt: "2026-08-04",
+        source: "ProInterview curated (India)",
+    },
+    // Life Sciences / Pharmacy
+    {
+        id: "job_in_sunpharma_qc",
+        company: "Sun Pharma",
+        role: "Quality Control Chemist / Pharmacist",
+        location: "Bangalore / Hyderabad",
+        type: "full-time",
+        remote: false,
+        tags: ["Pharmacy", "Quality Control", "Chemistry", "GMP", "Formulation"],
+        salaryRange: "₹4.5L–₹7L",
+        description: "Perform pharmaceutical formulations testing, laboratory analysis, raw material quality checks, and GMP regulatory compliance.",
+        applyUrl: "https://sunpharma.com/careers/",
+        postedAt: "2026-08-05",
+        source: "ProInterview curated (India)",
+    },
+    // Software / IT / Data (Preserved from original suite)
     {
         id: "job_in_google_intern",
         company: "Google India",
@@ -576,7 +1455,7 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         remote: false,
         tags: ["C++", "Java", "Python", "Data Structures", "Algorithms"],
         salaryRange: "₹80k–₹1.2L / month Stipend",
-        description: "Join Google's engineering teams in Bangalore or Hyderabad as a software intern. Work on scalable distributed systems, developer tools, or AI services with 1-on-1 mentorship.",
+        description: "Join Google's engineering teams in Bangalore or Hyderabad as a software intern. Work on scalable distributed systems, developer tools, or AI services.",
         applyUrl: "https://careers.google.com/jobs/results/",
         postedAt: "2026-08-01",
         source: "ProInterview curated (India)",
@@ -590,7 +1469,7 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         remote: false,
         tags: ["Azure", "C#", "TypeScript", "Problem Solving"],
         salaryRange: "₹75k–₹1.1L / month Stipend",
-        description: "Summer software engineering internship for college students and recent grads. Build high-impact cloud services, Teams features, and AI developer workflows.",
+        description: "Summer software engineering internship. Build cloud services, Teams features, and AI developer workflows with engineering mentorship.",
         applyUrl: "https://careers.microsoft.com/",
         postedAt: "2026-08-02",
         source: "ProInterview curated (India)",
@@ -604,7 +1483,7 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         remote: false,
         tags: ["Java", "AWS", "DSA", "Distributed Systems"],
         salaryRange: "₹80k–₹1.1L / month Stipend",
-        description: "Collaborate with senior AWS and retail service engineers to design and ship customer-facing features. Open to final-year students and fresh graduates.",
+        description: "Collaborate with senior AWS and retail service engineers to design and ship customer-facing features.",
         applyUrl: "https://www.amazon.jobs/",
         postedAt: "2026-08-03",
         source: "ProInterview curated (India)",
@@ -618,7 +1497,7 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         remote: true,
         tags: ["React", "Node.js", "Payments", "Web APIs"],
         salaryRange: "₹45k–₹65k / month Stipend",
-        description: "Work with modern React, Next.js, and Node.js microservices on India's premier payment gateway. Great learning curve for aspiring full-stack engineers.",
+        description: "Work with modern React, Next.js, and Node.js microservices on India's premier payment gateway.",
         applyUrl: "https://razorpay.com/jobs/",
         postedAt: "2026-08-05",
         source: "ProInterview curated (India)",
@@ -632,7 +1511,7 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         remote: false,
         tags: ["Java", "Golang", "Microservices", "Fresher"],
         salaryRange: "₹14L–₹20L",
-        description: "Entry-level engineering role for freshers and 0-1 year developers. Build core ordering and delivery platform microservices serving millions of daily orders.",
+        description: "Entry-level engineering role for freshers and 0-1 year developers. Build core ordering and delivery platform microservices.",
         applyUrl: "https://careers.swiggy.com/",
         postedAt: "2026-08-04",
         source: "ProInterview curated (India)",
@@ -646,7 +1525,7 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         remote: false,
         tags: ["Java", "Spring Boot", "Kafka", "MySQL"],
         salaryRange: "₹18L–₹26L",
-        description: "High-scale backend engineering for early-career developers with 1-2 years experience. Work on inventory, cart, and high-concurrency checkout services.",
+        description: "High-scale backend engineering for early-career developers. Work on inventory, cart, and high-concurrency checkout services.",
         applyUrl: "https://www.flipkartcareers.com/",
         postedAt: "2026-07-29",
         source: "ProInterview curated (India)",
@@ -688,26 +1567,33 @@ export const INDIA_FALLBACK_JOBS: Omit<MatchedJob, "matchPercent" | "matchReason
         remote: true,
         tags: ["API", "Community", "JavaScript", "TypeScript"],
         salaryRange: "₹18L–₹30L",
-        description: "Fully remote position for engineers across India supporting the global API developer community with demos, tutorials, and developer tooling.",
+        description: "Fully remote position for engineers across India supporting the global API developer community with demos and tutorials.",
         applyUrl: "https://www.postman.com/company/careers/",
         postedAt: "2026-07-30",
         source: "ProInterview curated (India)",
     },
 ];
 
-/** Fetch live openings from public job boards and rank them against the resume profile. */
+// --------------------------------------------------------------------------
+// 10. SEARCH MATCHING JOBS PIPELINE
+// --------------------------------------------------------------------------
+
 export async function searchMatchingJobs(
     profile: ResumeProfile,
     preferredLocation: string,
-    filter?: string
+    filter?: string,
+    jobSearchQuery?: string
 ): Promise<{ jobs: MatchedJob[]; sourcesTried: string[]; queries: string[] }> {
-    const queries = buildSearchQueries(profile, preferredLocation, filter);
-    const primary = queries[0] || (filter === "intern" ? "Software Engineer Intern" : profile.roles[0] || "software engineer");
+    const queries = buildSearchQueries(profile, preferredLocation, filter, jobSearchQuery);
+    const primary = queries[0] || (jobSearchQuery || profile.roles[0] || profile.primaryDomains[0] || "job");
     const sourcesTried: string[] = [];
-    const collected: Omit<MatchedJob, "matchPercent" | "matchReasons">[] = [];
+    const collected: Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[] = [];
 
-    const adzunaRole = filter === "intern" ? "Software Intern" : profile.roles[0] || "Software Engineer";
-    const tasks: Array<{ name: string; run: () => Promise<Omit<MatchedJob, "matchPercent" | "matchReasons">[]> }> = [
+    const adzunaRole =
+        (jobSearchQuery || profile.roles[0] || profile.primaryDomains[0] || "associate").trim() +
+        (filter === "intern" ? " Intern" : filter === "fresher" ? " Fresher" : "");
+
+    const tasks: Array<{ name: string; run: () => Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> }> = [
         { name: "Remotive", run: () => fetchRemotive(primary) },
         { name: "Arbeitnow", run: () => fetchArbeitnow(primary) },
         { name: "RemoteOK", run: () => fetchRemoteOK(primary) },
@@ -729,32 +1615,41 @@ export async function searchMatchingJobs(
         if (result.status === "fulfilled") collected.push(...result.value);
     }
 
-    const byId = new Map<string, Omit<MatchedJob, "matchPercent" | "matchReasons">>();
+    const byId = new Map<string, Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">>();
     for (const job of collected) {
         if (!job.applyUrl) continue;
         if (!byId.has(job.id)) byId.set(job.id, job);
     }
 
     const ranked = [...byId.values()]
-        .map((job) => scoreJob(job, profile, preferredLocation, filter))
-        .filter((j) => j.matchPercent >= 12)
+        .map((job) => scoreJob(job, profile, preferredLocation, filter, jobSearchQuery))
+        .filter((j) => j.matchPercent >= 10)
         .sort((a, b) => b.matchPercent - a.matchPercent)
         .slice(0, 100);
 
     return { jobs: ranked, sourcesTried, queries };
 }
 
-export function webSearchUrls(profile: ResumeProfile, location: string): { label: string; url: string }[] {
-    const q = encodeURIComponent([profile.roles[0] || "software engineer", "jobs", location].filter(Boolean).join(" "));
+export function webSearchUrls(
+    profile: ResumeProfile,
+    location: string,
+    jobSearchQuery?: string
+): { label: string; url: string }[] {
+    const targetRole =
+        (jobSearchQuery && jobSearchQuery.trim()) ||
+        profile.roles[0] ||
+        (profile.primaryDomains[0] ? `${profile.primaryDomains[0]} Professional` : "Professional");
+
+    const q = encodeURIComponent([targetRole, "jobs", location].filter(Boolean).join(" "));
     return [
         { label: "Google Jobs search", url: `https://www.google.com/search?q=${q}` },
         {
             label: "LinkedIn Jobs search",
-            url: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(profile.roles[0] || "software engineer")}&location=${encodeURIComponent(location || "")}`,
+            url: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(targetRole)}&location=${encodeURIComponent(location || "")}`,
         },
         {
-            label: "RemoteOK search",
-            url: `https://remoteok.com/remote-jobs?q=${encodeURIComponent(`${profile.roles[0] || "software engineer"} ${location || ""}`.trim())}`
-        }
+            label: "Indeed search",
+            url: `https://www.indeed.com/jobs?q=${encodeURIComponent(targetRole)}&l=${encodeURIComponent(location || "")}`,
+        },
     ];
 }
