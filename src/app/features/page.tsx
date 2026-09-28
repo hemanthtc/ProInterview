@@ -1673,6 +1673,16 @@ function FeaturesContent() {
             if (portfolioUrl) formData.append("portfolioUrl", portfolioUrl);
             projectFiles.forEach((file) => formData.append("projectFiles", file));
 
+            const possibleResume = projectFiles.find((f) => f.name.match(/\.(pdf|docx|doc|txt)$/i));
+            if (possibleResume) {
+                formData.append("resumeFile", possibleResume);
+            } else {
+                const storedResume = getStorageItem("userResumeCvText") || getInterviewResumeText() || "";
+                if (storedResume) {
+                    formData.append("userInput", JSON.stringify({ instructions: storedResume }));
+                }
+            }
+
             formData.append("targetCompanies", finalCompany);
             formData.append("preferredRoles", finalRoles);
 
@@ -1687,9 +1697,42 @@ function FeaturesContent() {
                     setResSummary(data.summary);
                     updatedFields.summary = data.summary;
                 }
-                if (data.experience) {
-                    setResExperience(data.experience);
-                    updatedFields.experience = data.experience;
+                if (data.experience || data.workExperience) {
+                    const expSource = data.experience || data.workExperience;
+                    const expStr = Array.isArray(expSource)
+                        ? expSource.map((e: any) => `${e.position || ''} at ${e.company || ''} (${e.startDate || ''} - ${e.endDate || ''})\n${e.description || ''}`).join("\n\n")
+                        : String(expSource);
+                    setResExperience(expStr);
+                    updatedFields.experience = expStr;
+                }
+                if (Array.isArray(data.education) && data.education.length > 0) {
+                    const eduStr = data.education.map((e: any) => `${e.degree || ''} ${e.fieldOfStudy ? `in ${e.fieldOfStudy}` : ''} - ${e.institution || ''} (${e.startDate || ''} - ${e.endDate || ''})${e.cgpa ? ` | CGPA: ${e.cgpa}` : ''}`).join("\n");
+                    setResEducation(eduStr);
+                    updatedFields.education = eduStr;
+                }
+                if (Array.isArray(data.skills) && data.skills.length > 0) {
+                    const skillStr = data.skills.map((s: any) => typeof s === 'string' ? s : s.name).join(", ");
+                    setResSkills(skillStr);
+                    updatedFields.skills = skillStr;
+                }
+                if (Array.isArray(data.projects) && data.projects.length > 0) {
+                    const projStr = data.projects.map((p: any) => `${p.name || ''}\n${p.description || ''}\nTechnologies: ${Array.isArray(p.technologies) ? p.technologies.join(', ') : ''}`).join("\n\n");
+                    setResProjects(projStr);
+                    updatedFields.projects = projStr;
+                }
+                if (data.personalInfo) {
+                    if (data.personalInfo.name) {
+                        setResName(data.personalInfo.name);
+                        updatedFields.name = data.personalInfo.name;
+                    }
+                    if (data.personalInfo.email) {
+                        setResEmail(data.personalInfo.email);
+                        updatedFields.email = data.personalInfo.email;
+                    }
+                    if (data.personalInfo.phone) {
+                        setResPhone(data.personalInfo.phone);
+                        updatedFields.phone = data.personalInfo.phone;
+                    }
                 }
                 if (Object.keys(updatedFields).length > 0) {
                     updateActiveResume(updatedFields);

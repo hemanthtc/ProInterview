@@ -127,13 +127,29 @@ function generateResumeFallback(params: {
         if (nameCandidate) extractedName = nameCandidate;
     }
 
-    // Heuristically extract technical skills from raw resume text
+    // Extract Summary if present in raw resume text
+    let extractedSummary = "";
+    if (rawText) {
+        const summaryMatch = rawText.match(/(?:professional\s+summary|summary|profile|about\s+me)[:\s\n]+([\s\S]{30,600}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|key\s+projects)|$)/i);
+        if (summaryMatch) {
+            extractedSummary = summaryMatch[1].replace(/\s+/g, ' ').trim();
+        }
+    }
+
+    // Heuristically extract technical & engineering skills from raw resume text
     const knownSkills = [
-        "JavaScript", "TypeScript", "Python", "Java", "C++", "C#", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin",
+        // Programming & Web
+        "JavaScript", "TypeScript", "Python", "Java", "C++", "C#", "C", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin",
         "React", "React Native", "Next.js", "Angular", "Vue", "HTML", "CSS", "Tailwind CSS", "Bootstrap",
         "Node.js", "Express", "Django", "Flask", "Spring Boot", "FastAPI", "GraphQL", "REST APIs",
         "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQLite",
-        "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Git", "GitHub", "CI/CD", "Linux", "Jira", "Agile"
+        "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Git", "GitHub", "CI/CD", "Linux", "Jira", "Agile",
+        // Electronics, VLSI & Embedded
+        "Cadence Virtuoso", "Cadence Innovus", "Cadence Genus", "Cadence Modus", "Xilinx Vivado", "Verilog HDL", "Verilog", "SystemVerilog", "VHDL",
+        "VLSI", "CMOS", "Physical Design", "DFT", "FPGA", "PCB Design", "Circuit Analysis", "Signals & Systems",
+        "Analog Electronics", "Digital Electronics", "Microcontrollers", "Embedded Systems",
+        // Engineering & Business Tools
+        "AutoCAD", "SolidWorks", "MATLAB", "Excel", "Tally", "Power BI", "GST", "Auditing"
     ];
     const foundSkills: { name: string; level: string; category: string }[] = [];
     if (rawText) {
@@ -143,17 +159,107 @@ function generateResumeFallback(params: {
                 foundSkills.push({
                     name: skill,
                     level: "Advanced",
-                    category: /React|Angular|Vue|HTML|CSS|Tailwind/i.test(skill) ? "Frontend" :
+                    category: /Cadence|Xilinx|Vivado|Verilog|VHDL|VLSI|CMOS|Physical Design|DFT|FPGA|PCB/i.test(skill) ? "Hardware & VLSI" :
+                              /React|Angular|Vue|HTML|CSS|Tailwind/i.test(skill) ? "Frontend" :
                               /Node|Express|Django|Flask|Spring|FastAPI/i.test(skill) ? "Backend" :
                               /SQL|Mongo|Redis|Postgres/i.test(skill) ? "Database" :
-                              /AWS|Azure|Docker|Kube|Git|Linux/i.test(skill) ? "DevOps & Tools" : "Languages"
+                              /AWS|Azure|Docker|Kube|Git|Linux/i.test(skill) ? "DevOps & Tools" : "Languages & Tools"
                 });
             }
         }
     }
 
-    const role = params.preferredRoles || (params.roleMode === "fresher" ? "Junior Software Engineer" : "Full Stack Software Engineer");
-    const company = params.targetCompanies || "Technology Solutions Inc.";
+    // Heuristically extract education from raw text
+    const extractedEducation: Array<{
+        institution: string;
+        degree: string;
+        fieldOfStudy: string;
+        location: string;
+        startDate: string;
+        endDate: string;
+        cgpa: string;
+        percentage?: string;
+        description: string;
+    }> = [];
+    if (rawText) {
+        const eduSectionMatch = rawText.match(/(?:education|academic\s+background)[:\s\n]+([\s\S]{20,900}?)(?=\n\s*(?:technical\s+skills|skills|projects|key\s+projects|experience|work\s+experience|certifications)|$)/i);
+        if (eduSectionMatch) {
+            const eduText = eduSectionMatch[1];
+            const eduLines = eduText.split("\n").map(l => l.trim()).filter(Boolean);
+            for (let i = 0; i < eduLines.length; i++) {
+                const line = eduLines[i];
+                if (/institute|university|college|polytechnic|school|campus/i.test(line)) {
+                    const nextLine = eduLines[i + 1] || "";
+                    const nextNext = eduLines[i + 2] || "";
+                    const combined = `${nextLine} ${nextNext}`;
+                    const degreeMatch = combined.match(/(bachelor\s+of\s+engineering|bachelor\s+of\s+technology|bachelor\s+of\s+science|bachelor\s+of\s+commerce|b\.e|b\.tech|b\.sc|b\.com|diploma|master|m\.tech|m\.s|mba)[^,\n|]*/i);
+                    const yearMatch = combined.match(/\b(20\d\d(?:\s*[-–]\s*(?:20\d\d|present))?)\b/i);
+                    const cgpaMatch = combined.match(/(?:cgpa|gpa|percentage)[:\s]*([0-9.]+(?:\s*\/\s*10|\s*%)?)/i);
+
+                    const fieldMatch = combined.match(/(?:electronics|computer\s+science|mechanical|civil|electrical|information\s+technology|vlsi|accounting|commerce)[^,\n|]*/i);
+
+                    extractedEducation.push({
+                        institution: line.replace(/[0-9–\-|]/g, "").trim(),
+                        degree: degreeMatch ? degreeMatch[0].trim() : "Degree",
+                        fieldOfStudy: fieldMatch ? fieldMatch[0].trim() : "",
+                        location: "India",
+                        startDate: yearMatch ? yearMatch[1].split(/[-–]/)[0]?.trim() : "",
+                        endDate: yearMatch ? (yearMatch[1].split(/[-–]/)[1]?.trim() || "Present") : "",
+                        cgpa: cgpaMatch ? cgpaMatch[1].trim() : "",
+                        description: ""
+                    });
+                }
+            }
+        }
+    }
+
+    // Heuristically extract projects from raw text
+    const extractedProjects: Array<{
+        name: string;
+        description: string;
+        technologies: string[];
+        link: string;
+        role: string;
+    }> = [];
+    if (rawText) {
+        const projSectionMatch = rawText.match(/(?:key\s+projects|projects|academic\s+projects)[:\s\n]+([\s\S]{20,1500}?)(?=\n\s*(?:certifications|workshops|languages|achievements|education)|$)/i);
+        if (projSectionMatch) {
+            const pLines = projSectionMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
+            for (let i = 0; i < pLines.length; i++) {
+                const line = pLines[i];
+                if (line.length > 5 && line.length < 90 && !line.startsWith("•") && !line.startsWith("-") && !/^(role:|technology:|tools:|page\s+\d)/i.test(line)) {
+                    if (extractedProjects.length < 5) {
+                        extractedProjects.push({
+                            name: line,
+                            description: pLines[i + 1]?.startsWith("•") || pLines[i + 1]?.startsWith("-") ? pLines[i + 1].replace(/^[•\-*]\s*/, "") : "Project completed successfully.",
+                            technologies: foundSkills.slice(0, 3).map(s => s.name),
+                            link: extractedGithub || "",
+                            role: "Team Member"
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Heuristically extract languages from raw text
+    const extractedLanguages: Array<{ name: string; proficiency: string }> = [];
+    if (rawText) {
+        const langMatch = rawText.match(/(?:languages spoken|languages)[:\s\n]+([^\n\r]+)/i);
+        if (langMatch) {
+            const items = langMatch[1].split(/[,|]/).map(s => s.trim()).filter(Boolean);
+            for (const item of items) {
+                const [lName, lProf] = item.split(/[:\-]/).map(s => s.trim());
+                extractedLanguages.push({
+                    name: lName || item,
+                    proficiency: lProf || "Professional working proficiency"
+                });
+            }
+        }
+    }
+
+    const role = params.preferredRoles || (params.roleMode === "fresher" ? "Junior Professional" : "Professional");
+    const company = params.targetCompanies || "Engineering Solutions";
 
     return {
         personalInfo: {
@@ -165,7 +271,7 @@ function generateResumeFallback(params: {
             github: extractedGithub,
             website: params.portfolioUrl || "",
         },
-        summary: `Dedicated and results-oriented ${role} with strong foundations in modern software architecture, web development, and problem solving. Passionate about engineering high-performance systems and contributing to high-impact engineering workflows.`,
+        summary: extractedSummary || `Dedicated and results-oriented ${role} with strong foundations in engineering principles, modern domain workflows, and problem solving. Passionate about contributing to high-impact projects.`,
         workExperience: [
             {
                 company: company,
@@ -174,45 +280,42 @@ function generateResumeFallback(params: {
                 endDate: "Present",
                 current: true,
                 description: [
-                    `• Spearheaded development of core web application modules, improving responsiveness and code maintainability by 35%.`,
-                    `• Collaborated cross-functionally across engineering and design teams to deliver key user-facing features on schedule.`,
-                    `• Refactored API integrations and implemented automated testing suites, reducing runtime regression issues by 40%.`
+                    `• Collaborated on core engineering workflows, improving operational reliability by 35%.`,
+                    `• Executed project specifications with attention to performance, documentation, and quality standards.`,
+                    `• Participated in technical reviews and testing pipelines to minimize defects.`
                 ].join("\n")
             }
         ],
-        education: [
+        education: extractedEducation.length > 0 ? extractedEducation : [
             {
                 institution: "Institute of Technology",
                 degree: "Bachelor of Technology",
-                fieldOfStudy: "Computer Science and Engineering",
+                fieldOfStudy: "Engineering",
                 location: "India",
-                startDate: "2019",
-                endDate: "2023",
-                cgpa: "8.5/10",
-                description: "Relevant coursework in Data Structures, Algorithms, Database Management, and Cloud Computing."
+                startDate: "2020",
+                endDate: "2024",
+                cgpa: "8.0/10",
+                description: "Relevant coursework in engineering and system analysis."
             }
         ],
-        projects: [
+        projects: extractedProjects.length > 0 ? extractedProjects : [
             {
-                name: "Full Stack Web Platform",
-                description: "Architected an end-to-end web platform featuring responsive UI, RESTful APIs, and secure authentication.",
-                technologies: foundSkills.length > 0 ? foundSkills.slice(0, 4).map(s => s.name) : ["React", "TypeScript", "Node.js", "Tailwind CSS"],
+                name: "Engineering System Project",
+                description: "Designed and implemented end-to-end technical prototype meeting functional requirements.",
+                technologies: foundSkills.length > 0 ? foundSkills.slice(0, 4).map(s => s.name) : ["Technical Analysis", "Design"],
                 link: extractedGithub || "",
-                role: "Lead Developer"
+                role: "Project Developer"
             }
         ],
-        skills: foundSkills.length >= 3 ? foundSkills.slice(0, 10) : [
-            { name: "JavaScript / TypeScript", level: "Advanced", category: "Languages" },
-            { name: "React / Next.js", level: "Advanced", category: "Frontend" },
-            { name: "Node.js / Express", level: "Intermediate", category: "Backend" },
-            { name: "SQL / MongoDB", level: "Intermediate", category: "Database" },
-            { name: "Git / CI/CD", level: "Intermediate", category: "Tools" }
+        skills: foundSkills.length >= 3 ? foundSkills.slice(0, 15) : [
+            { name: "Problem Solving", level: "Advanced", category: "Core" },
+            { name: "Technical Analysis", level: "Advanced", category: "Core" }
         ],
-        languages: [
+        languages: extractedLanguages.length > 0 ? extractedLanguages : [
             { name: "English", proficiency: "Professional working proficiency" }
         ],
         certifications: [
-            { name: "Full Stack Web Development", issuer: "Technical Certification Institute", date: "2023", link: "" }
+            { name: "Professional Technical Training", issuer: "Technical Workshop", date: "2024", link: "" }
         ],
         isFallback: true
     };
@@ -275,8 +378,9 @@ export async function POST(req: NextRequest) {
                     console.warn("Failed to encode image for resumePart:", imgErr);
                 }
             } else if (isPdf) {
-                // Attach PDF binary part for multimodal visual extraction
-                if (resumeFile.size < 8 * 1024 * 1024) {
+                resumeFileText = await extractTextFromFile(resumeFile);
+                // Attach PDF binary part for multimodal visual extraction ONLY if text extraction yielded insufficient content (e.g. scanned image PDF)
+                if ((!resumeFileText || resumeFileText.trim().length < 150) && resumeFile.size < 8 * 1024 * 1024) {
                     try {
                         const arrayBuffer = await resumeFile.arrayBuffer();
                         const base64 = Buffer.from(arrayBuffer).toString("base64");
@@ -290,7 +394,6 @@ export async function POST(req: NextRequest) {
                         console.warn("Failed to encode PDF for visual extraction:", pdfErr);
                     }
                 }
-                resumeFileText = await extractTextFromFile(resumeFile);
             } else {
                 resumeFileText = await extractTextFromFile(resumeFile);
             }
@@ -515,7 +618,7 @@ CRITICAL ATS OPTIMIZATION RULES:
         try {
             const rawText = (await generateWithFallback(promptParts, { 
                 model: "gemini-2.5-flash",
-                timeout: 30000,
+                timeout: 45000,
                 generationConfig: { 
                     temperature: 0.2,
                     responseMimeType: "application/json"

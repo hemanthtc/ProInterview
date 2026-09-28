@@ -1537,89 +1537,81 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 )}
 
                 {aiModalStep === 'upload' && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    {isUsingAccountResume ? (
-                      <>
-                        <div style={{
-                          padding: '1rem',
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <p className="ai-modal-desc" style={{ margin: 0 }}>
+                      Choose your account resume or upload a new resume file (<strong>PDF, TXT, DOCX</strong>):
+                    </p>
+
+                    {accountResumeText && (
+                      <div
+                        style={{
+                          padding: '0.85rem 1rem',
                           borderRadius: '0.5rem',
-                          background: 'rgba(139, 92, 246, 0.08)',
-                          border: '1px solid rgba(139, 92, 246, 0.3)',
+                          background: isUsingAccountResume ? 'rgba(139, 92, 246, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                          border: isUsingAccountResume ? '1.5px solid rgba(139, 92, 246, 0.6)' : '1px solid rgba(255, 255, 255, 0.1)',
                           display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.6rem'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Check size={16} color="#a78bfa" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                              Fetched Resume from Account
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '0.6rem',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onClick={() => {
+                          setIsUsingAccountResume(true);
+                          const textFileName = (accountResumeName || 'Account_Resume.pdf').replace(/\.[^/.]+$/, "") + ".txt";
+                          const file = new File([accountResumeText], textFileName, { type: 'text/plain' });
+                          setResumeUploadFile(file);
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                          <Check size={16} color={isUsingAccountResume ? "#a78bfa" : "#64748b"} />
+                          <div>
+                            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-main)', display: 'block' }}>
+                              Saved Profile Resume: {accountResumeName}
+                            </span>
+                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                              From your account profile
                             </span>
                           </div>
-                          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Using saved resume: <strong style={{ color: '#a78bfa' }}>{accountResumeName}</strong>
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsUsingAccountResume(false);
-                              setResumeUploadFile(null);
-                            }}
-                            style={{
-                              alignSelf: 'flex-start',
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#ef4444',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              padding: '0.25rem 0',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            <Trash2 size={12} />
-                            <span>Use another resume instead</span>
-                          </button>
                         </div>
-                      </>
-                    ) : (
-                      <>
-                        <p className="ai-modal-desc">
-                          Upload your current resume or CV. Supported formats: <strong>PDF, TXT, DOCX</strong>.
-                        </p>
-                        
-                        <div 
-                          className="ai-modal-upload-box"
-                          onClick={() => document.getElementById('ai-resume-file-input-sidebar')?.click()}
-                        >
-                          <input
-                            type="file"
-                            id="ai-resume-file-input-sidebar"
-                            accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.webp"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                if (file.size > 10 * 1024 * 1024) {
-                                  alert("File size exceeds 10MB limit. Please upload a smaller file.");
-                                  return;
-                                }
-                                setResumeUploadFile(file);
-                                setIsUsingAccountResume(false);
-                              }
-                            }}
-                            style={{ display: 'none' }}
-                          />
-                          <FileText size={32} color="#8b5cf6" style={{ opacity: 0.8 }} />
-                          <span className="ai-modal-upload-text">
-                            {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
+                        {isUsingAccountResume && (
+                          <span style={{ fontSize: '0.7rem', background: '#8b5cf6', color: '#fff', padding: '0.15rem 0.5rem', borderRadius: '9999px', fontWeight: 700 }}>
+                            Active
                           </span>
-                          <span className="ai-modal-upload-sub">
-                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 10MB (PDF, DOCX, TXT, Images)'}
-                          </span>
-                        </div>
-                      </>
+                        )}
+                      </div>
                     )}
+
+                    <div 
+                      className="ai-modal-upload-box"
+                      style={!isUsingAccountResume && resumeUploadFile ? { borderColor: '#8b5cf6', background: 'rgba(139, 92, 246, 0.08)' } : {}}
+                      onClick={() => document.getElementById('ai-resume-file-input-sidebar')?.click()}
+                    >
+                      <input
+                        type="file"
+                        id="ai-resume-file-input-sidebar"
+                        accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            if (file.size > 10 * 1024 * 1024) {
+                              alert("File size exceeds 10MB limit. Please upload a smaller file.");
+                              return;
+                            }
+                            setResumeUploadFile(file);
+                            setIsUsingAccountResume(false);
+                          }
+                        }}
+                        style={{ display: 'none' }}
+                      />
+                      <FileText size={32} color="#8b5cf6" style={{ opacity: 0.8 }} />
+                      <span className="ai-modal-upload-text">
+                        {!isUsingAccountResume && resumeUploadFile ? resumeUploadFile.name : 'Upload New Resume File'}
+                      </span>
+                      <span className="ai-modal-upload-sub">
+                        {!isUsingAccountResume && resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB (Ready to import)` : 'Click to select PDF, DOCX, or TXT from your device'}
+                      </span>
+                    </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
                       <button
@@ -1656,81 +1648,76 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                     {/* Resume Upload Box (reused from upload step) */}
                     <div>
                       <label className="ai-modal-label" style={{ marginBottom: '0.4rem', display: 'block' }}>Resume / CV Document</label>
-                      {isUsingAccountResume ? (
-                        <div style={{
-                          padding: '1rem',
-                          borderRadius: '0.5rem',
-                          background: 'rgba(139, 92, 246, 0.08)',
-                          border: '1px solid rgba(139, 92, 246, 0.3)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '0.6rem'
-                        }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Check size={16} color="#a78bfa" />
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>
-                              Fetched Resume from Account
+                      {accountResumeText && (
+                        <div
+                          style={{
+                            padding: '0.75rem 0.85rem',
+                            borderRadius: '0.5rem',
+                            marginBottom: '0.6rem',
+                            background: isUsingAccountResume ? 'rgba(139, 92, 246, 0.12)' : 'rgba(255, 255, 255, 0.03)',
+                            border: isUsingAccountResume ? '1.5px solid rgba(139, 92, 246, 0.6)' : '1px solid rgba(255, 255, 255, 0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            gap: '0.5rem',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onClick={() => {
+                            setIsUsingAccountResume(true);
+                            const textFileName = (accountResumeName || 'Account_Resume.pdf').replace(/\.[^/.]+$/, "") + ".txt";
+                            const file = new File([accountResumeText], textFileName, { type: 'text/plain' });
+                            setResumeUploadFile(file);
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0 }}>
+                            <Check size={14} color={isUsingAccountResume ? "#a78bfa" : "#64748b"} />
+                            <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-main)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              Saved Profile Resume: {accountResumeName}
                             </span>
                           </div>
-                          <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            Using saved resume: <strong style={{ color: '#a78bfa' }}>{accountResumeName}</strong>
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsUsingAccountResume(false);
-                              setResumeUploadFile(null);
-                            }}
-                            style={{
-                              alignSelf: 'flex-start',
-                              background: 'transparent',
-                              border: 'none',
-                              color: '#ef4444',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                              padding: '0.25rem 0',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.25rem'
-                            }}
-                          >
-                            <Trash2 size={12} />
-                            <span>Use another resume instead</span>
-                          </button>
-                        </div>
-                      ) : (
-                        <div 
-                          className="ai-modal-upload-box"
-                          onClick={() => document.getElementById('ai-resume-file-input-both')?.click()}
-                          style={{ padding: '0.85rem 0.5rem', minHeight: '80px' }}
-                        >
-                          <input
-                            type="file"
-                            id="ai-resume-file-input-both"
-                            accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.webp"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                if (file.size > 10 * 1024 * 1024) {
-                                  alert("File size exceeds 10MB limit. Please upload a smaller file.");
-                                  return;
-                                }
-                                setResumeUploadFile(file);
-                                setIsUsingAccountResume(false);
-                              }
-                            }}
-                            style={{ display: 'none' }}
-                          />
-                          <FileText size={24} color="#8b5cf6" style={{ opacity: 0.8, marginBottom: '0.25rem' }} />
-                          <span className="ai-modal-upload-text" style={{ fontSize: '0.8rem' }}>
-                            {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
-                          </span>
-                          <span className="ai-modal-upload-sub" style={{ fontSize: '0.7rem' }}>
-                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 10MB (PDF, DOCX, TXT, Images)'}
-                          </span>
+                          {isUsingAccountResume && (
+                            <span style={{ fontSize: '0.68rem', background: '#8b5cf6', color: '#fff', padding: '0.1rem 0.45rem', borderRadius: '9999px', fontWeight: 700 }}>
+                              Active
+                            </span>
+                          )}
                         </div>
                       )}
+
+                      <div 
+                        className="ai-modal-upload-box"
+                        onClick={() => document.getElementById('ai-resume-file-input-both')?.click()}
+                        style={{
+                          padding: '0.85rem 0.5rem',
+                          minHeight: '75px',
+                          ...(!isUsingAccountResume && resumeUploadFile ? { borderColor: '#8b5cf6', background: 'rgba(139, 92, 246, 0.08)' } : {})
+                        }}
+                      >
+                        <input
+                          type="file"
+                          id="ai-resume-file-input-both"
+                          accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              if (file.size > 10 * 1024 * 1024) {
+                                alert("File size exceeds 10MB limit. Please upload a smaller file.");
+                                return;
+                              }
+                              setResumeUploadFile(file);
+                              setIsUsingAccountResume(false);
+                            }
+                          }}
+                          style={{ display: 'none' }}
+                        />
+                        <FileText size={24} color="#8b5cf6" style={{ opacity: 0.8, marginBottom: '0.25rem' }} />
+                        <span className="ai-modal-upload-text" style={{ fontSize: '0.8rem' }}>
+                          {!isUsingAccountResume && resumeUploadFile ? resumeUploadFile.name : 'Upload New Resume File (PDF, DOCX, TXT)'}
+                        </span>
+                        <span className="ai-modal-upload-sub" style={{ fontSize: '0.7rem' }}>
+                          {!isUsingAccountResume && resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB (Ready to import)` : 'Click to select PDF or DOCX file'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Portfolio Input (reused from portfolio_input step) */}
