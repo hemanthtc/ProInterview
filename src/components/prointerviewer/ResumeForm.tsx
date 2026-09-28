@@ -17,6 +17,7 @@ interface ResumeFormProps {
 
 export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAIAutofill, isAILoading, style, onChangeStyle, onConfirm }) => {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [profileSyncSuccess, setProfileSyncSuccess] = useState(false);
 
   const toggleSection = (section: string) => {
     setExpandedSection(expandedSection === section ? null : section);
@@ -35,6 +36,8 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
   };
 
   const handleSyncFromAccount = () => {
+    setProfileSyncSuccess(true);
+    setTimeout(() => setProfileSyncSuccess(false), 3000);
     const storedName = getStorageItem("userName") || "";
     const storedEmail = getStorageItem("userIdentifier") || "";
     const storedPhone = getStorageItem("userPhone") || "";
@@ -232,6 +235,76 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }} className="font-sans">
       
+      {/* DEDICATED ACTION TOOLBAR: Autofill with AI & Fetch from Profile Section */}
+      <div 
+        className="form-actions-toolbar"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.45rem',
+          marginBottom: '0.65rem',
+          padding: '0.65rem',
+          background: 'rgba(255, 255, 255, 0.025)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '0.6rem'
+        }}
+      >
+        {onAIAutofill && (
+          <button
+            type="button"
+            className="ai-autofill-btn"
+            onClick={onAIAutofill}
+            disabled={isAILoading}
+            title="Autofill resume fields from uploaded resume or portfolio using AI"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.45rem',
+              padding: '0.55rem 0.85rem',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '0.5rem',
+              cursor: isAILoading ? 'wait' : 'pointer',
+              opacity: isAILoading ? 0.7 : 1,
+              boxShadow: '0 0 12px rgba(139, 92, 246, 0.25)',
+              width: '100%'
+            }}
+          >
+            <Sparkles size={14} style={isAILoading ? { animation: 'spin 1s linear infinite' } : {}} />
+            <span>{isAILoading ? 'Processing AI...' : 'Autofill with AI'}</span>
+          </button>
+        )}
+
+        <button
+          type="button"
+          onClick={handleSyncFromAccount}
+          title="Fetch your education, contact, and personal details saved in your Profile Section"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.4rem',
+            padding: '0.5rem 0.85rem',
+            fontSize: '0.75rem',
+            fontWeight: 500,
+            background: 'rgba(59, 130, 246, 0.08)',
+            color: '#3b82f6',
+            border: '1px solid rgba(59, 130, 246, 0.3)',
+            borderRadius: '0.5rem',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            width: '100%'
+          }}
+        >
+          <ArrowDown size={13} />
+          <span>{profileSyncSuccess ? '✓ Profile Data Imported Successfully!' : 'Fetch from Profile Section'}</span>
+        </button>
+      </div>
+
       {/* 1. PERSONAL DETAILS ACCORDION */}
       <div className="accordion-item">
         <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>

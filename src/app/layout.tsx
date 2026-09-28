@@ -1,20 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import ErrorBoundary from "../components/ErrorBoundary";
 import PwaRegister from "../components/PwaRegister";
 import RateLimitToaster from "../components/RateLimitToaster";
 import "./globals.css";
 import "../components/prointerviewer/ProInterviewer.css";
-
-const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
     title: "ProInterview",
@@ -72,7 +61,7 @@ export default function RootLayout({
                     }}
                 />
             </head>
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased w-full max-w-full overflow-x-hidden`} suppressHydrationWarning>
+            <body className="antialiased w-full max-w-full overflow-x-hidden font-sans" suppressHydrationWarning>
                 <ErrorBoundary fallbackTitle="ProInterview hit an unexpected error">
                     {children}
                 </ErrorBoundary>

@@ -952,8 +952,13 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
       const formData = new FormData();
       formData.append('sourceMode', aiSourceMode);
-      formData.append('github', resumeData.personalInfo.github || getStorageItem("userGithub") || '');
-      formData.append('linkedin', resumeData.personalInfo.linkedin || getStorageItem("userLinkedin") || '');
+      if (aiSourceMode === 'resume') {
+        if (resumeData.personalInfo.github) formData.append('github', resumeData.personalInfo.github);
+        if (resumeData.personalInfo.linkedin) formData.append('linkedin', resumeData.personalInfo.linkedin);
+      } else {
+        formData.append('github', resumeData.personalInfo.github || getStorageItem("userGithub") || '');
+        formData.append('linkedin', resumeData.personalInfo.linkedin || getStorageItem("userLinkedin") || '');
+      }
       if (aiSourceMode === 'portfolio' || aiSourceMode === 'both') {
         formData.append('portfolioUrl', portfolioInputUrl || resumeData.personalInfo.website || getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || '');
       }
@@ -1014,7 +1019,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             website: result.personalInfo.website || "",
             summary: result.summary || updatedData.personalInfo.summary
           };
-          if (isUploadingResume) {
+          if (isUploadingResume && aiSourceMode !== 'resume') {
             const storedPhoto = getStorageItem("userProfilePhoto") || "";
             updatedData.personalInfo.avatar = storedPhoto || "";
           }
@@ -1188,88 +1193,280 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       } else {
         const updatedData = { ...resumeData };
 
-        if (result.summary) {
-          updatedData.personalInfo = { ...updatedData.personalInfo, summary: result.summary };
+        // 1. Preserve and optimize personalInfo
+        updatedData.personalInfo = {
+          ...resumeData.personalInfo,
+          name: (result.personalInfo?.name && result.personalInfo.name.trim()) || resumeData.personalInfo.name,
+          title: (result.personalInfo?.title && result.personalInfo.title.trim()) || resumeData.personalInfo.title,
+          email: (result.personalInfo?.email && result.personalInfo.email.trim()) || resumeData.personalInfo.email,
+          phone: (result.personalInfo?.phone && result.personalInfo.phone.trim()) || resumeData.personalInfo.phone,
+          location: (result.personalInfo?.location && result.personalInfo.location.trim()) || resumeData.personalInfo.location,
+          linkedin: (result.personalInfo?.linkedin && result.personalInfo.linkedin.trim()) || resumeData.personalInfo.linkedin,
+          github: (result.personalInfo?.github && result.personalInfo.github.trim()) || resumeData.personalInfo.github,
+          website: (result.personalInfo?.website && result.personalInfo.website.trim()) || resumeData.personalInfo.website,
+          avatar: resumeData.personalInfo.avatar,
+          summary: (result.summary && result.summary.trim()) || (result.personalInfo?.summary && result.personalInfo.summary.trim()) || resumeData.personalInfo.summary
+        };
+
+        // 2. Work Experience: Item-level reconciliation (keep unreturned jobs intact, never wipe with [])
+        if (resumeData.workExperience.length > 0) {
+          if (Array.isArray(result.workExperience) && result.workExperience.length > 0) {
+            updatedData.workExperience = resumeData.workExperience.map((origJob, idx) => {
+              const matched = result.workExperience.find((j: any) => 
+                (j.company && origJob.company && j.company.trim().toLowerCase() === origJob.company.trim().toLowerCase()) ||
+                (j.id && origJob.id && j.id === origJob.id)
+              ) || (result.workExperience[idx] && !resumeData.workExperience.some((oj, oIdx) => oIdx !== idx && oj.company && result.workExperience[idx].company && oj.company.trim().toLowerCase() === result.workExperience[idx].company.trim().toLowerCase()) ? result.workExperience[idx] : null);
+
+              if (matched) {
+                return {
+                  ...origJob,
+                  company: matched.company || origJob.company,
+                  position: matched.position || origJob.position,
+                  location: matched.location || origJob.location,
+                  startDate: matched.startDate || origJob.startDate,
+                  endDate: matched.endDate || origJob.endDate,
+                  current: matched.current !== undefined ? !!matched.current : origJob.current,
+                  description: (matched.description && matched.description.trim()) ? matched.description : origJob.description
+                };
+              }
+              return origJob;
+            });
+
+            // Append any valid new experience from AI not in original
+            result.workExperience.forEach((aiJob: any) => {
+              const alreadyExists = updatedData.workExperience.some(w => 
+                w.company && aiJob.company && w.company.trim().toLowerCase() === aiJob.company.trim().toLowerCase()
+              );
+              if (!alreadyExists && (aiJob.company || aiJob.position)) {
+                updatedData.workExperience.push({
+                  id: `exp-ats-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  company: aiJob.company || "",
+                  position: aiJob.position || "",
+                  location: aiJob.location || "",
+                  startDate: aiJob.startDate || "",
+                  endDate: aiJob.endDate || "",
+                  current: !!aiJob.current,
+                  description: aiJob.description || ""
+                });
+              }
+            });
+          } else {
+            updatedData.workExperience = [...resumeData.workExperience];
+          }
+        } else {
+          // If candidate had zero work experience, do NOT invent fake corporate jobs
+          updatedData.workExperience = [];
         }
 
-        if (Array.isArray(result.workExperience)) {
-          updatedData.workExperience = result.workExperience.map((job: any, index: number) => ({
-            id: `exp-ats-${Date.now()}-${index}`,
-            company: job.company || "",
-            position: job.position || "",
-            location: job.location || "",
-            startDate: job.startDate || "",
-            endDate: job.endDate || "",
-            current: !!job.current,
-            description: job.description || ""
-          }));
+        // 3. Education: Item-level reconciliation (keep unreturned education intact, never wipe with [])
+        if (resumeData.education.length > 0) {
+          if (Array.isArray(result.education) && result.education.length > 0) {
+            updatedData.education = resumeData.education.map((origEdu, idx) => {
+              const matched = result.education.find((e: any) => 
+                (e.institution && origEdu.institution && e.institution.trim().toLowerCase() === origEdu.institution.trim().toLowerCase()) ||
+                (e.degree && origEdu.degree && e.degree.trim().toLowerCase() === origEdu.degree.trim().toLowerCase()) ||
+                (e.id && origEdu.id && e.id === origEdu.id)
+              ) || (result.education[idx] && !resumeData.education.some((oe, oIdx) => oIdx !== idx && oe.institution && result.education[idx].institution && oe.institution.trim().toLowerCase() === result.education[idx].institution.trim().toLowerCase()) ? result.education[idx] : null);
+
+              if (matched) {
+                return {
+                  ...origEdu,
+                  institution: matched.institution || origEdu.institution,
+                  degree: matched.degree || origEdu.degree,
+                  fieldOfStudy: matched.fieldOfStudy || origEdu.fieldOfStudy,
+                  location: matched.location || origEdu.location,
+                  startDate: matched.startDate || origEdu.startDate,
+                  endDate: matched.endDate || origEdu.endDate,
+                  cgpa: matched.cgpa || origEdu.cgpa,
+                  percentage: matched.percentage || origEdu.percentage,
+                  description: matched.description || origEdu.description
+                };
+              }
+              return origEdu;
+            });
+          } else {
+            updatedData.education = [...resumeData.education];
+          }
         }
 
-        if (Array.isArray(result.education)) {
-          updatedData.education = result.education.map((edu: any, index: number) => ({
-            id: `edu-ats-${Date.now()}-${index}`,
-            institution: edu.institution || "",
-            degree: edu.degree || "",
-            fieldOfStudy: edu.fieldOfStudy || "",
-            location: edu.location || "",
-            startDate: edu.startDate || "",
-            endDate: edu.endDate || "",
-            cgpa: edu.cgpa || "",
-            percentage: edu.percentage || "",
-            description: edu.description || ""
-          }));
+        // 4. Projects: Item-level reconciliation (keep unreturned projects intact, never wipe with [])
+        if (resumeData.projects.length > 0) {
+          if (Array.isArray(result.projects) && result.projects.length > 0) {
+            updatedData.projects = resumeData.projects.map((origProj, idx) => {
+              const matched = result.projects.find((p: any) => 
+                (p.name && origProj.name && p.name.trim().toLowerCase() === origProj.name.trim().toLowerCase()) ||
+                (p.id && origProj.id && p.id === origProj.id)
+              ) || (result.projects[idx] && !resumeData.projects.some((op, oIdx) => oIdx !== idx && op.name && result.projects[idx].name && op.name.trim().toLowerCase() === result.projects[idx].name.trim().toLowerCase()) ? result.projects[idx] : null);
+
+              if (matched) {
+                return {
+                  ...origProj,
+                  name: matched.name || origProj.name,
+                  description: (matched.description && matched.description.trim()) ? matched.description : origProj.description,
+                  technologies: (Array.isArray(matched.technologies) && matched.technologies.length > 0) ? matched.technologies : origProj.technologies,
+                  link: matched.link || origProj.link,
+                  role: matched.role || origProj.role
+                };
+              }
+              return origProj;
+            });
+
+            // Append any valid new projects from AI
+            result.projects.forEach((aiProj: any) => {
+              const alreadyExists = updatedData.projects.some(p => 
+                p.name && aiProj.name && p.name.trim().toLowerCase() === aiProj.name.trim().toLowerCase()
+              );
+              if (!alreadyExists && aiProj.name && aiProj.description) {
+                updatedData.projects.push({
+                  id: `proj-ats-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                  name: aiProj.name,
+                  description: aiProj.description,
+                  technologies: Array.isArray(aiProj.technologies) ? aiProj.technologies : [],
+                  link: aiProj.link || "",
+                  role: aiProj.role || ""
+                });
+              }
+            });
+          } else {
+            updatedData.projects = [...resumeData.projects];
+          }
         }
 
-        if (Array.isArray(result.projects)) {
-          updatedData.projects = result.projects.map((proj: any, index: number) => ({
-            id: `proj-ats-${Date.now()}-${index}`,
-            name: proj.name || "",
-            description: proj.description || "",
-            technologies: Array.isArray(proj.technologies) ? proj.technologies : [],
-            link: proj.link || "",
-            role: proj.role || ""
-          }));
+        // 5. Skills: Preserve all original skills, refine categories/levels if provided
+        if (resumeData.skills.length > 0) {
+          if (Array.isArray(result.skills) && result.skills.length > 0) {
+            const skillMap = new Map<string, any>();
+            // Seed with all original skills
+            resumeData.skills.forEach(s => skillMap.set(s.name.trim().toLowerCase(), { ...s }));
+            // Apply refinements
+            result.skills.forEach((s: any) => {
+              if (s.name && s.name.trim()) {
+                const key = s.name.trim().toLowerCase();
+                if (skillMap.has(key)) {
+                  const existing = skillMap.get(key);
+                  skillMap.set(key, { ...existing, level: s.level || existing.level, category: s.category || existing.category });
+                } else {
+                  skillMap.set(key, {
+                    id: `skill-ats-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+                    name: s.name.trim(),
+                    level: s.level || "Advanced",
+                    category: s.category || "Languages & Tools"
+                  });
+                }
+              }
+            });
+            updatedData.skills = Array.from(skillMap.values());
+          } else {
+            updatedData.skills = [...resumeData.skills];
+          }
         }
 
-        if (Array.isArray(result.skills)) {
-          updatedData.skills = result.skills.map((skill: any, index: number) => ({
-            id: `skill-ats-${Date.now()}-${index}`,
-            name: skill.name || "",
-            level: skill.level || "",
-            category: skill.category || ""
-          }));
+        // 6. Languages: Preserve all original languages
+        if (resumeData.languages.length > 0) {
+          if (Array.isArray(result.languages) && result.languages.length > 0) {
+            updatedData.languages = resumeData.languages.map((origLang, idx) => {
+              const matched = result.languages.find((l: any) => 
+                l.name && origLang.name && l.name.trim().toLowerCase() === origLang.name.trim().toLowerCase()
+              ) || result.languages[idx];
+              return matched ? { ...origLang, proficiency: matched.proficiency || origLang.proficiency } : origLang;
+            });
+          } else {
+            updatedData.languages = [...resumeData.languages];
+          }
         }
 
-        if (Array.isArray(result.languages)) {
-          updatedData.languages = result.languages.map((lang: any, index: number) => ({
-            id: `lang-ats-${Date.now()}-${index}`,
-            name: lang.name || "",
-            proficiency: lang.proficiency || ""
-          }));
+        // 7. Certifications: Preserve all original certifications
+        if (resumeData.certifications.length > 0) {
+          if (Array.isArray(result.certifications) && result.certifications.length > 0) {
+            updatedData.certifications = resumeData.certifications.map((origCert, idx) => {
+              const matched = result.certifications.find((c: any) => 
+                c.name && origCert.name && c.name.trim().toLowerCase() === origCert.name.trim().toLowerCase()
+              ) || result.certifications[idx];
+              return matched ? {
+                ...origCert,
+                name: matched.name || origCert.name,
+                issuer: matched.issuer || origCert.issuer,
+                date: matched.date || origCert.date,
+                link: matched.link || origCert.link
+              } : origCert;
+            });
+          } else {
+            updatedData.certifications = [...resumeData.certifications];
+          }
         }
 
-        if (Array.isArray(result.certifications)) {
-          updatedData.certifications = result.certifications.map((cert: any, index: number) => ({
-            id: `cert-ats-${Date.now()}-${index}`,
-            name: cert.name || "",
-            issuer: cert.issuer || "",
-            date: cert.date || "",
-            link: cert.link || ""
-          }));
+        // 8. Custom Sections: Preserve all original custom sections
+        if (resumeData.customSections.length > 0) {
+          if (Array.isArray(result.customSections) && result.customSections.length > 0) {
+            updatedData.customSections = resumeData.customSections.map((origSect, idx) => {
+              const matched = result.customSections.find((cs: any) => 
+                cs.title && origSect.title && cs.title.trim().toLowerCase() === origSect.title.trim().toLowerCase()
+              ) || result.customSections[idx];
+              return matched ? {
+                ...origSect,
+                title: matched.title || origSect.title,
+                items: (Array.isArray(matched.items) && matched.items.length > 0) ? matched.items : origSect.items
+              } : origSect;
+            });
+          } else {
+            updatedData.customSections = [...resumeData.customSections];
+          }
         }
 
-        if (Array.isArray(result.customSections)) {
-          updatedData.customSections = result.customSections.map((sect: any, index: number) => ({
-            id: `custom-ats-${Date.now()}-${index}`,
-            title: sect.title || "Additional Section",
-            items: Array.isArray(sect.items) ? sect.items.map((it: any, iIdx: number) => ({
-              id: `item-ats-${Date.now()}-${index}-${iIdx}`,
-              title: it.title || "",
-              subtitle: it.subtitle || "",
-              date: it.date || "",
-              description: it.description || ""
-            })) : []
-          }));
+        // PRE-COMMIT DATA INTEGRITY VALIDATION:
+        // Guarantee that no populated original section loses data
+        if (resumeData.projects.length > 0 && updatedData.projects.length < resumeData.projects.length) {
+          console.warn("[ATS Optimize] Restoring missing projects to prevent data loss");
+          resumeData.projects.forEach(orig => {
+            if (!updatedData.projects.some(p => p.name?.toLowerCase() === orig.name?.toLowerCase() || p.id === orig.id)) {
+              updatedData.projects.push(orig);
+            }
+          });
+        }
+        if (resumeData.education.length > 0 && updatedData.education.length < resumeData.education.length) {
+          console.warn("[ATS Optimize] Restoring missing education to prevent data loss");
+          resumeData.education.forEach(orig => {
+            if (!updatedData.education.some(e => e.institution?.toLowerCase() === orig.institution?.toLowerCase() || e.id === orig.id)) {
+              updatedData.education.push(orig);
+            }
+          });
+        }
+        if (resumeData.workExperience.length > 0 && updatedData.workExperience.length < resumeData.workExperience.length) {
+          console.warn("[ATS Optimize] Restoring missing work experience to prevent data loss");
+          resumeData.workExperience.forEach(orig => {
+            if (!updatedData.workExperience.some(w => w.company?.toLowerCase() === orig.company?.toLowerCase() || w.id === orig.id)) {
+              updatedData.workExperience.push(orig);
+            }
+          });
+        }
+        if (resumeData.skills.length > 0 && updatedData.skills.length < resumeData.skills.length) {
+          console.warn("[ATS Optimize] Restoring missing skills to prevent data loss");
+          resumeData.skills.forEach(orig => {
+            if (!updatedData.skills.some(s => s.name?.toLowerCase() === orig.name?.toLowerCase() || s.id === orig.id)) {
+              updatedData.skills.push(orig);
+            }
+          });
+        }
+        if (resumeData.certifications.length > 0 && updatedData.certifications.length < resumeData.certifications.length) {
+          resumeData.certifications.forEach(orig => {
+            if (!updatedData.certifications.some(c => c.name?.toLowerCase() === orig.name?.toLowerCase() || c.id === orig.id)) {
+              updatedData.certifications.push(orig);
+            }
+          });
+        }
+        if (resumeData.languages.length > 0 && updatedData.languages.length < resumeData.languages.length) {
+          resumeData.languages.forEach(orig => {
+            if (!updatedData.languages.some(l => l.name?.toLowerCase() === orig.name?.toLowerCase() || l.id === orig.id)) {
+              updatedData.languages.push(orig);
+            }
+          });
+        }
+        if (resumeData.customSections.length > 0 && updatedData.customSections.length < resumeData.customSections.length) {
+          resumeData.customSections.forEach(orig => {
+            if (!updatedData.customSections.some(cs => cs.title?.toLowerCase() === orig.title?.toLowerCase() || cs.id === orig.id)) {
+              updatedData.customSections.push(orig);
+            }
+          });
         }
 
         setResumeData(updatedData);

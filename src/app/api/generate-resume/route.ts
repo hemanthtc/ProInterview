@@ -414,7 +414,7 @@ function generateResumeFallback(params: {
 }
 
 // Server-Side Data Integrity & Fact Verification Layer
-function verifyAndRepairResumeData(parsed: any, rawText: string) {
+function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?: any) {
     if (!parsed || typeof parsed !== 'object') {
         parsed = {};
     }
@@ -442,8 +442,11 @@ function verifyAndRepairResumeData(parsed: any, rawText: string) {
     }
     for (const key of ['name', 'title', 'email', 'phone', 'location', 'linkedin', 'github', 'website']) {
         parsed.personalInfo[key] = cleanField(parsed.personalInfo[key] || "");
+        if (!parsed.personalInfo[key] && existingResume?.personalInfo?.[key]) {
+            parsed.personalInfo[key] = existingResume.personalInfo[key];
+        }
     }
-    parsed.summary = cleanField(parsed.summary || "");
+    parsed.summary = cleanField(parsed.summary || "") || existingResume?.personalInfo?.summary || existingResume?.summary || "";
 
     parsed.workExperience = Array.isArray(parsed.workExperience) ? parsed.workExperience : [];
     parsed.education = Array.isArray(parsed.education) ? parsed.education : [];
@@ -474,6 +477,118 @@ function verifyAndRepairResumeData(parsed: any, rawText: string) {
         item.name = cleanField(item.name || "");
         return item.name;
     });
+
+    // RECOVERY FROM EXISTING RESUME (ATS Optimizer Safety Net)
+    if (existingResume && typeof existingResume === 'object') {
+        if (Array.isArray(existingResume.projects) && existingResume.projects.length > 0) {
+            if (parsed.projects.length === 0) {
+                parsed.projects = [...existingResume.projects];
+            } else {
+                // Ensure no original projects were dropped
+                existingResume.projects.forEach((origProj: any) => {
+                    const exists = parsed.projects.some((p: any) => 
+                        (p.name && origProj.name && p.name.trim().toLowerCase() === origProj.name.trim().toLowerCase()) ||
+                        (p.id && origProj.id && p.id === origProj.id)
+                    );
+                    if (!exists) {
+                        parsed.projects.push(origProj);
+                    }
+                });
+            }
+        }
+
+        if (Array.isArray(existingResume.education) && existingResume.education.length > 0) {
+            if (parsed.education.length === 0) {
+                parsed.education = [...existingResume.education];
+            } else {
+                existingResume.education.forEach((origEdu: any) => {
+                    const exists = parsed.education.some((e: any) => 
+                        (e.institution && origEdu.institution && e.institution.trim().toLowerCase() === origEdu.institution.trim().toLowerCase()) ||
+                        (e.id && origEdu.id && e.id === origEdu.id)
+                    );
+                    if (!exists) {
+                        parsed.education.push(origEdu);
+                    }
+                });
+            }
+        }
+
+        if (Array.isArray(existingResume.workExperience) && existingResume.workExperience.length > 0) {
+            if (parsed.workExperience.length === 0) {
+                parsed.workExperience = [...existingResume.workExperience];
+            } else {
+                existingResume.workExperience.forEach((origJob: any) => {
+                    const exists = parsed.workExperience.some((w: any) => 
+                        (w.company && origJob.company && w.company.trim().toLowerCase() === origJob.company.trim().toLowerCase()) ||
+                        (w.id && origJob.id && w.id === origJob.id)
+                    );
+                    if (!exists) {
+                        parsed.workExperience.push(origJob);
+                    }
+                });
+            }
+        }
+
+        if (Array.isArray(existingResume.skills) && existingResume.skills.length > 0) {
+            if (parsed.skills.length === 0) {
+                parsed.skills = [...existingResume.skills];
+            } else {
+                existingResume.skills.forEach((origSkill: any) => {
+                    const exists = parsed.skills.some((s: any) => 
+                        (s.name && origSkill.name && s.name.trim().toLowerCase() === origSkill.name.trim().toLowerCase())
+                    );
+                    if (!exists) {
+                        parsed.skills.push(origSkill);
+                    }
+                });
+            }
+        }
+
+        if (Array.isArray(existingResume.certifications) && existingResume.certifications.length > 0) {
+            if (parsed.certifications.length === 0) {
+                parsed.certifications = [...existingResume.certifications];
+            } else {
+                existingResume.certifications.forEach((origCert: any) => {
+                    const exists = parsed.certifications.some((c: any) => 
+                        (c.name && origCert.name && c.name.trim().toLowerCase() === origCert.name.trim().toLowerCase())
+                    );
+                    if (!exists) {
+                        parsed.certifications.push(origCert);
+                    }
+                });
+            }
+        }
+
+        if (Array.isArray(existingResume.languages) && existingResume.languages.length > 0) {
+            if (parsed.languages.length === 0) {
+                parsed.languages = [...existingResume.languages];
+            } else {
+                existingResume.languages.forEach((origLang: any) => {
+                    const exists = parsed.languages.some((l: any) => 
+                        (l.name && origLang.name && l.name.trim().toLowerCase() === origLang.name.trim().toLowerCase())
+                    );
+                    if (!exists) {
+                        parsed.languages.push(origLang);
+                    }
+                });
+            }
+        }
+
+        if (Array.isArray(existingResume.customSections) && existingResume.customSections.length > 0) {
+            if (parsed.customSections.length === 0) {
+                parsed.customSections = [...existingResume.customSections];
+            } else {
+                existingResume.customSections.forEach((origSect: any) => {
+                    const exists = parsed.customSections.some((cs: any) => 
+                        (cs.title && origSect.title && cs.title.trim().toLowerCase() === origSect.title.trim().toLowerCase())
+                    );
+                    if (!exists) {
+                        parsed.customSections.push(origSect);
+                    }
+                });
+            }
+        }
+    }
 
     // RECOVERY: If raw text has education but AI returned empty array, recover from source
     if (parsed.education.length === 0 && rawText) {
@@ -653,6 +768,7 @@ export async function POST(req: NextRequest) {
         let parsedInputText = "";
         let parsedResumeDataText = "";
         let sectionSpecificNotesText = "";
+        let parsedExistingResume: any = null;
 
         if (userInput) {
             try {
@@ -662,6 +778,7 @@ export async function POST(req: NextRequest) {
                         parsedInputText += `General Instructions: ${parsed.instructions}\n`;
                     }
                     if (parsed.existingResume) {
+                        parsedExistingResume = parsed.existingResume;
                         parsedResumeDataText = `\nExisting Resume Details (use this source of truth to extract, clean, and optimize candidate data):\n${JSON.stringify(parsed.existingResume, null, 2)}\n`;
                     }
                     const noteKeys = ['summary', 'workExperience', 'education', 'projects', 'skills', 'languages', 'certifications', 'customSections'];
@@ -828,11 +945,16 @@ Respond ONLY with a valid JSON block. Do not write any markdown code blocks (e.g
 
         if (optimizeAts === "true") {
             systemPrompt += `
-CRITICAL ATS OPTIMIZATION RULES:
-1. Under the "projects" key, write exactly one concise line or a single extremely concise sentence for each project description describing what was built and the main errors or challenges solved. Do not include multiple bullet points or long paragraphs for projects.
-2. Under "workExperience", condense the descriptions into clean, high-impact bullet points.
-3. The user requested a ${targetPages}-page resume. You MUST condense and budget the length of the text (summary, experience descriptions, project descriptions, skills list) so that all generated fields are highly compact and easily fit onto exactly ${targetPages} page(s) when rendered.
-4. Do not include any images, progress bars, charts, or non-text representations. Respond with structured text only.
+CRITICAL ATS RESUME OPTIMIZATION & ZERO-DELETION RULES:
+1. RESUME OPTIMIZER, NOT GENERATOR: You are optimizing an EXISTING resume. The existing resume is the absolute source of truth. You MUST PRESERVE every existing populated section and every item.
+2. ABSOLUTE ZERO DELETION: NEVER omit, delete, or return empty arrays for sections that contain data in the input. Do NOT delete any projects, education entries, work experience, skills, certifications, languages, or custom sections.
+3. ITEM-BY-ITEM PRESERVATION: If the input has N projects, your response MUST contain all N projects. If the input has N education entries, your response MUST contain all N education entries. Every item must be retained and optimized.
+4. WORDING & FORMATTING CONCISENESS (PAGE TARGET): The user requested a ${targetPages}-page ATS resume. You MUST achieve this through concise wording and formatting efficiency, NOT by deleting items or sections:
+   - Under "projects", write exactly 1 punchy, high-impact line for each project overview highlighting what was built and the technologies used.
+   - Under "workExperience", condense job duties into high-impact bulleted achievements with action verbs.
+   - Under "summary", write 2-3 concise sentences.
+   - Under "skills", keep all technical skills and tools.
+5. ZERO FABRICATION: Never invent new companies, job titles, degrees, or skills not present in the original resume.
 `;
         }
         const promptParts: Array<any> = [systemPrompt];
@@ -853,21 +975,30 @@ CRITICAL ATS OPTIMIZATION RULES:
             parsedJson = parseJsonFromModel(rawText);
         } catch (aiErr) {
             console.warn("[Resume Generation] Gemini timed out or failed; generating intelligent fallback:", aiErr);
-            parsedJson = generateResumeFallback({
-                preferredRoles,
-                targetCompanies,
-                roleMode,
-                github,
-                linkedin,
-                portfolioUrl,
-                candidateName: (session.identifier || "").split("@")[0],
-                candidateEmail: session.identifier && session.identifier.includes("@") ? session.identifier : "",
-                resumeText: resumeFileText
-            });
+            if (optimizeAts === "true" && parsedExistingResume) {
+                // If optimizing an existing resume, fall back to existing data rather than empty defaults
+                parsedJson = { ...parsedExistingResume, isFallback: true };
+            } else {
+                parsedJson = generateResumeFallback({
+                    preferredRoles,
+                    targetCompanies,
+                    roleMode,
+                    github: sourceMode === "resume" ? "" : github,
+                    linkedin: sourceMode === "resume" ? "" : linkedin,
+                    portfolioUrl: sourceMode === "resume" ? "" : portfolioUrl,
+                    candidateName: sourceMode === "resume" ? "" : (session.identifier || "").split("@")[0],
+                    candidateEmail: sourceMode === "resume" ? "" : (session.identifier && session.identifier.includes("@") ? session.identifier : ""),
+                    resumeText: resumeFileText
+                });
+            }
         }
 
         // Apply Data Integrity Check & Fact Verification Layer
-        const verifiedJson = verifyAndRepairResumeData(parsedJson, resumeFileText || projectText || portfolioText || "");
+        const verifiedJson = verifyAndRepairResumeData(
+            parsedJson, 
+            resumeFileText || projectText || portfolioText || "", 
+            parsedExistingResume
+        );
 
         return NextResponse.json(verifiedJson);
     } catch (error: any) {
