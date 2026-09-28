@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from "react";
 import { 
     CheckCircle2, Circle, Trash2, Plus, Sparkles, 
     ArrowUpCircle, MinusCircle, ArrowDownCircle, RefreshCw
@@ -29,7 +29,16 @@ export default function HomeTodoWidget({
         if (typeof window !== "undefined") return getLocalTodos();
         return [];
     });
-    const [todayFormatted, setTodayFormatted] = useState("");
+    const todayFormatted = useSyncExternalStore(
+        () => () => {},
+        () =>
+            new Date().toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+            }),
+        () => ""
+    );
     const [newTitle, setNewTitle] = useState("");
     const [selectedPriority, setSelectedPriority] = useState<TodoPriority>("high");
     const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
@@ -107,17 +116,6 @@ export default function HomeTodoWidget({
     const medCount = todos.filter((t) => t.priority === "medium").length;
     const lowCount = todos.filter((t) => t.priority === "low").length;
     const carriedOverCount = todos.filter((t) => t.rolledOver).length;
-
-    useEffect(() => {
-        setTodayFormatted(
-            new Date().toLocaleDateString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-            })
-        );
-    }, []);
-
     const isLight = theme === "light";
     const isEye = theme === "eyeprotect";
 

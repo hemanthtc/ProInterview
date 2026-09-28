@@ -137,6 +137,7 @@ export default function PhotoCropperModal({ open, imageSrc, onCancel, onSave }: 
                             onTouchMove={handleTouchMove}
                             onTouchEnd={handleMouseUp}
                         >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                                 src={imageSrc}
                                 ref={imageRef}
