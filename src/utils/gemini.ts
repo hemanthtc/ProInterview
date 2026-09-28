@@ -88,24 +88,29 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 export const ADVANCED_CANDIDATE_MODELS = [
   "gemini-2.5-flash",
   "gemini-flash-latest",
+  "gemini-2.0-flash",
+  "gemini-1.5-flash",
   "gemini-3.6-flash",
   "gemini-flash-lite-latest",
   "gemini-pro-latest",
   "gemini-2.5-pro",
+  "gemini-1.5-pro",
 ];
 
 /**
- * Given a list of models a key supports, keep only text chat models and order them
+ * Given a list of models a key supports, keep only text/multimodal models and order them
  * flash-first (faster/cheaper) so the working model is hit on the first try.
  */
 export function preferTextModels(models: string[]): string[] {
   const isTextModel = (m: string) =>
-    !/(embedding|image|imagen|tts|audio|live|vision|aqa|learnlm|veo|robotics)/i.test(m);
+    !/(embedding|imagen|tts|audio|live|aqa|learnlm|veo|robotics)/i.test(m);
   const score = (m: string) => {
     let s = 0;
     if (m === "gemini-2.5-flash") s -= 30;
     if (m === "gemini-flash-latest") s -= 25;
-    if (m === "gemini-3.6-flash") s -= 20;
+    if (m === "gemini-2.0-flash") s -= 22;
+    if (m === "gemini-1.5-flash") s -= 20;
+    if (m === "gemini-3.6-flash") s -= 15;
     if (m.includes("flash")) s -= 10;
     if (m.includes("latest")) s -= 5;
     if (m.includes("lite")) s += 1;
@@ -158,14 +163,14 @@ export async function generateWithFallback(
     const keys = getAllGeminiApiKeys();
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
-    const primaryModel = options.model && !options.model.includes("2.0-flash") ? options.model : "gemini-2.5-flash";
+    const primaryModel = options.model || "gemini-2.5-flash";
     const perModelTimeout = options.timeout ?? 25000;
     const now = Date.now();
 
     // Iterate through all configured API keys (multi-key failover)
     for (const key of keys) {
         const keyExhaustedAt = quotaExhaustedKeys.get(key);
-        if (keyExhaustedAt && now - keyExhaustedAt < 60 * 1000 && keys.length > 1) {
+        if (keyExhaustedAt && now - keyExhaustedAt < 15 * 1000 && keys.length > 1) {
             continue; // Skip exhausted key if alternatives exist
         }
 
@@ -173,18 +178,20 @@ export async function generateWithFallback(
         const detectedKeyModels = await fetchKeySupportedModels(key);
         const validTextModels = preferTextModels(detectedKeyModels);
 
-        // If the key specifically reported enabled models from Google API, prioritize those first
+        // Include all reliable flash and pro models without artificial exclusions
         const candidateList = Array.from(new Set([
             ...validTextModels,
             primaryModel,
             "gemini-2.5-flash",
             "gemini-flash-latest",
+            "gemini-2.0-flash",
+            "gemini-1.5-flash",
             "gemini-3.6-flash",
             "gemini-flash-lite-latest",
+            "gemini-pro-latest",
+            "gemini-1.5-pro",
             ...ADVANCED_CANDIDATE_MODELS,
         ])).filter(m => 
-            !m.includes("2.0-flash") &&
-            !m.includes("1.5-flash") &&
             m !== "gemini-2.5-flash-lite" && 
             m !== "gemini-2.0-pro-exp-02-05" &&
             m !== "gemini-2.0-flash-thinking-exp-01-21"
@@ -192,11 +199,11 @@ export async function generateWithFallback(
 
         const activeModels = candidateList.filter((m) => {
             const exhaustedAt = quotaExhaustedModels.get(`${key}:${m}`);
-            return !exhaustedAt || now - exhaustedAt >= 60 * 1000;
+            return !exhaustedAt || now - exhaustedAt >= 15 * 1000;
         });
 
-        // Try up to 4 candidate models to guarantee recovery from per-model rate limits
-        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 4);
+        // Try up to 5 candidate models to guarantee recovery from per-model rate limits
+        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 5);
 
         // Automatically detect multi-turn conversation arrays ([{ role, parts }]) and wrap in { contents }
         // so the GoogleGenerativeAI SDK does not erroneously serialize { role, parts } as nested Part objects
@@ -236,7 +243,7 @@ export async function generateWithFallback(
                 if (is429OrQuota) {
                     quotaExhaustedModels.set(`${key}:${modelName}`, Date.now());
                     console.warn(`[Gemini API] Quota/429 hit on key (...${key.slice(-6)}) model ${modelName}. Rotating to next model.`);
-                    continue; // Try next model on this key (e.g. 2.0-flash or 1.5-flash) before switching keys
+                    continue;
                 }
 
                 console.warn(`[Gemini API] Transient error on key (...${key.slice(-6)}) model ${modelName}:`, err?.message || err);

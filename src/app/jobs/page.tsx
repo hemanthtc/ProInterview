@@ -126,6 +126,14 @@ export default function JobsPage() {
         loading: boolean;
         error?: string;
         matchPercent?: number;
+        readyForMock?: boolean;
+        summaryVerdict?: string;
+        breakdown?: {
+            skillsMatch: number;
+            experienceMatch: number;
+            toolsMatch: number;
+            educationMatch: number;
+        };
         keywordHits?: string[];
         keywordGaps?: string[];
         sectionAdvice?: string[];
@@ -490,7 +498,7 @@ export default function JobsPage() {
         }));
 
         try {
-            const descriptionToPass = (job.description || "").trim() || `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Focus: Full Stack Development, Problem Solving, Software Architecture.`;
+            const descriptionToPass = (job.description || "").trim() || `Job Role: ${job.role} at ${job.company}. Location: ${job.location || "India"}. Responsibilities, domain requirements, and qualifications for ${job.role}.`;
             const res = await authFetch("/api/ats-match", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -515,7 +523,10 @@ export default function JobsPage() {
                 ...prev,
                 [job.id]: {
                     loading: false,
-                    matchPercent: data.matchPercent ?? 75,
+                    matchPercent: typeof data.matchPercent === "number" ? data.matchPercent : 0,
+                    readyForMock: !!data.readyForMock,
+                    summaryVerdict: data.summaryVerdict || "",
+                    breakdown: data.breakdown,
                     keywordHits: data.keywordHits || [],
                     keywordGaps: data.keywordGaps || [],
                     sectionAdvice: data.sectionAdvice || [],

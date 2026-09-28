@@ -605,14 +605,70 @@ export default function AtsMatchPage() {
                 </div>
                 {error && <p className="text-rose-500 text-sm font-semibold mt-2">{error}</p>}
                 {result && (
-                    <div className={`mt-4 rounded-2xl border p-5 space-y-2 text-sm ${
+                    <div className={`mt-4 rounded-2xl border p-5 space-y-4 text-sm ${
                         theme === "light"
                             ? "bg-white border-slate-200 shadow-sm"
                             : theme === "eyeprotect"
                             ? "bg-[#fffcf5] border-[#8c8578]"
                             : "bg-white/5 border-white/10"
                     }`}>
-                        <div className={`text-3xl font-bold ${isLight ? "text-sky-700" : "text-sky-300"}`}>{result.matchPercent}% match</div>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <div className={`text-4xl font-extrabold ${
+                                    result.matchPercent >= 75
+                                        ? "text-emerald-500"
+                                        : result.matchPercent >= 50
+                                        ? "text-amber-500"
+                                        : "text-rose-500"
+                                }`}>
+                                    {result.matchPercent}%
+                                </div>
+                                <div>
+                                    <span className={`inline-block text-xs font-bold px-2.5 py-0.5 rounded-full border ${
+                                        result.matchPercent >= 75
+                                            ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                                            : result.matchPercent >= 50
+                                            ? "bg-amber-500/10 text-amber-400 border-amber-500/30"
+                                            : "bg-rose-500/10 text-rose-400 border-rose-500/30"
+                                    }`}>
+                                        {result.matchPercent >= 75 ? "Strong Match (Interview Ready)" : result.matchPercent >= 50 ? "Moderate Match (Tailoring Advised)" : "Low Match (Major Gaps)"}
+                                    </span>
+                                    <p className={`text-xs mt-0.5 ${isLight ? "text-slate-500" : "text-white/50"}`}>
+                                        {result.matchPercent >= 75 ? "Meets the 75%+ interview screening threshold." : "Requires 75%+ score to qualify for mock interview setup."}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {result.summaryVerdict && (
+                            <p className={`p-3 rounded-xl border text-xs leading-relaxed ${
+                                isLight ? "bg-slate-50 border-slate-200 text-slate-800" : "bg-black/30 border-white/10 text-white/90"
+                            }`}>
+                                <b>ATS Assessment:</b> {result.summaryVerdict}
+                            </p>
+                        )}
+
+                        {result.breakdown && (
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                                <div className={`p-2.5 rounded-xl border text-center ${isLight ? "bg-slate-50 border-slate-200" : "bg-black/20 border-white/5"}`}>
+                                    <div className="text-xs text-white/50">Core Skills</div>
+                                    <div className="text-base font-bold text-sky-400">{result.breakdown.skillsMatch}%</div>
+                                </div>
+                                <div className={`p-2.5 rounded-xl border text-center ${isLight ? "bg-slate-50 border-slate-200" : "bg-black/20 border-white/5"}`}>
+                                    <div className="text-xs text-white/50">Experience</div>
+                                    <div className="text-base font-bold text-indigo-400">{result.breakdown.experienceMatch}%</div>
+                                </div>
+                                <div className={`p-2.5 rounded-xl border text-center ${isLight ? "bg-slate-50 border-slate-200" : "bg-black/20 border-white/5"}`}>
+                                    <div className="text-xs text-white/50">Deliverables</div>
+                                    <div className="text-base font-bold text-purple-400">{result.breakdown.toolsMatch}%</div>
+                                </div>
+                                <div className={`p-2.5 rounded-xl border text-center ${isLight ? "bg-slate-50 border-slate-200" : "bg-black/20 border-white/5"}`}>
+                                    <div className="text-xs text-white/50">Education</div>
+                                    <div className="text-base font-bold text-teal-400">{result.breakdown.educationMatch}%</div>
+                                </div>
+                            </div>
+                        )}
+
                         <div>
                             <b>Hits:</b> {(result.keywordHits || []).join(", ") || "—"}
                         </div>
