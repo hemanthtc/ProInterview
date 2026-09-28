@@ -1090,8 +1090,11 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         setAiNotesLanguages('');
         setAiNotesCertifications('');
         setAiTargetRoles('');
-        setAiTargetCompanies('');
-        triggerToast('AI autofill completed! Switched to Preview.');
+        if (result.isFallback) {
+          triggerToast('Auto-filled with smart template (Gemini API was rate-limited)');
+        } else {
+          triggerToast('AI autofill completed! Switched to Preview.');
+        }
       }
     } catch (err: any) {
       alert('AI autofill error: ' + (err.message || 'Unknown error'));
@@ -1216,7 +1219,11 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         setResumeData(updatedData);
         setShowAtsOptimizeModal(false);
-        triggerToast('Resume optimized successfully for ATS compliance!');
+        if (result.isFallback) {
+          triggerToast('Formatted with standard ATS template (Gemini API was rate-limited)');
+        } else {
+          triggerToast('Resume optimized successfully for ATS compliance!');
+        }
       }
     } catch (err: any) {
       alert('ATS optimization error: ' + (err.message || 'Unknown error'));
