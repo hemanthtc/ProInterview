@@ -4,6 +4,10 @@ import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
 import { getVerifiedSession } from "@/utils/auth";
 import { buildObjectKey, isS3Configured, uploadBuffer } from "@/utils/s3";
+import { getWorkingGeminiKey } from "@/utils/gemini";
+
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB per file
 const MAX_FILES = 5;
@@ -13,10 +17,10 @@ async function extractTextFromFile(file: File): Promise<string> {
 
     if (name.match(/\.(png|jpg|jpeg|webp)$/i) || file.type.startsWith("image/")) {
         try {
-            const apiKey = process.env.GEMINI_API_KEY;
+            const apiKey = getWorkingGeminiKey() || process.env.GEMINI_API_KEY;
             if (apiKey && apiKey !== "dummy") {
                 const genAI = new GoogleGenerativeAI(apiKey);
-                const modelsToTry = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.5-flash"];
+                const modelsToTry = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
                 let mimeType = file.type || "image/png";
                 if (name.endsWith(".jpg") || name.endsWith(".jpeg") || mimeType === "image/jpg") {
                     mimeType = "image/jpeg";
@@ -29,7 +33,7 @@ async function extractTextFromFile(file: File): Promise<string> {
                 let text = "";
                 for (const modelName of modelsToTry) {
                     try {
-                        const model = genAI.getGenerativeModel({ model: modelName });
+                        const model = genAI.getGenerativeModel({ model: modelName }, { timeout: 12000 });
                         const arrayBuffer = await file.arrayBuffer();
                         const base64Data = Buffer.from(arrayBuffer).toString("base64");
                         const result = await model.generateContent([
@@ -78,17 +82,17 @@ async function extractTextFromFile(file: File): Promise<string> {
         // 2. If it is a scanned PDF (little to no text extracted, less than 350 chars) or pdf-parse failed, use Gemini multimodal OCR
         if (pdfParseFailed || extractedText.length < 350) {
             try {
-                const apiKey = process.env.GEMINI_API_KEY;
+                const apiKey = getWorkingGeminiKey() || process.env.GEMINI_API_KEY;
                 if (apiKey && apiKey !== "dummy") {
                     const genAI = new GoogleGenerativeAI(apiKey);
-                    const modelsToTry = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
+                    const modelsToTry = ["gemini-2.5-flash", "gemini-flash-latest"];
                     const arrayBuffer = await file.arrayBuffer();
                     const base64Data = Buffer.from(arrayBuffer).toString("base64");
                     
                     let text = "";
                     for (const modelName of modelsToTry) {
                         try {
-                            const model = genAI.getGenerativeModel({ model: modelName }, { timeout: 30000 });
+                            const model = genAI.getGenerativeModel({ model: modelName }, { timeout: 15000 });
                             const result = await model.generateContent([
                                 {
                                     inlineData: {

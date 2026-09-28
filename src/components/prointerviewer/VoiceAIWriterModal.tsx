@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Mic, MicOff, Sparkles, X, RotateCcw, Volume2 } from 'lucide-react';
 import { assembleSpeechResults } from '../../utils/speechTranscript';
+import { authFetch } from '../../utils/authExpiry';
 
 interface VoiceAIWriterModalProps {
   isOpen: boolean;
@@ -337,7 +338,7 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const res = await fetch("/api/generate-resume-section", {
+      const res = await authFetch("/api/generate-resume-section", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -347,12 +348,21 @@ export const VoiceAIWriterModal: React.FC<VoiceAIWriterModalProps> = ({
         })
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to generate professional description.");
+      const responseText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        if (res.status === 504) {
+          throw new Error("AI Writer request timed out (504 Gateway Timeout). Please try again with a concise note.");
+        }
+        throw new Error(`Server returned HTTP ${res.status}. Please try again.`);
       }
 
-      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to generate professional description.");
+      }
+
       onGenerate(data.description || '');
       onClose();
     } catch (err: any) {

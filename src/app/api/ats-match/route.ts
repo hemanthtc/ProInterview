@@ -3,6 +3,9 @@ import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemi
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
 
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
+
 function generateAtsFallback(company: string, role: string, resumeText: string, jobDescription: string) {
     const rLower = (resumeText || "").toLowerCase();
     const jLower = (jobDescription || "").toLowerCase();

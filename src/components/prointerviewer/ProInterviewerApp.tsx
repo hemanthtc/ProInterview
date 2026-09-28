@@ -8,6 +8,7 @@ import { StyleCustomizer } from './StyleCustomizer';
 import { ResumeForm } from './ResumeForm';
 import { ResumePreview } from './ResumePreview';
 import { getStorageItem, setStorageItem, removeStorageItem } from '../../utils/storage';
+import { authFetch } from '../../utils/authExpiry';
 import { 
   FileText, Palette, Sliders, Printer, RotateCcw, Download, ZoomIn, ZoomOut, Check, Info, AlertTriangle, X, Maximize2, Minimize2, Sparkles, Folder, Save, ChevronDown, ChevronUp, Eye, Trash2, Globe, Plus, PenLine
 } from 'lucide-react';
@@ -202,7 +203,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     if (isGuest) return true;
 
     try {
-      const res = await fetch("/api/resumes", {
+      const res = await authFetch("/api/resumes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(list)
@@ -211,9 +212,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         setS3ErrorMsg("");
         return true;
       } else {
-        const data = await res.json();
-        console.warn("Failed to sync resumes to S3:", data.error);
-        setS3ErrorMsg(data.error || "AWS S3 is offline or not accessible.");
+        const text = await res.text();
+        let errMsg = "AWS S3 is offline or not accessible.";
+        try {
+          const data = JSON.parse(text);
+          errMsg = data.error || errMsg;
+        } catch {}
+        console.warn("Failed to sync resumes to S3:", errMsg);
+        setS3ErrorMsg(errMsg);
         setShowOfflineAlert(true);
         return false;
       }
@@ -239,9 +245,12 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
     }
 
     try {
-      const res = await fetch("/api/resumes");
+      const res = await authFetch("/api/resumes");
       if (res.ok) {
-        const s3List = await res.json();
+        const text = await res.text();
+        let s3List: any[] = [];
+        try { s3List = JSON.parse(text); } catch {}
+        if (!Array.isArray(s3List)) s3List = [];
         // Merge lists by item.id, keeping the latest updatedAt timestamp
         const merged = new Map<string, any>();
         s3List.forEach((item: any) => merged.set(item.id, item));
@@ -255,7 +264,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         // Save merged list to S3 if there are any changes (unsynced local edits)
         if (finalList.length !== s3List.length || JSON.stringify(finalList) !== JSON.stringify(s3List)) {
-          await fetch("/api/resumes", {
+          await authFetch("/api/resumes", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(finalList)
@@ -960,7 +969,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         formData.append('resumeUrl', accountResumeUrl);
       }
 
-      const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
+      const res = await authFetch('/api/generate-resume', { method: 'POST', body: formData });
       if (res.status === 401) {
         removeStorageItem("userLoggedIn");
         alert("Your session has expired. Please sign in again to continue.");
@@ -1111,7 +1120,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       };
       formData.append('userInput', JSON.stringify(optimizationPrompt));
 
-      const res = await fetch('/api/generate-resume', { method: 'POST', body: formData });
+      const res = await authFetch('/api/generate-resume', { method: 'POST', body: formData });
       if (res.status === 401) {
         removeStorageItem("userLoggedIn");
         alert("Your session has expired. Please sign in again to continue.");

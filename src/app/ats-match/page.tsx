@@ -87,11 +87,19 @@ export default function AtsMatchPage() {
         try {
             const formData = new FormData();
             formData.append("file", file);
-            const res = await fetch("/api/upload", { method: "POST", body: formData });
+            const res = await authFetch("/api/upload", { method: "POST", body: formData });
+            if (res.status === 401) {
+                handleSessionExpired("Your session has expired. Please sign in again to upload files.");
+                return;
+            }
+            const responseText = await res.text();
             let data: any = {};
             try {
-                data = await res.json();
+                data = JSON.parse(responseText);
             } catch {
+                if (res.status === 504) {
+                    throw new Error("OCR Timeout (504): The document took too long to extract. Please upload a smaller image or standard PDF.");
+                }
                 throw new Error(`Server returned status ${res.status}. Could not parse file output.`);
             }
             if (!res.ok) throw new Error(data.error || "Failed to parse resume");
@@ -195,10 +203,14 @@ export default function AtsMatchPage() {
                 handleSessionExpired("Your session has expired. Please sign in again to upload files.");
                 return;
             }
+            const responseText = await res.text();
             let data: any = {};
             try {
-                data = await res.json();
+                data = JSON.parse(responseText);
             } catch {
+                if (res.status === 504) {
+                    throw new Error("OCR Timeout (504): The job description took too long to transcribe. Please upload a smaller image or standard text PDF.");
+                }
                 throw new Error(`Server returned status ${res.status}. Could not parse job description file.`);
             }
             if (!res.ok) throw new Error(data.error || "Failed to parse job description file");
