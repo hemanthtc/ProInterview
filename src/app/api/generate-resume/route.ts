@@ -844,7 +844,7 @@ CRITICAL ATS OPTIMIZATION RULES:
         try {
             const rawText = (await generateWithFallback(promptParts, { 
                 model: "gemini-2.5-flash",
-                timeout: 45000,
+                timeout: 18000,
                 generationConfig: { 
                     temperature: 0.2,
                     responseMimeType: "application/json"

@@ -88,13 +88,12 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 export const ADVANCED_CANDIDATE_MODELS = [
   "gemini-2.5-flash",
   "gemini-flash-latest",
-  "gemini-2.0-flash",
-  "gemini-1.5-flash",
-  "gemini-3.6-flash",
+  "gemini-2.5-flash-lite",
+  "gemini-3.5-flash",
+  "gemini-3.8-flash",
   "gemini-flash-lite-latest",
   "gemini-pro-latest",
   "gemini-2.5-pro",
-  "gemini-1.5-pro",
 ];
 
 /**
@@ -103,14 +102,14 @@ export const ADVANCED_CANDIDATE_MODELS = [
  */
 export function preferTextModels(models: string[]): string[] {
   const isTextModel = (m: string) =>
-    !/(embedding|imagen|tts|audio|live|aqa|learnlm|veo|robotics)/i.test(m);
+    !/(embedding|imagen|tts|audio|live|aqa|learnlm|veo|robotics)/i.test(m) &&
+    !/(1\.5|2\.0)/i.test(m);
   const score = (m: string) => {
     let s = 0;
     if (m === "gemini-2.5-flash") s -= 30;
     if (m === "gemini-flash-latest") s -= 25;
-    if (m === "gemini-2.0-flash") s -= 22;
-    if (m === "gemini-1.5-flash") s -= 20;
-    if (m === "gemini-3.6-flash") s -= 15;
+    if (m === "gemini-2.5-flash-lite") s -= 20;
+    if (m === "gemini-3.5-flash") s -= 15;
     if (m.includes("flash")) s -= 10;
     if (m.includes("latest")) s -= 5;
     if (m.includes("lite")) s += 1;
@@ -138,7 +137,7 @@ export async function fetchKeySupportedModels(apiKey?: string): Promise<string[]
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`, {
             method: "GET",
             headers: { "Content-Type": "application/json" },
-            signal: AbortSignal.timeout(4000),
+            signal: AbortSignal.timeout(3000),
         });
         if (!res.ok) return [];
         const json = await res.json();
@@ -164,11 +163,17 @@ export async function generateWithFallback(
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
     const primaryModel = options.model || "gemini-2.5-flash";
-    const perModelTimeout = options.timeout ?? 25000;
+    // Total execution budget across all candidate models (capped to 20s to ensure safety under AWS Amplify/Serverless 29s limit)
+    const overallTimeout = Math.min(options.timeout ?? 18000, 22000);
+    const deadline = Date.now() + overallTimeout;
     const now = Date.now();
 
     // Iterate through all configured API keys (multi-key failover)
     for (const key of keys) {
+        if (Date.now() >= deadline - 2000) {
+            break;
+        }
+
         const keyExhaustedAt = quotaExhaustedKeys.get(key);
         if (keyExhaustedAt && now - keyExhaustedAt < 15 * 1000 && keys.length > 1) {
             continue; // Skip exhausted key if alternatives exist
@@ -180,19 +185,15 @@ export async function generateWithFallback(
 
         // Include all reliable flash and pro models without artificial exclusions
         const candidateList = Array.from(new Set([
-            ...validTextModels,
             primaryModel,
             "gemini-2.5-flash",
             "gemini-flash-latest",
-            "gemini-2.0-flash",
-            "gemini-1.5-flash",
-            "gemini-3.6-flash",
-            "gemini-flash-lite-latest",
-            "gemini-pro-latest",
-            "gemini-1.5-pro",
+            "gemini-2.5-flash-lite",
+            "gemini-3.5-flash",
+            ...validTextModels,
             ...ADVANCED_CANDIDATE_MODELS,
         ])).filter(m => 
-            m !== "gemini-2.5-flash-lite" && 
+            !/(1\.5|2\.0)/i.test(m) &&
             m !== "gemini-2.0-pro-exp-02-05" &&
             m !== "gemini-2.0-flash-thinking-exp-01-21"
         );
@@ -202,8 +203,8 @@ export async function generateWithFallback(
             return !exhaustedAt || now - exhaustedAt >= 15 * 1000;
         });
 
-        // Try up to 5 candidate models to guarantee recovery from per-model rate limits
-        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 5);
+        // Try up to 3 active candidate models within the available deadline
+        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 3);
 
         // Automatically detect multi-turn conversation arrays ([{ role, parts }]) and wrap in { contents }
         // so the GoogleGenerativeAI SDK does not erroneously serialize { role, parts } as nested Part objects
@@ -215,10 +216,17 @@ export async function generateWithFallback(
                     : prompt;
 
         for (const modelName of modelsToTry) {
+            const remainingTime = deadline - Date.now();
+            if (remainingTime < 2500) {
+                console.warn(`[Gemini API] Insufficient time remaining (${remainingTime}ms) before serverless deadline; terminating model loop.`);
+                break;
+            }
+            const thisModelTimeout = Math.min(options.timeout ? Math.min(options.timeout, 10000) : 9000, remainingTime);
+
             try {
                 const model = genAI.getGenerativeModel(
                     { model: modelName, generationConfig: options.generationConfig },
-                    { timeout: perModelTimeout }
+                    { timeout: thisModelTimeout }
                 );
                 const result = await model.generateContent(requestPayload);
                 return result.response.text();
@@ -232,6 +240,13 @@ export async function generateWithFallback(
                             err.message.includes("Quota") ||
                             err.message.includes("exceeded") ||
                             err.message.includes("RESOURCE_EXHAUSTED")));
+                const is503OrOverloaded =
+                    err?.status === 503 ||
+                    (err?.message &&
+                        (err.message.includes("503") ||
+                            err.message.includes("high demand") ||
+                            err.message.includes("Service Unavailable") ||
+                            err.message.includes("overloaded")));
 
                 if (is404) {
                     // Permanently record unsupported model for this key
@@ -240,9 +255,9 @@ export async function generateWithFallback(
                     continue;
                 }
 
-                if (is429OrQuota) {
+                if (is429OrQuota || is503OrOverloaded) {
                     quotaExhaustedModels.set(`${key}:${modelName}`, Date.now());
-                    console.warn(`[Gemini API] Quota/429 hit on key (...${key.slice(-6)}) model ${modelName}. Rotating to next model.`);
+                    console.warn(`[Gemini API] Quota/503 hit on key (...${key.slice(-6)}) model ${modelName}. Rotating to next model.`);
                     continue;
                 }
 
@@ -253,7 +268,7 @@ export async function generateWithFallback(
         quotaExhaustedKeys.set(key, Date.now());
     }
 
-    throw new Error("All configured Gemini API keys and models are currently rate-limited or unavailable.");
+    throw new Error("All configured Gemini API keys and models are currently rate-limited, unavailable, or exceeded deadline.");
 }
 
 /**
