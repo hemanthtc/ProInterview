@@ -961,7 +961,12 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('targetCompanies', aiRoleMode === 'fresher' ? 'Open Opportunity' : (aiTargetCompanies || ''));
       formData.append('roleMode', aiRoleMode);
       formData.append('userInput', Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '');
-      formData.append('missingSections', missingSectionsList.join(','));
+      const isUploadingResume = !!resumeUploadFile || (isUsingAccountResume && !!accountResumeUrl);
+      const allSections = ['summary', 'workExperience', 'education', 'projects', 'skills', 'languages', 'certifications'];
+      const sectionsToSend = isUploadingResume 
+        ? allSections 
+        : (missingSectionsList.length > 0 ? missingSectionsList : allSections);
+      formData.append('missingSections', sectionsToSend.join(','));
       if (resumeUploadFile) {
         formData.append('resumeFile', resumeUploadFile);
       }
@@ -1591,10 +1596,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                           <input
                             type="file"
                             id="ai-resume-file-input-sidebar"
-                            accept=".pdf,.txt,.doc,.docx"
+                            accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.webp"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                  alert("File size exceeds 10MB limit. Please upload a smaller file.");
+                                  return;
+                                }
                                 setResumeUploadFile(file);
                                 setIsUsingAccountResume(false);
                               }
@@ -1606,7 +1615,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                             {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
                           </span>
                           <span className="ai-modal-upload-sub">
-                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 2MB'}
+                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 10MB (PDF, DOCX, TXT, Images)'}
                           </span>
                         </div>
                       </>
@@ -1699,10 +1708,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                           <input
                             type="file"
                             id="ai-resume-file-input-both"
-                            accept=".pdf,.txt,.doc,.docx"
+                            accept=".pdf,.txt,.doc,.docx,.png,.jpg,.jpeg,.webp"
                             onChange={(e) => {
                               const file = e.target.files?.[0];
                               if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                  alert("File size exceeds 10MB limit. Please upload a smaller file.");
+                                  return;
+                                }
                                 setResumeUploadFile(file);
                                 setIsUsingAccountResume(false);
                               }
@@ -1714,7 +1727,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                             {resumeUploadFile ? resumeUploadFile.name : 'Click to select resume file'}
                           </span>
                           <span className="ai-modal-upload-sub" style={{ fontSize: '0.7rem' }}>
-                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 2MB'}
+                            {resumeUploadFile ? `${(resumeUploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'Max file size 10MB (PDF, DOCX, TXT, Images)'}
                           </span>
                         </div>
                       )}

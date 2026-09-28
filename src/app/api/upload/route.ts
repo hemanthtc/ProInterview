@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
 import { getVerifiedSession } from "@/utils/auth";
 import { buildObjectKey, isS3Configured, uploadBuffer } from "@/utils/s3";
-import { getWorkingGeminiKey } from "@/utils/gemini";
+import { generateWithFallback } from "@/utils/gemini";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -15,48 +14,42 @@ const MAX_FILES = 5;
 async function extractTextFromFile(file: File): Promise<string> {
     const name = file.name.toLowerCase();
 
-    if (name.match(/\.(png|jpg|jpeg|webp)$/i) || file.type.startsWith("image/")) {
+    if (name.match(/\.(png|jpg|jpeg|webp|jfif|bmp|tif|tiff)$/i) || file.type.startsWith("image/")) {
         try {
-            const apiKey = getWorkingGeminiKey() || process.env.GEMINI_API_KEY;
-            if (apiKey && apiKey !== "dummy") {
-                const genAI = new GoogleGenerativeAI(apiKey);
-                const modelsToTry = ["gemini-2.5-flash", "gemini-flash-latest", "gemini-flash-lite-latest"];
-                let mimeType = file.type || "image/png";
-                if (name.endsWith(".jpg") || name.endsWith(".jpeg") || mimeType === "image/jpg") {
-                    mimeType = "image/jpeg";
-                } else if (name.endsWith(".png")) {
-                    mimeType = "image/png";
-                } else if (name.endsWith(".webp")) {
-                    mimeType = "image/webp";
-                }
-
-                let text = "";
-                for (const modelName of modelsToTry) {
-                    try {
-                        const model = genAI.getGenerativeModel({ model: modelName }, { timeout: 12000 });
-                        const arrayBuffer = await file.arrayBuffer();
-                        const base64Data = Buffer.from(arrayBuffer).toString("base64");
-                        const result = await model.generateContent([
-                            {
-                                inlineData: {
-                                    data: base64Data,
-                                    mimeType
-                                }
-                            },
-                            "Extract and transcribe all text from this job description / document screenshot verbatim. Return only the extracted text without conversational wrapper."
-                        ]);
-                        text = result.response.text() || "";
-                        if (text.trim()) break;
-                    } catch (mErr) {
-                        console.warn(`OCR model ${modelName} failed for ${file.name}:`, mErr);
-                    }
-                }
-                if (text.trim()) {
-                    return `--- [Image OCR: ${file.name}] ---\n${text.trim()}\n`;
-                }
+            const arrayBuffer = await file.arrayBuffer();
+            const base64Data = Buffer.from(arrayBuffer).toString("base64");
+            let mimeType = file.type || "image/png";
+            if (/\.(jpe?g|jfif)$/i.test(name) || mimeType === "image/jpg") {
+                mimeType = "image/jpeg";
+            } else if (name.endsWith(".png")) {
+                mimeType = "image/png";
+            } else if (name.endsWith(".webp")) {
+                mimeType = "image/webp";
+            } else if (!mimeType.startsWith("image/")) {
+                mimeType = "image/png";
             }
-        } catch (e) {
-            console.error("Image OCR text extraction failed for " + file.name + ":", e);
+
+            const promptParts = [
+                {
+                    inlineData: {
+                        data: base64Data,
+                        mimeType
+                    }
+                },
+                "Extract and transcribe all text from this job description / document screenshot verbatim. Keep all details, responsibilities, requirements, qualifications, and company information. Return only the extracted text without conversational wrapper."
+            ];
+
+            const text = (await generateWithFallback(promptParts, {
+                model: "gemini-2.5-flash",
+                timeout: 25000
+            })).trim();
+
+            if (text) {
+                return `--- [Image OCR: ${file.name}] ---\n${text}\n`;
+            }
+        } catch (e: any) {
+            console.error("Image OCR text extraction failed for " + file.name + ":", e?.message || e);
+            throw e;
         }
         return "";
     }
@@ -82,38 +75,26 @@ async function extractTextFromFile(file: File): Promise<string> {
         // 2. If it is a scanned PDF (little to no text extracted, less than 350 chars) or pdf-parse failed, use Gemini multimodal OCR
         if (pdfParseFailed || extractedText.length < 350) {
             try {
-                const apiKey = getWorkingGeminiKey() || process.env.GEMINI_API_KEY;
-                if (apiKey && apiKey !== "dummy") {
-                    const genAI = new GoogleGenerativeAI(apiKey);
-                    const modelsToTry = ["gemini-2.5-flash", "gemini-flash-latest"];
-                    const arrayBuffer = await file.arrayBuffer();
-                    const base64Data = Buffer.from(arrayBuffer).toString("base64");
-                    
-                    let text = "";
-                    for (const modelName of modelsToTry) {
-                        try {
-                            const model = genAI.getGenerativeModel({ model: modelName }, { timeout: 15000 });
-                            const result = await model.generateContent([
-                                {
-                                    inlineData: {
-                                        data: base64Data,
-                                        mimeType: "application/pdf"
-                                    }
-                                },
-                                "Extract and transcribe all text from this PDF document verbatim. Keep all details, work history, education, skills, and contact info. Return only the extracted text without conversational wrapper."
-                            ]);
-                            text = result.response.text() || "";
-                            if (text.trim()) break;
-                        } catch (mErr) {
-                            console.warn(`Gemini PDF parse model ${modelName} failed for ${file.name}:`, mErr);
+                const arrayBuffer = await file.arrayBuffer();
+                const base64Data = Buffer.from(arrayBuffer).toString("base64");
+                const promptParts = [
+                    {
+                        inlineData: {
+                            data: base64Data,
+                            mimeType: "application/pdf"
                         }
-                    }
-                    if (text.trim()) {
-                        extractedText = text.trim();
-                    }
+                    },
+                    "Extract and transcribe all text from this PDF document verbatim. Keep all details, work history, education, skills, and contact info. Return only the extracted text without conversational wrapper."
+                ];
+                const text = (await generateWithFallback(promptParts, {
+                    model: "gemini-2.5-flash",
+                    timeout: 25000
+                })).trim();
+                if (text) {
+                    extractedText = text;
                 }
-            } catch (e) {
-                console.error("Gemini PDF extraction fallback failed for " + file.name + ":", e);
+            } catch (e: any) {
+                console.error("Gemini PDF extraction fallback failed for " + file.name + ":", e?.message || e);
             }
         }
 
@@ -239,6 +220,7 @@ export async function POST(req: NextRequest) {
         }
 
         let combinedText = "";
+        let lastError = "";
         const stored: { name: string; key: string; url: string }[] = [];
 
         for (const f of files) {
@@ -247,7 +229,11 @@ export async function POST(req: NextRequest) {
 
             // Re-parse from buffer for text extraction (File stream may be consumed)
             const blob = new File([buffer], f.name, { type: f.type });
-            combinedText += await extractTextFromFile(blob);
+            try {
+                combinedText += await extractTextFromFile(blob);
+            } catch (err: any) {
+                lastError = err?.message || String(err);
+            }
 
             if (storeInS3 && isS3Configured()) {
                 try {
@@ -273,8 +259,20 @@ export async function POST(req: NextRequest) {
         }
 
         if (!combinedText || !combinedText.trim()) {
+            if (lastError && (lastError.includes("rate-limited") || lastError.includes("quota") || lastError.includes("RESOURCE_EXHAUSTED") || lastError.includes("429"))) {
+                return NextResponse.json(
+                    { error: "Image OCR is temporarily unavailable: Gemini AI is currently rate-limited. Please paste the job description text directly into the box, or try again in a moment." },
+                    { status: 429 }
+                );
+            }
+            if (lastError && (lastError.includes("timeout") || lastError.includes("timed out") || lastError.includes("504"))) {
+                return NextResponse.json(
+                    { error: "Image OCR timed out while transcribing the file. Please upload a smaller screenshot or paste the job description text directly." },
+                    { status: 504 }
+                );
+            }
             return NextResponse.json(
-                { error: "Image OCR failed: Could not transcribe text from file. Please re-upload a clearer screenshot or document file." },
+                { error: "Image OCR failed: Could not transcribe text from file. Please re-upload a clearer screenshot or document file, or paste the job description text directly." },
                 { status: 422 }
             );
         }

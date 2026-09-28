@@ -63,7 +63,12 @@ async function extractTextFromFile(file: File): Promise<string> {
         } catch (e) { return ""; }
     }
 
-    if (file.size > 2000000) return "";
+    // Skip raw text read for images since binary will corrupt prompt (handled as inlineData part)
+    if (name.match(/\.(png|jpg|jpeg|webp)$/i) || file.type.startsWith("image/")) {
+        return "";
+    }
+
+    if (file.size > 10 * 1024 * 1024) return "";
     try {
         const text = await file.text();
         return `--- [File: ${file.name}] ---\n${text}\n`;
@@ -107,18 +112,57 @@ function generateResumeFallback(params: {
     portfolioUrl?: string;
     candidateName?: string;
     candidateEmail?: string;
+    resumeText?: string;
 }) {
+    const rawText = params.resumeText || "";
+    const extractedEmail = params.candidateEmail || rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0] || "";
+    const extractedPhone = rawText.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)?.[0] || "";
+    const extractedLinkedin = params.linkedin || rawText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/)?.[0] || "";
+    const extractedGithub = params.github || rawText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[a-zA-Z0-9_-]+/)?.[0] || "";
+
+    let extractedName = params.candidateName || "";
+    if (!extractedName && rawText) {
+        const lines = rawText.split("\n").map(l => l.replace(/---.*?---/, "").trim()).filter(Boolean);
+        const nameCandidate = lines.find(l => l.length > 2 && l.length < 35 && !/resume|curriculum|email|phone|profile|summary|http|skills|experience/i.test(l));
+        if (nameCandidate) extractedName = nameCandidate;
+    }
+
+    // Heuristically extract technical skills from raw resume text
+    const knownSkills = [
+        "JavaScript", "TypeScript", "Python", "Java", "C++", "C#", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin",
+        "React", "React Native", "Next.js", "Angular", "Vue", "HTML", "CSS", "Tailwind CSS", "Bootstrap",
+        "Node.js", "Express", "Django", "Flask", "Spring Boot", "FastAPI", "GraphQL", "REST APIs",
+        "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQLite",
+        "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Git", "GitHub", "CI/CD", "Linux", "Jira", "Agile"
+    ];
+    const foundSkills: { name: string; level: string; category: string }[] = [];
+    if (rawText) {
+        for (const skill of knownSkills) {
+            const regex = new RegExp(`\\b${skill.replace(/[.+]/g, '\\$&')}\\b`, "i");
+            if (regex.test(rawText)) {
+                foundSkills.push({
+                    name: skill,
+                    level: "Advanced",
+                    category: /React|Angular|Vue|HTML|CSS|Tailwind/i.test(skill) ? "Frontend" :
+                              /Node|Express|Django|Flask|Spring|FastAPI/i.test(skill) ? "Backend" :
+                              /SQL|Mongo|Redis|Postgres/i.test(skill) ? "Database" :
+                              /AWS|Azure|Docker|Kube|Git|Linux/i.test(skill) ? "DevOps & Tools" : "Languages"
+                });
+            }
+        }
+    }
+
     const role = params.preferredRoles || (params.roleMode === "fresher" ? "Junior Software Engineer" : "Full Stack Software Engineer");
     const company = params.targetCompanies || "Technology Solutions Inc.";
 
     return {
         personalInfo: {
-            name: params.candidateName || "Candidate",
-            email: params.candidateEmail || "",
-            phone: "",
+            name: extractedName || "Candidate",
+            email: extractedEmail,
+            phone: extractedPhone,
             location: "India",
-            linkedin: params.linkedin || "",
-            github: params.github || "",
+            linkedin: extractedLinkedin,
+            github: extractedGithub,
             website: params.portfolioUrl || "",
         },
         summary: `Dedicated and results-oriented ${role} with strong foundations in modern software architecture, web development, and problem solving. Passionate about engineering high-performance systems and contributing to high-impact engineering workflows.`,
@@ -152,12 +196,12 @@ function generateResumeFallback(params: {
             {
                 name: "Full Stack Web Platform",
                 description: "Architected an end-to-end web platform featuring responsive UI, RESTful APIs, and secure authentication.",
-                technologies: ["React", "TypeScript", "Node.js", "Tailwind CSS"],
-                link: params.github || "",
+                technologies: foundSkills.length > 0 ? foundSkills.slice(0, 4).map(s => s.name) : ["React", "TypeScript", "Node.js", "Tailwind CSS"],
+                link: extractedGithub || "",
                 role: "Lead Developer"
             }
         ],
-        skills: [
+        skills: foundSkills.length >= 3 ? foundSkills.slice(0, 10) : [
             { name: "JavaScript / TypeScript", level: "Advanced", category: "Languages" },
             { name: "React / Next.js", level: "Advanced", category: "Frontend" },
             { name: "Node.js / Express", level: "Intermediate", category: "Backend" },
@@ -190,7 +234,6 @@ export async function POST(req: NextRequest) {
         const preferredRoles = formData.get("preferredRoles") as string;
         const roleMode = formData.get("roleMode") as string || "specified";
         const userInput = formData.get("userInput") as string;
-        const missingSectionsRaw = formData.get("missingSections") as string || "summary,workExperience";
         const projectFiles = formData.getAll("projectFiles") as File[];
         const resumeFile = formData.get("resumeFile") as File;
         const sourceMode = (formData.get("sourceMode") as string) || "resume";
@@ -198,29 +241,58 @@ export async function POST(req: NextRequest) {
         const targetPages = formData.get("targetPages") as string || "1";
         const resumeUrl = formData.get("resumeUrl") as string;
 
+        const hasResumeSource = !!(resumeFile || resumeUrl || sourceMode === "resume" || sourceMode === "both");
+        const missingSectionsInput = (formData.get("missingSections") as string || "").trim();
+        const missingSectionsRaw = (hasResumeSource || !missingSectionsInput || missingSectionsInput === "all")
+            ? "summary,workExperience,education,projects,skills,languages,certifications"
+            : missingSectionsInput;
+
         let resumeFileText = "";
         let resumePart: any = null;
 
         // Extract from uploaded file first
         if (resumeFile) {
-            resumeFileText = await extractTextFromFile(resumeFile);
+            const isPdf = resumeFile.name.toLowerCase().endsWith(".pdf") || resumeFile.type === "application/pdf";
+            const isImage = resumeFile.name.toLowerCase().match(/\.(png|jpg|jpeg|webp)$/i) || resumeFile.type.startsWith("image/");
 
-            // If file is a PDF and text extraction yielded little/no text (e.g. scanned image PDF), create visual part fallback
-            const plainExtracted = resumeFileText.replace(/--- \[File:.*?\] ---/, '').trim();
-            if ((resumeFile.name.toLowerCase().endsWith(".pdf") || resumeFile.type === "application/pdf") && plainExtracted.length < 100) {
+            if (isImage) {
                 try {
                     const arrayBuffer = await resumeFile.arrayBuffer();
-                    const buffer = Buffer.from(arrayBuffer);
-                    const base64 = buffer.toString("base64");
+                    const base64 = Buffer.from(arrayBuffer).toString("base64");
+                    let mimeType = resumeFile.type || "image/png";
+                    if (resumeFile.name.toLowerCase().endsWith(".jpg") || resumeFile.name.toLowerCase().endsWith(".jpeg")) {
+                        mimeType = "image/jpeg";
+                    } else if (resumeFile.name.toLowerCase().endsWith(".webp")) {
+                        mimeType = "image/webp";
+                    }
                     resumePart = {
                         inlineData: {
                             data: base64,
-                            mimeType: "application/pdf"
+                            mimeType
                         }
                     };
-                } catch (pdfErr) {
-                    console.warn("Failed to encode PDF for visual fallback:", pdfErr);
+                } catch (imgErr) {
+                    console.warn("Failed to encode image for resumePart:", imgErr);
                 }
+            } else if (isPdf) {
+                // Attach PDF binary part for multimodal visual extraction
+                if (resumeFile.size < 8 * 1024 * 1024) {
+                    try {
+                        const arrayBuffer = await resumeFile.arrayBuffer();
+                        const base64 = Buffer.from(arrayBuffer).toString("base64");
+                        resumePart = {
+                            inlineData: {
+                                data: base64,
+                                mimeType: "application/pdf"
+                            }
+                        };
+                    } catch (pdfErr) {
+                        console.warn("Failed to encode PDF for visual extraction:", pdfErr);
+                    }
+                }
+                resumeFileText = await extractTextFromFile(resumeFile);
+            } else {
+                resumeFileText = await extractTextFromFile(resumeFile);
             }
         } else if (resumeUrl) {
             // Only fetch from remote URL if no local file was uploaded
@@ -297,10 +369,17 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY in environment" }, { status: 500 });
         }
 
-        let systemPrompt = `You are an expert resume writer and recruiter.
+        let systemPrompt = `You are an expert resume writer, extractor, and recruiter.
 Generate professional resume details for a candidate with the following credentials.
 You must always extract and clean the candidate's personal contact details (name, email, phone, location, linkedin, github, website) if they are present in the provided sources.
 Generate ONLY the requested sections listed here: ${missingSectionsRaw}, as well as the 'personalInfo' key. Do not generate keys for any other sections.
+
+${hasResumeSource ? `CRITICAL RESUME EXTRACTION INSTRUCTIONS (SOURCE IS CANDIDATE'S RESUME/CV):
+1. THOROUGH DATA EXTRACTION: Extract ALL candidate information from the provided resume document. Do NOT skip or omit any real job, company, degree, project, skill, language, or certification mentioned in the document.
+2. ACCURATE DETAILS: Capture company names, job titles, start/end dates, institution names, degrees, and scores exactly as written in the resume. If the resume has multiple jobs, extract all of them. If it has multiple degrees, extract all degrees.
+3. BULLET POINT ENHANCEMENT: Maintain the candidate's actual accomplishments from their experience and project descriptions. Convert them into clear, high-impact bullet points starting with action verbs (e.g., Developed, Architected, Led, Optimized) while preserving all original metrics, tech stacks, and factual details.
+4. TWO-COLUMN & OLD RESUME FORMATS: Read multi-column, sidebar, and tabular layouts carefully to associate job titles with their correct company and dates.
+5. NO DUMMY PLACEHOLDERS: Extract the real candidate's details. Never replace actual resume information with template examples or dummy text.` : ""}
 
 SOURCE MODE: ${sourceMode.toUpperCase()}
 
@@ -436,9 +515,9 @@ CRITICAL ATS OPTIMIZATION RULES:
         try {
             const rawText = (await generateWithFallback(promptParts, { 
                 model: "gemini-2.5-flash",
-                timeout: 25000,
+                timeout: 30000,
                 generationConfig: { 
-                    temperature: 0.7,
+                    temperature: 0.2,
                     responseMimeType: "application/json"
                 } 
             })).trim();
@@ -453,7 +532,8 @@ CRITICAL ATS OPTIMIZATION RULES:
                 linkedin,
                 portfolioUrl,
                 candidateName: (session.identifier || "").split("@")[0],
-                candidateEmail: session.identifier && session.identifier.includes("@") ? session.identifier : ""
+                candidateEmail: session.identifier && session.identifier.includes("@") ? session.identifier : "",
+                resumeText: resumeFileText
             });
         }
 
