@@ -961,8 +961,8 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('targetCompanies', aiRoleMode === 'fresher' ? 'Open Opportunity' : (aiTargetCompanies || ''));
       formData.append('roleMode', aiRoleMode);
       formData.append('userInput', Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '');
-      const isUploadingResume = !!resumeUploadFile || (isUsingAccountResume && !!accountResumeUrl);
-      const allSections = ['summary', 'workExperience', 'education', 'projects', 'skills', 'languages', 'certifications'];
+      const isUploadingResume = !!resumeUploadFile || !!accountResumeUrl || (isUsingAccountResume && !!accountResumeText) || aiSourceMode === 'resume' || aiSourceMode === 'both';
+      const allSections = ['summary', 'workExperience', 'education', 'projects', 'skills', 'languages', 'certifications', 'customSections'];
       const sectionsToSend = isUploadingResume 
         ? allSections 
         : (missingSectionsList.length > 0 ? missingSectionsList : allSections);
@@ -972,6 +972,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       }
       if (isUsingAccountResume && accountResumeUrl) {
         formData.append('resumeUrl', accountResumeUrl);
+      }
+      if (accountResumeText) {
+        formData.append('resumeText', accountResumeText);
       }
 
       const res = await authFetch('/api/generate-resume', { method: 'POST', body: formData });
@@ -1002,6 +1005,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           updatedData.personalInfo = {
             ...updatedData.personalInfo,
             name: result.personalInfo.name || updatedData.personalInfo.name,
+            title: result.personalInfo.title || updatedData.personalInfo.title,
             email: result.personalInfo.email || updatedData.personalInfo.email,
             phone: result.personalInfo.phone || updatedData.personalInfo.phone,
             location: result.personalInfo.location || "",
@@ -1010,11 +1014,15 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             website: result.personalInfo.website || "",
             summary: result.summary || updatedData.personalInfo.summary
           };
+          if (isUploadingResume) {
+            const storedPhoto = getStorageItem("userProfilePhoto") || "";
+            updatedData.personalInfo.avatar = storedPhoto || "";
+          }
         } else if (result.summary) {
           updatedData.personalInfo = { ...updatedData.personalInfo, summary: result.summary };
         }
 
-        if (Array.isArray(result.workExperience)) {
+        if (Array.isArray(result.workExperience) && result.workExperience.length > 0) {
           updatedData.workExperience = result.workExperience.map((job: any, index: number) => ({
             id: `exp-ai-${Date.now()}-${index}`,
             company: job.company || "",
@@ -1025,9 +1033,11 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             current: !!job.current,
             description: job.description || ""
           }));
+        } else if (isUploadingResume) {
+          updatedData.workExperience = [];
         }
 
-        if (Array.isArray(result.education)) {
+        if (Array.isArray(result.education) && result.education.length > 0) {
           updatedData.education = result.education.map((edu: any, index: number) => ({
             id: `edu-ai-${Date.now()}-${index}`,
             institution: edu.institution || "",
@@ -1040,9 +1050,11 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             percentage: edu.percentage || "",
             description: edu.description || ""
           }));
+        } else if (isUploadingResume && Array.isArray(result.education)) {
+          updatedData.education = [];
         }
 
-        if (Array.isArray(result.projects)) {
+        if (Array.isArray(result.projects) && result.projects.length > 0) {
           updatedData.projects = result.projects.map((proj: any, index: number) => ({
             id: `proj-ai-${Date.now()}-${index}`,
             name: proj.name || "",
@@ -1051,26 +1063,32 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             link: proj.link || "",
             role: proj.role || ""
           }));
+        } else if (isUploadingResume && Array.isArray(result.projects)) {
+          updatedData.projects = [];
         }
 
-        if (Array.isArray(result.skills)) {
+        if (Array.isArray(result.skills) && result.skills.length > 0) {
           updatedData.skills = result.skills.map((skill: any, index: number) => ({
             id: `skill-ai-${Date.now()}-${index}`,
             name: skill.name || "",
             level: skill.level || "",
             category: skill.category || ""
           }));
+        } else if (isUploadingResume && Array.isArray(result.skills)) {
+          updatedData.skills = [];
         }
 
-        if (Array.isArray(result.languages)) {
+        if (Array.isArray(result.languages) && result.languages.length > 0) {
           updatedData.languages = result.languages.map((lang: any, index: number) => ({
             id: `lang-ai-${Date.now()}-${index}`,
             name: lang.name || "",
             proficiency: lang.proficiency || ""
           }));
+        } else if (isUploadingResume) {
+          updatedData.languages = [];
         }
 
-        if (Array.isArray(result.certifications)) {
+        if (Array.isArray(result.certifications) && result.certifications.length > 0) {
           updatedData.certifications = result.certifications.map((cert: any, index: number) => ({
             id: `cert-ai-${Date.now()}-${index}`,
             name: cert.name || "",
@@ -1078,6 +1096,24 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             date: cert.date || "",
             link: cert.link || ""
           }));
+        } else if (isUploadingResume) {
+          updatedData.certifications = [];
+        }
+
+        if (Array.isArray(result.customSections) && result.customSections.length > 0) {
+          updatedData.customSections = result.customSections.map((sect: any, sIdx: number) => ({
+            id: `custom-ai-${Date.now()}-${sIdx}`,
+            title: sect.title || "Additional Section",
+            items: Array.isArray(sect.items) ? sect.items.map((it: any, iIdx: number) => ({
+              id: `item-ai-${Date.now()}-${sIdx}-${iIdx}`,
+              title: it.title || "",
+              subtitle: it.subtitle || "",
+              date: it.date || "",
+              description: it.description || ""
+            })) : []
+          }));
+        } else if (isUploadingResume) {
+          updatedData.customSections = [];
         }
 
         setResumeData(updatedData);
@@ -1120,7 +1156,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('targetCompanies', atsTargetCompany || '');
       formData.append('optimizeAts', 'true');
       formData.append('targetPages', atsTargetPages);
-      formData.append('missingSections', 'summary,workExperience,education,projects,skills,languages,certifications');
+      formData.append('missingSections', 'summary,workExperience,education,projects,skills,languages,certifications,customSections');
       
       const optimizationPrompt = {
         instructions: `Optimize this resume to be strictly ATS-compliant. Budget the length to fit within exactly ${atsTargetPages} page(s). Under 'projects', summarize each project in exactly one line describing the content and the main challenges/errors resolved. Under 'workExperience', write high-impact bulleted achievements.`,
@@ -1219,6 +1255,20 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             issuer: cert.issuer || "",
             date: cert.date || "",
             link: cert.link || ""
+          }));
+        }
+
+        if (Array.isArray(result.customSections)) {
+          updatedData.customSections = result.customSections.map((sect: any, index: number) => ({
+            id: `custom-ats-${Date.now()}-${index}`,
+            title: sect.title || "Additional Section",
+            items: Array.isArray(sect.items) ? sect.items.map((it: any, iIdx: number) => ({
+              id: `item-ats-${Date.now()}-${index}-${iIdx}`,
+              title: it.title || "",
+              subtitle: it.subtitle || "",
+              date: it.date || "",
+              description: it.description || ""
+            })) : []
           }));
         }
 
@@ -1613,28 +1663,56 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                       </span>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
                       <button
                         type="button"
                         onClick={() => setAiModalStep('choice')}
                         className="ai-modal-back-btn"
+                        disabled={isAILoading}
                       >Back</button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (!resumeUploadFile) {
-                            alert("Please upload a resume file first.");
-                            return;
-                          }
-                          setAiModalStep('notes');
-                        }}
-                        style={{
-                          padding: '0.5rem 1.25rem', fontSize: '0.8rem', fontWeight: 700,
-                          background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
-                          border: 'none', borderRadius: '0.5rem', color: '#fff',
-                          cursor: 'pointer'
-                        }}
-                      >Next: Preferences</button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!resumeUploadFile) {
+                              alert("Please upload a resume file first.");
+                              return;
+                            }
+                            handleAIGenerate();
+                          }}
+                          disabled={isAILoading || !resumeUploadFile}
+                          style={{
+                            padding: '0.5rem 1rem', fontSize: '0.8rem', fontWeight: 700,
+                            background: isAILoading ? 'rgba(16, 185, 129, 0.4)' : 'linear-gradient(135deg, #10b981, #059669)',
+                            border: 'none', borderRadius: '0.5rem', color: '#fff',
+                            cursor: (isAILoading || !resumeUploadFile) ? 'not-allowed' : 'pointer',
+                            opacity: (!resumeUploadFile && !isAILoading) ? 0.6 : 1,
+                            display: 'flex', alignItems: 'center', gap: '0.35rem',
+                            boxShadow: '0 0 15px rgba(16, 185, 129, 0.25)'
+                          }}
+                        >
+                          <Sparkles size={14} style={isAILoading ? { animation: 'spin 1s linear infinite' } : {}} />
+                          {isAILoading ? 'Extracting...' : 'Autofill Now'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!resumeUploadFile) {
+                              alert("Please upload a resume file first.");
+                              return;
+                            }
+                            setAiModalStep('notes');
+                          }}
+                          disabled={isAILoading || !resumeUploadFile}
+                          style={{
+                            padding: '0.5rem 0.9rem', fontSize: '0.8rem', fontWeight: 600,
+                            background: 'rgba(139, 92, 246, 0.2)',
+                            border: '1px solid rgba(139, 92, 246, 0.4)',
+                            borderRadius: '0.5rem', color: '#a78bfa',
+                            cursor: (isAILoading || !resumeUploadFile) ? 'not-allowed' : 'pointer'
+                          }}
+                        >Customize &gt;</button>
+                      </div>
                     </div>
                   </div>
                 )}

@@ -127,28 +127,87 @@ function generateResumeFallback(params: {
         if (nameCandidate) extractedName = nameCandidate;
     }
 
-    // Extract Summary if present in raw resume text
+    let extractedTitle = params.preferredRoles || "";
+    if (!extractedTitle && rawText) {
+        const lines = rawText.split("\n").map(l => l.replace(/---.*?---/, "").trim()).filter(Boolean);
+        const nameIdx = lines.findIndex(l => l === extractedName);
+        if (nameIdx !== -1 && lines[nameIdx + 1] && !lines[nameIdx + 1].includes("@") && !lines[nameIdx + 1].includes("http") && lines[nameIdx + 1].length < 70) {
+            extractedTitle = lines[nameIdx + 1];
+        }
+    }
+
+    let extractedLocation = "";
+    if (rawText) {
+        const locMatch = rawText.match(/\b([A-Z][a-zA-Z\s]+,\s*(?:Karnataka|Maharashtra|Delhi|Tamil\s+Nadu|Telangana|Uttar\s+Pradesh|Kerala|Gujarat|India|USA|UK|California|Texas|New\s+York))\b/i);
+        if (locMatch) {
+            extractedLocation = locMatch[1].trim();
+        }
+    }
+
+    // Extract Summary if present in raw resume text - NO hallucinated default
     let extractedSummary = "";
     if (rawText) {
-        const summaryMatch = rawText.match(/(?:professional\s+summary|summary|profile|about\s+me)[:\s\n]+([\s\S]{30,600}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|key\s+projects)|$)/i);
+        const summaryMatch = rawText.match(/(?:professional\s+summary|summary|profile|about\s+me|career\s+objective)[:\s\n]+([\s\S]{30,800}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|key\s+projects|certifications|languages|awards)|$)/i);
         if (summaryMatch) {
             extractedSummary = summaryMatch[1].replace(/\s+/g, ' ').trim();
         }
     }
 
-    // Heuristically extract technical & engineering skills from raw resume text
+    // Heuristically extract real work experience if present in raw text - ZERO fake companies
+    const extractedWorkExperience: Array<{
+        company: string;
+        position: string;
+        location: string;
+        startDate: string;
+        endDate: string;
+        current: boolean;
+        description: string;
+    }> = [];
+
+    if (rawText) {
+        const expSectionMatch = rawText.match(/(?:work\s+experience|professional\s+experience|employment\s+history|experience)[:\s\n]+([\s\S]{20,2500}?)(?=\n\s*(?:education|academic\s+background|technical\s+skills|skills|projects|key\s+projects|certifications|languages|awards|publications)|$)/i);
+        if (expSectionMatch) {
+            const expLines = expSectionMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
+            let currentExp: any = null;
+            for (let i = 0; i < expLines.length; i++) {
+                const line = expLines[i];
+                const dateMatch = line.match(/\b(20\d\d|19\d\d)\s*[-–to\s]+\s*(20\d\d|present|current)\b/i);
+                const isHeaderLine = dateMatch || line.match(/\b(engineer|developer|intern|analyst|manager|lead|architect|consultant|specialist|designer|associate)\b/i);
+                
+                if (isHeaderLine && line.length < 90 && !line.startsWith("•") && !line.startsWith("-")) {
+                    if (currentExp && (currentExp.company || currentExp.position)) {
+                        extractedWorkExperience.push(currentExp);
+                    }
+                    const nextLine = expLines[i + 1] || "";
+                    currentExp = {
+                        company: line.includes("|") ? line.split("|")[0].trim() : line,
+                        position: line.includes("|") ? line.split("|")[1].trim() : (nextLine.length < 50 && !nextLine.startsWith("•") && !nextLine.startsWith("-") ? nextLine : "Role"),
+                        location: "",
+                        startDate: dateMatch ? dateMatch[1] : "",
+                        endDate: dateMatch ? dateMatch[2] : "Present",
+                        current: /present|current/i.test(dateMatch ? dateMatch[2] : ""),
+                        description: ""
+                    };
+                } else if (currentExp && (line.startsWith("•") || line.startsWith("-") || line.startsWith("*"))) {
+                    currentExp.description += (currentExp.description ? "\n" : "") + line;
+                }
+            }
+            if (currentExp && (currentExp.company || currentExp.position)) {
+                extractedWorkExperience.push(currentExp);
+            }
+        }
+    }
+
+    // Heuristically extract real technical skills from raw resume text
     const knownSkills = [
-        // Programming & Web
         "JavaScript", "TypeScript", "Python", "Java", "C++", "C#", "C", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin",
         "React", "React Native", "Next.js", "Angular", "Vue", "HTML", "CSS", "Tailwind CSS", "Bootstrap",
         "Node.js", "Express", "Django", "Flask", "Spring Boot", "FastAPI", "GraphQL", "REST APIs",
         "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQLite",
         "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Git", "GitHub", "CI/CD", "Linux", "Jira", "Agile",
-        // Electronics, VLSI & Embedded
         "Cadence Virtuoso", "Cadence Innovus", "Cadence Genus", "Cadence Modus", "Xilinx Vivado", "Verilog HDL", "Verilog", "SystemVerilog", "VHDL",
         "VLSI", "CMOS", "Physical Design", "DFT", "FPGA", "PCB Design", "Circuit Analysis", "Signals & Systems",
         "Analog Electronics", "Digital Electronics", "Microcontrollers", "Embedded Systems",
-        // Engineering & Business Tools
         "AutoCAD", "SolidWorks", "MATLAB", "Excel", "Tally", "Power BI", "GST", "Auditing"
     ];
     const foundSkills: { name: string; level: string; category: string }[] = [];
@@ -169,7 +228,7 @@ function generateResumeFallback(params: {
         }
     }
 
-    // Heuristically extract education from raw text
+    // Heuristically extract real education from raw text - ZERO fake colleges
     const extractedEducation: Array<{
         institution: string;
         degree: string;
@@ -182,7 +241,7 @@ function generateResumeFallback(params: {
         description: string;
     }> = [];
     if (rawText) {
-        const eduSectionMatch = rawText.match(/(?:education|academic\s+background)[:\s\n]+([\s\S]{20,900}?)(?=\n\s*(?:technical\s+skills|skills|projects|key\s+projects|experience|work\s+experience|certifications)|$)/i);
+        const eduSectionMatch = rawText.match(/(?:education|academic\s+background)[:\s\n]+([\s\S]{20,900}?)(?=\n\s*(?:technical\s+skills|skills|projects|key\s+projects|experience|work\s+experience|certifications|awards)|$)/i);
         if (eduSectionMatch) {
             const eduText = eduSectionMatch[1];
             const eduLines = eduText.split("\n").map(l => l.trim()).filter(Boolean);
@@ -195,14 +254,13 @@ function generateResumeFallback(params: {
                     const degreeMatch = combined.match(/(bachelor\s+of\s+engineering|bachelor\s+of\s+technology|bachelor\s+of\s+science|bachelor\s+of\s+commerce|b\.e|b\.tech|b\.sc|b\.com|diploma|master|m\.tech|m\.s|mba)[^,\n|]*/i);
                     const yearMatch = combined.match(/\b(20\d\d(?:\s*[-–]\s*(?:20\d\d|present))?)\b/i);
                     const cgpaMatch = combined.match(/(?:cgpa|gpa|percentage)[:\s]*([0-9.]+(?:\s*\/\s*10|\s*%)?)/i);
-
                     const fieldMatch = combined.match(/(?:electronics|computer\s+science|mechanical|civil|electrical|information\s+technology|vlsi|accounting|commerce)[^,\n|]*/i);
 
                     extractedEducation.push({
                         institution: line.replace(/[0-9–\-|]/g, "").trim(),
                         degree: degreeMatch ? degreeMatch[0].trim() : "Degree",
                         fieldOfStudy: fieldMatch ? fieldMatch[0].trim() : "",
-                        location: "India",
+                        location: extractedLocation || "India",
                         startDate: yearMatch ? yearMatch[1].split(/[-–]/)[0]?.trim() : "",
                         endDate: yearMatch ? (yearMatch[1].split(/[-–]/)[1]?.trim() || "Present") : "",
                         cgpa: cgpaMatch ? cgpaMatch[1].trim() : "",
@@ -213,7 +271,7 @@ function generateResumeFallback(params: {
         }
     }
 
-    // Heuristically extract projects from raw text
+    // Heuristically extract real projects from raw text - ZERO fake projects
     const extractedProjects: Array<{
         name: string;
         description: string;
@@ -222,16 +280,16 @@ function generateResumeFallback(params: {
         role: string;
     }> = [];
     if (rawText) {
-        const projSectionMatch = rawText.match(/(?:key\s+projects|projects|academic\s+projects)[:\s\n]+([\s\S]{20,1500}?)(?=\n\s*(?:certifications|workshops|languages|achievements|education)|$)/i);
+        const projSectionMatch = rawText.match(/(?:key\s+projects|projects|academic\s+projects)[:\s\n]+([\s\S]{20,1500}?)(?=\n\s*(?:certifications|workshops|languages|achievements|education|awards)|$)/i);
         if (projSectionMatch) {
             const pLines = projSectionMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
             for (let i = 0; i < pLines.length; i++) {
                 const line = pLines[i];
                 if (line.length > 5 && line.length < 90 && !line.startsWith("•") && !line.startsWith("-") && !/^(role:|technology:|tools:|page\s+\d)/i.test(line)) {
-                    if (extractedProjects.length < 5) {
+                    if (extractedProjects.length < 6) {
                         extractedProjects.push({
                             name: line,
-                            description: pLines[i + 1]?.startsWith("•") || pLines[i + 1]?.startsWith("-") ? pLines[i + 1].replace(/^[•\-*]\s*/, "") : "Project completed successfully.",
+                            description: pLines[i + 1]?.startsWith("•") || pLines[i + 1]?.startsWith("-") ? pLines[i + 1].replace(/^[•\-*]\s*/, "") : "",
                             technologies: foundSkills.slice(0, 3).map(s => s.name),
                             link: extractedGithub || "",
                             role: "Team Member"
@@ -242,7 +300,7 @@ function generateResumeFallback(params: {
         }
     }
 
-    // Heuristically extract languages from raw text
+    // Heuristically extract real languages from raw text
     const extractedLanguages: Array<{ name: string; proficiency: string }> = [];
     if (rawText) {
         const langMatch = rawText.match(/(?:languages spoken|languages)[:\s\n]+([^\n\r]+)/i);
@@ -258,67 +316,206 @@ function generateResumeFallback(params: {
         }
     }
 
-    const role = params.preferredRoles || (params.roleMode === "fresher" ? "Junior Professional" : "Professional");
-    const company = params.targetCompanies || "Engineering Solutions";
+    // Heuristically extract real certifications from raw text - ZERO fake certifications
+    const extractedCertifications: Array<{
+        name: string;
+        issuer: string;
+        date: string;
+        link: string;
+    }> = [];
+    if (rawText) {
+        const certSectionMatch = rawText.match(/(?:certifications|certificates|licenses|courses\s*&\s*certifications)[:\s\n]+([\s\S]{10,1200}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|languages|awards|publications)|$)/i);
+        if (certSectionMatch) {
+            const cLines = certSectionMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
+            for (const line of cLines) {
+                if (line.length > 3 && line.length < 120 && !/^(certifications|page\s+\d)/i.test(line)) {
+                    const yearMatch = line.match(/\b(20\d\d|19\d\d)\b/);
+                    const cleanName = line.replace(/^[•\-*]\s*/, '').replace(/\b(20\d\d|19\d\d)\b/, '').trim();
+                    if (cleanName.length > 3) {
+                        extractedCertifications.push({
+                            name: cleanName,
+                            issuer: "",
+                            date: yearMatch ? yearMatch[0] : "",
+                            link: ""
+                        });
+                    }
+                }
+            }
+        }
+    }
+
+    // Heuristically extract custom sections (Awards, Publications, Volunteer, Research, Patents, Coursework)
+    const extractedCustomSections: Array<{
+        title: string;
+        items: Array<{
+            title: string;
+            subtitle: string;
+            date: string;
+            description: string;
+        }>;
+    }> = [];
+
+    if (rawText) {
+        const customKeywords = [
+            { title: "Awards & Honors", pattern: /(?:awards|honors|achievements|academic\s+achievements)[:\s\n]+([\s\S]{15,1200}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|certifications|languages|publications|volunteer)|$)/i },
+            { title: "Publications & Research", pattern: /(?:publications|research|papers|patents)[:\s\n]+([\s\S]{15,1200}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|certifications|languages|awards)|$)/i },
+            { title: "Volunteer & Leadership", pattern: /(?:volunteer\s+experience|volunteer|leadership|extracurricular\s+activities|activities)[:\s\n]+([\s\S]{15,1200}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|certifications|languages)|$)/i },
+            { title: "Relevant Coursework", pattern: /(?:relevant\s+coursework|coursework)[:\s\n]+([\s\S]{15,800}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|certifications|languages)|$)/i }
+        ];
+
+        for (const ck of customKeywords) {
+            const match = rawText.match(ck.pattern);
+            if (match) {
+                const lines = match[1].split("\n").map(l => l.trim()).filter(Boolean);
+                const items: Array<{ title: string; subtitle: string; date: string; description: string }> = [];
+                for (const l of lines) {
+                    if (l.length > 4 && !/^(page\s+\d)/i.test(l)) {
+                        const cleanLine = l.replace(/^[•\-*]\s*/, "").trim();
+                        const dateMatch = cleanLine.match(/\b(20\d\d|19\d\d)\b/);
+                        items.push({
+                            title: cleanLine.split(/[:\-–]/)[0].trim(),
+                            subtitle: "",
+                            date: dateMatch ? dateMatch[0] : "",
+                            description: cleanLine
+                        });
+                    }
+                }
+                if (items.length > 0) {
+                    extractedCustomSections.push({
+                        title: ck.title,
+                        items: items.slice(0, 6)
+                    });
+                }
+            }
+        }
+    }
 
     return {
         personalInfo: {
-            name: extractedName || "Candidate",
+            name: extractedName,
+            title: extractedTitle,
             email: extractedEmail,
             phone: extractedPhone,
-            location: "India",
+            location: extractedLocation,
             linkedin: extractedLinkedin,
             github: extractedGithub,
             website: params.portfolioUrl || "",
         },
-        summary: extractedSummary || `Dedicated and results-oriented ${role} with strong foundations in engineering principles, modern domain workflows, and problem solving. Passionate about contributing to high-impact projects.`,
-        workExperience: [
-            {
-                company: company,
-                position: role,
-                startDate: "2023",
-                endDate: "Present",
-                current: true,
-                description: [
-                    `• Collaborated on core engineering workflows, improving operational reliability by 35%.`,
-                    `• Executed project specifications with attention to performance, documentation, and quality standards.`,
-                    `• Participated in technical reviews and testing pipelines to minimize defects.`
-                ].join("\n")
-            }
-        ],
-        education: extractedEducation.length > 0 ? extractedEducation : [
-            {
-                institution: "Institute of Technology",
-                degree: "Bachelor of Technology",
-                fieldOfStudy: "Engineering",
-                location: "India",
-                startDate: "2020",
-                endDate: "2024",
-                cgpa: "8.0/10",
-                description: "Relevant coursework in engineering and system analysis."
-            }
-        ],
-        projects: extractedProjects.length > 0 ? extractedProjects : [
-            {
-                name: "Engineering System Project",
-                description: "Designed and implemented end-to-end technical prototype meeting functional requirements.",
-                technologies: foundSkills.length > 0 ? foundSkills.slice(0, 4).map(s => s.name) : ["Technical Analysis", "Design"],
-                link: extractedGithub || "",
-                role: "Project Developer"
-            }
-        ],
-        skills: foundSkills.length >= 3 ? foundSkills.slice(0, 15) : [
-            { name: "Problem Solving", level: "Advanced", category: "Core" },
-            { name: "Technical Analysis", level: "Advanced", category: "Core" }
-        ],
-        languages: extractedLanguages.length > 0 ? extractedLanguages : [
-            { name: "English", proficiency: "Professional working proficiency" }
-        ],
-        certifications: [
-            { name: "Professional Technical Training", issuer: "Technical Workshop", date: "2024", link: "" }
-        ],
+        summary: extractedSummary,
+        workExperience: extractedWorkExperience,
+        education: extractedEducation,
+        projects: extractedProjects,
+        skills: foundSkills,
+        languages: extractedLanguages,
+        certifications: extractedCertifications,
+        customSections: extractedCustomSections,
         isFallback: true
     };
+}
+
+// Server-Side Data Integrity & Fact Verification Layer
+function verifyAndRepairResumeData(parsed: any, rawText: string) {
+    if (!parsed || typeof parsed !== 'object') {
+        parsed = {};
+    }
+
+    // Scrub any banned placeholder phrases
+    const bannedPlaceholders = [
+        "Engineering Solutions",
+        "Institute of Technology",
+        "Engineering System Project",
+        "Professional Technical Training"
+    ];
+
+    const cleanField = (val: any) => {
+        if (typeof val !== 'string') return val;
+        for (const banned of bannedPlaceholders) {
+            if (val.includes(banned) && !rawText.includes(banned)) {
+                return "";
+            }
+        }
+        return val;
+    };
+
+    if (!parsed.personalInfo || typeof parsed.personalInfo !== 'object') {
+        parsed.personalInfo = {};
+    }
+    for (const key of ['name', 'title', 'email', 'phone', 'location', 'linkedin', 'github', 'website']) {
+        parsed.personalInfo[key] = cleanField(parsed.personalInfo[key] || "");
+    }
+    parsed.summary = cleanField(parsed.summary || "");
+
+    parsed.workExperience = Array.isArray(parsed.workExperience) ? parsed.workExperience : [];
+    parsed.education = Array.isArray(parsed.education) ? parsed.education : [];
+    parsed.projects = Array.isArray(parsed.projects) ? parsed.projects : [];
+    parsed.skills = Array.isArray(parsed.skills) ? parsed.skills : [];
+    parsed.languages = Array.isArray(parsed.languages) ? parsed.languages : [];
+    parsed.certifications = Array.isArray(parsed.certifications) ? parsed.certifications : [];
+    parsed.customSections = Array.isArray(parsed.customSections) ? parsed.customSections : [];
+
+    parsed.workExperience = parsed.workExperience.filter((item: any) => {
+        item.company = cleanField(item.company || "");
+        item.position = cleanField(item.position || "");
+        return item.company || item.position;
+    });
+
+    parsed.education = parsed.education.filter((item: any) => {
+        item.institution = cleanField(item.institution || "");
+        item.degree = cleanField(item.degree || "");
+        return item.institution || item.degree;
+    });
+
+    parsed.projects = parsed.projects.filter((item: any) => {
+        item.name = cleanField(item.name || "");
+        return item.name;
+    });
+
+    parsed.certifications = parsed.certifications.filter((item: any) => {
+        item.name = cleanField(item.name || "");
+        return item.name;
+    });
+
+    // RECOVERY: If raw text has education but AI returned empty array, recover from source
+    if (parsed.education.length === 0 && rawText) {
+        const fallback = generateResumeFallback({ resumeText: rawText });
+        if (fallback.education.length > 0) {
+            parsed.education = fallback.education;
+        }
+    }
+
+    // RECOVERY: If raw text has projects but AI returned empty array, recover from source
+    if (parsed.projects.length === 0 && rawText) {
+        const fallback = generateResumeFallback({ resumeText: rawText });
+        if (fallback.projects.length > 0) {
+            parsed.projects = fallback.projects;
+        }
+    }
+
+    // RECOVERY: If raw text has skills but AI returned empty array, recover from source
+    if (parsed.skills.length === 0 && rawText) {
+        const fallback = generateResumeFallback({ resumeText: rawText });
+        if (fallback.skills.length > 0) {
+            parsed.skills = fallback.skills;
+        }
+    }
+
+    // RECOVERY: If raw text has custom sections (awards, publications, volunteer, etc.) not captured, recover them
+    if (rawText) {
+        const fallback = generateResumeFallback({ resumeText: rawText });
+        if (fallback.customSections && fallback.customSections.length > 0) {
+            for (const fbSect of fallback.customSections) {
+                const alreadyExists = parsed.customSections.some((s: any) => 
+                    s.title?.toLowerCase().includes(fbSect.title.toLowerCase()) || 
+                    fbSect.title.toLowerCase().includes(s.title?.toLowerCase())
+                );
+                if (!alreadyExists) {
+                    parsed.customSections.push(fbSect);
+                }
+            }
+        }
+    }
+
+    return parsed;
 }
 
 export async function POST(req: NextRequest) {
@@ -343,12 +540,13 @@ export async function POST(req: NextRequest) {
         const optimizeAts = formData.get("optimizeAts") as string;
         const targetPages = formData.get("targetPages") as string || "1";
         const resumeUrl = formData.get("resumeUrl") as string;
+        const resumeText = (formData.get("resumeText") as string || "").trim();
 
-        const hasResumeSource = !!(resumeFile || resumeUrl || sourceMode === "resume" || sourceMode === "both");
+        const hasResumeSource = !!(resumeFile || resumeUrl || resumeText || sourceMode === "resume" || sourceMode === "both");
         const missingSectionsInput = (formData.get("missingSections") as string || "").trim();
         const missingSectionsRaw = (hasResumeSource || !missingSectionsInput || missingSectionsInput === "all")
-            ? "summary,workExperience,education,projects,skills,languages,certifications"
-            : missingSectionsInput;
+            ? "summary,workExperience,education,projects,skills,languages,certifications,customSections"
+            : (missingSectionsInput.includes("customSections") ? missingSectionsInput : `${missingSectionsInput},customSections`);
 
         let resumeFileText = "";
         let resumePart: any = null;
@@ -435,6 +633,11 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Account resume text fallback when no file/URL is present
+        if (!resumeFileText && resumeText) {
+            resumeFileText = `--- [Source: Account Profile Resume Text] ---\n${resumeText}\n`;
+        }
+
         let projectText = "";
         for (const file of projectFiles) {
             projectText += await extractTextFromFile(file);
@@ -449,15 +652,28 @@ export async function POST(req: NextRequest) {
 
         let parsedInputText = "";
         let parsedResumeDataText = "";
+        let sectionSpecificNotesText = "";
+
         if (userInput) {
             try {
                 const parsed = JSON.parse(userInput);
                 if (parsed && typeof parsed === 'object') {
                     if (parsed.instructions) {
-                        parsedInputText = parsed.instructions;
+                        parsedInputText += `General Instructions: ${parsed.instructions}\n`;
                     }
                     if (parsed.existingResume) {
                         parsedResumeDataText = `\nExisting Resume Details (use this source of truth to extract, clean, and optimize candidate data):\n${JSON.stringify(parsed.existingResume, null, 2)}\n`;
+                    }
+                    const noteKeys = ['summary', 'workExperience', 'education', 'projects', 'skills', 'languages', 'certifications', 'customSections'];
+                    for (const key of noteKeys) {
+                        if (parsed[key] && typeof parsed[key] === 'string' && parsed[key].trim()) {
+                            sectionSpecificNotesText += `- Section "${key}": "${parsed[key].trim()}"\n`;
+                        }
+                    }
+                    for (const [k, v] of Object.entries(parsed)) {
+                        if (!noteKeys.includes(k) && k !== 'instructions' && k !== 'existingResume' && typeof v === 'string' && v.trim()) {
+                            sectionSpecificNotesText += `- User Note on "${k}": "${v.trim()}"\n`;
+                        }
                     }
                 } else {
                     parsedInputText = userInput;
@@ -472,17 +688,24 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing GEMINI_API_KEY in environment" }, { status: 500 });
         }
 
-        let systemPrompt = `You are an expert resume writer, extractor, and recruiter.
-Generate professional resume details for a candidate with the following credentials.
-You must always extract and clean the candidate's personal contact details (name, email, phone, location, linkedin, github, website) if they are present in the provided sources.
-Generate ONLY the requested sections listed here: ${missingSectionsRaw}, as well as the 'personalInfo' key. Do not generate keys for any other sections.
+        let systemPrompt = `You are extracting and restructuring an existing resume. Your primary objective is factual preservation, not creative generation.
+Extract and organize ALL candidate credentials from the provided sources into a structured JSON document.
 
-${hasResumeSource ? `CRITICAL RESUME EXTRACTION INSTRUCTIONS (SOURCE IS CANDIDATE'S RESUME/CV):
-1. THOROUGH DATA EXTRACTION: Extract ALL candidate information from the provided resume document. Do NOT skip or omit any real job, company, degree, project, skill, language, or certification mentioned in the document.
-2. ACCURATE DETAILS: Capture company names, job titles, start/end dates, institution names, degrees, and scores exactly as written in the resume. If the resume has multiple jobs, extract all of them. If it has multiple degrees, extract all degrees.
-3. BULLET POINT ENHANCEMENT: Maintain the candidate's actual accomplishments from their experience and project descriptions. Convert them into clear, high-impact bullet points starting with action verbs (e.g., Developed, Architected, Led, Optimized) while preserving all original metrics, tech stacks, and factual details.
-4. TWO-COLUMN & OLD RESUME FORMATS: Read multi-column, sidebar, and tabular layouts carefully to associate job titles with their correct company and dates.
-5. NO DUMMY PLACEHOLDERS: Extract the real candidate's details. Never replace actual resume information with template examples or dummy text.` : ""}
+CRITICAL FACTUAL PRESERVATION & ZERO-FABRICATION RULES:
+1. PRESERVE EVERY FACTUAL DETAIL: Capture all degrees, institutions, GPA/scores, companies, job titles, start/end dates, accomplishments, metrics, percentages, tools, projects, skills, certifications, and languages.
+2. ZERO FABRICATION / ZERO INVENTED DATA: NEVER invent or guess companies, job positions, colleges, degrees, CGPAs, dates, metrics, projects, or certifications. If information is not in the source, leave the string empty ("") or array empty ([]).
+3. DO NOT LOSE SMALL INFORMATION: Preserve all metrics, exact numbers, percentages (e.g. 40%), tools, libraries, and context. Do NOT aggressively compress or summarize away technical facts.
+4. TWO-COLUMN, SIDEBAR & TABLE EXTRACTION: Carefully read multi-column, sidebar, and tabular layouts to associate job titles with their correct company and dates.
+5. FRESHER / CANDIDATE WITHOUT INDUSTRY WORK EXPERIENCE: If the candidate has no corporate employment or industry jobs listed in their resume (e.g. they only have academic projects or degrees), set "workExperience": []. Do not invent corporate jobs.
+6. COMPREHENSIVE SKILLS & PROJECTS: Extract every project listed in the resume into the "projects" array. Extract ALL technical skills, tools, methodologies, and frameworks into the "skills" array.
+7. PROFESSIONAL TITLE / DEGREE: Extract the candidate's degree specialization or professional title from the resume header (e.g. "Electronics Engineering – VLSI Design & Technology") into "personalInfo.title".
+8. CUSTOM & ADDITIONAL SECTIONS: If the source resume contains sections such as Awards, Honors, Achievements, Publications, Research, Volunteer Work, Extracurricular Activities, Patents, Key Coursework, or any other meaningful section, extract them into the 'customSections' array so NO information is lost.
+
+${sectionSpecificNotesText ? `
+USER'S SECTION-SPECIFIC CUSTOM NOTES & EMPHASIS:
+${sectionSpecificNotesText}
+CRITICAL INSTRUCTION: Apply the user's focus, tone, or emphasis to the specified sections, but NEVER invent non-existent factual credentials or companies.
+` : ""}
 
 SOURCE MODE: ${sourceMode.toUpperCase()}
 
@@ -519,22 +742,11 @@ ${parsedInputText}
 ` : ""}Additional Code / Projects / Files context:
 ${projectText || "No project files provided."}
 
-${roleMode === "fresher" ? `
-CRITICAL FRESHER MODE INSTRUCTIONS:
-1. Structure all generated descriptions, summary, and projects for a fresh graduate or entry-level candidate.
-2. Focus on academic projects, lab works, basic skills, and educational qualifications.
-3. Avoid senior management, high-level corporate leadership, or years of industry-experience jargon.
-4. Set the candidate's professional title/role to "Fresher / Entry-Level Engineer" or similar.
-` : ""}
-
-CRITICAL HALLUCINATION PREVENTION:
-1. Do NOT invent, guess, or insert placeholder values (such as "your.email@example.com", "your-linkedin", "github.com/username", "+1234567890", etc.) for missing personal details.
-2. If a contact detail (phone, email, linkedin, github, website, location) is not found in the uploaded file or inputs, leave the corresponding JSON field blank ("") or completely omit it.
-
 Return a valid JSON block matching this schema. ONLY include keys that are in the requested list [${missingSectionsRaw}] as well as the 'personalInfo' key (omit any other keys not requested):
 {
   "personalInfo": {
     "name": "Candidate Full Name (extract from source, or fall back to metadata)",
+    "title": "Candidate Professional Title / Degree / Field of study (e.g. Electronics Engineering - VLSI Design & Technology)",
     "email": "Email address (extract from source)",
     "phone": "Phone/mobile number (extract from source)",
     "location": "City, State, or Country (extract from source)",
@@ -542,44 +754,45 @@ Return a valid JSON block matching this schema. ONLY include keys that are in th
     "github": "GitHub profile link (extract from source or fall back to metadata)",
     "website": "Portfolio URL / Personal Website (extract from source or fall back to metadata)"
   },
-  "summary": "A professional summary paragraph of 3-4 sentences.",
+  "summary": "A professional summary paragraph of 3-4 sentences extracted or tailored based on candidate background.",
   "workExperience": [
     {
       "company": "Company Name",
       "position": "Job Title",
+      "location": "Job Location",
       "startDate": "Start Date (e.g. 2022)",
       "endDate": "End Date or 'Present'",
       "current": true or false,
-      "description": "Bulleted list of achievements starting with - (separate bullet points with newlines)"
+      "description": "Bulleted list of achievements starting with - (separate bullet points with newlines, preserving all original metrics, tools, and results)"
     }
   ],
   "education": [
     {
       "institution": "University/School Name",
-      "degree": "e.g. B.Tech / High School",
-      "fieldOfStudy": "e.g. Computer Science",
+      "degree": "e.g. B.Tech / B.E. / Diploma / High School",
+      "fieldOfStudy": "e.g. Electronics Engineering - VLSI",
       "location": "City, State or Country",
       "startDate": "Start Date",
       "endDate": "End Date",
       "cgpa": "Grade/CGPA (e.g. 9.2/10)",
       "percentage": "Percentage score (e.g. 88%)",
-      "description": "Coursework or honors"
+      "description": "Coursework, honors, or achievements"
     }
   ],
   "projects": [
     {
       "name": "Project Name",
-      "description": "Details about the project...",
+      "description": "Details about the project, metrics, and problems resolved...",
       "technologies": ["React", "TypeScript", "Node.js"],
       "link": "Project URL or GitHub repository",
-      "role": "e.g. Frontend Developer"
+      "role": "e.g. Frontend Developer / Lead"
     }
   ],
   "skills": [
     {
-      "name": "Skill Name (e.g. React.js)",
+      "name": "Skill Name (e.g. Cadence Virtuoso, React.js)",
       "level": "Advanced or Intermediate or Expert",
-      "category": "e.g. Frontend or Backend or Languages"
+      "category": "e.g. Hardware & VLSI, Frontend, Backend, Tools"
     }
   ],
   "languages": [
@@ -594,6 +807,19 @@ Return a valid JSON block matching this schema. ONLY include keys that are in th
       "issuer": "Issuer Name",
       "date": "Issue Date (e.g. 2023)",
       "link": "Credential URL"
+    }
+  ],
+  "customSections": [
+    {
+      "title": "Section Title (e.g. Awards & Achievements, Publications, Volunteer Experience, Research, Patents, Relevant Coursework)",
+      "items": [
+        {
+          "title": "Item Title / Honor / Paper Title / Role",
+          "subtitle": "Organization / Issuer / Context",
+          "date": "Date or Year",
+          "description": "Details, descriptions, metrics, or bullet points"
+        }
+      ]
     }
   ]
 }
@@ -640,7 +866,10 @@ CRITICAL ATS OPTIMIZATION RULES:
             });
         }
 
-        return NextResponse.json(parsedJson);
+        // Apply Data Integrity Check & Fact Verification Layer
+        const verifiedJson = verifyAndRepairResumeData(parsedJson, resumeFileText || projectText || portfolioText || "");
+
+        return NextResponse.json(verifiedJson);
     } catch (error: any) {
         console.error("Resume Generation Error:", error);
         return NextResponse.json({ error: error.message || "Failed to generate resume" }, { status: 500 });

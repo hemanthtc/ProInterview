@@ -1894,9 +1894,13 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           }
           .resume-page .resume-section {
             margin-top: 0.6rem !important;
+            break-inside: auto !important;
+            page-break-inside: auto !important;
           }
           .resume-page .section-title-wrap {
             margin-bottom: 0.35rem !important;
+            break-after: avoid !important;
+            page-break-after: avoid !important;
           }
           .no-print,
           .edit-pencil-icon,
@@ -1911,6 +1915,8 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
           }
           .resume-item-wrap {
             padding-right: 0px !important;
+            break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
           .editable-element[data-placeholder]:empty::before {
             display: none !important;
