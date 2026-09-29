@@ -962,11 +962,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       if (aiSourceMode === 'portfolio' || aiSourceMode === 'both') {
         formData.append('portfolioUrl', portfolioInputUrl || resumeData.personalInfo.website || getStorageItem("userPortfolio") || getStorageItem("userPortfolioUrl") || '');
       }
-      formData.append('preferredRoles', aiRoleMode === 'fresher' ? 'Entry-Level / Fresher' : (aiTargetRoles || resumeData.personalInfo.title || ''));
+      const isUploadingResume = !!resumeUploadFile || !!accountResumeUrl || (isUsingAccountResume && !!accountResumeText) || aiSourceMode === 'resume' || aiSourceMode === 'both';
+      const targetRoleValue = aiRoleMode === 'fresher' 
+        ? 'Entry-Level / Fresher' 
+        : (aiTargetRoles || (isUploadingResume ? '' : resumeData.personalInfo.title) || '');
+      formData.append('preferredRoles', targetRoleValue);
       formData.append('targetCompanies', aiRoleMode === 'fresher' ? 'Open Opportunity' : (aiTargetCompanies || ''));
       formData.append('roleMode', aiRoleMode);
       formData.append('userInput', Object.keys(notesObj).length > 0 ? JSON.stringify(notesObj) : '');
-      const isUploadingResume = !!resumeUploadFile || !!accountResumeUrl || (isUsingAccountResume && !!accountResumeText) || aiSourceMode === 'resume' || aiSourceMode === 'both';
       const allSections = ['summary', 'workExperience', 'education', 'projects', 'skills', 'languages', 'certifications', 'customSections'];
       const sectionsToSend = isUploadingResume 
         ? allSections 
@@ -1010,7 +1013,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           updatedData.personalInfo = {
             ...updatedData.personalInfo,
             name: result.personalInfo.name || updatedData.personalInfo.name,
-            title: result.personalInfo.title || updatedData.personalInfo.title,
+            title: isUploadingResume 
+              ? (result.personalInfo.title || "") 
+              : (result.personalInfo.title || updatedData.personalInfo.title),
             email: result.personalInfo.email || updatedData.personalInfo.email,
             phone: result.personalInfo.phone || updatedData.personalInfo.phone,
             location: result.personalInfo.location || "",
@@ -1053,21 +1058,49 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             endDate: edu.endDate || "",
             cgpa: edu.cgpa || "",
             percentage: edu.percentage || "",
-            description: edu.description || ""
+            description: edu.description || "",
+            degreeType: edu.degreeType || ""
           }));
         } else if (isUploadingResume && Array.isArray(result.education)) {
           updatedData.education = [];
         }
 
         if (Array.isArray(result.projects) && result.projects.length > 0) {
-          updatedData.projects = result.projects.map((proj: any, index: number) => ({
-            id: `proj-ai-${Date.now()}-${index}`,
-            name: proj.name || "",
-            description: proj.description || "",
-            technologies: Array.isArray(proj.technologies) ? proj.technologies : [],
-            link: proj.link || "",
-            role: proj.role || ""
-          }));
+          const validProjects = result.projects.filter((p: any) => {
+            if (!p || !p.name) return false;
+            const name = p.name.trim();
+            const nameLower = name.toLowerCase();
+            if (nameLower === "project" || nameLower === "untitled project") return false;
+            if (nameLower.startsWith("tech:") || nameLower.startsWith("technologies:") || nameLower.startsWith("stack:")) return false;
+            if (name.endsWith(".") || name.endsWith("...") || /^(built|developed|designed|implemented|engineered|created|voice-first|deep\s+learning|centralized|resume-aware|optimization|streamlit\s+web\s+interface)\b/i.test(name)) return false;
+            if (/^(?:developer|engineer|lead|full\s*stack\s+developer|ai\s+developer|software\s+engineer)$/i.test(name)) return false;
+            return true;
+          });
+
+          updatedData.projects = validProjects.map((proj: any, index: number) => {
+            let role = (proj.role || "").replace(/^(?:role|position)\s*[:\-–—]\s*/i, "").replace(/[|–—]/g, "").trim() || "Developer";
+            let name = (proj.name || "")
+              .replace(/^(?:project\s*\d*[:\s]|\d+[\.\)]\s*|[•\-*▪▫–—✦✓]\s*)/i, "")
+              .replace(/https?:\/\/[^\s]+/gi, "")
+              .replace(/[-–—|:]\s*$/, "")
+              .trim();
+            const techList = Array.isArray(proj.technologies) ? [...proj.technologies] : [];
+            const domainTagRegex = /(?:(?<=[a-zA-Z0-9])|\b)(\d+\s*nm\s+Technology|FPGA\s+Implementation|IIoT\s*&\s*Embedded\s+Systems|Embedded\s*&\s*Solar\s+Power\s+Integration|IoT\s*&\s*Embedded\s+Systems|VLSI\s+Design|Embedded\s+Systems|Machine\s+Learning|Deep\s+Learning|Computer\s+Vision)\s*$/i;
+            const domainMatch = name.match(domainTagRegex);
+            if (domainMatch && domainMatch.index !== undefined) {
+                techList.push(domainMatch[1].trim());
+                name = name.substring(0, domainMatch.index).trim();
+            }
+
+            return {
+              id: `proj-ai-${Date.now()}-${index}`,
+              name,
+              description: proj.description || "",
+              technologies: Array.from(new Set(techList)),
+              link: proj.link || "",
+              role
+            };
+          });
         } else if (isUploadingResume && Array.isArray(result.projects)) {
           updatedData.projects = [];
         }
@@ -1094,11 +1127,32 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         }
 
         if (Array.isArray(result.certifications) && result.certifications.length > 0) {
-          const validCerts = result.certifications.filter((c: any) => {
+          const cleanedCerts: any[] = [];
+          for (const c of result.certifications) {
+            if (!c || !c.name) continue;
             const name = (c.name || "").trim();
-            return name && !/^(&|and)\s*workshops/i.test(name) && !/^(certifications|workshops|licenses|certificates)$/i.test(name.toLowerCase());
-          });
-          updatedData.certifications = validCerts.map((cert: any, index: number) => ({
+            const isFrag = (
+                /^(?:routing|optimization|verification|workflows|bottlenecks|implementation|synthesis)\b/i.test(name) ||
+                (/^[a-z]/.test(name) && name.length < 50)
+            ) &&
+              (!c.issuer || c.issuer.trim() === "") &&
+              (!c.description || c.description.trim() === "");
+
+            if (isFrag && cleanedCerts.length > 0) {
+              const prev = cleanedCerts[cleanedCerts.length - 1];
+              prev.description = (prev.description ? prev.description + " " : "") + name;
+              continue;
+            }
+
+            if (name && !/^(&|and)\s*workshops/i.test(name) && !/^(certifications|workshops|licenses|certificates)$/i.test(name.toLowerCase())) {
+              cleanedCerts.push({
+                ...c,
+                name: name.replace(/\.+$/, "").trim()
+              });
+            }
+          }
+
+          updatedData.certifications = cleanedCerts.map((cert: any, index: number) => ({
             id: `cert-ai-${Date.now()}-${index}`,
             name: cert.name || "",
             issuer: cert.issuer || "",
@@ -1111,25 +1165,40 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         }
 
         if (Array.isArray(result.customSections) && result.customSections.length > 0) {
-          updatedData.customSections = result.customSections.map((sect: any, sIdx: number) => ({
+          const validSections = result.customSections.filter((sect: any) => sect && sect.title && Array.isArray(sect.items) && sect.items.length > 0);
+          updatedData.customSections = validSections.map((sect: any, sIdx: number) => ({
             id: `custom-ai-${Date.now()}-${sIdx}`,
             title: sect.title || "Additional Section",
-            items: Array.isArray(sect.items) ? sect.items.map((it: any, iIdx: number) => ({
+            items: sect.items.map((it: any, iIdx: number) => ({
               id: `item-ai-${Date.now()}-${sIdx}-${iIdx}`,
               title: it.title || "",
               subtitle: it.subtitle || "",
               date: it.date || "",
               description: it.description || ""
-            })) : []
+            }))
           }));
         } else if (isUploadingResume) {
           updatedData.customSections = [];
         }
 
+        setCurrentStyle(prev => {
+          const vs = { ...(prev.visibleSections || {}) };
+          if (updatedData.projects.length > 0) {
+            vs.projects = true;
+          }
+          if (updatedData.certifications.length > 0) {
+            vs.certifications = true;
+          }
+          return {
+            ...prev,
+            visibleSections: vs
+          };
+        });
+
         setResumeData(updatedData);
         setShowAIModal(false);
-        setMobileView('preview');
-        onMobileViewChange?.('preview');
+        setMobileView('editor');
+        onMobileViewChange?.('editor');
         setShowVerifyAlertModal(true);
         
         // Reset notes states
@@ -1144,7 +1213,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         if (result.isFallback) {
           triggerToast('Auto-filled with smart template (Gemini API was rate-limited)');
         } else {
-          triggerToast('AI autofill completed! Switched to Preview.');
+          triggerToast('AI autofill completed! Editor fields updated.');
         }
       }
     } catch (err: any) {

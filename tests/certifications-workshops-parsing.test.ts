@@ -508,5 +508,105 @@ Diploma – Electronics and Communication Engineering 2021 – 2024 | CGPA: 7.4
     expect(edu[1].endDate).toBe("2024"); // NOT "Present"
     expect(edu[1].cgpa).toBe("7.4");
   });
+
+  it("Parses multiple bulleted certifications with NO descriptions into separate items with empty descriptions", () => {
+    function parseCerts(rawText: string) {
+      const extracted: Array<{ name: string; issuer: string; date: string; description: string }> = [];
+      const match = rawText.match(/(?:certifications|certificates|licenses|workshops)[^\n]*\n+([\s\S]{10,2500}?)(?=\n\s*(?:education|technical\s+skills|skills|projects|experience)|$)/i);
+      if (match) {
+        const lines = match[1].split("\n").map(l => l.trim()).filter(Boolean);
+        const merged: Array<{ line: string; continuations: string[] }> = [];
+        for (const line of lines) {
+          const isBullet = /^[•\-*▪▫–—✦✓]\s*/.test(line);
+          const isNumbered = /^\d+[\.\)]\s*/.test(line);
+          const hasTitleColon = /^[•\-*▪▫–—✦✓]?\s*[A-Z][a-zA-Z0-9\s()/\-–—&,]{2,80}:/.test(line);
+          const hasExplicitSeparator = /\s+[—–\-]\s+|\s*[—–]\s*/.test(line);
+          const isExplicitDescVerb = /^[•\-*▪▫–—✦✓]?\s*(?:hands-on|practical|learned|covered|training|focusing|worked\s+on|responsible\s+for|delivered|conducted|designed|implemented|engineered|assisted)\b/i.test(line);
+
+          const isContinuation = (merged.length > 0) && (
+            (!isBullet && !isNumbered && (
+              /^[a-z]/.test(line) ||
+              /^(?:routing|optimization|verification|workflows|bottlenecks|implementation|testing|synthesis)\b/i.test(line) ||
+              (line.endsWith(".") && !hasTitleColon && !hasExplicitSeparator && line.length < 80)
+            )) ||
+            (isBullet && isExplicitDescVerb && !hasTitleColon && !hasExplicitSeparator)
+          );
+
+          if (isContinuation) {
+            const clean = line.replace(/^[•\-*▪▫–—✦✓]\s*/, "").trim();
+            if (clean) merged[merged.length - 1].continuations.push(clean);
+          } else {
+            merged.push({ line, continuations: [] });
+          }
+        }
+
+        for (const item of merged) {
+          const cleanLine = item.line.replace(/^[•\-*▪▫–—✦✓]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
+          if (cleanLine.length < 3) continue;
+          const yearMatch = cleanLine.match(/\b(20\d\d|19\d\d)\b/);
+          let name = cleanLine.replace(/\b(20\d\d|19\d\d)\b/g, '').trim();
+          let issuer = "";
+          let description = "";
+
+          const colonIdx = cleanLine.indexOf(":");
+          if (colonIdx > 2 && colonIdx < 80) {
+            name = cleanLine.substring(0, colonIdx).trim();
+            const rightSide = cleanLine.substring(colonIdx + 1).trim();
+            if (rightSide.length > 25 || /^(hands-on|practical|learned|covered|training|focusing|deep-dive)\b/i.test(rightSide)) {
+              description = rightSide;
+            } else {
+              issuer = rightSide;
+            }
+          } else {
+            const parts = name.split(/\s+[—–\-]\s+|\s*[—–]\s*/);
+            if (parts.length > 1) {
+              name = parts.slice(0, -1).join(" — ").trim();
+              issuer = parts[parts.length - 1].trim();
+            }
+          }
+
+          if (item.continuations.length > 0) {
+            const cont = item.continuations.join(" ").trim();
+            description = description ? `${description} ${cont}` : cont;
+          }
+
+          extracted.push({
+            name: name.replace(/[-–—|:]\s*$/, "").trim(),
+            issuer,
+            date: yearMatch ? yearMatch[0] : "",
+            description: description.trim()
+          });
+        }
+      }
+      return extracted;
+    }
+
+    const certTextWithoutDescriptions = `
+CERTIFICATIONS
+• AWS Certified Solutions Architect - Associate 2023
+• Certified Kubernetes Administrator (CKA) 2024
+• Docker Certified Associate
+• HashiCorp Certified Terraform Associate
+`;
+
+    const certs = parseCerts(certTextWithoutDescriptions);
+    expect(certs.length).toBe(4);
+    expect(certs[0].name).toBe("AWS Certified Solutions Architect");
+    expect(certs[0].issuer).toBe("Associate");
+    expect(certs[0].description).toBe("");
+
+    expect(certs[1].name).toBe("Certified Kubernetes Administrator (CKA)");
+    expect(certs[1].description).toBe("");
+
+    expect(certs[2].name).toBe("Docker Certified Associate");
+    expect(certs[2].description).toBe("");
+
+    expect(certs[3].name).toBe("HashiCorp Certified Terraform Associate");
+    expect(certs[3].description).toBe("");
+
+    // Verify none of the certificates swallowed subsequent certs
+    expect(certs[0].description.includes("Kubernetes")).toBe(false);
+    expect(certs[1].description.includes("Docker")).toBe(false);
+  });
 });
 
