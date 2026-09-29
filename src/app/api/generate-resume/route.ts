@@ -25,7 +25,20 @@ async function extractTextFromFile(file: File): Promise<string> {
                 .replace(/([a-z])([A-Z][a-z]+,\s*(?:Karnataka|Maharashtra|Delhi|Tamil\s+Nadu|Telangana|Kerala|Gujarat|Uttar\s+Pradesh|India|USA|UK|California|Texas))/g, "$1 $2")
                 .replace(/([a-zA-Z\)])(20\d\d|19\d\d)/g, "$1 $2")
                 .replace(/(20\d\d|19\d\d)([–—\-])/g, "$1 $2")
-                .replace(/([–—\-])(20\d\d|19\d\d)/g, "$1 $2");
+                .replace(/([–—\-])(20\d\d|19\d\d)/g, "$1 $2")
+                // Separate glued URLs: "EchoWellhttps://github.com..." -> "EchoWell https://github.com..."
+                .replace(/([a-zA-Z0-9_\-\.\)])(https?:\/\/)/g, "$1 $2")
+                // Separate glued dates: "01/202404/2024" -> "01/2024 - 04/2024"
+                .replace(/(\d{2}\/\d{4})(\d{2}\/\d{4})/g, "$1 - $2")
+                .replace(/(\d{2}\/\d{4})(Present|Current)/gi, "$1 - $2")
+                // Separate glued company/institution suffixes and locations
+                .replace(/(Ltd|Pvt|Inc|LLC|Corp|Solutions|Technologies|Polytechnic|Institute|University|College|Collage)([A-Z][a-z]+)/g, "$1 $2")
+                .replace(/([a-zA-Z])(\.(?:Bengaluru|Bangalore|Turuvekere|Tiptur|Mumbai|Delhi|Hyderabad|Chennai|Pune|India))/g, "$1 | $2")
+                // Separate glued certification closing parenthesis and issuer: "(DFE)EC-Council" -> "(DFE) — EC-Council"
+                .replace(/(\))\s*([A-Z][a-zA-Z\-]+)/g, "$1 — $2")
+                .replace(/(Program|Essentials)([A-Z][a-z]+)/g, "$1 — $2")
+                // Separate glued Tech prefix
+                .replace(/([a-zA-Z])Tech:\s*/g, "$1\nTech: ");
 
             return `--- [File: ${file.name}] ---\n${textContent}\n`;
         } catch(e: any) {
@@ -124,8 +137,10 @@ function generateResumeFallback(params: {
     const rawText = params.resumeText || "";
     const extractedEmail = params.candidateEmail || rawText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/)?.[0] || "";
     const extractedPhone = rawText.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/)?.[0] || "";
-    const extractedLinkedin = params.linkedin || rawText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/)?.[0] || "";
+    let extractedLinkedin = params.linkedin || rawText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/)?.[0] || "";
+    extractedLinkedin = extractedLinkedin.replace(/https?$/i, "");
     const extractedGithub = params.github || rawText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[a-zA-Z0-9_-]+/)?.[0] || "";
+    const extractedPortfolio = params.portfolioUrl || rawText.match(/https?:\/\/[a-zA-Z0-9_-]+\.(?:vercel\.app|netlify\.app|github\.io|me|dev|io|com)(?:\/[^\s]*)?/i)?.[0] || "";
 
     let extractedName = params.candidateName || "";
     if (!extractedName && rawText) {
@@ -134,13 +149,16 @@ function generateResumeFallback(params: {
         if (nameCandidate) extractedName = nameCandidate;
     }
 
-    let extractedTitle = params.preferredRoles || "";
-    if (!extractedTitle && rawText) {
+    let extractedTitle = "";
+    if (rawText) {
         const lines = rawText.split("\n").map(l => l.replace(/---.*?---/, "").trim()).filter(Boolean);
-        const nameIdx = lines.findIndex(l => l === extractedName);
+        const nameIdx = lines.findIndex(l => l.toLowerCase() === extractedName.toLowerCase());
         if (nameIdx !== -1 && lines[nameIdx + 1] && !lines[nameIdx + 1].includes("@") && !lines[nameIdx + 1].includes("http") && lines[nameIdx + 1].length < 70) {
             extractedTitle = lines[nameIdx + 1];
         }
+    }
+    if (!extractedTitle) {
+        extractedTitle = params.preferredRoles || "";
     }
 
     let extractedLocation = "";
@@ -154,7 +172,7 @@ function generateResumeFallback(params: {
     // Extract Summary if present in raw resume text - NO hallucinated default
     let extractedSummary = "";
     if (rawText) {
-        const summaryMatch = rawText.match(/(?:professional\s+summary|summary|profile|about\s+me|career\s+objective)[:\s\n]+([\s\S]{30,800}?)(?=\n\s*(?:education|experience|technical\s+skills|skills|projects|key\s+projects|certifications|languages|awards)|$)/i);
+        const summaryMatch = rawText.match(/(?:profile\s+summary|professional\s+summary|summary|profile|about\s+me|career\s+objective)[:\s\n]+([\s\S]{30,800}?)(?=\n\s*(?:education|experience|work\s+experience|technical\s+skills|skills|projects|key\s+projects|certifications|languages|awards)|$)/i);
         if (summaryMatch) {
             extractedSummary = summaryMatch[1].replace(/\s+/g, ' ').trim();
         }
@@ -178,24 +196,36 @@ function generateResumeFallback(params: {
             let currentExp: any = null;
             for (let i = 0; i < expLines.length; i++) {
                 const line = expLines[i];
-                const dateMatch = line.match(/\b(20\d\d|19\d\d)\s*[-–to\s]+\s*(20\d\d|present|current)\b/i);
-                const isHeaderLine = dateMatch || line.match(/\b(engineer|developer|intern|analyst|manager|lead|architect|consultant|specialist|designer|associate)\b/i);
-                
-                if (isHeaderLine && line.length < 90 && !line.startsWith("•") && !line.startsWith("-")) {
+                const dateMatch = line.match(/\b(\d{2}\/\d{4}|\d{4})\s*[-–to\s]+\s*(\d{2}\/\d{4}|\d{4}|present|current)\b/i);
+                const isBullet = /^[•\-*▪▫–—✦✓]\s*/.test(line);
+
+                if (dateMatch && !isBullet) {
                     if (currentExp && (currentExp.company || currentExp.position)) {
                         extractedWorkExperience.push(currentExp);
                     }
+                    const positionPart = line.replace(dateMatch[0], "").replace(/[-–—|]/g, "").trim();
                     const nextLine = expLines[i + 1] || "";
+                    let company = nextLine;
+                    let location = "";
+                    const locMatch = nextLine.match(/\b([A-Z][a-zA-Z\s]+,\s*(?:India|USA|UK)|Bengaluru|Bangalore|Hyderabad|Pune|Mumbai|Delhi|Chennai|Turuvekere|Tiptur)\b/i);
+                    if (locMatch && locMatch.index !== undefined) {
+                        location = locMatch[0].trim();
+                        company = nextLine.substring(0, locMatch.index).trim();
+                    }
+
                     currentExp = {
-                        company: line.includes("|") ? line.split("|")[0].trim() : line,
-                        position: line.includes("|") ? line.split("|")[1].trim() : (nextLine.length < 50 && !nextLine.startsWith("•") && !nextLine.startsWith("-") ? nextLine : "Role"),
-                        location: "",
-                        startDate: dateMatch ? dateMatch[1] : "",
-                        endDate: dateMatch ? dateMatch[2] : "Present",
-                        current: /present|current/i.test(dateMatch ? dateMatch[2] : ""),
+                        position: positionPart || "Role",
+                        company: company || "Company",
+                        location: location,
+                        startDate: dateMatch[1],
+                        endDate: /present|current/i.test(dateMatch[2]) ? "Present" : dateMatch[2],
+                        current: /present|current/i.test(dateMatch[2]),
                         description: ""
                     };
-                } else if (currentExp && (line.startsWith("•") || line.startsWith("-") || line.startsWith("*"))) {
+                    if (nextLine && !nextLine.startsWith("-") && !nextLine.startsWith("•")) {
+                        i++;
+                    }
+                } else if (currentExp && isBullet) {
                     currentExp.description += (currentExp.description ? "\n" : "") + line;
                 }
             }
@@ -206,31 +236,55 @@ function generateResumeFallback(params: {
     }
 
     // Heuristically extract real technical skills from raw resume text
-    const knownSkills = [
-        "JavaScript", "TypeScript", "Python", "Java", "C++", "C#", "C", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin",
-        "React", "React Native", "Next.js", "Angular", "Vue", "HTML", "CSS", "Tailwind CSS", "Bootstrap",
-        "Node.js", "Express", "Django", "Flask", "Spring Boot", "FastAPI", "GraphQL", "REST APIs",
-        "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQLite",
-        "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Git", "GitHub", "CI/CD", "Linux", "Jira", "Agile",
-        "Cadence Virtuoso", "Cadence Innovus", "Cadence Genus", "Cadence Modus", "Xilinx Vivado", "Verilog HDL", "Verilog", "SystemVerilog", "VHDL",
-        "VLSI", "CMOS", "Physical Design", "DFT", "FPGA", "PCB Design", "Circuit Analysis", "Signals & Systems",
-        "Analog Electronics", "Digital Electronics", "Microcontrollers", "Embedded Systems",
-        "AutoCAD", "SolidWorks", "MATLAB", "Excel", "Tally", "Power BI", "GST", "Auditing"
-    ];
     const foundSkills: { name: string; level: string; category: string }[] = [];
     if (rawText) {
-        for (const skill of knownSkills) {
-            const regex = new RegExp(`\\b${skill.replace(/[.+]/g, '\\$&')}\\b`, "i");
-            if (regex.test(rawText)) {
-                foundSkills.push({
-                    name: skill,
-                    level: "Advanced",
-                    category: /Cadence|Xilinx|Vivado|Verilog|VHDL|VLSI|CMOS|Physical Design|DFT|FPGA|PCB/i.test(skill) ? "Hardware & VLSI" :
-                              /React|Angular|Vue|HTML|CSS|Tailwind/i.test(skill) ? "Frontend" :
-                              /Node|Express|Django|Flask|Spring|FastAPI/i.test(skill) ? "Backend" :
-                              /SQL|Mongo|Redis|Postgres/i.test(skill) ? "Database" :
-                              /AWS|Azure|Docker|Kube|Git|Linux/i.test(skill) ? "DevOps & Tools" : "Languages & Tools"
-                });
+        const skillMatch = rawText.match(/(?:skills|technical\s+skills)[:\s\n]+([\s\S]{10,1200}?)(?=\n\s*(?:languages|certifications|workshops|education|projects|awards)|$)/i);
+        if (skillMatch) {
+            const skillRegex = /([a-zA-Z0-9\s&/+#._-]+?)\s*\((Advanced|Intermediate|Expert|Beginner)\)/g;
+            let m;
+            while ((m = skillRegex.exec(skillMatch[1])) !== null) {
+                const sName = m[1].trim();
+                const sLevel = m[2].trim();
+                if (sName.length > 1 && !foundSkills.some(s => s.name.toLowerCase() === sName.toLowerCase())) {
+                    foundSkills.push({
+                        name: sName,
+                        level: sLevel,
+                        category: /React|Next\.js|HTML|CSS|Tailwind/i.test(sName) ? "Frontend" :
+                                  /Node|Express|REST|APIs|JWT/i.test(sName) ? "Backend" :
+                                  /Mongo|MySQL|SQL/i.test(sName) ? "Database" :
+                                  /AWS|Cloud|CI\/CD|GitHub/i.test(sName) ? "DevOps & Cloud" :
+                                  /Gemini|Whisper|AI|NLP|Streamlit|Machine Learning/i.test(sName) ? "AI & Machine Learning" : "Languages & Frameworks"
+                    });
+                }
+            }
+        }
+
+        // If no bracketed skills extracted, match against knownSkills
+        if (foundSkills.length === 0) {
+            const knownSkills = [
+                "JavaScript", "TypeScript", "Python", "Java", "C++", "C#", "C", "Go", "Rust", "PHP", "Ruby", "Swift", "Kotlin",
+                "React", "React Native", "Next.js", "Angular", "Vue", "HTML", "CSS", "Tailwind CSS", "Bootstrap",
+                "Node.js", "Express", "Django", "Flask", "Spring Boot", "FastAPI", "GraphQL", "REST APIs",
+                "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Oracle", "SQLite",
+                "AWS", "Azure", "GCP", "Docker", "Kubernetes", "Git", "GitHub", "CI/CD", "Linux", "Jira", "Agile",
+                "Cadence Virtuoso", "Cadence Innovus", "Cadence Genus", "Cadence Modus", "Xilinx Vivado", "Verilog HDL", "Verilog", "SystemVerilog", "VHDL",
+                "VLSI", "CMOS", "Physical Design", "DFT", "FPGA", "PCB Design", "Circuit Analysis", "Signals & Systems",
+                "Analog Electronics", "Digital Electronics", "Microcontrollers", "Embedded Systems",
+                "AutoCAD", "SolidWorks", "MATLAB", "Excel", "Tally", "Power BI", "GST", "Auditing"
+            ];
+            for (const skill of knownSkills) {
+                const regex = new RegExp(`\\b${skill.replace(/[.+]/g, '\\$&')}\\b`, "i");
+                if (regex.test(rawText)) {
+                    foundSkills.push({
+                        name: skill,
+                        level: "Advanced",
+                        category: /Cadence|Xilinx|Vivado|Verilog|VHDL|VLSI|CMOS|Physical Design|DFT|FPGA|PCB/i.test(skill) ? "Hardware & VLSI" :
+                                  /React|Angular|Vue|HTML|CSS|Tailwind/i.test(skill) ? "Frontend" :
+                                  /Node|Express|Django|Flask|Spring|FastAPI/i.test(skill) ? "Backend" :
+                                  /SQL|Mongo|Redis|Postgres/i.test(skill) ? "Database" :
+                                  /AWS|Azure|Docker|Kube|Git|Linux/i.test(skill) ? "DevOps & Tools" : "Languages & Tools"
+                    });
+                }
             }
         }
     }
@@ -248,95 +302,73 @@ function generateResumeFallback(params: {
         description: string;
     }> = [];
     if (rawText) {
-        const eduSectionMatch = rawText.match(/(?:education|academic\s+background)[^\n]*\n+([\s\S]{20,2000}?)(?=\n\s*(?:technical\s+skills|skills|projects|key\s+projects?|experience|work\s+experience|certifications|workshops|awards|languages)|$)/i);
+        const eduSectionMatch = rawText.match(/(?:education|academic\s+background)[^\n]*\n+([\s\S]{20,2500}?)(?=\n\s*(?:technical\s+skills|skills|projects|key\s+projects?|experience|work\s+experience|certifications|workshops|awards|languages)|$)/i);
         if (eduSectionMatch) {
             const eduText = eduSectionMatch[1];
             const eduLines = eduText.split("\n").map(l => l.trim()).filter(Boolean);
             for (let i = 0; i < eduLines.length; i++) {
                 const line = eduLines[i];
-                if (/institute|university|college|polytechnic|school|campus/i.test(line)) {
-                    // Extract institution and local location if attached
-                    let instName = line.replace(/[0-9–\-|]/g, "").trim();
-                    let instLoc = "";
-                    const stateMatch = line.match(/,\s*(Karnataka|Maharashtra|Delhi|Tamil\s+Nadu|Telangana|Kerala|Gujarat|Uttar\s+Pradesh|India|USA|UK|California|Texas)\s*$/i);
-                    if (stateMatch && stateMatch.index) {
-                        const beforeComma = line.substring(0, stateMatch.index).trim();
-                        const cityMatch = beforeComma.match(/(?:^|\s)([A-Z][a-zA-Z]+)$/);
-                        if (cityMatch) {
-                            const city = cityMatch[1];
-                            instName = beforeComma.substring(0, beforeComma.length - city.length).trim();
-                            instLoc = `${city}, ${stateMatch[1]}`;
-                        }
+                const isDegreeLine = /\b(b\.?e\.?|b\.?tech|diploma|sslc|10th|12th|hsc|cbse|puc|bachelor|master|m\.?tech)\b/i.test(line);
+
+                if (isDegreeLine) {
+                    const dateMatch = line.match(/\b(\d{2}\/\d{4}|\d{4})\s*[-–to\s]+\s*(\d{2}\/\d{4}|\d{4}|present|current)\b/i) || line.match(/[-–—]\s*(\d{2}\/\d{4}|\d{4})\b/);
+                    const degreeFull = line.replace(/\b(\d{2}\/\d{4}|\d{4})\s*[-–to\s]+\s*(\d{2}\/\d{4}|\d{4}|present|current)\b/gi, "")
+                                           .replace(/[-–—]\s*(\d{2}\/\d{4}|\d{4})\b/g, "").trim();
+
+                    let degree = degreeFull;
+                    let fieldOfStudy = "";
+                    if (/\bin\b/i.test(degreeFull)) {
+                        const parts = degreeFull.split(/\bin\b/i);
+                        degree = parts[0].trim();
+                        fieldOfStudy = parts.slice(1).join(" in ").trim();
                     }
 
                     const nextLine = eduLines[i + 1] || "";
-                    const nextNext = eduLines[i + 2] || "";
-                    const combined = `${nextLine} ${nextNext}`;
+                    let institution = nextLine;
+                    let cgpa = "";
+                    let location = "";
 
-                    // Extract CGPA / percentage
-                    const cgpaMatch = combined.match(/(?:cgpa|gpa|percentage)[:\s]*([0-9.]+(?:\s*\/\s*10|\s*%)?)/i);
-                    const cleanForDegree = combined
-                        .replace(/(?:cgpa|gpa|percentage)[:\s]*[0-9.]+(?:\s*\/\s*10|\s*%)?/gi, "")
-                        .replace(/\|\s*CGPA:.*$/i, "")
-                        .trim();
-
-                    // Extract year range accurately
-                    let startDate = "";
-                    let endDate = "";
-                    const dateRangeMatch = cleanForDegree.match(/\b(20\d\d|19\d\d)\s*[-–—to\s]+\s*(20\d\d|present|current)\b/i);
-                    if (dateRangeMatch) {
-                        startDate = dateRangeMatch[1];
-                        endDate = /present|current/i.test(dateRangeMatch[2]) ? "Present" : dateRangeMatch[2];
-                    } else {
-                        const singleYear = cleanForDegree.match(/\b(20\d\d|19\d\d)\b/);
-                        if (singleYear) {
-                            endDate = singleYear[1];
-                        }
+                    const scoreMatch = nextLine.match(/(?:cgpa|percentage|score)[:\s]*([0-9.]+(?:\s*\/\s*10|\s*%)?)/i);
+                    if (scoreMatch) {
+                        cgpa = scoreMatch[1].trim();
+                        institution = institution.replace(scoreMatch[0], "").trim();
                     }
 
-                    // Remove dates and pipe symbols from degree line
-                    const degreeLineClean = nextLine
-                        .replace(/\b(20\d\d|19\d\d)\s*[-–—to\s]+\s*(20\d\d|present|current)\b/gi, "")
-                        .replace(/\b(20\d\d|19\d\d)\b/g, "")
-                        .replace(/\|\s*CGPA:.*$/i, "")
-                        .replace(/\|\s*$/, "")
-                        .trim();
-
-                    // Cleanly separate degree from fieldOfStudy
-                    let degree = "Degree";
-                    let fieldOfStudy = "";
-
-                    const dashMatch = degreeLineClean.match(/\s+[-–—]\s+/);
-                    if (dashMatch && dashMatch.index) {
-                        degree = degreeLineClean.substring(0, dashMatch.index).trim();
-                        fieldOfStudy = degreeLineClean.substring(dashMatch.index + dashMatch[0].length).trim();
-                    } else if (/\bin\b/i.test(degreeLineClean)) {
-                        const parts = degreeLineClean.split(/\bin\b/i);
-                        degree = parts[0].trim();
-                        fieldOfStudy = parts.slice(1).join(" in ").trim();
-                    } else {
-                        const degreeTypeMatch = degreeLineClean.match(/^(bachelor\s+of\s+[a-zA-Z]+|b\.?tech|b\.?e\.?|b\.?sc|b\.?com|master\s+of\s+[a-zA-Z]+|m\.?tech|m\.?s\.?|mba|diploma)/i);
-                        if (degreeTypeMatch) {
-                            degree = degreeTypeMatch[0].trim();
-                            fieldOfStudy = degreeLineClean.substring(degreeTypeMatch[0].length).replace(/^[\s\-–—,]+/, "").trim();
-                        } else {
-                            degree = degreeLineClean;
-                        }
+                    const locMatch = institution.match(/[|,\.]\s*([A-Z][a-zA-Z\s]+,\s*India|[A-Z][a-zA-Z\s]+)\s*$/i);
+                    if (locMatch && locMatch.index !== undefined) {
+                        location = locMatch[1].replace(/^[|,\.\s]+/, "").trim();
+                        institution = institution.substring(0, locMatch.index).replace(/[|,\.\s]+$/, "").trim();
                     }
 
-                    if (!fieldOfStudy) {
-                        const fm = combined.match(/(?:electronics|computer\s+science|mechanical|civil|electrical|information\s+technology|vlsi|accounting|commerce)[^,\n|]*/i);
-                        if (fm) fieldOfStudy = fm[0].trim();
+                    const nextNextLine = eduLines[i + 2] || "";
+                    let description = "";
+                    if (nextNextLine && !/\b(b\.?e\.?|b\.?tech|diploma|sslc|10th|12th|institute|college|collage|polytechnic|university)\b/i.test(nextNextLine)) {
+                        description = nextNextLine;
+                        i++;
                     }
+                    i++;
 
                     extractedEducation.push({
-                        institution: instName,
                         degree: degree || "Degree",
                         fieldOfStudy: fieldOfStudy,
-                        location: instLoc || "India",
-                        startDate: startDate,
-                        endDate: endDate || (startDate ? "Present" : ""),
-                        cgpa: cgpaMatch ? cgpaMatch[1].trim() : "",
+                        institution: institution.replace(/[|,\.\s]+$/, "").trim() || "Institution",
+                        location: location || "India",
+                        cgpa: cgpa,
+                        startDate: dateMatch ? (dateMatch[1] || "") : "",
+                        endDate: dateMatch ? (dateMatch[2] || dateMatch[1] || "") : "",
+                        description
+                    });
+                } else if (/institute|university|college|collage|polytechnic|school/i.test(line)) {
+                    let instName = line.replace(/[0-9–\-|]/g, "").trim();
+                    const nextLine = eduLines[i + 1] || "";
+                    extractedEducation.push({
+                        institution: instName,
+                        degree: nextLine || "Degree",
+                        fieldOfStudy: "",
+                        location: "India",
+                        startDate: "",
+                        endDate: "",
+                        cgpa: "",
                         description: ""
                     });
                 }
@@ -353,114 +385,57 @@ function generateResumeFallback(params: {
         role: string;
     }> = [];
     if (rawText) {
-        // Section header must start on its own line or string start to avoid matching words in sentences
-        const projSectionMatch = rawText.match(/(?:^|\n)\s*(?:KEY\s+PROJECTS?|ACADEMIC\s+PROJECTS?|TECHNICAL\s+PROJECTS?|FEATURED\s+PROJECTS?|SELECTED\s+PROJECTS?|PERSONAL\s+PROJECTS?|CAPSTONE\s+PROJECTS?|PROJECTS)(?:\s*[:\-\–—][^\n]*|\s*)\n+([\s\S]{20,5000}?)(?=(?:\n\s*(?:EDUCATION|ACADEMIC\s+BACKGROUND|TECHNICAL\s+SKILLS|SKILLS|CERTIFICATIONS|WORKSHOPS|LICENSES|LANGUAGES|ACHIEVEMENTS|AWARDS|EXPERIENCE|WORK\s+EXPERIENCE|PUBLICATIONS|VOLUNTEER))|$)/i);
+        const projSectionMatch = rawText.match(/(?:^|\n)\s*(?:KEY\s+PROJECTS?|ACADEMIC\s+PROJECTS?|TECHNICAL\s+PROJECTS?|FEATURED\s+PROJECTS?|SELECTED\s+PROJECTS?|PERSONAL\s+PROJECTS?|CAPSTONE\s+PROJECTS?|PROJECTS)(?:\s*[:\-\–—][^\n]*|\s*)\n+([\s\S]{20,5000}?)(?=(?:\n\s*(?:SKILLS|TECHNICAL\s+SKILLS|EDUCATION|ACADEMIC\s+BACKGROUND|CERTIFICATIONS|WORKSHOPS|LICENSES|LANGUAGES|ACHIEVEMENTS|AWARDS|EXPERIENCE|WORK\s+EXPERIENCE|PUBLICATIONS|VOLUNTEER))|$)/i);
         if (projSectionMatch) {
             const rawPLines = projSectionMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
-            const projectBlocks: Array<{ title: string; role: string; tag: string; lines: string[] }> = [];
-            let currentBlock: { title: string; role: string; tag: string; lines: string[] } | null = null;
+            let currentProj: any = null;
 
             for (let i = 0; i < rawPLines.length; i++) {
                 const line = rawPLines[i];
-                // Ignore page breaks or redundant header echoes
-                if (/^page\s+\d/i.test(line) || /^(key\s+projects?|projects?)$/i.test(line) || /^[-–—_=]{3,}$/.test(line)) {
-                    continue;
-                }
-
-                // Never treat education headers or college names as projects
+                if (/^page\s+\d/i.test(line) || /^(key\s+projects?|projects?)$/i.test(line) || /^[-–—_=]{3,}$/.test(line)) continue;
                 if (/^(education|experience|technical\s+skills|certifications|workshops)$/i.test(line) ||
                     /\b(institute\s+of\s+technology|polytechnic|university|college|bachelor\s+of|diploma\s+in|cgpa)\b/i.test(line)) {
                     continue;
                 }
 
-                // Check for explicit "Role: <RoleName>" line
-                const roleMatch = line.match(/^Role:\s*(.+)$/i);
-                if (roleMatch && currentBlock) {
-                    currentBlock.role = roleMatch[1].trim();
-                    continue;
-                }
-
-                const isBullet = /^[•\-*▪▫–—✦✓]\s*/.test(line);
-                const cleaned = line.replace(/^[•\-*▪▫–—✦✓]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
-
+                const urlMatch = line.match(/https?:\/\/(?:www\.)?github\.com\/[^\s]+/i) || line.match(/https?:\/\/[^\s]+/i);
                 const nextLine = rawPLines[i + 1] || "";
-                const nextLineIsRole = /^Role:\s*/i.test(nextLine);
+                const isProjectHeader = Boolean(urlMatch) || /^(EchoWell|DevCheckpoint|Leaf Disease|ProInterview|Synthetic Data|WorldXNews)/i.test(line) ||
+                    (/\b(Developer|Engineer|Lead)\b/i.test(nextLine) && /\bTech:\s*/i.test(nextLine)) ||
+                    (!line.startsWith("•") && !line.startsWith("-") && line.length < 70 && /\b(Developer|Engineer|Lead)\b/i.test(nextLine));
 
-                // Check for separated tag (e.g. 45 nm Technology, FPGA Implementation)
-                const tagSeparators = cleaned.split(/\s{2,}|\t|\s+[|–—]\s+/);
-                const hasSeparatedTag = tagSeparators.length > 1;
-
-                if (isBullet) {
-                    // Check if the bullet line itself is formatted as "Title: Description" (Format B)
-                    const colonIdx = cleaned.indexOf(":");
-                    if (colonIdx > 2 && colonIdx < 50 && !cleaned.includes("(") && !cleaned.includes(")")) {
-                        const subTitle = cleaned.substring(0, colonIdx).trim();
-                        const subDesc = cleaned.substring(colonIdx + 1).trim();
-                        currentBlock = { title: subTitle, role: "Developer", tag: "", lines: subDesc ? [subDesc] : [] };
-                        projectBlocks.push(currentBlock);
-                    } else if (currentBlock) {
-                        currentBlock.lines.push(cleaned);
+                if (isProjectHeader && line.length < 100 && !line.startsWith("•") && !line.startsWith("-")) {
+                    if (currentProj) {
+                        extractedProjects.push(currentProj);
                     }
-                } else if (!hasSeparatedTag && !nextLineIsRole && currentBlock && currentBlock.lines.length > 0 && cleaned.length > 2) {
-                    // Continuation line belonging to the previous bullet point
-                    currentBlock.lines[currentBlock.lines.length - 1] += " " + cleaned;
-                } else {
-                    // This is a new project title line (e.g. "Design and Analysis of Efficient Phase-Locked Loop (PLL) for Fast Acquisition    45 nm Technology")
-                    let pTitle = cleaned;
-                    let pTag = "";
+                    const link = urlMatch ? urlMatch[0] : (extractedGithub || "");
+                    const name = line.replace(/https?:\/\/[^\s]+/gi, "").replace(/[-–—|]\s*$/, "").trim();
 
-                    if (hasSeparatedTag) {
-                        pTitle = tagSeparators[0].trim();
-                        pTag = tagSeparators.slice(1).join(" ").trim();
-                    } else {
-                        // Check if line ends with a known domain or tech pattern
-                        const domainTagMatch = pTitle.match(/\b(\d+\s*nm\s+Technology|FPGA\s+Implementation|IIoT\s*&\s*Embedded\s+Systems|Embedded\s*&\s*Solar\s+Power\s+Integration|IoT\s*&\s*Embedded\s+Systems)\s*$/i);
-                        if (domainTagMatch && domainTagMatch.index) {
-                            pTag = domainTagMatch[1].trim();
-                            pTitle = pTitle.substring(0, domainTagMatch.index).trim();
+                    let role = "Developer";
+                    let technologies: string[] = [];
+
+                    if (nextLine && (/Tech:\s*/i.test(nextLine) || /\b(Developer|Engineer|Lead)\b/i.test(nextLine))) {
+                        const techSplit = nextLine.split(/Tech:\s*/i);
+                        role = techSplit[0].replace(/[|–—]/g, "").trim() || "Developer";
+                        if (techSplit.length > 1) {
+                            technologies = techSplit[1].split(",").map(t => t.trim()).filter(Boolean);
                         }
+                        i++;
                     }
 
-                    const colonIdx = pTitle.indexOf(":");
-                    if (colonIdx > 2 && colonIdx < 50 && !pTitle.includes("(") && !pTitle.includes(")")) {
-                        const subTitle = pTitle.substring(0, colonIdx).trim();
-                        const subDesc = pTitle.substring(colonIdx + 1).trim();
-                        currentBlock = { title: subTitle, role: "Developer", tag: pTag, lines: subDesc ? [subDesc] : [] };
-                        projectBlocks.push(currentBlock);
-                    } else {
-                        currentBlock = { title: pTitle, role: "Developer", tag: pTag, lines: [] };
-                        projectBlocks.push(currentBlock);
-                    }
+                    currentProj = {
+                        name,
+                        role,
+                        link,
+                        technologies,
+                        description: ""
+                    };
+                } else if (currentProj) {
+                    currentProj.description += (currentProj.description ? "\n" : "") + (line.startsWith("•") || line.startsWith("-") ? line : `- ${line}`);
                 }
             }
-
-            for (const block of projectBlocks) {
-                if (block.title.length < 3 || extractedProjects.length >= 8) continue;
-
-                const combinedText = `${block.title} ${block.tag} ${block.lines.join(" ")}`;
-                const projTechs = foundSkills
-                    .filter(s => new RegExp(`\\b${s.name.replace(/[.+]/g, '\\$&')}\\b`, "i").test(combinedText))
-                    .map(s => s.name);
-
-                if (block.tag && !projTechs.includes(block.tag)) {
-                    projTechs.unshift(block.tag);
-                }
-
-                // Detect additional inline technologies mentioned in project description
-                const additionalTechs = ["VHDL", "Verilog", "Cadence Virtuoso", "DRC/LVS", "CMOS", "IR Sensor", "RFID", "Microcontroller", "Solar Power"];
-                for (const t of additionalTechs) {
-                    if (new RegExp(`\\b${t.replace(/[.+]/g, '\\$&')}\\b`, "i").test(combinedText) && !projTechs.includes(t)) {
-                        projTechs.push(t);
-                    }
-                }
-
-                extractedProjects.push({
-                    name: block.title,
-                    description: block.lines.map(l => l.startsWith("•") || l.startsWith("-") ? l : `- ${l}`).join("\n"),
-                    technologies: projTechs.length > 0 ? projTechs.slice(0, 6) : (block.tag ? [block.tag] : foundSkills.slice(0, 3).map(s => s.name)),
-                    link: extractedGithub || "",
-                    role: block.role || "Developer"
-                });
+            if (currentProj) {
+                extractedProjects.push(currentProj);
             }
         }
     }
@@ -468,14 +443,14 @@ function generateResumeFallback(params: {
     // Heuristically extract real languages from raw text
     const extractedLanguages: Array<{ name: string; proficiency: string }> = [];
     if (rawText) {
-        const langMatch = rawText.match(/(?:languages spoken|languages)[:\s\n]+([^\n\r]+)/i);
+        const langMatch = rawText.match(/(?:languages spoken|languages)[:\s\n]+([\s\S]{5,400}?)(?=\n\s*(?:certifications|workshops|skills|education|projects|awards)|$)/i);
         if (langMatch) {
-            const items = langMatch[1].split(/[,|]/).map(s => s.trim()).filter(Boolean);
-            for (const item of items) {
-                const [lName, lProf] = item.split(/[:\-]/).map(s => s.trim());
+            const langRegex = /([A-Za-z]+)\s*[:\-–]\s*([A-Za-z]+)/g;
+            let m;
+            while ((m = langRegex.exec(langMatch[1])) !== null) {
                 extractedLanguages.push({
-                    name: lName || item,
-                    proficiency: lProf || "Professional working proficiency"
+                    name: m[1].trim(),
+                    proficiency: m[2].trim()
                 });
             }
         }
@@ -493,64 +468,36 @@ function generateResumeFallback(params: {
         const certSectionMatch = rawText.match(/(?:certifications\s*(?:&|and)\s*(?:workshops|training|courses|licenses)|certifications|certificates|licenses|courses\s*&\s*certifications|workshops\s*&\s*(?:certifications|training)|workshops)[^\n]*\n+([\s\S]{10,2500}?)(?=\n\s*(?:education|academic\s+background|technical\s+skills|skills|projects|key\s+projects|experience|work\s+experience|languages|awards|publications|volunteer|coursework)|$)/i);
         if (certSectionMatch) {
             const rawLines = certSectionMatch[1].split("\n").map(l => l.trim()).filter(Boolean);
-            const mergedItems: string[] = [];
-
             for (const line of rawLines) {
-                // If it's a residual header line like "& WORKSHOPS" or "WORKSHOPS", skip it
                 if (/^(&|and)\s+(workshops|certifications|training)/i.test(line) || /^(certifications|workshops|licenses|certificates)$/i.test(line) || /^page\s+\d/i.test(line)) {
                     continue;
                 }
+                const cleanLine = line.replace(/^[•\-*▪▫–—✦✓]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
+                const yearMatch = cleanLine.match(/\b(20\d\d|19\d\d)\b/);
 
-                // Bullet or numbered item indicator
-                const isBullet = /^[•\-*▪▫–—✦✓]\s*/.test(line) || /^\d+[\.\)]\s*/.test(line);
-                const hasExplicitTitleColon = /^[A-Z][a-zA-Z0-9\s()/\-–]{3,60}:/.test(line);
-
-                if (isBullet || hasExplicitTitleColon || mergedItems.length === 0) {
-                    const cleaned = line.replace(/^[•\-*▪▫–—✦✓]\s*/, '').replace(/^\d+[\.\)]\s*/, '').trim();
-                    if (cleaned) {
-                        mergedItems.push(cleaned);
-                    }
-                } else {
-                    // Continuation line belonging to the previous bullet item
-                    mergedItems[mergedItems.length - 1] += " " + line;
-                }
-            }
-
-            for (const item of mergedItems) {
-                if (item.length < 3) continue;
-                const yearMatch = item.match(/\b(20\d\d|19\d\d)\b/);
-                const cleanItem = item.replace(/\b(20\d\d|19\d\d)\b/, '').trim();
-
-                let name = cleanItem;
+                // Split on em/en-dash or spaced dash, never internal hyphen in EC-Council
+                const parts = cleanLine.split(/\s+[—–\-]\s+|\s*[—–]\s*/);
+                let name = cleanLine;
                 let issuer = "";
-                let description = "";
 
-                // Check for colon separation: "Physical Design Workshop: Hands-on experience in..."
-                const colonIdx = cleanItem.indexOf(":");
-                if (colonIdx > 2 && colonIdx < 80) {
-                    name = cleanItem.substring(0, colonIdx).trim();
-                    description = cleanItem.substring(colonIdx + 1).trim();
-                } else {
-                    // Check for dash or pipe separation: "AWS Certified Architect - Amazon Web Services"
-                    const sepMatch = cleanItem.match(/\s+[-–—|]\s+/);
-                    if (sepMatch && sepMatch.index && sepMatch.index > 2) {
-                        name = cleanItem.substring(0, sepMatch.index).trim();
-                        issuer = cleanItem.substring(sepMatch.index + sepMatch[0].length).trim();
-                    }
+                if (parts.length > 1) {
+                    name = parts.slice(0, -1).join(" — ").trim();
+                    issuer = parts[parts.length - 1].trim();
+                } else if (cleanLine.includes(":")) {
+                    const colonIdx = cleanLine.indexOf(":");
+                    name = cleanLine.substring(0, colonIdx).trim();
+                    issuer = cleanLine.substring(colonIdx + 1).trim();
                 }
 
-                // Discard any residual header fragments that slipped through
-                if (/^(&|and)\s*workshops/i.test(name) || /^(certifications|workshops)$/i.test(name.toLowerCase())) {
-                    continue;
+                if (name && !extractedCertifications.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+                    extractedCertifications.push({
+                        name,
+                        issuer,
+                        date: yearMatch ? yearMatch[0] : "",
+                        link: "",
+                        description: ""
+                    });
                 }
-
-                extractedCertifications.push({
-                    name,
-                    issuer,
-                    date: yearMatch ? yearMatch[0] : "",
-                    link: "",
-                    description
-                });
             }
         }
     }
@@ -610,7 +557,7 @@ function generateResumeFallback(params: {
             location: extractedLocation,
             linkedin: extractedLinkedin,
             github: extractedGithub,
-            website: params.portfolioUrl || "",
+            website: extractedPortfolio || "",
         },
         summary: extractedSummary,
         workExperience: extractedWorkExperience,
@@ -1121,18 +1068,24 @@ CRITICAL FACTUAL PRESERVATION & ZERO-FABRICATION RULES:
 1. PRESERVE EVERY FACTUAL DETAIL: Capture all degrees, institutions, GPA/scores, companies, job titles, start/end dates, accomplishments, metrics, percentages, tools, projects, skills, certifications, and languages.
 2. ZERO FABRICATION / ZERO INVENTED DATA: NEVER invent or guess companies, job positions, colleges, degrees, CGPAs, dates, metrics, projects, or certifications. If information is not in the source, leave the string empty ("") or array empty ([]).
 3. DO NOT LOSE SMALL INFORMATION: Preserve all metrics, exact numbers, percentages (e.g. 40%), tools, libraries, and context. Do NOT aggressively compress or summarize away technical facts.
-4. TWO-COLUMN, SIDEBAR & TABLE EXTRACTION: Carefully read multi-column, sidebar, and tabular layouts to associate job titles with their correct company and dates.
+4. TWO-COLUMN, SIDEBAR & TABLE EXTRACTION: Carefully read multi-column, sidebar, and tabular layouts. Separate position/role (e.g. "Quality Control Intern"), dates (e.g. "01/2024 - 04/2024"), company (e.g. "Sansera Engineering Ltd"), and location (e.g. "Bengaluru") cleanly. Never glue company and location into one word.
 5. FRESHER / CANDIDATE WITHOUT INDUSTRY WORK EXPERIENCE: If the candidate has no corporate employment or industry jobs listed in their resume (e.g. they only have academic projects or degrees), set "workExperience": []. Do not invent corporate jobs.
-6. COMPREHENSIVE SKILLS & PROJECTS: Extract every project listed in the resume (under headings like "KEY PROJECT", "KEY PROJECTS", "PROJECTS", "ACADEMIC PROJECTS", "TECHNICAL PROJECTS", etc.) into the "projects" array.
-   - For each project, extract the exact project title (e.g. "Design and Analysis of Efficient Phase-Locked Loop (PLL) for Fast Acquisition", "Braille E-Reader Prototype", "Smart Parking System Using IIoT", "Automated Name Board Using IIoT").
-   - Extract the candidate's specific role if stated (e.g. "Role: Layout Designer", "Role: Team Leader") into the "role" field.
-   - Extract the technologies and domain tags (e.g. "45 nm Technology", "FPGA Implementation", "IIoT & Embedded Systems", "Embedded & Solar Power Integration", "Verilog", "VHDL") into the "technologies" array.
-   - Extract all bulleted accomplishment points into "description".
-   - CRITICAL: NEVER place education entries (e.g. "Bangalore Institute of Technology", "Bachelor of Engineering", "Siddaganga Polytechnic", "Diploma") into the "projects" array. Education belongs ONLY in "education". Extract ALL technical skills, tools, methodologies, and frameworks into the "skills" array.
-7. PROFESSIONAL TITLE / DEGREE: Extract the candidate's degree specialization or professional title from the resume header (e.g. "Electronics Engineering – VLSI Design & Technology") into "personalInfo.title".
+6. COMPREHENSIVE PROJECTS SEPARATION: Extract EVERY project listed in the resume (e.g. "EchoWell", "DevCheckpoint 6.0", "Leaf Disease Detection", "ProInterview", "Synthetic Data Generator", "WorldXNews") into the "projects" array.
+   - NEVER collapse or merge multiple projects into a single project entry. Every project is an individual distinct item.
+   - For each project, extract the project title into "name" without gluing any URL to it (e.g. "EchoWell", NOT "EchoWellhttps://...").
+   - Extract the GitHub repository or project link into "link" (e.g. "https://github.com/hemanthtc8296").
+   - Extract the candidate's specific role if stated (e.g. "Full Stack Developer", "AI Developer", "Developer", "Layout Designer", "Team Leader") into the "role" field.
+   - Extract the technologies list (e.g. from "Tech: Next.js 14, TypeScript...") into the "technologies" array.
+   - Extract all description bullet points into "description".
+   - CRITICAL: NEVER place education entries into the "projects" array. Education belongs ONLY in "education".
+7. PROFESSIONAL TITLE / DEGREE: Extract the candidate's professional title from the resume header under their name (e.g. "Full Stack Developer") into "personalInfo.title".
 8. CUSTOM & ADDITIONAL SECTIONS: If the source resume contains sections such as Awards, Honors, Achievements, Publications, Research, Volunteer Work, Extracurricular Activities, Patents, Key Coursework, or any other meaningful section, extract them into the 'customSections' array so NO information is lost.
-9. CERTIFICATIONS & WORKSHOPS INTEGRITY: If the source resume has "CERTIFICATIONS & WORKSHOPS", "WORKSHOPS", or "CERTIFICATIONS", extract each bullet point as a single unified item. Never treat header words (such as "& WORKSHOPS") as a certification entry. Never split a single wrapped bullet point into multiple entries. If an entry is written as "Workshop Name: Hands-on experience...", set "name": "Workshop Name", "description": "Hands-on experience...", and "issuer": "" (unless an issuing organization like Cadence or AWS is explicitly stated).
-10. EDUCATION ACCURACY & DE-DUPLICATION: Extract the institution name (e.g. "Bangalore Institute of Technology", "Siddaganga Polytechnic") into "institution", and the city/state (e.g. "Bangalore, Karnataka", "Tumkur, Karnataka") into "location". Separate "degree" (e.g. "Bachelor of Engineering", "Diploma") cleanly from "fieldOfStudy" (e.g. "Electronics Engineering (Specialization: VLSI Design & Technology)"). NEVER duplicate the degree inside fieldOfStudy or vice versa. Do not append dates to degree or fieldOfStudy. Extract the true start and end dates (e.g. 2021 to 2024, or 2024 to 2027) accurately.
+9. CERTIFICATIONS & WORKSHOPS INTEGRITY: Extract each certification or workshop as a distinct item. Split cleanly into "name" and "issuer" (e.g. name: "AWS Cloud Computing & Staking Workshop", issuer: "Bangalore Institute of Technology"; name: "Digital Forensics Essentials (DFE)", issuer: "EC-Council"; name: "Soft Skills — Employability Skills Program", issuer: "Rubicon"). Never duplicate certification entries.
+10. EDUCATION ACCURACY & DESCRIPTION SEPARATION:
+   - Extract the actual degree (e.g. "B.E", "Diploma", "SSLC") into "degree", and field of study (e.g. "Information Science & Engineering", "Electronics & Communication Engineering") into "fieldOfStudy".
+   - Extract the school/college/institution name (e.g. "Bangalore Institute of Technology", "Government Polytechnic Turuvekere", "Government JR Collage For Boys") into "institution".
+   - Put descriptive coursework, honors, or achievements (e.g. "Focusing on software development, artificial intelligence...", "Graduated with distinction...") into "description", NEVER as the degree name.
+   - Extract CGPA or percentage (e.g. "6.91", "9.35", "65.92") accurately. Cleanly extract start and end dates.
 
 ${sectionSpecificNotesText ? `
 USER'S SECTION-SPECIFIC CUSTOM NOTES & EMPHASIS:
