@@ -95,6 +95,18 @@ const TECHNICAL_SKILLS = [
     "salesforce", "hubspot", "jira",
     // Science & Lab Tools
     "hplc", "gc-ms", "spectrophotometry", "pcr", "gel electrophoresis", "autoclave",
+    // Electronics, VLSI & Embedded Systems
+    "cadence", "virtuoso", "cadence virtuoso", "spectre", "hspice", "calibre",
+    "analog layout", "physical design", "fpga", "verilog", "vhdl", "systemverilog",
+    "drc", "lvs", "erc", "cmos", "floorplanning", "cts", "clock tree synthesis",
+    "sta", "static timing analysis", "place and route", "p&r", "synthesis",
+    "embedded c", "embedded systems", "rtos", "arm", "cortex", "microcontroller",
+    "arduino", "raspberry pi", "stm32", "pic", "8051", "i2c", "spi", "uart",
+    "pcb design", "pcb", "altium", "eagle", "kicad", "orcad",
+    "signal processing", "dsp", "rf", "antenna", "vlsi", "asic",
+    "xilinx", "vivado", "quartus", "modelsim", "vivado hls",
+    "power electronics", "inverter", "converter", "motor drive",
+    "plc", "scada", "ladder logic", "hmi", "industrial automation",
 ];
 
 const PROFESSIONAL_SKILLS = [
@@ -1569,6 +1581,55 @@ Requirements:
 - Required Skills: Pharmacology, HPLC, GMP compliance, Quality Control testing, Drug Formulation.`,
         applyUrl: "https://sunpharma.com/careers/",
         postedAt: "2026-08-05",
+        source: "ProInterview curated (India)",
+    },
+    // Electronics / VLSI / Semiconductor / Embedded Systems
+    {
+        id: "job_in_ti_vlsi",
+        company: "Texas Instruments India",
+        role: "Analog Layout & Physical Design Engineer",
+        location: "Bangalore",
+        type: "full-time",
+        remote: false,
+        tags: ["VLSI", "Cadence Virtuoso", "Analog Layout", "Physical Design", "DRC", "LVS"],
+        salaryRange: "₹8L–₹14L",
+        description: "Design and verify analog/mixed-signal IC layouts for TI's power management and signal chain product lines at the Bangalore design center.",
+        fullDescription: `Role: Analog Layout & Physical Design Engineer at Texas Instruments India, Bangalore.
+Requirements:
+- Education: B.Tech / B.E / M.Tech in Electronics, Electrical, or VLSI Design (Mandatory).
+- Required Skills: Cadence Virtuoso, Analog Layout, Physical Design, DRC, LVS, ERC, CMOS process technology.
+- Preferred Skills: Calibre, HSpice, Spectre simulation, Floorplanning, Matching techniques.
+- Experience: 0 to 3 years in analog/mixed-signal IC layout.
+Responsibilities:
+- Create and optimize transistor-level layouts for ADCs, LDOs, and voltage references.
+- Run and debug DRC/LVS/ERC checks, perform parasitic extraction, and ensure silicon-accurate layouts.
+- Collaborate with circuit design and verification teams on tapeout milestones.`,
+        applyUrl: "https://careers.ti.com/",
+        postedAt: "2026-08-01",
+        source: "ProInterview curated (India)",
+    },
+    {
+        id: "job_in_bosch_embedded",
+        company: "Bosch India",
+        role: "Embedded Systems Engineer (Fresher / 1-2 Years)",
+        location: "Bangalore / Coimbatore",
+        type: "full-time",
+        remote: false,
+        tags: ["Embedded C", "RTOS", "ARM", "Microcontroller", "FPGA", "CAN"],
+        salaryRange: "₹6L–₹10L",
+        description: "Develop embedded firmware for automotive ECU modules, sensor interfaces, and real-time control systems at Bosch's engineering center.",
+        fullDescription: `Role: Embedded Systems Engineer at Bosch India, Bangalore / Coimbatore.
+Requirements:
+- Education: B.Tech / B.E / M.Tech in Electronics, Electrical, Embedded Systems, or Instrumentation (Mandatory).
+- Required Skills: Embedded C, ARM Cortex microcontrollers, RTOS (FreeRTOS / QNX), I2C, SPI, UART, CAN protocol.
+- Preferred Skills: FPGA (Xilinx/Vivado), MATLAB/Simulink, PCB design, AUTOSAR.
+- Experience: 0 to 2 years in embedded firmware development.
+Responsibilities:
+- Write and optimize low-level firmware for automotive ECUs and ADAS sensor modules.
+- Interface with hardware teams for bring-up, debugging, and integration testing.
+- Develop unit tests and perform hardware-in-the-loop (HIL) validation.`,
+        applyUrl: "https://www.bosch.in/careers/",
+        postedAt: "2026-08-02",
         source: "ProInterview curated (India)",
     },
     // Software / IT / Data

@@ -48,6 +48,14 @@ const KNOWN_SKILL_KEYWORDS = [
     "react", "next.js", "angular", "vue", "node.js", "nodejs", "express", "django", "spring boot", "spring",
     "sql", "postgresql", "mysql", "mongodb", "redis", "aws", "azure", "gcp", "docker", "kubernetes",
     "power bi", "tableau", "excel", "pandas", "machine learning", "deep learning", "git", "linux", "rest api",
+    "graphql", "kafka", "dynamodb", "terraform", "ci/cd", "jenkins", "ansible",
+    // Mobile & UI/UX
+    "flutter", "react native", "swift", "kotlin", "ios", "android", "figma", "ui/ux", "wireframing",
+    // Electronics / VLSI / Embedded / Hardware
+    "cadence virtuoso", "cadence", "virtuoso", "analog layout", "physical design", "fpga", "vhdl", "verilog",
+    "systemverilog", "drc", "lvs", "cmos", "floorplanning", "placement", "routing", "clock tree synthesis",
+    "cts", "timing analysis", "sta", "dft", "atpg", "embedded systems", "microcontroller", "iiot", "iot",
+    "pcb design", "matlab", "simulink", "vlsi", "arm", "rtos", "dsp", "arduino", "asic", "rtl",
     // Accounting / Finance
     "accounting", "financial accounting", "management accounting", "gst", "tds", "income tax", "direct tax",
     "indirect tax", "auditing", "statutory audit", "internal audit", "tally", "tally prime", "financial analysis",
@@ -122,7 +130,8 @@ export function parseJobDescription(jobDescription: string, roleTitle: string = 
         { name: "B.Tech / B.E Computer Science", pattern: /\b(b\.?\s*tech|b\.?\s*e\.?).*?(computer\s+science|cse|cs\b|software|information\s+technology|it\b)/i },
         { name: "B.Tech / B.E Mechanical Engineering", pattern: /\b(b\.?\s*tech|b\.?\s*e\.?).*?(mechanical|automobile|production)/i },
         { name: "B.Tech / B.E Civil Engineering", pattern: /\b(b\.?\s*tech|b\.?\s*e\.?).*?(civil|structural|construction)/i },
-        { name: "B.Tech / B.E Electrical / Electronics", pattern: /\b(b\.?\s*tech|b\.?\s*e\.?).*?(electrical|electronics|ece\b|eee\b)/i },
+        { name: "B.Tech / B.E Electrical / Electronics / VLSI", pattern: /\b(b\.?\s*tech|b\.?\s*e\.?).*?(electrical|electronics|ece\b|eee\b|vlsi|embedded|telecommunication)/i },
+        { name: "Diploma in Engineering", pattern: /\b(diploma|polytechnic).*?(electronics|electrical|mechanical|civil|engineering)/i },
         { name: "Master of Business Administration (MBA)", pattern: /\b(mba|master\s+of\s+business\s+administration|pgdm)\b/i },
         { name: "Bachelor of Business Administration (BBA)", pattern: /\b(bba|bachelor\s+of\s+business\s+administration|bms)\b/i },
         { name: "Bachelor of Computer Applications (BCA)", pattern: /\b(bca|bachelor\s+of\s+computer\s+applications)\b/i },
@@ -157,6 +166,51 @@ export function parseJobDescription(jobDescription: string, roleTitle: string = 
     const requiredSkills: string[] = [];
     const preferredSkills: string[] = [];
 
+    // 4a. Direct skill line extraction (e.g., "Required Skills: A, B, C", "- Required Skills: ...")
+    for (const line of lines) {
+        const cleanL = line.replace(/^[•\-*▪▫–—✦✓]\s*/, "").trim();
+        const reqSkillLineMatch = cleanL.match(/^(?:required|must\s+have|mandatory|technical|key)\s+skills?\s*[:\-]\s*(.+)$/i);
+        if (reqSkillLineMatch) {
+            const rawTokens = reqSkillLineMatch[1].split(/[,;•|]/);
+            for (const rt of rawTokens) {
+                const cleaned = rt.replace(/^[•\-*▪▫–—✦✓]\s*/, "").replace(/\([^)]*\)/g, "").replace(/\.$/, "").trim();
+                if (cleaned.length >= 2 && cleaned.length <= 40 && !/^(and|or|etc|\d+\+?\s*years?)$/i.test(cleaned)) {
+                    const knownMatch = KNOWN_SKILL_KEYWORDS.find(kw => matchesSkillToken(cleaned, kw));
+                    if (knownMatch) {
+                        requiredSkills.push(normalizeSkillToken(knownMatch));
+                    } else {
+                        requiredSkills.push(normalizeSkillToken(cleaned));
+                    }
+                }
+            }
+        }
+        const prefSkillLineMatch = cleanL.match(/^(?:preferred|nice\s+to\s+have|good\s+to\s+have|bonus)\s+skills?\s*[:\-]\s*(.+)$/i);
+        if (prefSkillLineMatch) {
+            const rawTokens = prefSkillLineMatch[1].split(/[,;•|]/);
+            for (const rt of rawTokens) {
+                const cleaned = rt.replace(/^[•\-*▪▫–—✦✓]\s*/, "").replace(/\([^)]*\)/g, "").replace(/\.$/, "").trim();
+                if (cleaned.length >= 2 && cleaned.length <= 40 && !/^(and|or|etc|\d+\+?\s*years?)$/i.test(cleaned)) {
+                    const knownMatch = KNOWN_SKILL_KEYWORDS.find(kw => matchesSkillToken(cleaned, kw));
+                    if (knownMatch) {
+                        preferredSkills.push(normalizeSkillToken(knownMatch));
+                    } else {
+                        preferredSkills.push(normalizeSkillToken(cleaned));
+                    }
+                }
+            }
+        }
+    }
+
+    // 4b. Requirement bullet point extraction
+    for (const rLine of requiredLines) {
+        const isBullet = /^[•\-*▪▫–—✦✓]\s*/.test(rLine);
+        const clean = rLine.replace(/^[•\-*▪▫–—✦✓]\s*/, "").replace(/\([^)]*\)/g, "").trim();
+        if (isBullet && clean.length >= 2 && clean.length <= 40 && !/\b(degree|bachelor|master|diploma|years?|experience|communication|collaborat|team|responsib|qualifications)\b/i.test(clean)) {
+            requiredSkills.push(normalizeSkillToken(clean));
+        }
+    }
+
+    // 4c. Canonical keyword scanning across JD sections
     for (const kw of KNOWN_SKILL_KEYWORDS) {
         if (requiredText && matchesSkillToken(requiredText, kw)) {
             requiredSkills.push(normalizeSkillToken(kw));
@@ -190,6 +244,7 @@ export function parseJobDescription(jobDescription: string, roleTitle: string = 
     let industryDomain = "General";
     if (/commerce|accounting|finance|audit|tax|banking/i.test(roleTitle + " " + allText)) industryDomain = "Commerce & Finance";
     else if (/software|developer|frontend|backend|cloud|fullstack|programming/i.test(roleTitle + " " + allText)) industryDomain = "Software & IT";
+    else if (/electronics|vlsi|embedded|hardware|analog layout|physical design|semiconductor|fpga|microcontroller/i.test(roleTitle + " " + allText)) industryDomain = "Electronics & Hardware Engineering";
     else if (/mechanical|cad|solidworks|manufacturing|machining/i.test(roleTitle + " " + allText)) industryDomain = "Mechanical Engineering";
     else if (/civil|staad|construction|structural|site engineer/i.test(roleTitle + " " + allText)) industryDomain = "Civil Engineering";
     else if (/pharmacy|pharmacist|clinical|drug|pharma/i.test(roleTitle + " " + allText)) industryDomain = "Pharmacy & Life Sciences";
@@ -292,6 +347,11 @@ export function computeDeterministicAts(
                 hasDirectDegreeMatch = true;
                 break;
             }
+            if (reqLower.match(/\b(electronics|electrical|ece|vlsi|embedded|hardware)\b/i) && 
+                (candidateField.match(/\b(electronics|electrical|ece|vlsi|embedded|hardware)\b/i) || candidateDegree.match(/\b(electronics|electrical|ece|vlsi|embedded|hardware)\b/i))) {
+                hasDirectDegreeMatch = true;
+                break;
+            }
             if (reqLower.includes("bachelor") && profile.education.level === "undergraduate") {
                 hasRelatedDegreeMatch = true;
             }
@@ -316,6 +376,9 @@ export function computeDeterministicAts(
         } else if (jdReqs.industryDomain.includes("Software") && profile.primaryDomains.includes("Software")) {
             educationScore = 90;
             eduReason = `✓ Education in Computer Science/Engineering aligns with target role`;
+        } else if (jdReqs.industryDomain.includes("Electronics") && (profile.primaryDomains.includes("Electronics") || profile.primaryDomains.includes("Electrical") || profile.primaryDomains.includes("Hardware") || profile.primaryDomains.includes("Embedded Systems") || profile.primaryDomains.includes("Engineering"))) {
+            educationScore = 90;
+            eduReason = `✓ Electronics / Hardware Engineering education matches role`;
         } else if (jdReqs.industryDomain.includes("Mechanical") && profile.primaryDomains.includes("Mechanical")) {
             educationScore = 90;
             eduReason = `✓ Mechanical Engineering education matches role`;

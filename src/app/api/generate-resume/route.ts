@@ -989,6 +989,35 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
         }
     }
 
+    // Fix 4: Sanitize professional title — strip section headers that leaked into title
+    if (parsed.personalInfo.title) {
+        const BANNED_TITLE_PREFIXES = /^\s*(INTERNSHIP[S]?|EDUCATION|PROJECTS|SKILLS|EXPERIENCE|DECLARATION|SUMMARY|OBJECTIVE|HOBBIES|REFERENCES|CERTIFICATIONS|TRAINING|WORK\s+EXPERIENCE)\s*/i;
+        parsed.personalInfo.title = parsed.personalInfo.title.replace(BANNED_TITLE_PREFIXES, "").trim();
+        // If title is now empty or too short, derive from highest education
+        if (parsed.personalInfo.title.length < 3 && Array.isArray(parsed.education)) {
+            const highestEdu = parsed.education.find((e: any) => /pg|master|mba|m\.?tech|m\.?e\b|m\.?com|m\.?sc|mca/i.test((e.degreeType || "") + " " + (e.degree || "")));
+            if (highestEdu) {
+                const degStr = [highestEdu.degree, highestEdu.fieldOfStudy].filter(Boolean).join(" ");
+                if (degStr.length > 2) parsed.personalInfo.title = degStr + " Graduate";
+            }
+        }
+    }
+
+    // Fix 5: Clean location — strip company names that leaked into personalInfo.location
+    if (parsed.personalInfo.location) {
+        const COMPANY_SUFFIXES = /\b(Infotech|Technologies|Ltd|Pvt|Solutions|Engineerings?|Enterprises|Corp|Inc|LLC|Systems|Services|Software|Consulting|Associates|Industries|Group|Company)\b/i;
+        if (COMPANY_SUFFIXES.test(parsed.personalInfo.location)) {
+            // Try to extract just the city/geographic part
+            const KNOWN_CITIES = /\b(Bangalore|Bengaluru|Mumbai|Bombay|Delhi|Hyderabad|Chennai|Pune|Kolkata|Ahmedabad|Jaipur|Lucknow|Chandigarh|Indore|Coimbatore|Mysuru|Mysore|Tiptur|Turuvekere|Kochi|Thiruvananthapuram|Noida|Gurgaon|Gurugram|Ghaziabad|Faridabad|Thane|Navi Mumbai|India|USA|UK|Canada|Singapore|Dubai|Remote)\b/i;
+            const cityMatch = parsed.personalInfo.location.match(KNOWN_CITIES);
+            if (cityMatch) {
+                // Extract the city and everything after it (e.g. "Bangalore, India")
+                const cityIdx = parsed.personalInfo.location.indexOf(cityMatch[0]);
+                parsed.personalInfo.location = parsed.personalInfo.location.substring(cityIdx).replace(/^[,\s]+/, "").trim();
+            }
+        }
+    }
+
     parsed.summary = cleanField(parsed.summary || "") || existingResume?.personalInfo?.summary || existingResume?.summary || "";
     if (isAtsOptimization && (!parsed.summary || !parsed.summary.trim())) {
         const candidateTitle = parsed.personalInfo?.title || existingResume?.personalInfo?.title || "";
@@ -1110,6 +1139,9 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
                 const valNum = parseFloat(pctValMatch[1]);
                 if (valNum <= 10 && !cleanPct.includes("%") && !item.cgpa) {
                     item.cgpa = pctValMatch[1];
+                    item.percentage = "";
+                } else if (valNum < 30) {
+                    // Fix 7: Reject implausibly low percentages (likely extracted from year fragments)
                     item.percentage = "";
                 } else {
                     item.percentage = `${pctValMatch[1]}%`;
@@ -1572,6 +1604,186 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
         }
     }
 
+    // Fix 6: Skills blocklist — filter out section headers parsed as skills
+    const BANNED_SKILL_NAMES = new Set([
+        "declaration", "education", "projects", "experience", "internship",
+        "internships", "summary", "objective", "hobbies", "interests",
+        "references", "personal details", "profile", "training",
+        "certifications", "workshops", "achievements", "awards",
+        "work experience", "key projects", "academic projects",
+        "volunteer", "extracurricular", "activities", "languages",
+    ]);
+    if (Array.isArray(parsed.skills)) {
+        parsed.skills = parsed.skills.filter((s: any) => {
+            const name = (s.name || "").trim().toLowerCase().replace(/\.+$/, "");
+            return name.length > 0 && !BANNED_SKILL_NAMES.has(name);
+        });
+    }
+
+    // Fix 2B: Reclassify internship entries from projects → workExperience
+    // Detect projects that are actually internships (section header leak or internship-named entries)
+    if (Array.isArray(parsed.projects) && parsed.projects.length > 0 && rawText) {
+        const hasInternshipHeader = /(?:^|\n)\s*(?:INTERNSHIP[S]?|INTERNSHIP\s+EXPERIENCE|INDUSTRIAL\s+TRAINING)\b/i.test(rawText);
+        const projectsToRemove: number[] = [];
+
+        parsed.projects.forEach((proj: any, idx: number) => {
+            const projName = (proj.name || "").trim();
+            const projNameLower = projName.toLowerCase();
+            const projDesc = (proj.description || "").trim();
+
+            // Detect if this "project" is actually an internship entry
+            const isInternshipProject = (
+                // Name is exactly a section header like "INTERNSHIP" or "INTERNSHIPS"
+                /^(internship[s]?|internship\s+experience|industrial\s+training|training)$/i.test(projNameLower) ||
+                // Name contains "Intern" as a job title pattern
+                /\bintern\b/i.test(projNameLower) ||
+                // Source resume has INTERNSHIP section and description contains company+date patterns
+                (hasInternshipHeader && /\b\d{2}\/\d{4}\b/.test(projDesc) && /\b(pvt|ltd|infotech|technologies|solutions|engineering|company)\b/i.test(projDesc))
+            );
+
+            if (!isInternshipProject) return;
+
+            projectsToRemove.push(idx);
+
+            // Try to split merged internship blobs into individual entries
+            // Pattern: detect company boundaries like "CompanyName City" or date patterns
+            const descLines = projDesc.split(/\n/).map((l: string) => l.trim()).filter(Boolean);
+            
+            // Try to extract individual internships from merged description
+            // Look for patterns like "Company Name City" or "Role MM/YYYY" boundaries
+            const internshipEntries: any[] = [];
+            let currentEntry: any = null;
+            const companyPattern = /^([A-Z][a-zA-Z\s]+(?:Infotech|Technologies|Ltd|Pvt|Solutions|Engineerings?|Enterprises|Corp|Inc|LLC|Systems|Services))[\s,.-]+([A-Za-z]+(?:,\s*India)?)/i;
+            const roleDatePattern = /^(.+?)\s+(\d{2}\/\d{4}|\d{4})\s*[-–to\s]+(\d{2}\/\d{4}|\d{4}|present|current)/i;
+
+            // Simple heuristic: if description mentions multiple companies, split
+            const companyMentions = projDesc.match(/\b([A-Z][a-zA-Z]+\s+(?:Infotech|Technologies|Ltd|Pvt|Solutions|Engineerings?|Enterprises))\b/gi) || [];
+            const uniqueCompanies = [...new Set(companyMentions.map((c: string) => c.trim().toLowerCase()))];
+
+            if (uniqueCompanies.length >= 2) {
+                // Multiple companies found — split by company boundaries
+                const chunks: string[] = [];
+                let remaining = projDesc;
+                for (let i = 1; i < companyMentions.length; i++) {
+                    const splitIdx = remaining.indexOf(companyMentions[i]);
+                    if (splitIdx > 0) {
+                        chunks.push(remaining.substring(0, splitIdx).trim());
+                        remaining = remaining.substring(splitIdx).trim();
+                    }
+                }
+                chunks.push(remaining.trim());
+
+                for (const chunk of chunks) {
+                    const compMatch = chunk.match(/([A-Z][a-zA-Z\s]+(?:Infotech|Technologies|Ltd|Pvt|Solutions|Engineerings?|Enterprises))/i);
+                    const dateMatch = chunk.match(/(\d{2}\/\d{4}|\d{4})\s*[-–to\s]+(\d{2}\/\d{4}|\d{4}|present|current)/i);
+                    internshipEntries.push({
+                        company: compMatch ? compMatch[1].trim() : "",
+                        position: projNameLower.includes("intern") ? projName : (projName.replace(/^internship[s]?\s*/i, "").trim() || "Intern"),
+                        location: "",
+                        startDate: dateMatch ? dateMatch[1] : "",
+                        endDate: dateMatch ? dateMatch[2] : "",
+                        current: dateMatch ? /present|current/i.test(dateMatch[2]) : false,
+                        description: chunk.replace(compMatch?.[0] || "", "").replace(dateMatch?.[0] || "", "").replace(/^[\s,.-]+|[\s,.-]+$/g, "").trim()
+                    });
+                }
+            } else {
+                // Single internship or can't split — move as one entry
+                internshipEntries.push({
+                    company: "",
+                    position: projNameLower.includes("intern") ? projName : (projName.replace(/^internship[s]?\s*/i, "").trim() || "Intern"),
+                    location: "",
+                    startDate: "",
+                    endDate: "",
+                    current: false,
+                    description: projDesc
+                });
+            }
+
+            // Tag each entry with "Internship" in position if not already present
+            for (const entry of internshipEntries) {
+                if (!/intern/i.test(entry.position)) {
+                    entry.position = entry.position ? `${entry.position} — Internship` : "Internship";
+                }
+                parsed.workExperience.push(entry);
+            }
+        });
+
+        // Remove reclassified entries from projects (in reverse order to preserve indices)
+        for (let i = projectsToRemove.length - 1; i >= 0; i--) {
+            parsed.projects.splice(projectsToRemove[i], 1);
+        }
+    }
+
+    // Fix 2B (continued): Ensure ALL workExperience entries from internship sections have "Intern" tag
+    if (Array.isArray(parsed.workExperience) && rawText) {
+        const hasInternshipHeader = /(?:^|\n)\s*(?:INTERNSHIP[S]?|INTERNSHIP\s+EXPERIENCE|INDUSTRIAL\s+TRAINING)\b/i.test(rawText);
+        if (hasInternshipHeader) {
+            for (const job of parsed.workExperience) {
+                const pos = (job.position || "").trim();
+                // If this entry's position text appears near the INTERNSHIP section in rawText, tag it
+                if (pos && !/intern/i.test(pos)) {
+                    // Check if this position text is mentioned near the INTERNSHIP header in raw text
+                    const posEscaped = pos.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                    const nearInternshipPattern = new RegExp(`INTERNSHIP[S]?[\\s\\S]{0,500}${posEscaped}`, 'i');
+                    if (nearInternshipPattern.test(rawText)) {
+                        job.position = `${pos} — Internship`;
+                    }
+                }
+            }
+        }
+    }
+
+    // Fix 1: Recover missing education entries (e.g. MBA dropped by AI)
+    if (Array.isArray(parsed.education) && rawText) {
+        const DEGREE_KEYWORDS = [
+            { pattern: /\b(MBA|M\.?B\.?A|PGDM|Master\s+of\s+Business\s+Administration)\b/i, label: "MBA" },
+            { pattern: /\b(M\.?Tech|M\.?E\.?(?:\s|$)|Master\s+of\s+Technology)\b/i, label: "M.Tech" },
+            { pattern: /\b(M\.?Com|Master\s+of\s+Commerce)\b/i, label: "M.Com" },
+            { pattern: /\b(M\.?Sc|Master\s+of\s+Science)\b/i, label: "M.Sc" },
+            { pattern: /\b(MCA|M\.?C\.?A)\b/i, label: "MCA" },
+            { pattern: /\b(B\.?Tech|B\.?E\.?(?:\s|$)|Bachelor\s+of\s+Technology|Bachelor\s+of\s+Engineering)\b/i, label: "B.Tech" },
+            { pattern: /\b(B\.?Com|Bachelor\s+of\s+Commerce)\b/i, label: "B.Com" },
+            { pattern: /\b(B\.?Sc|Bachelor\s+of\s+Science)\b/i, label: "B.Sc" },
+            { pattern: /\b(BCA|B\.?C\.?A)\b/i, label: "BCA" },
+            { pattern: /\b(BBA|B\.?B\.?A)\b/i, label: "BBA" },
+            { pattern: /\b(B\.?Pharm|Pharm\.?D)\b/i, label: "B.Pharm" },
+            { pattern: /\b(B\.?Arch)\b/i, label: "B.Arch" },
+            { pattern: /\b(Diploma|Polytechnic)\b/i, label: "Diploma" },
+            { pattern: /\b(PUC|Pre-University|HSC|Class\s*XII|12th)\b/i, label: "12th" },
+            { pattern: /\b(SSLC|Class\s*X(?:$|\s)|10th)\b/i, label: "10th" },
+        ];
+
+        for (const dk of DEGREE_KEYWORDS) {
+            if (!dk.pattern.test(rawText)) continue;
+
+            // Check if any existing education entry already covers this degree
+            const alreadyCovered = parsed.education.some((e: any) => {
+                const allEduText = `${e.degree || ""} ${e.fieldOfStudy || ""} ${e.institution || ""} ${e.degreeType || ""}`.toLowerCase();
+                return dk.pattern.test(allEduText) || allEduText.includes(dk.label.toLowerCase());
+            });
+
+            if (!alreadyCovered) {
+                // Run fallback parser to recover the missing entry
+                const fallback = generateResumeFallback({ resumeText: rawText });
+                if (fallback.education.length > 0) {
+                    for (const fbEdu of fallback.education) {
+                        const fbText = `${fbEdu.degree || ""} ${fbEdu.fieldOfStudy || ""} ${fbEdu.institution || ""}`.toLowerCase();
+                        if (dk.pattern.test(fbText) || fbText.includes(dk.label.toLowerCase())) {
+                            // Verify this specific entry isn't already present
+                            const alreadyPresent = parsed.education.some((e: any) =>
+                                (e.institution || "").toLowerCase().trim() === (fbEdu.institution || "").toLowerCase().trim()
+                            );
+                            if (!alreadyPresent) {
+                                parsed.education.push(fbEdu);
+                            }
+                        }
+                    }
+                }
+                break; // Only run fallback once
+            }
+        }
+    }
+
     return parsed;
 }
 
@@ -1757,6 +1969,12 @@ CRITICAL FACTUAL PRESERVATION & ZERO-FABRICATION RULES:
 3. DO NOT LOSE SMALL INFORMATION: Preserve all metrics, exact numbers, percentages (e.g. 40%), tools, libraries, and context. Do NOT aggressively compress or summarize away technical facts.
 4. TWO-COLUMN, SIDEBAR & TABLE EXTRACTION: Carefully read multi-column, sidebar, and tabular layouts. Separate position/role (e.g. "Quality Control Intern"), dates (e.g. "2024-01" to "2024-04"), company (e.g. "Sansera Engineering Ltd"), and location (e.g. "Bengaluru") cleanly. Never glue company and location into one word. Format work experience and certification dates as HTML5 YYYY-MM (e.g. "2024-01").
 5. FRESHER / CANDIDATE WITHOUT INDUSTRY WORK EXPERIENCE: If the candidate has no corporate employment or industry jobs listed in their resume (e.g. they only have academic projects or degrees), set "workExperience": []. Do not invent corporate jobs.
+5b. INTERNSHIP / TRAINING SECTION HANDLING:
+   - Resume sections titled "INTERNSHIP", "INTERNSHIPS", "INTERNSHIP EXPERIENCE", "INDUSTRIAL TRAINING", or "TRAINING" MUST be extracted into "workExperience" (NOT into "projects").
+   - Each internship listed under such a section is a SEPARATE workExperience entry with its own company, position, startDate, endDate, location, and description.
+   - CRITICAL INTERNSHIP TAGGING: If the position/role came from an internship section, the "position" field MUST include the word "Internship" or "Intern" in it (e.g. "Jr Analyst Finance and Accounts — Internship", "Accounting Intern"). If the original title already contains "Intern", keep it as-is.
+   - NEVER merge multiple internships into a single entry.
+   - NEVER place internships into "projects".
 6. KEY PROJECTS & COMPREHENSIVE PROJECTS SEPARATION:
    - Resumes frequently label their project section as "KEY PROJECTS", "PROJECTS", "TECHNICAL PROJECTS", "ACADEMIC PROJECTS", "PERSONAL PROJECTS", or "FEATURED PROJECTS".
    - You MUST ALWAYS extract EVERY SINGLE project from any of these sections into the top-level "projects" array.
