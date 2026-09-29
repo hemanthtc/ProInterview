@@ -59,7 +59,7 @@ async function synthesizeInterviewIntel(input: {
 
 Person being researched: ${input.hrName}
 Company: ${input.company || "Unknown"}
-Candidate target role: ${input.role || "Software Engineer"}
+Candidate target role: ${input.role || "Target Role"}
 Role skills mentioned in the invite: ${skillsLine}
 Email invite snippet (may be empty):
 """

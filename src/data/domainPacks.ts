@@ -6,7 +6,13 @@ export type DomainId =
     | "android"
     | "ios"
     | "data"
-    | "security";
+    | "security"
+    | "vlsi"
+    | "hardware_electrical"
+    | "product"
+    | "finance"
+    | "marketing"
+    | "hr";
 
 export interface DomainPack {
     id: DomainId;
@@ -131,6 +137,90 @@ export const DOMAIN_PACKS: DomainPack[] = [
         codingFlavors: ["crypto primitives concepts", "graphs", "policy engines"],
         systemDesignPrompts: ["Central identity platform", "Secrets rotation service"],
         behavioralThemes: ["Saying no constructively", "Security vs velocity tradeoffs"],
+    },
+    {
+        id: "vlsi",
+        name: "VLSI / Silicon Engineering",
+        description: "RTL design, Verilog/SystemVerilog, synthesis, timing closure, and verification.",
+        focusThemes: ["Static Timing Analysis (STA)", "Setup & Hold Margins", "CDC (Clock Domain Crossing)", "FSM Design", "Low-Power Synthesis"],
+        signatureQuestions: [
+            "Walk through resolving setup vs hold timing violations in a high-speed pipeline.",
+            "Design a synchronizer circuit for multi-bit data crossing asynchronous clock domains.",
+            "Explain clock gating and power gating trade-offs in sub-7nm silicon.",
+        ],
+        codingFlavors: ["Verilog/SystemVerilog testbenches", "FSM state transitions", "gate-level logic"],
+        systemDesignPrompts: ["DMA Controller architecture", "Multi-core cache coherency interconnect", "AXI Bus crossbar switch"],
+        behavioralThemes: ["Tape-out deadline pressure", "Post-silicon debugging collaboration", "Design review trade-offs"],
+    },
+    {
+        id: "hardware_electrical",
+        name: "Hardware & Electrical Systems",
+        description: "Board design, power electronics, embedded microcontrollers, and signal integrity.",
+        focusThemes: ["Power Supply / PMIC", "PCB Layout & EMI", "I2C/SPI/CAN Buses", "Thermal Management", "Sensor Interfacing"],
+        signatureQuestions: [
+            "How do you minimize high-frequency noise and ground loops in mixed-signal 4-layer PCB design?",
+            "Calculate switching losses vs conduction losses in a synchronous buck converter.",
+            "Debug an intermittent signal reflection issue on a high-speed differential bus.",
+        ],
+        codingFlavors: ["C/C++ firmware drivers", "register bitmasking", "DMA buffers"],
+        systemDesignPrompts: ["Battery Management System (BMS)", "IoT industrial edge node", "Automotive motor drive ECU"],
+        behavioralThemes: ["Cross-functional mechanical/firmware handoff", "Component obsolescence sourcing", "Safety compliance certifications"],
+    },
+    {
+        id: "product",
+        name: "Product Management",
+        description: "User empathy, product discovery, PRD definition, roadmap prioritization, and metrics.",
+        focusThemes: ["North Star Metric", "Go-To-Market (GTM)", "A/B Experimentation", "Stakeholder Alignment", "Unit Economics"],
+        signatureQuestions: [
+            "How would you improve retention for a two-sided delivery marketplace?",
+            "Walk through defining and prioritizing features for a V1 product launch under tight engineering bandwidth.",
+            "A key business metric dropped 12% week-over-week. How do you triage root causes?",
+        ],
+        codingFlavors: ["SQL funnel analysis", "metric formulas", "decision trees"],
+        systemDesignPrompts: ["Self-serve onboarding flow", "Product referral & invite loop", "Freemium to paid conversion engine"],
+        behavioralThemes: ["Pushing back on leadership requests", "Resolving engineer-designer disagreements", "Post-mortem on failed launches"],
+    },
+    {
+        id: "finance",
+        name: "Financial Analysis & Valuation",
+        description: "DCF modeling, financial statement analysis, budgeting, and investment evaluation.",
+        focusThemes: ["Three-Statement Modeling", "WACC & DCF Valuation", "Working Capital Optimization", "Variance Analysis", "Capital Budgeting"],
+        signatureQuestions: [
+            "Walk me through how a $10 increase in depreciation flows through the three financial statements.",
+            "Explain the trade-offs between debt financing vs equity financing under high-interest-rate environments.",
+            "How do you normalize EBITDA for a company with irregular capex and one-off restructuring charges?",
+        ],
+        codingFlavors: ["Excel financial functions", "DCF sensitivity tables", "scenario analysis"],
+        systemDesignPrompts: ["Annual corporate budgeting model", "SaaS cohort LTV/CAC reporting model", "Merger financial synergy assessment"],
+        behavioralThemes: ["Presenting financial bad news to leadership", "Navigating high-stakes audit scrutiny", "Cross-department budget negotiations"],
+    },
+    {
+        id: "marketing",
+        name: "Growth & Digital Marketing",
+        description: "Customer acquisition, conversion rate optimization (CRO), attribution, and brand strategy.",
+        focusThemes: ["CAC / LTV Economics", "Attribution Modeling", "Paid & Organic Funnels", "Audience Segmentation", "Retention Loops"],
+        signatureQuestions: [
+            "How do you structure an attribution model for an omnichannel product with a 45-day sales cycle?",
+            "Design a paid acquisition growth campaign for a newly launched B2B SaaS tool with a $50k initial budget.",
+            "Explain your process for diagnosing and fixing a high drop-off rate on a landing page.",
+        ],
+        codingFlavors: ["cohort retention curves", "ROAS calculations", "A/B sample size estimation"],
+        systemDesignPrompts: ["Automated email drip onboarding funnel", "Affiliate partner commission system", "Multi-touch attribution pipeline"],
+        behavioralThemes: ["Justifying ad spend to skeptical CFO", "Creative team vs performance marketing tension", "Pivoting after a flatlined campaign"],
+    },
+    {
+        id: "hr",
+        name: "Human Resources & Talent Management",
+        description: "Talent acquisition, organizational development, employee retention, and workplace culture.",
+        focusThemes: ["Competency Modeling", "Compensation & Banding", "Performance Reviews", "Conflict Resolution", "Retention & Culture"],
+        signatureQuestions: [
+            "How do you design an objective, fair performance evaluation rubric that minimizes reviewer bias?",
+            "Walk through managing a high-stakes workplace conflict between a senior director and team members.",
+            "What strategies would you employ to reduce 90-day new hire turnover in a fast-scaling company?",
+        ],
+        codingFlavors: ["eNPS score calculation", "compensation percentile formulas", "headcount planning models"],
+        systemDesignPrompts: ["Company-wide 360 review cycle", "Standardized structured interview rubric", "Employee onboarding & mentorship journey"],
+        behavioralThemes: ["Delivering executive termination / layoffs with dignity", "Handling sensitive ethics whistleblower reports", "Balancing employee welfare with corporate legal risks"],
     },
 ];
 

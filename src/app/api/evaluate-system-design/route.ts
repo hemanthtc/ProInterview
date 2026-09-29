@@ -46,9 +46,9 @@ export async function POST(req: NextRequest) {
             ? boardSummary
             : sketchDescription || "(none)";
 
-        const designPrompt = `You are a staff engineer evaluating a system-design interview answer.
-Company: ${company || "generic"}
-Role: ${role || "Software Engineer"}
+        const designPrompt = `You are a principal architect and system design evaluator reviewing a candidate's design answer.
+Company: ${company || "Target Organization"}
+Role: ${role || "System Architect / Candidate Target Role"}
 Level: ${level || "intermediate"}
 Prompt given to candidate: ${prompt}
 
@@ -58,8 +58,9 @@ ${notes || "(none)"}
 Candidate interactive whiteboard (drag-drop shapes + freestyle sketch summary):
 ${board}
 
-Score 0-100 for: requirements, capacity_estimation, api_design, data_model, scalability, tradeoffs, communication.
+Score 0-100 for: requirements, capacity_estimation (or scale/sizing), api_design (or interfaces/protocols), data_model (or state/signal flow), scalability, tradeoffs, communication.
 Also list missing pieces and a stronger outline.
+Calibrate evaluation to the domain implied by the prompt (e.g., distributed software, embedded/hardware electronics, or operational workflow).
 Base scores only on what the candidate wrote/drew — do not invent components they did not mention.
 
 Return JSON only:

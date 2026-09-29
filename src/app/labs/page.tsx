@@ -112,7 +112,7 @@ const CATEGORIES: Category[] = [
                 id: "domain_packs",
                 href: "/domains",
                 title: "Domain Packs",
-                desc: "ML, DevOps, Android…",
+                desc: "Tech, Silicon, PM, Finance & more",
                 icon: Layers,
                 color: "lime",
                 badges: ["Public"],

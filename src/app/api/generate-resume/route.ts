@@ -1647,14 +1647,9 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
 
             // Try to split merged internship blobs into individual entries
             // Pattern: detect company boundaries like "CompanyName City" or date patterns
-            const descLines = projDesc.split(/\n/).map((l: string) => l.trim()).filter(Boolean);
-            
             // Try to extract individual internships from merged description
             // Look for patterns like "Company Name City" or "Role MM/YYYY" boundaries
             const internshipEntries: any[] = [];
-            let currentEntry: any = null;
-            const companyPattern = /^([A-Z][a-zA-Z\s]+(?:Infotech|Technologies|Ltd|Pvt|Solutions|Engineerings?|Enterprises|Corp|Inc|LLC|Systems|Services))[\s,.-]+([A-Za-z]+(?:,\s*India)?)/i;
-            const roleDatePattern = /^(.+?)\s+(\d{2}\/\d{4}|\d{4})\s*[-–to\s]+(\d{2}\/\d{4}|\d{4}|present|current)/i;
 
             // Simple heuristic: if description mentions multiple companies, split
             const companyMentions = projDesc.match(/\b([A-Z][a-zA-Z]+\s+(?:Infotech|Technologies|Ltd|Pvt|Solutions|Engineerings?|Enterprises))\b/gi) || [];

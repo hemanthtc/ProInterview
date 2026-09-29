@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
         }
 
         const prompt = `Provide realistic compensation intelligence for negotiation prep (not financial advice).
-Company: ${company || "tech company"}
-Role: ${role || "Software Engineer"}
-Location: ${location || "US remote / major metro"}
+Company: ${company || "Target Company"}
+Role: ${role || "Candidate Target Role"}
+Location: ${location || "Remote / Metro area"}
 Level: ${level || "mid"}
 Current offer (if any): ${currentOffer || "none"}
 

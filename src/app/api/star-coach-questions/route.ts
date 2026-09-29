@@ -59,8 +59,8 @@ export async function POST(req: NextRequest) {
         const onlinePrompt = `You are an expert behavioral interview coach creating STAR practice questions.
 Generate exactly ${count} unique behavioral interview question(s).
 Category: ${categoryLabel}
-Target company style: ${company || "general tech"}
-Target role: ${role || "Software Engineer"}
+Target company style: ${company || "corporate standard"}
+Target role: ${role || "Candidate Target Role"}
 Do NOT repeat: ${exclude.join(" | ") || "(none)"}
 Randomization nonce: ${nonce}
 

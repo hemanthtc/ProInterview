@@ -99,7 +99,7 @@ export function buildPrepPackFromEmail(input: {
         id,
         createdAt: now,
         company: input.company || "Target Company",
-        role: input.role || "Software Engineer",
+        role: input.role || "Target Role",
         hrName: input.hrName,
         interviewDate: input.interviewDate,
         interviewAt,

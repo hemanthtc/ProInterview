@@ -89,5 +89,50 @@ export const RESUME_PRESETS: ResumePreset[] = [
         awards: "CloudScale Systems Engineer of the Month (October 2024)\nWinner of College Cybersecurity Capture the Flag (CTF) (2020)",
         templateId: "modern",
         accentColor: "violet"
+    },
+    {
+        id: "preset_vlsi",
+        roleName: "VLSI & Silicon Design Engineer",
+        title: "VLSI & Embedded Systems Preset",
+        summary: "Hardware and Silicon Design Engineer with 3+ years of experience in digital RTL architecture, Verilog/SystemVerilog, static timing analysis (STA), and ASIC verification. Proven track record delivering zero-defect silicon prototypes and optimizing PPA (power, performance, area) margins.",
+        skills: "Verilog, SystemVerilog, UVM, RTL Design, Static Timing Analysis (STA), Synopsys Design Compiler, Cadence Virtuoso, FPGA (Xilinx Vivado), Microcontrollers (ARM Cortex-M), C/C++, Linux",
+        experience: "Silicon Design Engineer | MicroSilicon Tech (2024 - Present)\n- Designed and simulated high-speed AXI-crossbar interconnect in SystemVerilog, reducing latency by 22% across 8 bus masters.\n- Performed RTL synthesis and constraint definitions in Synopsys DC, achieving timing closure at 850 MHz on a 12nm process.\n- Closed multi-corner setup and hold timing violations across clock domain crossings (CDC) with zero silicon re-spins.\n\nHardware Verification Intern | ChipDesign Labs (2022 - 2024)\n- Developed UVM testbenches and constrained-random tests for a multi-channel DMA controller, boosting functional coverage to 98%.\n- Validated FPGA bitstreams on Xilinx Zynq boards, verifying SPI and I2C peripheral controllers against hardware logic analyzers.",
+        education: "Bachelor of Technology in Electronics & Communication Engineering (2018 - 2022)\nInstitute of Technology | CGPA: 9.1 / 10",
+        projects: "RISC-V 5-Stage Pipelined Processor Core (Verilog & Vivado)\n- Implemented a complete 32-bit RV32I integer core with hazard detection, branch prediction, and forwarding units. Verified execution of compiled C binaries.\n\nLow-Power Digital Filter ASIC (Cadence Toolflow)\n- Designed a 16-tap FIR digital filter architecture with clock gating, reducing dynamic power consumption by 34%.",
+        internships: "VLSI Engineering Intern | Apex Semiconductor (Summer 2021)\n- Synthesized digital modules and generated timing constraint files (SDC) for high-speed memory controller interfaces.",
+        certifications: "Certified SystemVerilog & UVM Verification Specialist (2023)\nArm Accredited Engineer (AAE, 2024)",
+        awards: "Outstanding Engineering Contributor (Q2 2025) – MicroSilicon Tech\nBest Final Year Hardware Project Award (2022)",
+        templateId: "classic",
+        accentColor: "indigo"
+    },
+    {
+        id: "preset_finance",
+        roleName: "Financial Analyst & Associate",
+        title: "Financial Analyst Preset",
+        summary: "Detail-oriented Financial Analyst with 3+ years of experience in dynamic three-statement financial modeling, DCF valuation, variance forecasting, and executive reporting. Adept at translating complex financial data into actionable strategic recommendations.",
+        skills: "Financial Modeling (3-Statement, DCF, LBO), Budgeting & Forecasting, Variance Analysis, Valuation, Excel (Advanced, VBA), Bloomberg Terminal, SQL, PowerBI, Capital Budgeting",
+        experience: "Financial Analyst | Global Capital Partners (2024 - Present)\n- Built comprehensive three-statement rolling forecast models for 6 portfolio business units, cutting variance between projected and actual EBITDA to under 3%.\n- Executed discounted cash flow (DCF) and comparable company valuation models for 4 potential acquisition targets valued at $45M+.\n- Partnered with department leads to review annual OPEX and CAPEX budgets, identifying $420k in operational cost savings.\n\nJunior Financial Analyst | Horizon Financial (2022 - 2024)\n- Prepared monthly executive performance decks and board packs analyzing revenue growth, contribution margins, and working capital cycles.\n- Automated weekly cash-flow reporting using Excel VBA and SQL queries, saving 6 hours of manual spreadsheet reconciliation per week.",
+        education: "Bachelor of Science in Finance & Economics (2018 - 2022)\nUniversity School of Management | GPA: 3.9 / 4.0",
+        projects: "M&A Synergy & Accretion/Dilution Analysis Model\n- Modeled an end-to-end $120M cross-border acquisition scenario, projecting post-merger EPS accretion and debt amortization schedules.\n\nSaaS Unit Economics & Cohort Retention Tool\n- Designed an automated dashboard evaluating CAC payback periods, LTV, net revenue retention (NRR), and churn patterns across customer tiers.",
+        internships: "Financial Planning & Analysis (FP&A) Intern | Retail Corp (Summer 2021)\n- Analyzed seasonal inventory holding costs across regional distribution centers, presenting recommendations to senior finance leadership.",
+        certifications: "CFA Program – Level II Passed (2024)\nFinancial Modeling & Valuation Analyst (FMVA® – CFI, 2023)",
+        awards: "Dean’s Academic Excellence Award in Economics (2022)\nNational University Case Competition Finalist (2021)",
+        templateId: "minimalist",
+        accentColor: "emerald"
+    },
+    {
+        id: "preset_marketing",
+        roleName: "Growth & Digital Marketing Manager",
+        title: "Growth Marketing Manager Preset",
+        summary: "Data-driven Growth Marketing Manager with 4+ years of experience spearheading multi-channel user acquisition, retention loops, performance marketing, and conversion rate optimization (CRO). Proven ability to scale ARR efficiently while driving down customer acquisition cost (CAC).",
+        skills: "Growth Marketing, Performance Advertising (Google Ads, Meta Ads), Conversion Rate Optimization (CRO), A/B Testing, Google Analytics 4, Mixpanel, SEO, Email Marketing (HubSpot), SQL",
+        experience: "Growth Marketing Manager | CloudPeak (2024 - Present)\n- Managed a $1.2M annual performance marketing budget across paid search, paid social, and display, driving a 65% YoY surge in qualified leads while reducing CAC by 24%.\n- Orchestrated rapid iterative A/B testing on landing pages and signup flows, boosting visitor-to-lead conversion rates from 3.1% to 5.4%.\n- Designed multi-touch automated email nurture sequences that improved lead-to-opportunity acceleration by 30%.\n\nDigital Marketing Specialist | ApexMedia (2022 - 2024)\n- Led organic search engine optimization (SEO) initiative, publishing 50+ targeted pillar guides that grew non-brand organic search traffic by 140%.\n- Built real-time acquisition dashboards in Looker Studio and Google Analytics, giving leadership continuous visibility into channel ROAS.",
+        education: "Bachelor of Business Administration (BBA) in Marketing (2018 - 2022)\nSchool of Business | GPA: 3.8 / 4.0",
+        projects: "Omnichannel Product Launch Campaign Strategy\n- Designed and executed a 60-day launch campaign across PR, paid search, and creator partnerships, driving 15k product waitlist signups in month one.\n\nViral Referral Engine Framework\n- Prototyped a customer referral mechanism with tiered rewards, achieving a viral coefficient (K-factor) of 1.25 within 90 days.",
+        internships: "Digital Marketing Intern | VentureStudio (Summer 2021)\n- Created ad creatives and managed A/B copy testing on social media channels, improving ad click-through rate (CTR) by 18%.",
+        certifications: "Google Ads & Google Analytics 4 Certified (2024)\nHubSpot Inbound Marketing Certified (2023)",
+        awards: "Top Marketing Performer Award (2025) – CloudPeak\n1st Place – Collegiate Digital Strategy Hackathon (2021)",
+        templateId: "creative",
+        accentColor: "rose"
     }
 ];

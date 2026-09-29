@@ -128,11 +128,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ rating, feedback, fallback: true });
         };
 
-        const evaluationCriteria = isRealisticMode 
-            ? `You must rigorously evaluate this candidate against the technical capability required for the roles: [${preferredRoles || "Software Engineer"}] AND strictly align your quality expectations with the hiring bar of these companies: [${targetCompanies || "Generic Tech Company"}].`
-            : `You must strictly evaluate this candidate against the technical capabilities and requirements explicitly expected for these technical roles: [${preferredRoles || "Software Engineer"}].`;
+        const targetRolesText = preferredRoles || "Target Professional Role";
+        const targetCompaniesText = targetCompanies || "Target Hiring Organization";
 
-        const systemPrompt = `You are a strict, highly deterministic technical Recruiter/interviewer evaluating a candidate's credentials.
+        const evaluationCriteria = isRealisticMode 
+            ? `You must rigorously evaluate this candidate against the competencies and domain capabilities required for the roles: [${targetRolesText}] AND strictly align your quality expectations with the hiring bar of these organizations: [${targetCompaniesText}].`
+            : `You must strictly evaluate this candidate against the competencies and domain requirements explicitly expected for these roles: [${targetRolesText}].`;
+
+        const systemPrompt = `You are a strict, highly deterministic professional recruiter and hiring evaluator reviewing a candidate's credentials.
 You have been provided with the following candidate details:
 
 ${hasResume ? `[RESUME / CV CONTENT]\n${resumeText}\n---` : "[RESUME / CV CONTENT]\nNot provided\n---"}
@@ -140,7 +143,7 @@ ${hasResume ? `[RESUME / CV CONTENT]\n${resumeText}\n---` : "[RESUME / CV CONTEN
 [PORTFOLIO CHANNELS]
 - GitHub URL: ${github || "Not provided"}
 - LinkedIn URL: ${linkedin || "Not provided"}
-- Portfolio Website URL: ${portfolioUrl || "Not provided"}
+- Portfolio / Website URL: ${portfolioUrl || "Not provided"}
 
 [EXTRACTED PROJECT FILES & WEBSITE CONTENT]
 ${projectText ? projectText.substring(0, 8000) : "No extra project files or web content fetched."}
@@ -149,15 +152,15 @@ ${projectText ? projectText.substring(0, 8000) : "No extra project files or web 
 Your task is to comprehensively analyze all available data sources above.
 Specifically:
 1. If only one source is provided (e.g., only resume, or only portfolio link, or only files), evaluate that source.
-2. If multiple sources are provided (e.g., resume + GitHub profile repo details + portfolio text), evaluate and cross-reference all of them to get an overall picture of the candidate's skills, coding style, professional experience, and capabilities.
+2. If multiple sources are provided (e.g., resume + profile links + project files), evaluate and cross-reference all of them to get an overall picture of the candidate's skills, domain proficiency, methodological rigor, professional experience, and capabilities. Note: For non-developer roles, GitHub is NOT expected and its absence must never penalize the candidate.
 3. Compare the candidate's overall profile against:
-   - Target Roles: [${preferredRoles || "Software Engineer"}]
-   - Target Companies: [${targetCompanies || "Generic Tech Company"}]
+   - Target Roles: [${targetRolesText}]
+   - Target Companies: [${targetCompaniesText}]
 4. Check if they are applying for senior/complex roles or top-tier companies in realistic mode, and adjust the scoring bar accordingly.
 
 Strict Scoring Rubric:
 - Base score starts at 50 if any valid professional source is provided.
-- Increment points (up to 100) based on target company alignment, high-quality project architecture, CS theory depth, or solid engineering experience.
+- Increment points (up to 100) based on target company/role alignment, domain execution quality, depth of experience, and demonstrable project outcomes.
 - Since you do not have live internet access to scan external websites dynamically, you MUST NOT penalize the candidate if their LinkedIn or Portfolio URL contents are not fully retrieved. The presence of the professional link itself is a positive signal.
 - Only drop the score below 50 if the provided inputs are explicitly junk, blank, or highly unprofessional.
 

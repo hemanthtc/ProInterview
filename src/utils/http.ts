@@ -106,10 +106,14 @@ export const aptitudeQuizBodySchema = z.object({
         "domainAssessments",
         "situationalJudgment",
     ]),
+    role: z.string().optional(),
+    domain: z.enum(["tech_software", "core_engineering", "business_management"]).optional(),
 });
 
 export const mockTestBodySchema = z.object({
     aptitudePath: z.enum(["onCampus", "offCampus"]),
+    role: z.string().optional(),
+    domain: z.enum(["tech_software", "core_engineering", "business_management"]).optional(),
 });
 
 export const runCodeBodySchema = z.object({

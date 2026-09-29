@@ -1078,7 +1078,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           });
 
           updatedData.projects = validProjects.map((proj: any, index: number) => {
-            let role = (proj.role || "").replace(/^(?:role|position)\s*[:\-–—]\s*/i, "").replace(/[|–—]/g, "").trim() || "Developer";
+            const role = (proj.role || "").replace(/^(?:role|position)\s*[:\-–—]\s*/i, "").replace(/[|–—]/g, "").trim() || "Developer";
             let name = (proj.name || "")
               .replace(/^(?:project\s*\d*[:\s]|\d+[\.\)]\s*|[•\-*▪▫–—✦✓]\s*)/i, "")
               .replace(/https?:\/\/[^\s]+/gi, "")

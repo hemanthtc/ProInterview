@@ -60,16 +60,19 @@ export async function POST(req: NextRequest) {
             else mappedType = "experienced";
         }
 
+        const targetRole = roles || "Candidate Target Role";
+        const targetOrg = company || "Target Organization";
+
         const recruitmentModeBlock = `
-EVALUATION CONTEXT: ${mappedType.toUpperCase()} PLACEMENT RECRUITMENT DRIVE (Target Role: ${roles || "Software Engineer"} at ${company || "a tech company"}, Level: ${level || "intermediate"})
-- Rubric Calibration:
-  * INTERNSHIP: Grade based on basic programming concepts, code syntax correctness, learning potential, agility, and college projects.
-  * ON-CAMPUS: Grade based on Computer Science core theoretical foundations: OOP concepts, Database Management (Normalization normal forms, ACID, keys), Operating System principles (concurrency, threads vs processes, paging), Networks, and standard Data Structures & Algorithms. Acknowledge academic correctness and foundational logic.
-  * OFF-CAMPUS: Grade based on practical application building, systems integration, code quality, unit/integration testing, API structures, and logical scaling.
-  * EXPERIENCED: Grade based on advanced system design, horizontal scaling, security, distributed system failure recovery, Sprint prioritization, and work history.
+EVALUATION CONTEXT: ${mappedType.toUpperCase()} PLACEMENT RECRUITMENT DRIVE (Target Role: ${targetRole} at ${targetOrg}, Level: ${level || "intermediate"})
+- Rubric Calibration (Calibrated to Target Role: ${targetRole}):
+  * INTERNSHIP: Grade based on baseline domain fundamentals, problem-solving reasoning, learning potential, agility, and college projects.
+  * ON-CAMPUS: Grade based on foundational core academic concepts and subject depth relevant to the candidate's study area and target role.
+  * OFF-CAMPUS: Grade based on practical execution, applied workflows, solution quality, and professional problem-solving.
+  * EXPERIENCED: Grade based on advanced domain/system architecture, scalability, risk trade-offs, stakeholder leadership, and track record.
 `;
 
-        const systemPrompt = `You are a highly analytical, strict, and precise technical interviewer evaluating a candidate's performance.
+        const systemPrompt = `You are a highly analytical, strict, and precise interview evaluator analyzing a candidate's performance.
 
 Transcript:
 ${transcript}
@@ -77,7 +80,7 @@ ${transcript}
 ${recruitmentModeBlock}
 
 Assess their performance fairly and realistically across these vectors:
-- Technical accuracy: Are their answers correct according to the active recruitment style?
+- Domain & Technical accuracy: Are their answers correct, deep, and appropriate for ${targetRole}?
 - Clarity of explanation: Do they communicate complex topics well?
 - Behavior & Professionalism: Evaluate their demeanor. If camera snapshots are provided, consider their eye contact, posture, and facial expressions during the interview.
 

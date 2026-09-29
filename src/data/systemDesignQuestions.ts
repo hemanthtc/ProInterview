@@ -192,6 +192,42 @@ export const SYSTEM_DESIGN_SEED_QUESTIONS: SystemDesignQuestion[] = [
         constraints: ["MFA", "global logout", "third-party IdPs"],
         focusAreas: ["token design", "revocation", "rate limiting"],
     },
+    {
+        id: "seed-bms-hardware",
+        title: "Battery Management System (BMS)",
+        prompt: "Design an electric vehicle (EV) Battery Management System architecture measuring cell voltages, thermal runaway detection, and CAN bus isolation.",
+        difficulty: "hard",
+        topics: ["hardware", "embedded", "safety", "CAN"],
+        constraints: ["ASIL-D safety compliance", "millivolt ADC accuracy", "galvanic isolation"],
+        focusAreas: ["analog front-end (AFE)", "microcontroller redundancy", "CAN transceiver", "thermal dissipation"],
+    },
+    {
+        id: "seed-iot-edge",
+        title: "Industrial IoT Edge Gateway",
+        prompt: "Design an industrial IoT sensor gateway that interfaces with Modbus/RS485 machinery, performs local anomaly detection, and buffers telemetry for cloud sync.",
+        difficulty: "medium",
+        topics: ["embedded", "sensors", "edge", "firmware"],
+        constraints: ["harsh EMI environment", "intermittent cellular connectivity", "power-loss immunity"],
+        focusAreas: ["microcontroller selection", "flash circular buffer", "watchdog timers", "secure boot"],
+    },
+    {
+        id: "seed-supply-chain-arch",
+        title: "Omnichannel Order Fulfillment Architecture",
+        prompt: "Design an end-to-end multi-warehouse order fulfillment and inventory allocation workflow with SLA-based routing and return logistics.",
+        difficulty: "medium",
+        topics: ["operations", "logistics", "workflow", "ERP"],
+        constraints: ["real-time inventory sync", "split shipment optimization", "returns reconciliation"],
+        focusAreas: ["allocation rules engine", "warehouse management sync", "carrier integration", "audit trail"],
+    },
+    {
+        id: "seed-subscription-billing",
+        title: "SaaS Subscription & Invoicing Engine",
+        prompt: "Design a multi-currency recurring billing, invoice dunning, prorated upgrades, and ASC 606 revenue recognition system.",
+        difficulty: "hard",
+        topics: ["fintech", "compliance", "accounting", "lifecycle"],
+        constraints: ["idempotent billing runs", "tax jurisdiction compliance", "audit-proof ledgers"],
+        focusAreas: ["state machine transitions", "double-entry ledger", "PSP webhooks", "dunning schedules"],
+    },
 ];
 
 export function shufflePickQuestions(

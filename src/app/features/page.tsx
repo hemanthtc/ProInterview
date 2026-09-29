@@ -18,6 +18,7 @@ import FeatureToolsGrid from "../../components/features/FeatureToolsGrid";
 import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
+import { ALL_ROLE_OPTIONS, BROAD_COMPANY_OPTIONS, getRoleTopicDescription } from "../../utils/domainClassifier";
 import { createInitialThemeState, persistTheme, type ThemeMode } from "../../utils/theme";
 import { deferEffectWork } from "../../utils/deferEffect";
 import { buildPrepPackFromEmail, extractMeetingUrl } from "../../utils/prepPack";
@@ -157,7 +158,7 @@ function MobileDashboardContent({
                     </div>
                     <div className="space-y-1">
                         <h4 className="text-[11px] font-bold text-white leading-tight">Choose Topics</h4>
-                        <p className="text-[8px] text-white/40 leading-tight">DSA, System Design & Behavioral</p>
+                        <p className="text-[8px] text-white/40 leading-tight">{getRoleTopicDescription(getStorageItem("preferredRoles"))}</p>
                     </div>
                 </div>
 
@@ -327,10 +328,11 @@ function FeaturesContent() {
     const handleStartMockTest = async () => {
         setIsGeneratingMockTest(true);
         try {
+            const userRole = getStorageItem("preferredRoles") || "";
             const res = await fetch("/api/generate-mock-test", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ aptitudePath })
+                body: JSON.stringify({ aptitudePath, role: userRole || undefined })
             });
             if (!res.ok) {
                 throw new Error("Failed to generate test");
@@ -428,10 +430,11 @@ function FeaturesContent() {
         setQuizSelectedAnswersList([]);
 
         try {
+            const userRole = getStorageItem("preferredRoles") || "";
             const res = await fetch("/api/aptitude-quiz", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ category: quizKey })
+                body: JSON.stringify({ category: quizKey, role: userRole || undefined })
             });
 
             if (!res.ok) {
@@ -4707,14 +4710,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                     <div className="pt-0.5 z-50 relative">
                                                         <RoleSelect
                                                             theme={theme}
-                                                            options={[
-                                                                { value: 'Frontend Developer', label: 'Frontend Developer' },
-                                                                { value: 'Backend Developer', label: 'Backend Developer' },
-                                                                { value: 'Full Stack Engineer', label: 'Full Stack Engineer' },
-                                                                { value: 'DevOps Engineer', label: 'DevOps Engineer' },
-                                                                { value: 'Mobile App Developer', label: 'Mobile App Developer' },
-                                                                { value: 'AI/ML Engineer', label: 'AI/ML Engineer' }
-                                                            ]}
+                                                            options={ALL_ROLE_OPTIONS}
                                                             maxLimit={3}
                                                             placeholder="Search or select up to 3 target roles..."
                                                             onChange={(selected: string[]) => setPreferredRoles(selected)}
@@ -4724,16 +4720,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                     <div className="pt-0.5 z-40 relative">
                                                         <CompanySelect
                                                             theme={theme}
-                                                            options={[
-                                                                { value: 'Google', label: 'Google' },
-                                                                { value: 'Amazon', label: 'Amazon' },
-                                                                { value: 'Microsoft', label: 'Microsoft' },
-                                                                { value: 'Meta', label: 'Meta' },
-                                                                { value: 'Apple', label: 'Apple' },
-                                                                { value: 'TCS', label: 'TCS' },
-                                                                { value: 'Stripe', label: 'Stripe' },
-                                                                { value: 'Uber', label: 'Uber' }
-                                                            ]}
+                                                            options={BROAD_COMPANY_OPTIONS}
                                                             maxLimit={3}
                                                             placeholder="Search or select up to 3 target companies..."
                                                             onChange={(selected: string[]) => setTargetCompanies(selected)}

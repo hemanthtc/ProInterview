@@ -3,27 +3,64 @@ import { cachedGenerate, parseJsonFromModel, promptCacheKey } from "@/utils/gemi
 import { rateLimit } from "@/utils/rateLimit";
 import { getVerifiedSession } from "@/utils/auth";
 import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
+import { getDomainForRole } from "@/utils/domainClassifier";
 
 const PANELISTS = [
-    { id: "tech_lead", name: "Alex Chen", role: "Tech Lead", style: "Deep technical architecture, code quality, edge cases, data structures, and framework internals" },
-    { id: "em", name: "Jordan Lee", role: "Engineering Manager", style: "STAR behavioral stories, team alignment, technical debt vs velocity, conflict resolution" },
-    { id: "bar_raiser", name: "Sam Okonkwo", role: "Bar Raiser", style: "High-rigor engineering standards, 10x scalability, failure recovery, security, trade-off regrets" },
+    { id: "tech_lead", name: "Alex Chen", role: "Domain / Technical Lead", style: "Deep domain architecture, execution quality, edge cases, methodology, and technical fundamentals" },
+    { id: "em", name: "Jordan Lee", role: "Hiring Manager", style: "STAR behavioral stories, team alignment, stakeholder communication, conflict resolution" },
+    { id: "bar_raiser", name: "Sam Okonkwo", role: "Bar Raiser", style: "High-rigor standards, 10x scalability, risk mitigation, trade-off regrets, resilience" },
 ];
 
 const DYNAMIC_PANELIST_QUESTIONS: Record<string, Record<number, (comp: string, role: string) => string>> = {
     tech_lead: {
-        0: (comp, role) => `Welcome! As Tech Lead at ${comp}, I'd like to dive into your technical depth for the ${role} position. Could you walk me through the system architecture of a complex feature or service you built recently, detailing data flow and key component interactions?`,
-        1: (_comp, _role) => `Thanks. In that architecture, how did you handle data consistency, database indexing/caching strategies, and error boundaries under heavy concurrent user traffic?`,
-        2: (_comp, _role) => `Before I pass control to Jordan, tell me about your strategy for code reviews, testing (unit, integration, and contract tests), and avoiding technical debt in production releases.`
+        0: (comp, role) => {
+            const domain = getDomainForRole(role);
+            if (domain === "business_management") {
+                return `Welcome! As Functional Lead at ${comp}, I'd like to dive into your domain expertise for the ${role} position. Could you walk me through the end-to-end execution of a complex project, strategy, or model you delivered recently, detailing key deliverables and metrics?`;
+            }
+            if (domain === "core_engineering") {
+                return `Welcome! As Lead Engineer at ${comp}, I'd like to dive into your technical depth for the ${role} position. Could you walk me through the design architecture of a complex hardware, circuit, or mechanical system you engineered recently, detailing key parameters and constraints?`;
+            }
+            return `Welcome! As Tech Lead at ${comp}, I'd like to dive into your technical depth for the ${role} position. Could you walk me through the system architecture of a complex feature or service you built recently, detailing data flow and key component interactions?`;
+        },
+        1: (_comp, role) => {
+            const domain = getDomainForRole(role);
+            if (domain === "business_management") {
+                return `Thanks. In that project, how did you handle risk mitigation, metric deviations, and cross-department constraints under tight deadlines?`;
+            }
+            if (domain === "core_engineering") {
+                return `Thanks. In that design, how did you handle thermal/power margins, tolerance constraints, and signal/structural integrity under extreme operational conditions?`;
+            }
+            return `Thanks. In that architecture, how did you handle data consistency, database indexing/caching strategies, and error boundaries under heavy concurrent user traffic?`;
+        },
+        2: (_comp, role) => {
+            const domain = getDomainForRole(role);
+            if (domain === "business_management") {
+                return `Before I pass control to Jordan, tell me about your approach to quality assurance, validation against business requirements, and avoiding operational drift.`;
+            }
+            if (domain === "core_engineering") {
+                return `Before I pass control to Jordan, tell me about your strategy for design verification, prototype testing against standards, and preventing defects prior to release.`;
+            }
+            return `Before I pass control to Jordan, tell me about your strategy for code reviews, testing (unit, integration, and contract tests), and avoiding technical debt in production releases.`;
+        }
     },
     em: {
-        3: (_comp, _role) => `Thanks Alex. Moving to engineering execution—tell me about a situation at work where sprint priorities shifted or requirements changed unexpectedly. How did you communicate with stakeholders and balance velocity versus code quality?`,
-        4: (_comp, _role) => `Describe a scenario where engineers on your team had conflicting technical opinions on architecture. How did you facilitate consensus and keep project delivery on track?`,
-        5: (_comp, _role) => `How do you approach onboarding new team members, mentoring junior developers, and keeping team delivery velocity high without causing developer burnout?`
+        3: (_comp, _role) => `Thanks Alex. Moving to project execution—tell me about a situation at work where priorities shifted or requirements changed unexpectedly. How did you communicate with stakeholders and balance speed versus quality?`,
+        4: (_comp, _role) => `Describe a scenario where colleagues or team members had conflicting opinions on an important strategic or technical decision. How did you facilitate consensus and keep delivery on track?`,
+        5: (_comp, _role) => `How do you approach onboarding new team members, mentoring colleagues, and keeping high team morale without causing burnout?`
     },
     bar_raiser: {
-        6: (_comp, _role) => `Great context. As Bar Raiser, I focus on long-term scalability and engineering resilience. If your core service experienced a 10x sudden spike in traffic overnight, where would the current architecture fail first, and how would you redesign it?`,
-        7: (_comp, _role) => `Looking back at your engineering career, what is one major design or architectural trade-off decision you regret making, and what did you learn about security and system resilience from it?`
+        6: (_comp, role) => {
+            const domain = getDomainForRole(role);
+            if (domain === "business_management") {
+                return `Great context. As Bar Raiser, I focus on long-term sustainability and operational resilience. If your product or business unit experienced a sudden 10x surge in volume or a major market disruption overnight, where would the current process fail first, and how would you redesign it?`;
+            }
+            if (domain === "core_engineering") {
+                return `Great context. As Bar Raiser, I focus on long-term reliability and engineering resilience. If your core system was subjected to 10x unexpected operating stress or environmental extremes, what component would fail first, and how would you harden the design?`;
+            }
+            return `Great context. As Bar Raiser, I focus on long-term scalability and engineering resilience. If your core service experienced a 10x sudden spike in traffic overnight, where would the current architecture fail first, and how would you redesign it?`;
+        },
+        7: (_comp, _role) => `Looking back at your professional career, what is one major design, strategic, or architectural trade-off decision you regret making, and what did you learn about resilience and long-term risk from it?`
     }
 };
 
@@ -302,8 +339,8 @@ ${ANTI_LEAK_SUFFIX}`;
         }
 
         // Turn-indexed dynamic question selection (Turn 0 through Turn 7)
-        const role = body.role || "Software Engineer";
-        const company = body.company || "a tech company";
+        const role = body.role || "Candidate Target Role";
+        const company = body.company || "Target Organization";
 
         const turnPool = DYNAMIC_PANELIST_QUESTIONS[panelist.id] || DYNAMIC_PANELIST_QUESTIONS.tech_lead;
         const fn = turnPool[assistantTurns] || turnPool[0];

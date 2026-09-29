@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
         const parsed = await parseJsonBody(req, mockTestBodySchema);
         if (!parsed.ok) return parsed.response;
-        const { aptitudePath } = parsed.data;
+        const { aptitudePath, role, domain } = parsed.data;
 
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
@@ -39,28 +39,30 @@ export async function POST(req: NextRequest) {
         });
 
         const isCampus = aptitudePath === "onCampus";
+        const candidateContext = role ? `Target Role: ${role}` : domain ? `Discipline: ${domain}` : "Engineering & Professional Candidate";
 
-        const systemPrompt = `You are an expert interviewer creating a premium mock placement test for engineering candidates.
+        const systemPrompt = `You are an expert interviewer creating a premium mock placement assessment for job candidates.
+Candidate Context: ${candidateContext}
 Your task is to generate a comprehensive placement test in strict JSON format.
 
-Path Type: ${isCampus ? "On-Campus (Targeting Easy-to-Moderate level general aptitude & foundational coding)" : "Off-Campus (Targeting Moderate-to-High level domain technology & advanced problem-solving)"}
+Path Type: ${isCampus ? "On-Campus (Targeting Easy-to-Moderate level aptitude, logic & foundational problem solving)" : "Off-Campus (Targeting Moderate-to-High level domain competency & advanced problem-solving)"}
 
 You MUST generate exactly:
 - 25 Multiple-Choice Questions (MCQs) with 4 options each, categorized based on the path rules. Keep explanations concise.
-- 3 Coding Questions with description, constraints, test cases, and starter templates. Keep starter templates compact.
+- 3 Practical/Coding Problem-Solving Questions with description, constraints, test cases, and starter templates (in JavaScript, Python, or standard pseudo-code). Keep starter templates compact.
 
 Path Content Rules:
 1. On-Campus Assessments:
-   - MCQs: Generate a mix of:
-     * Quantitative Aptitude (math, speed-distance, probability, etc.)
+   - MCQs: Generate a balanced mix of:
+     * Quantitative Aptitude (math, speed-distance, probability, ratios, etc.)
      * Logical Reasoning & Pattern Recognition
-     * Foundational CS Technical Questions (basic DSA, programming logic, networks, SQL query basics)
-   - Coding: Easy-to-Moderate algorithms (string operations, arrays, basic hash maps).
+     * Foundational Domain/Technical Questions (calibrated to ${candidateContext}: CS/code logic for software, circuits/mechanics for core, or data/financial reasoning for business)
+   - Practical/Coding: 3 foundational algorithmic or numerical problem-solving tasks suitable for the candidate's level.
 2. Off-Campus Assessments:
    - MCQs: Generate a mix of:
-     * Domain-Specific Technical (system design, caching, database indexes, concurrent program execution, cloud architectures)
-     * Situational Judgment (workplace simulations, client demands, code review comments, engineering ethics)
-   - Coding: Moderate-to-High complexity algorithms (dynamic programming, graphs, sliding window, LRU caching design).
+     * Domain-Specific Competencies (system architecture/caching for tech, hardware/control systems for core, or business strategy/metrics for business roles)
+     * Situational Judgment (workplace simulations, client demands, cross-functional alignment, professional ethics)
+   - Practical/Coding: 3 applied problem-solving challenges (algorithms, data manipulation, or scenario logic).
 
 You MUST return a single, valid JSON block.
 Do NOT wrap the JSON in Markdown formatting other than optional JSON blocks.

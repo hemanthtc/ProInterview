@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
         const parsed = await parseJsonBody(req, aptitudeQuizBodySchema);
         if (!parsed.ok) return parsed.response;
-        const { category } = parsed.data;
+        const { category, role, domain } = parsed.data;
 
         const API_KEY = process.env.GEMINI_API_KEY;
         if (!API_KEY) {
@@ -47,16 +47,18 @@ export async function POST(req: NextRequest) {
         });
 
         const categoryLabel = CATEGORY_LABELS[category];
+        const targetContext = role ? `Target Role: ${role}` : domain ? `Career Domain: ${domain}` : "General Professional Assessment";
 
-        const systemPrompt = `You are an expert tutor preparing candidates for technical interviews and aptitude assessments.
+        const systemPrompt = `You are an expert tutor preparing candidates for professional interviews and aptitude assessments.
+Candidate Context: ${targetContext}
 Your task is to generate exactly 3 challenging and highly relevant multiple-choice practice questions for the category: "${categoryLabel}".
 
 Generate questions based on this category:
 - Logical Reasoning: Coding-decoding, blood relations, seating arrangements, data interpretation, logic puzzles.
 - Quantitative Aptitude: Time speed & distance, permutations & probability, profit/loss, speed math, percentage, interest.
-- Technical Coding: Output prediction, data structures, recursion, basic complexity, algorithms (JavaScript/Python/Java style).
-- Domain Assessments: AVL trees, balancing, system design (sharding, caching, microservices), complex databases, edge cases, scaling.
-- Situational Judgment: Workplace scenarios, conflict resolution, project prioritization, communication, code review ethics.
+- Technical Coding: Output prediction, data structures, recursion, basic complexity, algorithms (adapt to role or standard Python/JavaScript/C).
+- Domain Assessments: Relevant to ${targetContext}. If software: data structures, caching, databases, system architecture. If core engineering: digital circuits, timing, embedded microcontrollers, mechanics/signals. If business/management: unit economics, valuation, product metrics, operational workflows.
+- Situational Judgment: Workplace scenarios, conflict resolution, project prioritization, stakeholder communication, professional ethics.
 
 You MUST return a single, valid JSON block.
 Do NOT wrap the JSON in Markdown formatting other than optional JSON blocks.

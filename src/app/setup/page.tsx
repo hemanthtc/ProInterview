@@ -8,6 +8,7 @@ import { UploadCloud, FileText, Loader2, Globe, Cpu, ArrowLeft, Sparkles } from 
 import CompanySelect from "../../components/CompanySelect";
 import RoleSelect from "../../components/RoleSelect";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
+import { ALL_ROLE_OPTIONS, BROAD_COMPANY_OPTIONS } from "../../utils/domainClassifier";
 
 export default function SetupPage() {
     const [files, setFiles] = useState<File[]>([]);
@@ -667,15 +668,7 @@ export default function SetupPage() {
                 <div className="mt-8 z-50 relative">
                     <RoleSelect
                         theme={theme}
-                        options={[
-                            { value: 'Frontend Developer', label: 'Frontend Developer' },
-                            { value: 'Backend Developer', label: 'Backend Developer' },
-                            { value: 'Full Stack Engineer', label: 'Full Stack Engineer' },
-                            { value: 'Data Scientist', label: 'Data Scientist' },
-                            { value: 'DevOps Engineer', label: 'DevOps Engineer' },
-                            { value: 'UI/UX Designer', label: 'UI/UX Designer' },
-                            { value: 'Product Manager', label: 'Product Manager' }
-                        ]}
+                        options={ALL_ROLE_OPTIONS}
                         maxLimit={3}
                         placeholder="Search or specify up to 3 target roles..."
                         defaultValue={preferredRoles.map((r) => ({ value: r, label: r }))}
@@ -686,16 +679,7 @@ export default function SetupPage() {
                 <div className="mt-8 z-40 relative">
                     <CompanySelect 
                         theme={theme}
-                        options={[
-                            { value: 'Google', label: 'Google' },
-                            { value: 'Amazon', label: 'Amazon' },
-                            { value: 'Microsoft', label: 'Microsoft' },
-                            { value: 'Meta', label: 'Meta' },
-                            { value: 'Apple', label: 'Apple' },
-                            { value: 'TCS', label: 'TCS' },
-                            { value: 'Stripe', label: 'Stripe' },
-                            { value: 'Uber', label: 'Uber' }
-                        ]}
+                        options={BROAD_COMPANY_OPTIONS}
                         maxLimit={3}
                         placeholder="Search or select up to 3 target companies..."
                         defaultValue={targetCompanies.map((c) => ({ value: c, label: c }))}

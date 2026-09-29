@@ -15,6 +15,7 @@ import { checkAndIncrementUsage } from "@/utils/usageMeter";
 import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
 import { enforceRateLimit, jsonError } from "@/utils/http";
 import { redactPii } from "@/utils/pii";
+import { isSoftwareOrCodingRole } from "@/utils/domainClassifier";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
@@ -53,10 +54,11 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        const safeCompany = company || "a modern tech company";
-        const safeRoles = roles || "Software Engineer";
+        const safeCompany = company || "the hiring organization";
+        const safeRoles = roles || "Candidate Target Role";
         const safeLevel = level || "intermediate";
         const useSarvam = String(provider || "").toLowerCase() === "sarvam";
+        const isCodingRole = isSoftwareOrCodingRole(safeRoles);
 
         const bank = companyClone !== false ? resolveCompanyBank(safeCompany) : null;
         const companyCloneBlock = bank ? `\n\n${companyBankPromptBlock(bank)}\n` : "";
@@ -86,16 +88,16 @@ export async function POST(req: NextRequest) {
 
         const recruitmentModeBlock = `
 ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
-- Adopt the following specific focus based on this mapped type:
-  * INTERNSHIP: Calibrate questions to candidate's baseline programming skills, learning agility, basic code syntax, and university/college projects.
-  * ON-CAMPUS: Focus on Computer Science core theoretical foundations (Object-Oriented Programming (OOP) concepts, Database Management Systems (DBMS Normalization, ACID), Operating Systems (Concurrency, deadlocks, virtual memory), Computer Networks (TCP/UDP, HTTP, DNS), basic Data Structures & Algorithms, and college projects).
-  * OFF-CAMPUS: Focus on practical application building, systems integration, code quality, unit/integration testing patterns, API design, and logical scaling.
-  * EXPERIENCED: Focus on advanced system designs, scalability, performance bottlenecks, distributed architectural trade-offs, Sprint delivery shifts, mentorship, and extensive previous work history.
+- Adopt the following specific focus based on this mapped type and target role (${safeRoles}):
+  * INTERNSHIP: Calibrate questions to candidate's baseline skills, learning agility, academic foundations, and university/college projects.
+  * ON-CAMPUS: Focus on foundational core theoretical clarity and academic concepts relevant to their field of study and college projects (CS/data concepts for tech, circuit/mechanical/civil principles for core engineering, market/analytical/financial reasoning for business).
+  * OFF-CAMPUS: Focus on practical application building, systems integration, domain execution quality, and professional problem-solving aligned to the target company.
+  * EXPERIENCED: Focus on advanced system designs, domain scalability, architectural trade-offs, cross-functional mentorship, and previous work track record.
 - Ground all questions in the candidate's education background, skills and projects from their resume, tailored to the target role and company.
 `;
 
         const difficultyInstruction = `INTERVIEW DIFFICULTY LEVEL: ${safeLevel.toUpperCase()}
-- You MUST calibrate all your technical questions, coding challenges, behavioral scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.`;
+- You MUST calibrate all your questions, domain scenarios, and evaluation depth strictly to the ${safeLevel.toUpperCase()} level.`;
 
         const candidateProfileInfo = await buildCandidateProfileInfo(
             typeof resume === "string" ? redactPii(resume) : resume,
@@ -106,7 +108,11 @@ ACTIVE INTERVIEW TYPE: ${mappedType.toUpperCase()}
             portfolioFeedback
         );
 
-        const systemPrompt = `You are a professional online technical interviewer dynamically evaluating a candidate applying for: ${safeRoles} at ${safeCompany}.
+        const codingRule = isCodingRole
+            ? `3. WHEN YOU ASK FOR COMPOSING OR EDITING CODE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CODE] ". Frame the coding challenge realistically like a live senior technical interviewer: provide a concrete practical scenario or bug/feature context, state clear expected requirements/edge cases (e.g. reference mutation, boundary values, or performance trade-offs), and optionally provide a clean starter snippet or function signature inside a markdown code block (\`\`\`language ... \`\`\`) at the end of your message so the candidate can directly edit it in their code editor.`
+            : `3. The candidate's target role (${safeRoles}) is NOT a software coding role. You MUST NOT ask them to write software programming code or enter [MODE:CODE]. Instead, ask applied domain scenario questions, case analyses, design trade-offs, numerical/financial estimations, or behavioral drills using [MODE:CHAT] or [MODE:DRAW].`;
+
+        const systemPrompt = `You are a professional online interviewer dynamically evaluating a candidate applying for: ${safeRoles} at ${safeCompany}.
 
 ACTIVE PARAMETERS:
 - Target Role: ${safeRoles}
@@ -126,14 +132,14 @@ INTERVIEW ORCHESTRATION FLOW:
 
 CRITICAL RULES FOR RESPONSES:
 0. ASK ONLY ONE QUESTION AT A TIME. After you ask a single question, STOP and wait for the candidate's answer. NEVER ask multiple questions in the same response.
-1. STICK TO NATURAL CONVERSATIONAL PHRASING. Phrase your questions smoothly like a real human (e.g. "Tell me about your last project" or "How did you design the database structure for that application?").
+1. STICK TO NATURAL CONVERSATIONAL PHRASING. Phrase your questions smoothly like a real human.
 2. STRICTLY NO MARKDOWN SYMBOLS: You MUST NOT output any markdown elements in your spoken text. This means:
    - NO ASTERISKS at all (do NOT use ** or * for bolding, italics, or list bullets).
    - NO HASHES (do NOT use # for headers).
    - NO BACKTICKS in conversational parts (do NOT write code blocks in plain speech).
    - All conversational responses must be plain, clean, unformatted sentences.
-3. WHEN YOU ASK FOR COMPOSING OR EDITING CODE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CODE] ". Frame the coding challenge realistically like a live senior technical interviewer: provide a concrete practical scenario or bug/feature context, state clear expected requirements/edge cases (e.g. reference mutation, boundary values, or performance trade-offs), and optionally provide a clean starter snippet or function signature inside a markdown code block (\`\`\`language ... \`\`\`) at the end of your message so the candidate can directly edit it in their code editor.
-4. WHEN YOU ASK FOR SYSTEM ARCHITECTURE, DATABASE SCHEMA (ERD), CLOUD TOPOLOGY, OR CIRCUIT DIAGRAMS, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:DRAW] ". Clearly state the architectural goals and key components (e.g. services, databases, caches, queues, load balancers, or logic gates) and ask the candidate to visually diagram them on the interactive whiteboard.
+${codingRule}
+4. WHEN YOU ASK FOR SYSTEM ARCHITECTURE, WORKFLOW DIAGRAMS, DATABASE SCHEMA, SCHEMATICS, OR TOPOLOGY, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:DRAW] ". Clearly state the architectural goals and key components and ask the candidate to visually diagram them on the interactive whiteboard.
 5. OTHERWISE, BEGIN YOUR RESPONSE WITH EXACTLY "[MODE:CHAT] ".
 6. If you decide to terminate the interview, prepend "[TERMINATE] ".
 7. DO NOT say "Welcome" or "Hello" unless the conversation history is completely empty.

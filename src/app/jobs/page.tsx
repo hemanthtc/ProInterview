@@ -91,7 +91,7 @@ interface TrackedJob {
     updatedAt?: string;
 }
 
-const QUICK_LOCATIONS = ["Bangalore", "Hyderabad", "Pune", "Remote India"];
+const QUICK_LOCATIONS = ["Remote", "Bangalore", "San Francisco", "London", "Hyderabad", "New York", "Remote India"];
 
 export default function JobsPage() {
     const router = useRouter();

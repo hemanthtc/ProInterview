@@ -53,6 +53,32 @@ export const COACHES: CoachProfile[] = [
         bio: "Pairs AI film-room gaps with human retakes on ML system design and production metrics.",
         durationMin: 45,
     },
+    {
+        id: "coach_elena",
+        name: "Elena Rostova",
+        headline: "Principal Hardware Architect · Silicon & Embedded",
+        domains: ["vlsi", "hardware", "embedded"],
+        companies: ["Intel", "Qualcomm"],
+        rateUsd: 105,
+        rateInr: 5999,
+        rating: 4.9,
+        slots: ["Mon 17:00 CET", "Thu 19:00 CET"],
+        bio: "Specializes in digital architecture, RTL verification, timing closure, and silicon bring-up mock interviews.",
+        durationMin: 45,
+    },
+    {
+        id: "coach_rohit",
+        name: "Rohit Sharma",
+        headline: "VP of Product & Strategy · Ex-McKinsey & Stripe",
+        domains: ["product", "business", "behavioral"],
+        companies: ["Stripe", "McKinsey"],
+        rateUsd: 115,
+        rateInr: 6499,
+        rating: 4.8,
+        slots: ["Wed 18:30 IST", "Sat 15:00 IST"],
+        bio: "Prepares candidates for PM execution, product sense, unit economics, and executive bar-raiser rounds.",
+        durationMin: 45,
+    },
 ];
 
 export function getCoach(id: string): CoachProfile | undefined {
