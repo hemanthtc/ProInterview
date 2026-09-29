@@ -163,8 +163,8 @@ export async function generateWithFallback(
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
     const primaryModel = options.model || "gemini-2.5-flash";
-    // Total execution budget across all candidate models (capped to 20s to ensure safety under AWS Amplify/Serverless 29s limit)
-    const overallTimeout = Math.min(options.timeout ?? 18000, 22000);
+    // Total execution budget across all candidate models (respect caller's timeout up to 45s for deep generations like resume synthesis)
+    const overallTimeout = Math.min(options.timeout ?? 25000, 45000);
     const deadline = Date.now() + overallTimeout;
     const now = Date.now();
 
@@ -221,7 +221,10 @@ export async function generateWithFallback(
                 console.warn(`[Gemini API] Insufficient time remaining (${remainingTime}ms) before serverless deadline; terminating model loop.`);
                 break;
             }
-            const thisModelTimeout = Math.min(options.timeout ? Math.min(options.timeout, 10000) : 9000, remainingTime);
+            const thisModelTimeout = Math.min(
+                options.timeout ? Math.min(options.timeout, 28000) : 15000,
+                remainingTime
+            );
 
             try {
                 const model = genAI.getGenerativeModel(

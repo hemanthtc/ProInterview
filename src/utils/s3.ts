@@ -19,7 +19,19 @@ function env(name: string): string | undefined {
 }
 
 export function isS3Configured(): boolean {
-    return Boolean(env("S3_BUCKET") || env("AWS_S3_BUCKET"));
+    const bucket = env("S3_BUCKET") || env("AWS_S3_BUCKET");
+    if (!bucket || bucket === "your-bucket-name" || bucket.startsWith("your-bucket")) {
+        return false;
+    }
+    const accessKey = env("S3_ACCESS_KEY_ID") || env("AWS_ACCESS_KEY_ID");
+    if (accessKey && (accessKey === "your_s3_access_key_id" || accessKey.startsWith("your_s3") || accessKey.startsWith("your_access_key"))) {
+        return false;
+    }
+    const secretKey = env("S3_SECRET_ACCESS_KEY") || env("AWS_SECRET_ACCESS_KEY");
+    if (secretKey && (secretKey === "your_s3_secret_access_key" || secretKey.startsWith("your_s3"))) {
+        return false;
+    }
+    return true;
 }
 
 export function getS3Bucket(): string {
@@ -163,11 +175,23 @@ export async function deleteObject(key: string): Promise<void> {
 }
 
 export async function pingS3(): Promise<{ ok: boolean; bucket: string; region: string; error?: string }> {
+    if (!isS3Configured()) {
+        return { ok: false, bucket: "", region: "", error: "S3 is not configured" };
+    }
     const bucket = getS3Bucket();
     const region = getS3Region();
     try {
-        await getS3Client().send(new HeadBucketCommand({ Bucket: bucket }));
-        return { ok: true, bucket, region };
+        const client = getS3Client();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        try {
+            await client.send(new HeadBucketCommand({ Bucket: bucket }), {
+                abortSignal: controller.signal
+            });
+            return { ok: true, bucket, region };
+        } finally {
+            clearTimeout(timeoutId);
+        }
     } catch (e) {
         return {
             ok: false,
