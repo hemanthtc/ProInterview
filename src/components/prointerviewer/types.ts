@@ -69,6 +69,7 @@ export interface Certification {
   issuer: string;
   date: string;
   link: string;
+  description?: string;
   hidden?: boolean;
 }
 

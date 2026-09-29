@@ -1349,6 +1349,17 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
                   </div>
                 </div>
 
+                <div className="form-group">
+                  <label className="form-label">Scope / Workshop Details (Optional)</label>
+                  <textarea
+                    className="form-textarea"
+                    value={cert.description || ""}
+                    onChange={(e) => updateListField('certifications', cert.id, 'description', e.target.value)}
+                    placeholder="Hands-on experience, key competencies, or workshop scope..."
+                    rows={2}
+                  />
+                </div>
+
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label className="form-label">Credential URL Link</label>
                   <input
@@ -1363,7 +1374,7 @@ export const ResumeForm: React.FC<ResumeFormProps> = ({ data, onChangeData, onAI
 
             <button 
               className="btn-add"
-              onClick={() => addListItem('certifications', { name: '', issuer: '', date: '', link: '' } as Certification)}
+              onClick={() => addListItem('certifications', { name: '', issuer: '', date: '', link: '', description: '' } as Certification)}
             >
               <Plus size={14} />
               <span>Add Certification</span>

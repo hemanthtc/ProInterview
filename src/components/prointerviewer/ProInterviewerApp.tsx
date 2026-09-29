@@ -1094,12 +1094,17 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         }
 
         if (Array.isArray(result.certifications) && result.certifications.length > 0) {
-          updatedData.certifications = result.certifications.map((cert: any, index: number) => ({
+          const validCerts = result.certifications.filter((c: any) => {
+            const name = (c.name || "").trim();
+            return name && !/^(&|and)\s*workshops/i.test(name) && !/^(certifications|workshops|licenses|certificates)$/i.test(name.toLowerCase());
+          });
+          updatedData.certifications = validCerts.map((cert: any, index: number) => ({
             id: `cert-ai-${Date.now()}-${index}`,
             name: cert.name || "",
             issuer: cert.issuer || "",
             date: cert.date || "",
-            link: cert.link || ""
+            link: cert.link || "",
+            description: cert.description || ""
           }));
         } else if (isUploadingResume) {
           updatedData.certifications = [];
@@ -1164,7 +1169,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       formData.append('missingSections', 'summary,workExperience,education,projects,skills,languages,certifications,customSections');
       
       const optimizationPrompt = {
-        instructions: `Optimize this resume to be strictly ATS-compliant. Budget the length to fit within exactly ${atsTargetPages} page(s). Under 'projects', summarize each project in exactly one line describing the content and the main challenges/errors resolved. Under 'workExperience', write high-impact bulleted achievements.`,
+        instructions: `Optimize this resume to be strictly ATS-compliant. Budget the length to fit within exactly ${atsTargetPages} page(s).
+CRITICAL RULES FOR DESCRIPTIONS:
+1. SUMMARY: If a professional summary is missing or empty, generate a compelling, professional, 2-3 sentence ATS-friendly summary based on candidate skills, title, and projects. If already present, optimize and polish it for keyword strength and impact.
+2. PROJECTS: For every project, if the description is missing or empty, generate a realistic, high-impact description (1-2 punchy sentences or bullet points) explaining what was engineered, the key architecture, features, and tools used based on the project title and technical domain. If a description is already present, optimize it with strong action verbs and technical keywords.
+3. WORK EXPERIENCE: For every work experience, if the description is missing or empty, generate standard, realistic bulleted achievements and responsibilities matching the job title and company. If already present, optimize and quantify the bullet points.
+4. CERTIFICATIONS & WORKSHOPS: If the description is missing, generate a concise 1-line description of the skills or topics covered. If present, polish it.
+5. EDUCATION: If description is missing and relevant coursework/achievements fit, add relevant academic coursework or honors. If present, polish it.
+6. ABSOLUTE ZERO DELETION: Never drop any existing project, job, education entry, certification, or skill. Preserve all items.`,
         existingResume: resumeData
       };
       formData.append('userInput', JSON.stringify(optimizationPrompt));
@@ -1279,7 +1291,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                   endDate: matched.endDate || origEdu.endDate,
                   cgpa: matched.cgpa || origEdu.cgpa,
                   percentage: matched.percentage || origEdu.percentage,
-                  description: matched.description || origEdu.description
+                  description: (matched.description && matched.description.trim()) ? matched.description : origEdu.description
                 };
               }
               return origEdu;
@@ -1387,7 +1399,8 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
                 name: matched.name || origCert.name,
                 issuer: matched.issuer || origCert.issuer,
                 date: matched.date || origCert.date,
-                link: matched.link || origCert.link
+                link: matched.link || origCert.link,
+                description: (matched.description && matched.description.trim()) ? matched.description : origCert.description
               } : origCert;
             });
           } else {

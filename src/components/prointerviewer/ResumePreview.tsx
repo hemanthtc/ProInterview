@@ -1477,15 +1477,28 @@ export const ResumePreview: React.FC<ResumePreviewProps> = ({ data, style, onCha
                 <div className="resume-item-top" style={{ fontWeight: 600 }}>
                   <span>
                     <EditableText value={cert.name} onChange={(val) => handleUpdateCert(cert.id, 'name', val)} placeholder="Cert Name" />
-                    <span style={{ color: 'var(--secondary-color)', fontWeight: 500 }}>
-                      {' — '}
-                      <EditableText value={cert.issuer || ""} onChange={(val) => handleUpdateCert(cert.id, 'issuer', val)} placeholder="Issuer Org" />
-                    </span>
+                    {cert.issuer && cert.issuer.trim() ? (
+                      <span style={{ color: 'var(--secondary-color)', fontWeight: 500 }}>
+                        {' — '}
+                        <EditableText value={cert.issuer} onChange={(val) => handleUpdateCert(cert.id, 'issuer', val)} placeholder="Issuer Org" />
+                      </span>
+                    ) : null}
                   </span>
                   <span className="resume-item-date" style={{ fontWeight: 400, fontSize: '0.85em', color: 'var(--secondary-color)' }}>
                     <EditableText value={cert.date} onChange={(val) => handleUpdateCert(cert.id, 'date', val)} placeholder="YYYY-MM" />
                   </span>
                 </div>
+                {cert.description && (
+                  <div className="resume-item-desc" style={{ fontSize: '0.88em', marginTop: '2px', color: 'var(--text-color)', opacity: 0.9 }}>
+                    <EditableText 
+                      tagName="p"
+                      value={cert.description}
+                      onChange={(val) => handleUpdateCert(cert.id, 'description', val)}
+                      placeholder="Workshop details or description..."
+                      multiline={true}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           ))}

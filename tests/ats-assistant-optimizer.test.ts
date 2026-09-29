@@ -88,7 +88,7 @@ function reconcileAtsOptimization(resumeData: any, aiResult: any) {
             endDate: matched.endDate || origEdu.endDate,
             cgpa: matched.cgpa || origEdu.cgpa,
             percentage: matched.percentage || origEdu.percentage,
-            description: matched.description || origEdu.description
+            description: (matched.description && matched.description.trim()) ? matched.description : origEdu.description
           };
         }
         return origEdu;
@@ -193,7 +193,8 @@ function reconcileAtsOptimization(resumeData: any, aiResult: any) {
           name: matched.name || origCert.name,
           issuer: matched.issuer || origCert.issuer,
           date: matched.date || origCert.date,
-          link: matched.link || origCert.link
+          link: matched.link || origCert.link,
+          description: (matched.description && matched.description.trim()) ? matched.description : origCert.description
         } : origCert;
       });
     } else {
@@ -538,4 +539,264 @@ describe("ATS Assistant Resume Optimizer Data Preservation Tests", () => {
     expect(result.languages.length).toBe(2);
     expect(result.customSections.length).toBe(1);
   });
+
+  it("Test 7 — Add description if not present: missing summary, project description, and certification description are enriched", () => {
+    const resumeWithEmptyDescriptions = {
+      personalInfo: {
+        name: "Hemanth Kumar",
+        title: "VLSI Design Engineer",
+        email: "hemanth@example.com",
+        phone: "+91 9876543210",
+        location: "Bangalore, India",
+        website: "",
+        linkedin: "",
+        github: "",
+        avatar: "",
+        summary: "" // empty
+      },
+      workExperience: [
+        {
+          id: "exp-1",
+          company: "Silicon Labs",
+          position: "Physical Design Intern",
+          location: "Bangalore",
+          startDate: "2024",
+          endDate: "Present",
+          current: true,
+          description: "" // empty
+        }
+      ],
+      education: [
+        {
+          id: "edu-1",
+          institution: "BIT Bangalore",
+          degree: "B.E.",
+          fieldOfStudy: "Electronics and Communication",
+          location: "Bangalore",
+          startDate: "2020",
+          endDate: "2024",
+          description: "" // empty
+        }
+      ],
+      projects: [
+        {
+          id: "proj-1",
+          name: "Dual-Port RAM Architecture",
+          description: "", // empty
+          technologies: ["Verilog", "Cadence Virtuoso"],
+          link: "",
+          role: "Design Lead"
+        }
+      ],
+      skills: [
+        { id: "sk-1", name: "Verilog", level: "Expert", category: "Hardware" }
+      ],
+      languages: [{ id: "l-1", name: "English", proficiency: "Fluent" }],
+      certifications: [
+        {
+          id: "cert-1",
+          name: "Cadence Physical Design Flow",
+          issuer: "Cadence",
+          date: "2023",
+          link: "",
+          description: "" // empty
+        }
+      ],
+      customSections: []
+    };
+
+    const aiEnrichedResult = {
+      summary: "Results-oriented VLSI Design Engineer with strong expertise in Verilog and ASIC physical design flows.",
+      workExperience: [
+        {
+          company: "Silicon Labs",
+          position: "Physical Design Intern",
+          description: "- Supported floorplanning and static timing analysis for sub-28nm testchips."
+        }
+      ],
+      projects: [
+        {
+          name: "Dual-Port RAM Architecture",
+          description: "Designed and implemented Dual-Port RAM Architecture utilizing Verilog, Cadence Virtuoso, achieving 98% timing closure.",
+          technologies: ["Verilog", "Cadence Virtuoso"]
+        }
+      ],
+      certifications: [
+        {
+          name: "Cadence Physical Design Flow",
+          description: "Hands-on training and foundational coursework in Cadence Physical Design Flow."
+        }
+      ]
+    };
+
+    const result = reconcileAtsOptimization(resumeWithEmptyDescriptions, aiEnrichedResult);
+
+    // Summary was empty, now enriched
+    expect(result.personalInfo.summary).toBe("Results-oriented VLSI Design Engineer with strong expertise in Verilog and ASIC physical design flows.");
+
+    // Work experience description was empty, now enriched
+    expect(result.workExperience[0].description).toBe("- Supported floorplanning and static timing analysis for sub-28nm testchips.");
+
+    // Project description was empty, now enriched
+    expect(result.projects[0].description).toBe("Designed and implemented Dual-Port RAM Architecture utilizing Verilog, Cadence Virtuoso, achieving 98% timing closure.");
+
+    // Certification description was empty, now enriched
+    expect(result.certifications[0].description).toBe("Hands-on training and foundational coursework in Cadence Physical Design Flow.");
+  });
+
+  it("Test 8 — Optimize description if present: existing descriptions are polished without losing items", () => {
+    const resumeWithExistingDescriptions = {
+      personalInfo: {
+        name: "Ananya Rao",
+        title: "Frontend Developer",
+        email: "ananya@example.com",
+        phone: "+91 9876543210",
+        location: "Hyderabad, India",
+        website: "",
+        linkedin: "",
+        github: "",
+        avatar: "",
+        summary: "I build web apps using React and Next.js."
+      },
+      workExperience: [],
+      education: [],
+      projects: [
+        {
+          id: "p-1",
+          name: "E-Commerce Storefront",
+          description: "Made a website where people can buy clothes online with a shopping cart.",
+          technologies: ["React", "Stripe"],
+          link: "",
+          role: "Developer"
+        }
+      ],
+      skills: [{ id: "s-1", name: "React", level: "Expert", category: "Frontend" }],
+      languages: [],
+      certifications: [],
+      customSections: []
+    };
+
+    const aiOptimizedResult = {
+      summary: "High-impact Frontend Developer specializing in high-conversion React and Next.js web applications.",
+      projects: [
+        {
+          name: "E-Commerce Storefront",
+          description: "Architected modern responsive e-commerce storefront utilizing React and Stripe, driving seamless checkout experience.",
+          technologies: ["React", "Stripe"]
+        }
+      ]
+    };
+
+    const result = reconcileAtsOptimization(resumeWithExistingDescriptions, aiOptimizedResult);
+
+    // Summary is optimized
+    expect(result.personalInfo.summary).toBe("High-impact Frontend Developer specializing in high-conversion React and Next.js web applications.");
+
+    // Project description is optimized
+    expect(result.projects[0].description).toBe("Architected modern responsive e-commerce storefront utilizing React and Stripe, driving seamless checkout experience.");
+  });
+
+  it("Test 9 — Blanks in AI response never wipe existing descriptions", () => {
+    const resumeWithExistingDescriptions = {
+      personalInfo: {
+        name: "Rohan Gupta",
+        title: "Full Stack Engineer",
+        email: "rohan@example.com",
+        phone: "+91 9876543210",
+        location: "Delhi, India",
+        website: "",
+        linkedin: "",
+        github: "",
+        avatar: "",
+        summary: "Experienced Full Stack Engineer with 4 years in Node.js and TypeScript."
+      },
+      workExperience: [
+        {
+          id: "exp-1",
+          company: "Acme Corp",
+          position: "Software Engineer",
+          location: "Delhi",
+          startDate: "2022",
+          endDate: "Present",
+          current: true,
+          description: "- Engineered scalable microservices handling 2M requests/day."
+        }
+      ],
+      education: [
+        {
+          id: "edu-1",
+          institution: "IIT Delhi",
+          degree: "B.Tech",
+          fieldOfStudy: "Computer Science",
+          location: "Delhi",
+          startDate: "2018",
+          endDate: "2022",
+          description: "Graduated with Dean's Honors list."
+        }
+      ],
+      projects: [
+        {
+          id: "proj-1",
+          name: "Distributed Cache",
+          description: "Implemented high-throughput LRU distributed cache in Go.",
+          technologies: ["Go", "Redis"],
+          link: "",
+          role: "Author"
+        }
+      ],
+      skills: [{ id: "s-1", name: "Go", level: "Expert", category: "Languages" }],
+      languages: [],
+      certifications: [
+        {
+          id: "c-1",
+          name: "AWS Solutions Architect",
+          issuer: "Amazon",
+          date: "2023",
+          link: "",
+          description: "Comprehensive cloud architecture certification."
+        }
+      ],
+      customSections: []
+    };
+
+    // AI response has empty strings for descriptions
+    const blankAiResponse = {
+      summary: "",
+      workExperience: [
+        {
+          company: "Acme Corp",
+          position: "Software Engineer",
+          description: ""
+        }
+      ],
+      education: [
+        {
+          institution: "IIT Delhi",
+          description: ""
+        }
+      ],
+      projects: [
+        {
+          name: "Distributed Cache",
+          description: ""
+        }
+      ],
+      certifications: [
+        {
+          name: "AWS Solutions Architect",
+          description: ""
+        }
+      ]
+    };
+
+    const result = reconcileAtsOptimization(resumeWithExistingDescriptions, blankAiResponse);
+
+    // Existing descriptions are safely preserved, NOT wiped
+    expect(result.personalInfo.summary).toBe("Experienced Full Stack Engineer with 4 years in Node.js and TypeScript.");
+    expect(result.workExperience[0].description).toBe("- Engineered scalable microservices handling 2M requests/day.");
+    expect(result.education[0].description).toBe("Graduated with Dean's Honors list.");
+    expect(result.projects[0].description).toBe("Implemented high-throughput LRU distributed cache in Go.");
+    expect(result.certifications[0].description).toBe("Comprehensive cloud architecture certification.");
+  });
 });
+

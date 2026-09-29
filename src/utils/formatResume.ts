@@ -140,7 +140,9 @@ export function formatResumeDataToText(data: any, style?: any): string {
             certifications.forEach((c: any) => {
                 const dateStr = c.date ? ` (${c.date})` : "";
                 const urlStr = c.link || c.url ? ` - Link: ${c.link || c.url}` : "";
-                text += `- ${c.name || "Certification"} by ${c.issuer || "Issuer"}${dateStr}${urlStr}\n`;
+                const issuerStr = c.issuer ? ` by ${c.issuer}` : "";
+                text += `- ${c.name || "Certification"}${issuerStr}${dateStr}${urlStr}\n`;
+                if (c.description) text += `  ${c.description}\n`;
             });
         }
     }
