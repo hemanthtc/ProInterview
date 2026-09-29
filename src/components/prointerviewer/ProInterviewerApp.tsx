@@ -1197,8 +1197,8 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         setResumeData(updatedData);
         setShowAIModal(false);
-        setMobileView('editor');
-        onMobileViewChange?.('editor');
+        setMobileView('preview');
+        onMobileViewChange?.('preview');
         setShowVerifyAlertModal(true);
         
         // Reset notes states
@@ -1213,7 +1213,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         if (result.isFallback) {
           triggerToast('Auto-filled with smart template (Gemini API was rate-limited)');
         } else {
-          triggerToast('AI autofill completed! Editor fields updated.');
+          triggerToast('AI autofill completed! Switched to Preview.');
         }
       }
     } catch (err: any) {
@@ -3550,7 +3550,11 @@ CRITICAL RULES FOR DESCRIPTIONS:
             <>
               <div 
                 className="modal-backdrop no-print"
-                onClick={() => setShowVerifyAlertModal(false)}
+                onClick={() => {
+                  setShowVerifyAlertModal(false);
+                  setMobileView('preview');
+                  onMobileViewChange?.('preview');
+                }}
                 style={{
                   position: 'fixed', inset: 0, zIndex: 10000,
                   background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)'
@@ -3615,7 +3619,11 @@ CRITICAL RULES FOR DESCRIPTIONS:
                 <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
                   <button
                     type="button"
-                    onClick={() => setShowVerifyAlertModal(false)}
+                    onClick={() => {
+                      setShowVerifyAlertModal(false);
+                      setMobileView('preview');
+                      onMobileViewChange?.('preview');
+                    }}
                     style={{
                       padding: '0.55rem 1.25rem', fontSize: '0.82rem', fontWeight: 700,
                       background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
