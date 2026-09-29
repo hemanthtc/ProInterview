@@ -155,9 +155,14 @@ export default function JobsPage() {
     const filteredJobs = jobs.filter((job) => {
         // Experience & Hiring Type filter
         if (experienceFilter !== "all") {
-            const desc = (job.description + " " + job.role + " " + job.tags.join(" ")).toLowerCase();
+            const desc = (
+                (job.role || "") + " " +
+                (job.description || "") + " " +
+                (job.fullDescription || "") + " " +
+                (job.tags || []).join(" ")
+            ).toLowerCase();
             if (experienceFilter === "fresher") {
-                if (!desc.match(/\b(fresher|freshers|entry[\s-]?level|0[\s-]?year|0[\s-]?yr|graduate|junior)\b/i)) return false;
+                if (!desc.match(/\b(fresher|freshers|entry[\s-]?level|0[\s-]?year|0[\s-]?yr|graduate[\s-]?trainee|trainee|junior|no\s+experience|recent\s+grad)\b/i)) return false;
             } else if (experienceFilter === "intern") {
                 const isIntern =
                     job.type === "intern" ||
@@ -165,11 +170,11 @@ export default function JobsPage() {
                     desc.match(/\b(intern|internship|trainee|apprentice|student|summer|campus|fellow|co-op)\b/i);
                 if (!isIntern) return false;
             } else if (experienceFilter === "1year") {
-                if (!desc.match(/\b(0\s*-\s*1|1\s*[\+\-]?\s*year|1\s*yr|1\s*year|entry)\b/i) && !desc.match(/\b(fresher|freshers)\b/i)) return false;
+                if (!desc.match(/\b(0\s*-\s*1|1\s*[\+\-]?\s*year|1\s*yr|1\s*year|entry|fresher|freshers|0[\s-]?year)\b/i)) return false;
             } else if (experienceFilter === "2year") {
                 if (!desc.match(/\b([0-2]\s*-\s*[2-3]|2\s*[\+\-]?\s*year|2\s*yr|1\s*-\s*2|0\s*-\s*2)\b/i)) return false;
             } else if (experienceFilter === "3plus") {
-                if (!desc.match(/\b([3-9]\s*[\+\-]?\s*year|[3-9]\s*yr|senior|lead|mid)\b/i)) return false;
+                if (!desc.match(/\b([3-9]\s*[\+\-]?\s*year|[3-9]\s*yr|senior|lead|mid|principal|manager)\b/i)) return false;
             } else if (experienceFilter === "on_campus") {
                 if (!desc.match(/\b(campus|university|college|grad|graduate|fresher|intern|trainee)\b/i)) return false;
             } else if (experienceFilter === "off_campus") {
@@ -202,14 +207,14 @@ export default function JobsPage() {
         }
         // Work mode filter
         if (workModeFilter !== "all") {
-            const loc = (job.location + " " + job.description).toLowerCase();
+            const loc = ((job.location || "") + " " + (job.role || "") + " " + (job.description || "") + " " + (job.fullDescription || "")).toLowerCase();
             if (workModeFilter === "remote") {
-                if (!job.remote && !loc.match(/\bremote\b/)) return false;
+                if (!job.remote && !loc.match(/\bremote\b|work\s+from\s+home|\bwfh\b/)) return false;
             } else if (workModeFilter === "onsite") {
                 const hasNegativeRemote = loc.match(/\b(no|not|non|zero)\s+remote\b/) || loc.match(/\bremote\s+(not\s+allowed|no\b)/);
-                if (job.remote || (loc.match(/\bremote\b/) && !hasNegativeRemote)) return false;
+                if (job.remote || (loc.match(/\bremote\b|work\s+from\s+home|\bwfh\b/) && !hasNegativeRemote)) return false;
             } else if (workModeFilter === "offsite") {
-                if (!loc.match(/\b(hybrid|off[\s-]?site|work from home|wfh)\b/)) return false;
+                if (!loc.match(/\b(hybrid|off[\s-]?site|work from home|wfh|flexible)\b/)) return false;
             }
         }
         return true;
@@ -268,7 +273,7 @@ export default function JobsPage() {
             }, 800);
             return () => clearTimeout(delayDebounceFn);
         }
-    }, [location, resumeText, jobSearchQuery]);
+    }, [location, resumeText, jobSearchQuery, experienceFilter]);
 
     const isLight = theme === "light" || theme === "eyeprotect";
 

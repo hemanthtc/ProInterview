@@ -1008,8 +1008,17 @@ export function scoreJob(
     }
     reasons.push(educationExplanation);
 
-    if (manualQuery && manualQuery.trim() && hay.includes(manualQuery.toLowerCase().trim())) {
-        reasons.push(`✓ Matches searched role: ${manualQuery.trim()}`);
+    let manualQueryBonus = 0;
+    if (manualQuery && manualQuery.trim()) {
+        const qLower = manualQuery.toLowerCase().trim();
+        const roleLower = job.role.toLowerCase();
+        if (roleLower.includes(qLower)) {
+            manualQueryBonus = 20;
+            reasons.unshift(`✓ Exact role match for "${manualQuery.trim()}"`);
+        } else if (hay.includes(qLower)) {
+            manualQueryBonus = 10;
+            reasons.push(`✓ Matches searched role: ${manualQuery.trim()}`);
+        }
     }
 
     // 2. Safe Token-Aware Skills Match Score (Weight: 30%)
@@ -1120,7 +1129,7 @@ export function scoreJob(
         certificationMatchScore * wCert +
         locationScore * wLoc;
 
-    const finalScore = Math.max(5, Math.min(98, Math.round(rawWeighted)));
+    const finalScore = Math.max(5, Math.min(99, Math.round(rawWeighted + manualQueryBonus)));
 
     const matchBreakdown: MatchBreakdown = {
         educationMatchScore,
@@ -1344,24 +1353,49 @@ async function fetchRemoteOK(query: string): Promise<Omit<MatchedJob, "matchPerc
     });
 }
 
-async function fetchAdzunaIndia(
+function cleanAdzunaLocation(location: string): string {
+    if (!location) return "";
+    let clean = location.replace(/\b(remote|hybrid|onsite|offsite|wfh|work\s+from\s+home)\b/gi, "").trim();
+    clean = clean.replace(/^[/\s,-]+|[/\s,-]+$/g, "").trim();
+    if (clean.includes("/") || clean.includes(",")) {
+        const parts = clean.split(/[/,]/).map((p) => p.trim()).filter(Boolean);
+        const cityPart = parts.find((p) => !p.toLowerCase().includes("india") && p.length > 2);
+        if (cityPart) return cityPart;
+        return parts[0] || "";
+    }
+    if (clean.toLowerCase() === "india") return "";
+    return clean;
+}
+
+function resolveAdzunaCountry(location: string): string {
+    const envCountry = (process.env.ADZUNA_COUNTRY || "").trim().toLowerCase();
+    const loc = (location || "").toLowerCase();
+    if (loc.includes("london") || loc.includes("uk") || loc.includes("united kingdom")) return "gb";
+    if (loc.includes("san francisco") || loc.includes("new york") || loc.includes("usa") || loc.includes("united states") || loc.includes("austin") || loc.includes("seattle")) return "us";
+    if (loc.includes("canada") || loc.includes("toronto") || loc.includes("vancouver")) return "ca";
+    if (loc.includes("australia") || loc.includes("sydney") || loc.includes("melbourne")) return "au";
+    if (loc.includes("germany") || loc.includes("berlin") || loc.includes("munich")) return "de";
+    return envCountry || "in";
+}
+
+export async function fetchAdzunaIndia(
     query: string,
     location: string
 ): Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> {
     const appId = process.env.ADZUNA_APP_ID;
     const appKey = process.env.ADZUNA_APP_KEY;
-    if (!appId || !appKey) return [];
+    if (!appId || !appKey || appId.includes("your_adzuna") || appKey.includes("your_adzuna")) return [];
 
-    const country = process.env.ADZUNA_COUNTRY || "in";
+    const country = resolveAdzunaCountry(location);
 
     const params = new URLSearchParams({
         app_id: appId,
         app_key: appKey,
-        results_per_page: "30",
+        results_per_page: "50",
         "content-type": "application/json",
     });
-    if (query) params.set("what", query);
-    const where = location && !location.toLowerCase().includes("remote") ? location : "";
+    if (query && query.trim()) params.set("what", query.trim());
+    const where = cleanAdzunaLocation(location);
     if (where) params.set("where", where);
 
     const url = `https://api.adzuna.com/v1/api/jobs/${country.toLowerCase()}/search/1?${params.toString()}`;
@@ -1383,23 +1417,35 @@ async function fetchAdzunaIndia(
             category?: { label?: string };
         }>;
     };
+    const currencySymbol =
+        country === "in" ? "₹" :
+        country === "gb" ? "£" :
+        country === "de" ? "€" : "$";
+
     return (data.results || [])
-        .filter((j) => j.redirect_url)
-        .slice(0, 40)
+        .filter((j) => j && j.redirect_url)
+        .slice(0, 50)
         .map((j) => {
             const salary =
                 j.salary_min && j.salary_max
-                    ? `₹${Math.round(j.salary_min / 1000)}k–₹${Math.round(j.salary_max / 1000)}k`
+                    ? `${currencySymbol}${Math.round(j.salary_min / 1000)}k–${currencySymbol}${Math.round(j.salary_max / 1000)}k`
                     : undefined;
-            const jobLocation = j.location?.display_name || "India";
+            const jobLocation = j.location?.display_name || (country === "in" ? "India" : location || "Anywhere");
             const fullDesc = stripHtml(j.description || "").slice(0, 8000);
+            const titleAndContract = `${j.title || ""} ${j.contract_type || ""} ${j.contract_time || ""}`;
+            const jobType = normalizeType(titleAndContract);
+            const isRemote =
+                /remote|work\s+from\s+home|wfh/i.test(jobLocation) ||
+                /remote|work\s+from\s+home|wfh/i.test(j.title || "") ||
+                /\b(fully\s+remote|100%\s+remote|remote\s+in\s+india|wfh)\b/i.test(fullDesc);
+
             return {
                 id: `adzuna_${j.id}`,
                 company: j.company?.display_name || "Unknown",
                 role: j.title || "Role",
                 location: jobLocation,
-                type: normalizeType(j.contract_type || j.contract_time),
-                remote: /remote/i.test(jobLocation),
+                type: jobType,
+                remote: isRemote,
                 tags: j.category?.label ? [j.category.label] : [],
                 salaryRange: salary,
                 description: fullDesc.slice(0, 320),
@@ -1729,9 +1775,13 @@ export async function searchMatchingJobs(
     const sourcesTried: string[] = [];
     const collected: Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[] = [];
 
-    const adzunaRole =
-        (jobSearchQuery || profile.roles[0] || profile.primaryDomains[0] || "associate").trim() +
-        (filter === "intern" ? " Intern" : filter === "fresher" ? " Fresher" : "");
+    // Prioritize manual query if user specified preferred job; otherwise use resume target roles
+    const targetRole = (jobSearchQuery && jobSearchQuery.trim()) || profile.roles[0] || profile.primaryDomains[0] || "associate";
+    const secondaryRole = !jobSearchQuery && profile.roles[1] ? profile.roles[1] : "";
+
+    const filterSuffix = filter === "intern" ? " Intern" : filter === "fresher" ? " Fresher" : "";
+    const adzunaRolePrimary = (targetRole + filterSuffix).trim();
+    const adzunaRoleSecondary = secondaryRole ? (secondaryRole + filterSuffix).trim() : "";
 
     // Multi-query search execution across providers
     const tasks: Array<{ name: string; run: () => Promise<Omit<MatchedJob, "matchPercent" | "matchReasons" | "matchBreakdown">[]> }> = [
@@ -1739,7 +1789,9 @@ export async function searchMatchingJobs(
         { name: "Arbeitnow", run: () => fetchArbeitnow(primary) },
         ...(secondary && secondary !== primary ? [{ name: "Arbeitnow (Secondary)", run: () => fetchArbeitnow(secondary) }] : []),
         { name: "RemoteOK", run: () => fetchRemoteOK(primary) },
-        { name: "Adzuna India", run: () => fetchAdzunaIndia(adzunaRole, preferredLocation) },
+        { name: "Adzuna India", run: () => fetchAdzunaIndia(adzunaRolePrimary, preferredLocation) },
+        ...(adzunaRoleSecondary ? [{ name: "Adzuna India (Secondary)", run: () => fetchAdzunaIndia(adzunaRoleSecondary, preferredLocation) }] : []),
+        ...(filterSuffix && targetRole ? [{ name: "Adzuna India (General)", run: () => fetchAdzunaIndia(targetRole, preferredLocation) }] : []),
     ];
 
     const settled = await Promise.allSettled(
