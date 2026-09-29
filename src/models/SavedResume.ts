@@ -10,7 +10,7 @@ export interface ISavedResumeDoc extends Document {
 const SavedResumeSchema = new Schema<ISavedResumeDoc>(
     {
         identifier: { type: String, required: true, unique: true, index: true },
-        resumes: { type: Array, default: [] },
+        resumes: { type: Array, default: () => [] } as any,
     },
     {
         timestamps: true,
