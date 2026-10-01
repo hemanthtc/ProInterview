@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
-import { setSessionCookie, createToken } from "@/utils/auth";
+import { setSessionCookie, createToken, shouldSetSecureCookie } from "@/utils/auth";
 import { rateLimit } from "@/utils/rateLimit";
 
 export async function POST(req: NextRequest) {
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
                 identifier: user.identifier,
                 role: "user",
                 isOrganization: false
-            }, isPwa);
+            }, isPwa, req);
         } catch (cookieErr) {
             console.error("Failed to set session cookie for Google login:", cookieErr);
             return NextResponse.json(
@@ -133,6 +133,8 @@ export async function POST(req: NextRequest) {
                 { status: 500 }
             );
         }
+
+        const isSecure = shouldSetSecureCookie(req);
 
         // Return user credentials to the client and set userLoggedIn cookie on response
         const response = NextResponse.json({
@@ -151,7 +153,7 @@ export async function POST(req: NextRequest) {
         if (token) {
             response.cookies.set("session", token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
+                secure: isSecure,
                 sameSite: "lax",
                 path: "/",
                 maxAge: durationSec
@@ -163,7 +165,7 @@ export async function POST(req: NextRequest) {
             path: "/",
             maxAge: durationSec,
             sameSite: "lax",
-            secure: process.env.NODE_ENV === "production"
+            secure: isSecure
         });
 
         return response;

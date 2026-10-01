@@ -1,5 +1,6 @@
 import { getStorageItem, setStorageItem, removeStorageItem } from "./storage";
 import { syncSessionsToCloud } from "./cloudSync";
+import { authFetch } from "./authExpiry";
 
 let isSyncing = false;
 
@@ -22,7 +23,7 @@ export async function triggerSelfHealing(): Promise<void> {
         if (profileCache) {
             try {
                 const profilePayload = JSON.parse(profileCache);
-                const res = await fetch("/api/auth/profile", {
+                const res = await authFetch("/api/auth/profile", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify(profilePayload),

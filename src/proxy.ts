@@ -38,7 +38,7 @@ export function proxy(req: NextRequest) {
     const authHeader = req.headers.get("authorization");
 
     const isUser = userLoggedInValue === "true";
-    const isGuest = userLoggedInValue === "guest";
+    const isGuest = !sessionCookie && !isUser && !authHeader && userLoggedInValue === "guest";
     const isAuthenticated = Boolean(sessionCookie || isUser || isGuest || authHeader);
 
     // If attempting to access a protected feature route without a session, redirect to login

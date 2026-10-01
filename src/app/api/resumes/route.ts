@@ -4,14 +4,16 @@ import { isS3Configured, getJSON, uploadJSON, pingS3 } from "@/utils/s3";
 import connectDB from "@/utils/db";
 import { SavedResumeModel } from "@/models/SavedResume";
 
+export const dynamic = "force-dynamic";
+
 function getS3ResumesKey(userIdentifier: string): string {
     const safeUser = userIdentifier.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 80);
     return `resume_builder_resumes/${safeUser}/saved_resumes.json`;
 }
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -49,7 +51,7 @@ export async function GET(_req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

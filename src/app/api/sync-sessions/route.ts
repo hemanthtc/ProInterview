@@ -13,6 +13,8 @@ import {
     MAX_SYNCED_SESSIONS,
 } from "@/utils/progressCaps";
 
+export const dynamic = "force-dynamic";
+
 function sessionKey(s: any): string | null {
     if (!s || typeof s.timestamp !== "number") return null;
     return `${s.timestamp}_${s.finalScore ?? ""}`;
@@ -159,9 +161,9 @@ async function migrateMongoPrepPacksToS3(userIdentifier: string, key: string): P
     return [];
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -231,7 +233,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

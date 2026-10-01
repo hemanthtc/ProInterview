@@ -480,8 +480,8 @@ export default function Home() {
         window.addEventListener("resize", checkMobile);
 
         const syncAuthStateAndData = () => {
-            const loggedIn = getStorageItem("userLoggedIn") === "true";
-            const guest = getStorageItem("userLoggedIn") === "guest";
+            const loggedIn = getStorageItem("userLoggedIn") === "true" || !!getStorageItem("sessionToken");
+            const guest = !loggedIn && getStorageItem("userLoggedIn") === "guest";
             const role = localStorage.getItem("userRole");
             if (loggedIn && role === "admin") {
                 router.push("/admin");

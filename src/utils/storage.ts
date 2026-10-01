@@ -62,6 +62,21 @@ export function getStorageItem(key: string): string | null {
             }
         } catch {}
 
+        // 2. Active sessionToken takes highest priority and auto-heals userLoggedIn
+        try {
+            const token = localStorage.getItem("sessionToken") || tempMemory["sessionToken"];
+            if (token) {
+                try {
+                    localStorage.setItem("userLoggedIn", "true");
+                } catch {}
+                tempMemory["userLoggedIn"] = "true";
+                if (typeof document !== "undefined") {
+                    document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+                }
+                return "true";
+            }
+        } catch {}
+
         try {
             const fromLocal = localStorage.getItem("userLoggedIn");
             if (fromLocal === "true") return "true";
@@ -91,11 +106,14 @@ export function getStorageItem(key: string): string | null {
     try {
         isLoggedIn =
             localStorage.getItem("userLoggedIn") === "true" ||
+            Boolean(localStorage.getItem("sessionToken")) ||
             tempMemory["userLoggedIn"] === "true" ||
+            Boolean(tempMemory["sessionToken"]) ||
             (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
     } catch {
         isLoggedIn =
             tempMemory["userLoggedIn"] === "true" ||
+            Boolean(tempMemory["sessionToken"]) ||
             (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
     }
 
@@ -124,6 +142,7 @@ export function setStorageItem(key: string, value: string): void {
             tempMemory["userLoggedIn"] = "true";
             tempMemory["userSessionExpiresAt"] = expiresAt;
             if (typeof document !== "undefined") {
+                document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
                 document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
             }
         } else if (value === "guest") {

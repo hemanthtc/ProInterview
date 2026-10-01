@@ -149,11 +149,12 @@ export default function ProfilePage() {
     const syncProfileToCloud = async (fieldsToUpdate: any) => {
         const identifier = getStorageItem("userIdentifier") || userIdentifier;
         if (!identifier) return;
+        const userType = getStorageItem("userRole") || getStorageItem("userType") || "user";
         try {
-            const res = await fetch("/api/auth/profile", {
+            const res = await authFetch("/api/auth/profile", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ identifier, ...fieldsToUpdate })
+                body: JSON.stringify({ identifier, accountType: userType, ...fieldsToUpdate })
             });
             if (!res.ok) {
                 console.warn("Cloud sync: profile save returned non-200 status.");
@@ -165,9 +166,14 @@ export default function ProfilePage() {
 
     useEffect(() => {
         const cancelDeferred = deferEffectWork(() => {
-        if (getStorageItem("userLoggedIn") !== "true") {
+        const userLoggedIn = getStorageItem("userLoggedIn");
+        const sessionToken = getStorageItem("sessionToken");
+        if (userLoggedIn !== "true" && !sessionToken) {
             router.push("/login");
             return;
+        }
+        if (sessionToken && userLoggedIn !== "true") {
+            setStorageItem("userLoggedIn", "true");
         }
 
         const exactUser = getStorageItem("userName") || "Guest";
@@ -224,7 +230,8 @@ export default function ProfilePage() {
             // Fetch user document from cloud database on load
             const fetchCloudProfile = async (id: string) => {
                 try {
-                    const res = await fetch(`/api/auth/profile?identifier=${encodeURIComponent(id)}`);
+                    const userType = getStorageItem("userRole") || getStorageItem("userType") || "user";
+                    const res = await authFetch(`/api/auth/profile?identifier=${encodeURIComponent(id)}&accountType=${encodeURIComponent(userType)}`);
                     if (res.ok) {
                         const data = await res.json();
                         if (data.success && data.user) {
@@ -680,7 +687,7 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
         const role = getStorageItem("userRole") || "user";
         try {
             if (identifier) {
-                const res = await fetch("/api/auth/profile", {
+                const res = await authFetch("/api/auth/profile", {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({

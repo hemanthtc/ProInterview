@@ -12,6 +12,8 @@ import { redactLogIdentifier } from "@/utils/pii";
 import { jsonError } from "@/utils/http";
 import { wipeUserOwnedData, deleteAccountRecord } from "@/utils/userDataWipe";
 
+export const dynamic = "force-dynamic";
+
 function getModel(accountType: string): mongoose.Model<any> {
     switch (accountType) {
         case "admin":    return OrgAdmin;
@@ -21,7 +23,7 @@ function getModel(accountType: string): mongoose.Model<any> {
 }
 
 async function verifyUserAccess(req: NextRequest, targetIdentifier: string) {
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     if (!session) return false;
     return targetIdentifier.trim().toLowerCase() === session.identifier.trim().toLowerCase();
 }
@@ -65,9 +67,9 @@ export async function GET(req: NextRequest) {
     try {
         await connectDB();
         const { searchParams } = new URL(req.url);
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         const identifier = searchParams.get("identifier") || session?.identifier;
-        const accountType = searchParams.get("accountType") || (session as any)?.accountType || "user";
+        const accountType = searchParams.get("accountType") || (session as any)?.role || (session as any)?.accountType || "user";
 
         if (!identifier) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
@@ -209,7 +211,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Account not found." }, { status: 404 });
         }
 
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (subscriptionPlan !== undefined && subscriptionPlan !== account.subscriptionPlan) {
             if (!session || session.role !== "admin") {
                 return NextResponse.json({ error: "Cannot manually alter subscription plan." }, { status: 403 });

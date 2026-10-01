@@ -3,7 +3,7 @@ import connectDB from "@/utils/db";
 import User from "@/models/User";
 import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
-import { setSessionCookie, createToken } from "@/utils/auth";
+import { setSessionCookie, createToken, shouldSetSecureCookie } from "@/utils/auth";
 import { verifyOtp } from "@/utils/otp";
 import { rateLimit } from "@/utils/rateLimit";
 import type { AccountType, AuthFlowType } from "@/types/auth";
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
                     identifier: account.identifier,
                     role: accountType as AccountType,
                     isOrganization
-                }, isPwa);
+                }, isPwa, req);
             } catch (cookieErr) {
                 console.error("Failed to set session cookie:", cookieErr);
                 return NextResponse.json(
@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
             }, isPwa);
 
             const durationSec = isPwa ? 365 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+            const isSecure = shouldSetSecureCookie(req);
 
             const response = NextResponse.json({
                 success: true,
@@ -132,7 +133,7 @@ export async function POST(req: NextRequest) {
             // Explicitly set both HttpOnly session cookie and client-readable userLoggedIn cookie
             response.cookies.set("session", token, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
+                secure: isSecure,
                 sameSite: "lax",
                 path: "/",
                 maxAge: durationSec
@@ -142,7 +143,7 @@ export async function POST(req: NextRequest) {
                 path: "/",
                 maxAge: durationSec,
                 sameSite: "lax",
-                secure: process.env.NODE_ENV === "production"
+                secure: isSecure
             });
 
             return response;

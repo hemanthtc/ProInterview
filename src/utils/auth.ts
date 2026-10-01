@@ -63,15 +63,40 @@ export function verifyToken(token: string): SessionPayload | null {
 }
 
 /**
+ * Helper to determine whether the secure flag should be set for cookies.
+ * Prevents dropping cookies on localhost or HTTP deployments.
+ */
+export function shouldSetSecureCookie(req?: NextRequest): boolean {
+    if (process.env.COOKIE_INSECURE === "true") return false;
+    if (process.env.NODE_ENV !== "production") return false;
+    if (req) {
+        const proto = req.headers.get("x-forwarded-proto");
+        if (proto) return proto === "https";
+        if (req.nextUrl?.protocol === "http:") return false;
+        const host = req.headers.get("host") || "";
+        if (host.startsWith("localhost") || host.startsWith("127.0.0.1")) return false;
+    }
+    return true;
+}
+
+/**
  * Sets the secure HttpOnly cookie containing the session token.
  */
-export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean) {
+export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean, req?: NextRequest) {
     const token = createToken(payload, isPwa);
     const cookieStore = await cookies();
     const durationSec = isPwa ? 365 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
+    const isSecure = shouldSetSecureCookie(req);
     cookieStore.set("session", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecure,
+        sameSite: "lax",
+        path: "/",
+        maxAge: durationSec
+    });
+    cookieStore.set("userLoggedIn", "true", {
+        httpOnly: false,
+        secure: isSecure,
         sameSite: "lax",
         path: "/",
         maxAge: durationSec
@@ -81,18 +106,19 @@ export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean)
 /**
  * Clears the session cookie.
  */
-export async function clearSessionCookie() {
+export async function clearSessionCookie(req?: NextRequest) {
     const cookieStore = await cookies();
+    const isSecure = shouldSetSecureCookie(req);
     cookieStore.set("session", "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecure,
         sameSite: "lax",
         path: "/",
         expires: new Date(0)
     });
     cookieStore.set("userLoggedIn", "", {
         httpOnly: false,
-        secure: process.env.NODE_ENV === "production",
+        secure: isSecure,
         sameSite: "lax",
         path: "/",
         expires: new Date(0)
@@ -107,39 +133,51 @@ export async function clearSessionCookie() {
  */
 export async function getVerifiedSession(req?: NextRequest): Promise<SessionPayload | null> {
     try {
-        let token: string | undefined;
-
         // 1. Try to read from HttpOnly session cookie
         try {
             const cookieStore = await cookies();
-            token = cookieStore.get("session")?.value;
+            const cookieToken = cookieStore.get("session")?.value;
+            if (cookieToken) {
+                const verified = verifyToken(cookieToken);
+                if (verified) return verified;
+            }
         } catch {}
 
-        // 2. If no cookie, try to read from Authorization header or custom header
-        if (!token) {
-            let authHeader: string | null = null;
-            if (req) {
-                authHeader = req.headers.get("authorization") || req.headers.get("x-session-token");
-            }
-            if (!authHeader) {
-                try {
-                    const headerStore = await headers();
-                    authHeader = headerStore.get("authorization") || headerStore.get("x-session-token");
-                } catch {}
-            }
-
-            if (authHeader) {
-                if (authHeader.startsWith("Bearer ")) {
-                    token = authHeader.slice(7).trim();
-                } else {
-                    token = authHeader.trim();
-                }
+        // 2. Also check req.cookies directly if req was provided
+        if (req) {
+            const reqCookieToken = req.cookies.get("session")?.value;
+            if (reqCookieToken) {
+                const verified = verifyToken(reqCookieToken);
+                if (verified) return verified;
             }
         }
 
-        if (!token) return null;
-        return verifyToken(token);
+        // 3. If cookie is missing or invalid, fall back to Authorization header or custom header
+        let authHeader: string | null = null;
+        if (req) {
+            authHeader = req.headers.get("authorization") || req.headers.get("x-session-token");
+        }
+        if (!authHeader) {
+            try {
+                const headerStore = await headers();
+                authHeader = headerStore.get("authorization") || headerStore.get("x-session-token");
+            } catch {}
+        }
+
+        if (authHeader) {
+            let token = authHeader.trim();
+            if (token.startsWith("Bearer ")) {
+                token = token.slice(7).trim();
+            }
+            if (token) {
+                const verified = verifyToken(token);
+                if (verified) return verified;
+            }
+        }
+
+        return null;
     } catch {
         return null;
     }
 }
+

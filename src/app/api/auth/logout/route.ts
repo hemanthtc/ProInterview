@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/utils/db";
 import OrgAdmin from "@/models/OrgAdmin";
 import OrgEmployee from "@/models/OrgEmployee";
-import { clearSessionCookie } from "@/utils/auth";
+import { clearSessionCookie, shouldSetSecureCookie } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
@@ -22,19 +22,20 @@ export async function POST(req: NextRequest) {
         }
 
         // Clear secure HttpOnly session cookie
-        await clearSessionCookie();
+        await clearSessionCookie(req);
 
+        const isSecure = shouldSetSecureCookie(req);
         const response = NextResponse.json({ success: true, message: "Logged out successfully from server." });
         response.cookies.set("session", "", {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: isSecure,
             sameSite: "lax",
             path: "/",
             expires: new Date(0)
         });
         response.cookies.set("userLoggedIn", "", {
             httpOnly: false,
-            secure: process.env.NODE_ENV === "production",
+            secure: isSecure,
             sameSite: "lax",
             path: "/",
             expires: new Date(0)
