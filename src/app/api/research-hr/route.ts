@@ -90,8 +90,7 @@ Rules:
             generationConfig: { temperature: 0.2 },
         });
     try {
-        const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-        const parsed = JSON.parse(cleanJson);
+        const parsed = parseJsonFromModel<any>(textResponse);
         return {
             interviewerName: parsed.interviewerName || input.hrName,
             titleGuess: parsed.titleGuess || "Recruiter / HR",

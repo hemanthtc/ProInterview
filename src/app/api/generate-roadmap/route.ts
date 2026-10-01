@@ -141,7 +141,7 @@ Respond ONLY with a valid JSON block matching this structure. Do not write any m
         let parsedData;
         try {
             parsedData = parseJsonFromModel(textResponse);
-        } catch (e) {
+        } catch {
             console.error("Failed to parse JSON response from Gemini for Roadmap:", textResponse);
             const fallbackTitle = course.trim() || (company.trim() ? `${company.trim()} Career Prep Roadmap` : "Software Engineer Career Roadmap");
             return NextResponse.json({

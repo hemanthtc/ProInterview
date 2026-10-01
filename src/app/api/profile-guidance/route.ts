@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
+import { generateWithFallback } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {

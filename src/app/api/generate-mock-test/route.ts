@@ -100,7 +100,7 @@ Ensure the questions are realistic, technically accurate, and completely unique.
         let parsedData;
         try {
             parsedData = parseJsonFromModel(textResponse);
-        } catch (e) {
+        } catch {
             console.error("Failed to parse JSON response from Gemini for mock test generation");
             return NextResponse.json({ error: "Failed to parse mock assessment questions output from AI" }, { status: 500 });
         }

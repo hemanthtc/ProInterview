@@ -71,8 +71,7 @@ Ensure the questions are realistic, technically accurate, and unique. Provide ex
             generationConfig: { temperature: 0.7 },
         });
         try {
-            const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-            const parsedData = JSON.parse(cleanJson);
+            const parsedData = parseJsonFromModel(textResponse);
             return NextResponse.json(parsedData);
         } catch {
             console.error("Failed to parse JSON response from Gemini for aptitude quiz");
