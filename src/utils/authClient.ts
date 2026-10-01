@@ -21,6 +21,7 @@ export const AUTH_STORAGE_KEYS = [
     "userResumeCvText",
     "userPhone",
     "userEducationData",
+    "prointerview_todos",
 ];
 
 /**

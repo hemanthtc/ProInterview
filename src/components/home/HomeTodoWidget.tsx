@@ -13,6 +13,7 @@ import {
     createTodo,
     reprioritizeTodo,
     deleteOrCompleteTodo,
+    isUserLoggedIn,
 } from "@/utils/todoStorage";
 
 interface HomeTodoWidgetProps {
@@ -25,6 +26,7 @@ export default function HomeTodoWidget({
     theme = "dark",
     isLoggedIn = false,
 }: HomeTodoWidgetProps) {
+    const effectiveIsLoggedIn = isLoggedIn || isUserLoggedIn();
     const [todos, setTodos] = useState<TodoItem[]>(() => {
         if (typeof window !== "undefined") return getLocalTodos();
         return [];
@@ -50,12 +52,12 @@ export default function HomeTodoWidget({
         if (isFetchingRef.current) return;
         isFetchingRef.current = true;
         try {
-            const list = await fetchTodos(isLoggedIn);
+            const list = await fetchTodos(effectiveIsLoggedIn);
             setTodos(list);
         } finally {
             isFetchingRef.current = false;
         }
-    }, [isLoggedIn]);
+    }, [effectiveIsLoggedIn]);
 
     useEffect(() => {
         loadData();
@@ -79,7 +81,7 @@ export default function HomeTodoWidget({
 
         setIsSubmitting(true);
         try {
-            await createTodo(title, priority, isLoggedIn);
+            await createTodo(title, priority, effectiveIsLoggedIn);
             if (!titleToAdd) setNewTitle("");
             await loadData();
         } finally {
@@ -91,7 +93,7 @@ export default function HomeTodoWidget({
     const handleCheck = (id: string) => {
         setCompletingIds((prev) => new Set(prev).add(id));
         setTimeout(async () => {
-            await deleteOrCompleteTodo(id, isLoggedIn);
+            await deleteOrCompleteTodo(id, effectiveIsLoggedIn);
             setCompletingIds((prev) => {
                 const next = new Set(prev);
                 next.delete(id);
@@ -102,12 +104,12 @@ export default function HomeTodoWidget({
     };
 
     const handleDelete = async (id: string) => {
-        await deleteOrCompleteTodo(id, isLoggedIn);
+        await deleteOrCompleteTodo(id, effectiveIsLoggedIn);
         // loadData triggered automatically via todo-storage-change event
     };
 
     const handleReprioritize = async (id: string, newPriority: TodoPriority) => {
-        await reprioritizeTodo(id, newPriority, isLoggedIn);
+        await reprioritizeTodo(id, newPriority, effectiveIsLoggedIn);
         // loadData triggered automatically via todo-storage-change event
     };
 

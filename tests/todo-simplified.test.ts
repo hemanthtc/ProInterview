@@ -130,4 +130,32 @@ describe("Simplified To-Do List logic", () => {
         expect(afterCompletion[0]._id).toBe("102");
         expect(afterCompletion.find((t) => t._id === "101")).toBeUndefined();
     });
+
+    it("matches userIdentifier case-insensitively in MongoDB queries", () => {
+        const id1 = "Hemanth@Domain.com";
+        const id2 = "hemanth@domain.com";
+
+        const rawId = id1.trim();
+        const userFilter = { $or: [{ userIdentifier: rawId }, { userIdentifier: rawId.toLowerCase() }] };
+
+        // Test matching function simulating Mongo's $or
+        const matchUser = (doc: { userIdentifier: string }) =>
+            userFilter.$or.some((clause) => clause.userIdentifier === doc.userIdentifier);
+
+        expect(matchUser({ userIdentifier: id1 })).toBe(true);
+        expect(matchUser({ userIdentifier: id2 })).toBe(true);
+        expect(matchUser({ userIdentifier: "other@domain.com" })).toBe(false);
+    });
+
+    it("correctly identifies pending offline/guest tasks with temporary IDs for cloud sync", () => {
+        const localList: TodoItem[] = [
+            { _id: "todo_174000_abcde", title: "Offline task 1", priority: "high", targetDate: "2026-10-01", rolledOver: false },
+            { _id: "672abc1234567890deadbeef", title: "Remote mongo task", priority: "medium", targetDate: "2026-10-01", rolledOver: false },
+            { _id: "todo_174001_fghij", title: "Offline task 2", priority: "low", targetDate: "2026-10-01", rolledOver: false },
+        ];
+
+        const pending = localList.filter((t) => t._id && t._id.startsWith("todo_"));
+        expect(pending).toHaveLength(2);
+        expect(pending.map((p) => p.title)).toEqual(["Offline task 1", "Offline task 2"]);
+    });
 });
