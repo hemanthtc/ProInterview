@@ -72,15 +72,16 @@ export async function POST(req: NextRequest) {
 
     let lastErrorMsg = "";
 
-    // Map obsolete or retired model names to current valid models
+    // Map obsolete or retired model names to current active models
     let targetModel = requestedModel;
     if (
       !targetModel ||
       targetModel.includes("1.5-flash") ||
       targetModel.includes("2.0-flash") ||
-      targetModel.includes("2.5-flash-lite")
+      targetModel.includes("2.5-flash-lite") ||
+      targetModel === "gemini-2.5-flash"
     ) {
-      targetModel = "gemini-2.5-flash";
+      targetModel = "gemini-3-flash-preview";
     }
 
     for (const key of candidateKeys) {
@@ -91,54 +92,67 @@ export async function POST(req: NextRequest) {
       const candidateList = Array.from(new Set([
         targetModel,
         ...validTextModels,
+        "gemini-3-flash-preview",
+        "gemini-3.1-flash-lite-preview",
+        "gemini-3.5-flash",
+        "gemini-3.8-flash",
         "gemini-2.5-flash",
         "gemini-flash-latest",
-        "gemini-3.6-flash",
-        "gemini-flash-lite-latest",
       ])).filter((m) =>
         !m.includes("2.0-flash") &&
         !m.includes("1.5-flash") &&
         m !== "gemini-2.5-flash-lite"
-      ).slice(0, 4);
+      ).slice(0, 5);
 
-      for (const modelName of candidateList) {
-        try {
-          const generationConfig: any = { temperature };
-          if (jsonMode) {
-            generationConfig.responseMimeType = "application/json";
-          }
+      for (let attempt = 0; attempt < 2; attempt++) {
+        for (const modelName of candidateList) {
+          try {
+            const generationConfig: any = { temperature };
+            if (jsonMode) {
+              generationConfig.responseMimeType = "application/json";
+            }
 
-          const model = genAI.getGenerativeModel(
-            {
-              model: modelName,
-              generationConfig,
-            },
-            { timeout: UPSTREAM_TIMEOUT_MS }
-          );
+            const model = genAI.getGenerativeModel(
+              {
+                model: modelName,
+                generationConfig,
+              },
+              { timeout: UPSTREAM_TIMEOUT_MS }
+            );
 
-          const result = await model.generateContent(prompt);
-          const text = result?.response?.text();
+            const result = await model.generateContent(prompt);
+            const text = result?.response?.text();
 
-          if (text) {
-            return NextResponse.json({ text });
-          }
-        } catch (err: any) {
-          lastErrorMsg = err?.message || String(err);
-          const is404 = err?.status === 404 || lastErrorMsg.includes("404") || lastErrorMsg.includes("not found");
-          const is429 = err?.status === 429 || lastErrorMsg.includes("429") || lastErrorMsg.includes("quota");
+            if (text) {
+              return NextResponse.json({ text });
+            }
+          } catch (err: any) {
+            lastErrorMsg = err?.message || String(err);
+            const is404 = err?.status === 404 || lastErrorMsg.includes("404") || lastErrorMsg.includes("not found");
+            const is429 = err?.status === 429 || lastErrorMsg.includes("429") || lastErrorMsg.includes("quota");
+            const is503 = err?.status === 503 || lastErrorMsg.includes("503") || lastErrorMsg.includes("demand");
 
-          if (is404) {
-            console.warn(`[Synthetic Gemini] Model ${modelName} not found for key; trying next model.`);
+            if (is404) {
+              console.warn(`[Synthetic Gemini] Model ${modelName} not found for key; trying next model.`);
+              continue;
+            }
+
+            if (is429) {
+              console.warn(`[Synthetic Gemini] Quota hit on model ${modelName}; rotating.`);
+              continue;
+            }
+
+            if (is503) {
+              console.warn(`[Synthetic Gemini] Model ${modelName} high demand (503); rotating.`);
+              continue;
+            }
+
+            console.warn(`[Synthetic Gemini] Model ${modelName} error (${lastErrorMsg}); trying next model...`);
             continue;
           }
-
-          if (is429) {
-            console.warn(`[Synthetic Gemini] Quota hit on model ${modelName}; rotating.`);
-            continue;
-          }
-
-          console.warn(`[Synthetic Gemini] Model ${modelName} error (${lastErrorMsg}); trying next model...`);
-          continue;
+        }
+        if (attempt === 0 && (lastErrorMsg.includes("503") || lastErrorMsg.includes("demand"))) {
+          await new Promise((r) => setTimeout(r, 1200));
         }
       }
     }

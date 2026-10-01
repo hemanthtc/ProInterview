@@ -46,7 +46,7 @@ export function getWorkingGeminiKey(): string {
     return keys[0];
 }
 
-export function getGeminiModel(model = "gemini-2.5-flash") {
+export function getGeminiModel(model = "gemini-3-flash-preview") {
     const key = getWorkingGeminiKey();
     if (!key || key === "dummy") throw new Error("GEMINI_API_KEY is not configured");
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
@@ -86,11 +86,12 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 // The "-latest" aliases auto-track Google's newest release, so upgrading the key/model
 // needs no code change.
 export const ADVANCED_CANDIDATE_MODELS = [
-  "gemini-2.5-flash",
-  "gemini-flash-latest",
-  "gemini-2.5-flash-lite",
+  "gemini-3-flash-preview",
+  "gemini-3.1-flash-lite-preview",
   "gemini-3.5-flash",
   "gemini-3.8-flash",
+  "gemini-2.5-flash",
+  "gemini-flash-latest",
   "gemini-flash-lite-latest",
   "gemini-pro-latest",
   "gemini-2.5-pro",
@@ -106,12 +107,15 @@ export function preferTextModels(models: string[]): string[] {
     !/(1\.5|2\.0)/i.test(m);
   const score = (m: string) => {
     let s = 0;
-    if (m === "gemini-2.5-flash") s -= 30;
-    if (m === "gemini-flash-latest") s -= 25;
-    if (m === "gemini-2.5-flash-lite") s -= 20;
-    if (m === "gemini-3.5-flash") s -= 15;
-    if (m.includes("flash")) s -= 10;
-    if (m.includes("latest")) s -= 5;
+    if (m === "gemini-3-flash-preview") s -= 40;
+    if (m === "gemini-3.1-flash-lite-preview") s -= 35;
+    if (m === "gemini-3.5-flash") s -= 30;
+    if (m === "gemini-3.8-flash") s -= 25;
+    if (m === "gemini-2.5-flash") s -= 20;
+    if (m === "gemini-flash-latest") s -= 15;
+    if (m === "gemini-2.5-flash-lite") s -= 10;
+    if (m.includes("flash")) s -= 5;
+    if (m.includes("latest")) s -= 3;
     if (m.includes("lite")) s += 1;
     if (m.includes("pro")) s += 5;
     return s;
