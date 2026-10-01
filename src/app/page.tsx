@@ -462,8 +462,19 @@ function MobileDashboardContent({
 export default function Home() {
     const router = useRouter();
     const [pastSessions, setPastSessions] = useState<any[]>([]);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
-    const [isGuest, setIsGuest] = useState(false);
+    const [isLoggedIn, setIsLoggedIn] = useState(() => {
+        if (typeof window === "undefined") return false;
+        const userLoggedVal = getStorageItem("userLoggedIn");
+        const hasSessionToken = !!getStorageItem("sessionToken");
+        return userLoggedVal === "true" || (hasSessionToken && userLoggedVal !== "guest");
+    });
+    const [isGuest, setIsGuest] = useState(() => {
+        if (typeof window === "undefined") return false;
+        const userLoggedVal = getStorageItem("userLoggedIn");
+        const hasSessionToken = !!getStorageItem("sessionToken");
+        const loggedIn = userLoggedVal === "true" || (hasSessionToken && userLoggedVal !== "guest");
+        return !loggedIn && userLoggedVal === "guest";
+    });
     const [pausedSession, setPausedSession] = useState<any>(null);
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<ThemeMode>(createInitialThemeState);

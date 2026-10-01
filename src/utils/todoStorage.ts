@@ -1,4 +1,5 @@
 import { getStorageItem, setStorageItem } from "./storage";
+import { authFetch } from "./authExpiry";
 
 export type TodoPriority = "high" | "medium" | "low";
 
@@ -18,6 +19,13 @@ export const PRIORITY_WEIGHTS: Record<TodoPriority, number> = {
     medium: 2,
     low: 1,
 };
+
+export function isUserLoggedIn(): boolean {
+    if (typeof window === "undefined") return false;
+    const userLoggedVal = getStorageItem("userLoggedIn");
+    const hasSessionToken = !!getStorageItem("sessionToken");
+    return userLoggedVal === "true" || (hasSessionToken && userLoggedVal !== "guest");
+}
 
 export function getTodayDateString(): string {
     const now = new Date();
@@ -88,14 +96,32 @@ function saveLocalTodos(todos: TodoItem[], notify: boolean = true): void {
 
 /**
  * Fetch todos. If authenticated, calls /api/todos with fallback to localStorage.
+ * Automatically synchronizes any offline/guest tasks to MongoDB on login.
  */
-export async function fetchTodos(isLoggedIn: boolean): Promise<TodoItem[]> {
-    if (!isLoggedIn) {
+export async function fetchTodos(isLoggedIn?: boolean): Promise<TodoItem[]> {
+    const userIsAuth = typeof isLoggedIn === "boolean" ? (isLoggedIn || isUserLoggedIn()) : isUserLoggedIn();
+    if (!userIsAuth) {
         return getLocalTodos();
     }
 
     try {
-        const res = await fetch("/api/todos", { credentials: "include" });
+        // Sync any pending local items created while offline or in guest mode
+        const localTodos = getLocalTodos();
+        const pendingLocal = localTodos.filter((t) => t._id && t._id.startsWith("todo_"));
+        if (pendingLocal.length > 0) {
+            for (const item of pendingLocal) {
+                try {
+                    await authFetch("/api/todos", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        credentials: "include",
+                        body: JSON.stringify({ title: item.title, priority: item.priority }),
+                    });
+                } catch {}
+            }
+        }
+
+        const res = await authFetch("/api/todos", { credentials: "include" });
         if (res.ok) {
             const data = await res.json();
             if (Array.isArray(data?.todos)) {
@@ -113,12 +139,12 @@ export async function fetchTodos(isLoggedIn: boolean): Promise<TodoItem[]> {
 }
 
 /**
- * Creates a new task.
+ * Creates a new task and persists it directly to MongoDB for authenticated users.
  */
 export async function createTodo(
     title: string,
     priority: TodoPriority,
-    isLoggedIn: boolean
+    isLoggedIn?: boolean
 ): Promise<TodoItem> {
     const today = getTodayDateString();
     const tempId = `todo_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -131,9 +157,11 @@ export async function createTodo(
         createdAt: new Date().toISOString(),
     };
 
-    if (isLoggedIn) {
+    const userIsAuth = typeof isLoggedIn === "boolean" ? (isLoggedIn || isUserLoggedIn()) : isUserLoggedIn();
+
+    if (userIsAuth) {
         try {
-            const res = await fetch("/api/todos", {
+            const res = await authFetch("/api/todos", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -163,15 +191,17 @@ export async function createTodo(
 export async function reprioritizeTodo(
     id: string,
     priority: TodoPriority,
-    isLoggedIn: boolean
+    isLoggedIn?: boolean
 ): Promise<void> {
     const current = getLocalTodos();
     const updated = current.map((item) => (item._id === id ? { ...item, priority } : item));
     saveLocalTodos(updated);
 
-    if (isLoggedIn) {
+    const userIsAuth = typeof isLoggedIn === "boolean" ? (isLoggedIn || isUserLoggedIn()) : isUserLoggedIn();
+
+    if (userIsAuth && !id.startsWith("todo_")) {
         try {
-            await fetch("/api/todos", {
+            await authFetch("/api/todos", {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 credentials: "include",
@@ -186,14 +216,16 @@ export async function reprioritizeTodo(
 /**
  * Completes and immediately deletes a task (no history stored).
  */
-export async function deleteOrCompleteTodo(id: string, isLoggedIn: boolean): Promise<void> {
+export async function deleteOrCompleteTodo(id: string, isLoggedIn?: boolean): Promise<void> {
     const current = getLocalTodos();
     const updated = current.filter((item) => item._id !== id);
     saveLocalTodos(updated);
 
-    if (isLoggedIn) {
+    const userIsAuth = typeof isLoggedIn === "boolean" ? (isLoggedIn || isUserLoggedIn()) : isUserLoggedIn();
+
+    if (userIsAuth && !id.startsWith("todo_")) {
         try {
-            await fetch(`/api/todos?id=${encodeURIComponent(id)}`, {
+            await authFetch(`/api/todos?id=${encodeURIComponent(id)}`, {
                 method: "DELETE",
                 credentials: "include",
             });

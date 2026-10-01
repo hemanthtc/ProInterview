@@ -39,13 +39,16 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "Rate limit exceeded. Please slow down." }, { status: 429 });
         }
 
+        const rawId = session.identifier.trim();
+        const userFilter = { $or: [{ userIdentifier: rawId }, { userIdentifier: rawId.toLowerCase() }] };
+
         await connectDB();
         const today = getTodayString();
 
         // Rollover: update any past uncompleted tasks to today and mark rolledOver = true
         await Todo.updateMany(
             {
-                userIdentifier: session.identifier,
+                ...userFilter,
                 targetDate: { $lt: today },
             },
             {
@@ -57,9 +60,7 @@ export async function GET(req: NextRequest) {
         );
 
         // Fetch all active tasks for user
-        const rawTodos = await Todo.find({
-            userIdentifier: session.identifier,
-        }).lean();
+        const rawTodos = await Todo.find(userFilter).lean();
 
         // Sort: High -> Medium -> Low, then by createdAt descending
         const todos = rawTodos.sort((a, b) => {
@@ -112,8 +113,11 @@ export async function POST(req: NextRequest) {
 
         await connectDB();
 
+        const rawId = session.identifier.trim();
+        const userFilter = { $or: [{ userIdentifier: rawId }, { userIdentifier: rawId.toLowerCase() }] };
+
         // Prevent unbounded growth: cap at 100 active tasks per user
-        const existingCount = await Todo.countDocuments({ userIdentifier: session.identifier });
+        const existingCount = await Todo.countDocuments(userFilter);
         if (existingCount >= 100) {
             return NextResponse.json(
                 { error: "You have reached the maximum of 100 active tasks. Complete or delete some first." },
@@ -122,7 +126,7 @@ export async function POST(req: NextRequest) {
         }
 
         const newTodo = await Todo.create({
-            userIdentifier: session.identifier,
+            userIdentifier: rawId.toLowerCase(),
             title,
             priority,
             targetDate: today,
@@ -179,9 +183,12 @@ export async function PATCH(req: NextRequest) {
             return NextResponse.json({ error: "No valid fields to update." }, { status: 400 });
         }
 
+        const rawId = session.identifier.trim();
+        const userFilter = { $or: [{ userIdentifier: rawId }, { userIdentifier: rawId.toLowerCase() }] };
+
         await connectDB();
         const updated = await Todo.findOneAndUpdate(
-            { _id: id, userIdentifier: session.identifier },
+            { _id: id, ...userFilter },
             { $set: updateFields },
             { returnDocument: 'after' }
         ).lean();
@@ -215,19 +222,22 @@ export async function DELETE(req: NextRequest) {
         }
 
         const id = req.nextUrl.searchParams.get("id");
+        const rawId = session.identifier.trim();
+        const userFilter = { $or: [{ userIdentifier: rawId }, { userIdentifier: rawId.toLowerCase() }] };
+
         await connectDB();
 
         if (id) {
             if (!mongoose.Types.ObjectId.isValid(id)) {
                 return NextResponse.json({ error: "Invalid task ID format." }, { status: 400 });
             }
-            await Todo.deleteOne({ _id: id, userIdentifier: session.identifier });
+            await Todo.deleteOne({ _id: id, ...userFilter });
             return NextResponse.json({ success: true });
         }
 
         const deleteAll = req.nextUrl.searchParams.get("all") === "1";
         if (deleteAll) {
-            await Todo.deleteMany({ userIdentifier: session.identifier });
+            await Todo.deleteMany(userFilter);
             return NextResponse.json({ success: true });
         }
 
