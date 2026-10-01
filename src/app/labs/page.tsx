@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
-import { getStorageItem } from "@/utils/storage";
 import {
     Briefcase,
     Code2,
@@ -376,7 +375,9 @@ export default function LabsPage() {
     const [hiddenTools, setHiddenTools] = useState<string[]>([]);
 
     useEffect(() => {
-        setIsCheckingAuth(false);
+        Promise.resolve().then(() => {
+            setIsCheckingAuth(false);
+        });
     }, []);
 
     // Fetch hidden tools from admin config

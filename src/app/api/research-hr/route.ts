@@ -90,7 +90,7 @@ Rules:
             generationConfig: { temperature: 0.2 },
         });
     try {
-        const parsed = parseJsonFromModel<any>(textResponse);
+        const parsed = parseJsonFromModel(textResponse) as any;
         return {
             interviewerName: parsed.interviewerName || input.hrName,
             titleGuess: parsed.titleGuess || "Recruiter / HR",
