@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { GoogleOAuthProvider, useGoogleLogin } from "@react-oauth/google";
 import { motion, AnimatePresence } from "framer-motion";
 import BrandLogo from "@/components/BrandLogo";
-import { setStorageItem } from "@/utils/storage";
+import { setStorageItem, removeStorageItem } from "@/utils/storage";
 
 const COUNTRIES = [
     { name: "United States", code: "+1", iso: "US" },

@@ -4323,7 +4323,8 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                     >
                                         <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
                                         My Profile
-                                                       ) : isGuest ? (
+                                    </Link>
+                                ) : isGuest ? (
                                     <div className="flex flex-col items-center gap-2 w-full max-w-xs">
                                         <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 px-6 py-3 rounded-full font-bold w-full justify-center">
                                             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
@@ -4350,7 +4351,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                             Exit Guest Mode
                                         </button>
                                     </div>
-                                ) : (                 ) : (
+                                ) : (
                                     <Link
                                         href="/login"
                                         onClick={() => setMobileMenuOpen(false)}
