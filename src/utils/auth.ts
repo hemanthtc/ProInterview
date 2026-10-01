@@ -39,8 +39,14 @@ export function createToken(payload: SessionPayload, isPwa?: boolean): string {
  */
 export function verifyToken(token: string): SessionPayload | null {
     try {
+        if (!token || typeof token !== "string") return null;
+        let cleanToken = token.trim().replace(/^["']|["']$/g, "");
+        if (cleanToken.includes("%")) {
+            try { cleanToken = decodeURIComponent(cleanToken); } catch {}
+        }
+
         const JWT_SECRET = getJwtSecret();
-        const parts = token.split(".");
+        const parts = cleanToken.split(".");
         if (parts.length !== 3) return null;
         const [header, data, signature] = parts;
         const expectedSignature = crypto.createHmac("sha256", JWT_SECRET).update(`${header}.${data}`).digest("base64url");
@@ -66,23 +72,27 @@ export function verifyToken(token: string): SessionPayload | null {
  * Helper to determine whether the secure flag should be set for cookies.
  * Prevents dropping cookies on localhost or HTTP deployments.
  */
-export function shouldSetSecureCookie(req?: NextRequest): boolean {
+export function shouldSetSecureCookie(req?: NextRequest | Request): boolean {
     if (process.env.COOKIE_INSECURE === "true") return false;
     if (process.env.NODE_ENV !== "production") return false;
     if (req) {
         const proto = req.headers.get("x-forwarded-proto");
-        if (proto) return proto === "https";
-        if (req.nextUrl?.protocol === "http:") return false;
+        if (proto === "http") return false;
+        if (proto === "https") return true;
+        const urlProto = (req as any).nextUrl?.protocol || (req.url ? new URL(req.url).protocol : "");
+        if (urlProto === "http:") return false;
         const host = req.headers.get("host") || "";
-        if (host.startsWith("localhost") || host.startsWith("127.0.0.1")) return false;
+        if (host.includes("localhost") || host.includes("127.0.0.1") || host.endsWith(".local")) return false;
     }
+    const publicUrl = process.env.NEXT_PUBLIC_API_URL || "";
+    if (publicUrl.startsWith("http://localhost") || publicUrl.startsWith("http://127.0.0.1")) return false;
     return true;
 }
 
 /**
  * Sets the secure HttpOnly cookie containing the session token.
  */
-export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean, req?: NextRequest) {
+export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean, req?: NextRequest | Request) {
     const token = createToken(payload, isPwa);
     const cookieStore = await cookies();
     const durationSec = isPwa ? 365 * 24 * 60 * 60 : 7 * 24 * 60 * 60;
@@ -106,7 +116,7 @@ export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean,
 /**
  * Clears the session cookie.
  */
-export async function clearSessionCookie(req?: NextRequest) {
+export async function clearSessionCookie(req?: NextRequest | Request) {
     const cookieStore = await cookies();
     const isSecure = shouldSetSecureCookie(req);
     cookieStore.set("session", "", {
@@ -128,12 +138,11 @@ export async function clearSessionCookie(req?: NextRequest) {
 /**
  * Helper to verify requests inside Next.js route handlers.
  * Verifies the HttpOnly session cookie first, and falls back to
- * Authorization: Bearer <token> or x-session-token headers for robust
- * cloud hosting (e.g. AWS Amplify / CloudFront edge proxies).
+ * raw Cookie header, Authorization: Bearer <token>, or x-session-token headers.
  */
-export async function getVerifiedSession(req?: NextRequest): Promise<SessionPayload | null> {
+export async function getVerifiedSession(req?: NextRequest | Request): Promise<SessionPayload | null> {
     try {
-        // 1. Try to read from HttpOnly session cookie
+        // 1. Try to read from HttpOnly session cookie via Next.js cookies()
         try {
             const cookieStore = await cookies();
             const cookieToken = cookieStore.get("session")?.value;
@@ -143,18 +152,28 @@ export async function getVerifiedSession(req?: NextRequest): Promise<SessionPayl
             }
         } catch {}
 
-        // 2. Also check req.cookies directly if req was provided
-        if (req) {
-            const reqCookieToken = req.cookies.get("session")?.value;
+        // 2. Also check req.cookies directly if NextRequest was provided
+        if (req && "cookies" in req && typeof (req as any).cookies?.get === "function") {
+            const reqCookieToken = (req as any).cookies.get("session")?.value;
             if (reqCookieToken) {
                 const verified = verifyToken(reqCookieToken);
                 if (verified) return verified;
             }
         }
 
-        // 3. If cookie is missing or invalid, fall back to Authorization header or custom header
+        // 3. Fallback: Parse raw "cookie" header directly (crucial for proxies, Edge, and standard Request)
+        const rawCookie = req?.headers?.get("cookie");
+        if (rawCookie) {
+            const match = rawCookie.match(/(?:^|;\s*)session=([^;]+)/);
+            if (match) {
+                const verified = verifyToken(match[1]);
+                if (verified) return verified;
+            }
+        }
+
+        // 4. Fallback to Authorization header or custom header (x-session-token)
         let authHeader: string | null = null;
-        if (req) {
+        if (req?.headers) {
             authHeader = req.headers.get("authorization") || req.headers.get("x-session-token");
         }
         if (!authHeader) {

@@ -5,9 +5,9 @@ import { getVerifiedSession } from "@/utils/auth";
 import { runRoadmapCleanup } from "@/utils/roadmapCleanup";
 
 // GET: Returns all roadmaps for the logged-in user (after running user-scoped expiry check/warnings)
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -48,7 +48,7 @@ export async function GET() {
 // POST: Saves a new generated roadmap
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

@@ -46,19 +46,26 @@ export function getStoredSessionToken(): string | null {
 
 /**
  * An authenticated fetch wrapper that:
- * 1. Automatically attaches the Authorization: Bearer <sessionToken> header.
- * 2. Intercepts HTTP 401 (Unauthorized) responses and triggers auto-logout.
+ * 1. Automatically attaches the Authorization: Bearer <sessionToken> and x-session-token headers.
+ * 2. Ensures cookies are included with requests.
+ * 3. Intercepts HTTP 401 (Unauthorized) responses for authenticated users and safely triggers session renewal or clean redirection.
  */
 export async function authFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
     const token = getStoredSessionToken();
     const headers = new Headers(init?.headers || {});
 
-    // Inject Bearer token if available and not explicitly provided
-    if (token && !headers.has("authorization") && !headers.has("Authorization")) {
-        headers.set("Authorization", `Bearer ${token}`);
+    // Inject Bearer and custom session headers if available
+    if (token) {
+        if (!headers.has("authorization") && !headers.has("Authorization")) {
+            headers.set("Authorization", `Bearer ${token}`);
+        }
+        if (!headers.has("x-session-token")) {
+            headers.set("x-session-token", token);
+        }
     }
 
     const modifiedInit: RequestInit = {
+        credentials: init?.credentials || "same-origin",
         ...init,
         headers,
     };
@@ -67,7 +74,11 @@ export async function authFetch(input: RequestInfo | URL, init?: RequestInit): P
         const response = await fetch(input, modifiedInit);
 
         if (response.status === 401) {
-            handleSessionExpired("Your session has expired. Please log in again to continue.");
+            // Only trigger session expiration if the user actually had an active login
+            const wasLoggedIn = getStorageItem("userLoggedIn") === "true";
+            if (wasLoggedIn) {
+                handleSessionExpired("Your session has expired. Please log in again to continue.");
+            }
         }
 
         return response;

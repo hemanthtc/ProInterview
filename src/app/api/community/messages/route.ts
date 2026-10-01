@@ -245,7 +245,7 @@ async function pruneExpiredAttachments(roomSlug: string, source: string) {
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Sign in to view community chat." }, { status: 401 });
         }
@@ -341,7 +341,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Sign in to chat with the community." }, { status: 401 });
         }
@@ -521,7 +521,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Sign in to delete messages." }, { status: 401 });
         }

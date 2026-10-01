@@ -78,3 +78,81 @@ export async function logoutUser(redirectTo: string = "/"): Promise<void> {
         }
     }
 }
+
+/**
+ * Automatically attaches Authorization headers and cookies to all /api/ requests.
+ */
+export function installGlobalAuthFetchInterceptor(): void {
+    if (typeof window === "undefined") return;
+    if ((window as any).__prointerview_fetch_interceptor_installed__) return;
+    (window as any).__prointerview_fetch_interceptor_installed__ = true;
+
+    const originalFetch = window.fetch;
+    window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+        let urlStr = "";
+        if (typeof input === "string") {
+            urlStr = input;
+        } else if (input instanceof URL) {
+            urlStr = input.toString();
+        } else if (input && typeof (input as any).url === "string") {
+            urlStr = (input as any).url;
+        }
+
+        const isInternalApi =
+            urlStr.startsWith("/api/") ||
+            (urlStr.includes("/api/") &&
+                (urlStr.startsWith(window.location.origin) ||
+                    urlStr.startsWith("http://localhost") ||
+                    urlStr.startsWith("http://127.0.0.1")));
+
+        if (isInternalApi) {
+            let token: string | null = null;
+            try {
+                token = getStorageItem("sessionToken") || localStorage.getItem("sessionToken");
+            } catch {}
+
+            const modifiedInit: RequestInit = {
+                credentials: init?.credentials || "same-origin",
+                ...init,
+            };
+
+            const headers = new Headers(init?.headers || {});
+            if (token) {
+                if (!headers.has("authorization") && !headers.has("Authorization")) {
+                    headers.set("Authorization", `Bearer ${token}`);
+                }
+                if (!headers.has("x-session-token")) {
+                    headers.set("x-session-token", token);
+                }
+            }
+            modifiedInit.headers = headers;
+
+            return originalFetch(input, modifiedInit);
+        }
+
+        return originalFetch(input, init);
+    };
+}
+
+/**
+ * Reconciles cookie and localStorage states for persistent auth session across tabs.
+ */
+export function syncClientAuthState(): void {
+    if (typeof window === "undefined") return;
+
+    try {
+        const token = localStorage.getItem("sessionToken") || sessionStorage.getItem("sessionToken");
+        const isLogged = localStorage.getItem("userLoggedIn") === "true" || !!token;
+
+        if (isLogged) {
+            if (!document.cookie.includes("userLoggedIn=true")) {
+                document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+            }
+            if (localStorage.getItem("userLoggedIn") !== "true") {
+                try { localStorage.setItem("userLoggedIn", "true"); } catch {}
+            }
+        } else if (document.cookie.includes("userLoggedIn=true")) {
+            try { localStorage.setItem("userLoggedIn", "true"); } catch {}
+        }
+    } catch {}
+}

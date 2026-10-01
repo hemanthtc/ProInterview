@@ -84,7 +84,7 @@ export default function SetupPage() {
     useEffect(() => {
         const isLoggedIn = getStorageItem("userLoggedIn") === "true";
         if (!isLoggedIn) {
-            router.push("/login");
+            router.push("/login?redirect=/setup");
             return;
         }
         // eslint-disable-next-line react-hooks/set-state-in-effect

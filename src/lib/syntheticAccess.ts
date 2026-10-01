@@ -6,10 +6,10 @@ import SyntheticFolder, { ISyntheticFolder } from "@/models/SyntheticFolder";
 import { NextResponse } from "next/server";
 import { getJSON, isS3Configured, uploadJSON, pingS3 } from "@/utils/s3";
 
-export async function requireSession(): Promise<
+export async function requireSession(req?: Request): Promise<
     { session: SessionPayload; error?: undefined } | { session?: undefined; error: NextResponse }
 > {
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     if (!session) {
         return {
             error: NextResponse.json(

@@ -169,7 +169,7 @@ export default function ProfilePage() {
         const userLoggedIn = getStorageItem("userLoggedIn");
         const sessionToken = getStorageItem("sessionToken");
         if (userLoggedIn !== "true" && !sessionToken) {
-            router.push("/login");
+            router.push("/login?redirect=/profile");
             return;
         }
         if (sessionToken && userLoggedIn !== "true") {

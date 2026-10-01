@@ -222,7 +222,7 @@ export default function CommunityPage() {
     useEffect(() => {
         const loggedIn = getStorageItem("userLoggedIn") === "true";
         if (!loggedIn) {
-            router.push("/login");
+            router.push("/login?redirect=/community");
             return;
         }
         Promise.resolve().then(() => {
@@ -235,7 +235,7 @@ export default function CommunityPage() {
         if (authDeadRef.current) return;
         authDeadRef.current = true;
         try { localStorage.removeItem("userLoggedIn"); } catch { /* ignore */ }
-        router.push("/login");
+        router.push("/login?redirect=/community");
     }, [router]);
 
     const loadRooms = useCallback(async () => {

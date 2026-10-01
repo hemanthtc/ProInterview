@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getVerifiedSession } from "@/utils/auth";
 import connectDB from "@/utils/db";
 import User from "@/models/User";
@@ -11,9 +11,9 @@ import type { PrepProgressBlob } from "@/models/CloudSession";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

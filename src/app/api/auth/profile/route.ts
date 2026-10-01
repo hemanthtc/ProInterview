@@ -22,10 +22,15 @@ function getModel(accountType: string): mongoose.Model<any> {
     }
 }
 
-async function verifyUserAccess(req: NextRequest, targetIdentifier: string) {
+async function verifyUserAccess(req: NextRequest, targetIdentifier: string): Promise<{ authorized: boolean; status: number; error: string }> {
     const session = await getVerifiedSession(req);
-    if (!session) return false;
-    return targetIdentifier.trim().toLowerCase() === session.identifier.trim().toLowerCase();
+    if (!session) {
+        return { authorized: false, status: 401, error: "Unauthorized access: Please sign in." };
+    }
+    if (targetIdentifier.trim().toLowerCase() !== session.identifier.trim().toLowerCase()) {
+        return { authorized: false, status: 403, error: "Forbidden: Access denied." };
+    }
+    return { authorized: true, status: 200, error: "" };
 }
 
 
@@ -75,9 +80,9 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
-        const isAuthorized = await verifyUserAccess(req, identifier);
-        if (!isAuthorized) {
-            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
+        const access = await verifyUserAccess(req, identifier);
+        if (!access.authorized) {
+            return NextResponse.json({ error: access.error }, { status: access.status });
         }
 
         const Model = getModel(accountType);
@@ -200,9 +205,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
-        const isAuthorized = await verifyUserAccess(req, identifier);
-        if (!isAuthorized) {
-            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
+        const access = await verifyUserAccess(req, identifier);
+        if (!access.authorized) {
+            return NextResponse.json({ error: access.error }, { status: access.status });
         }
 
         const Model = getModel(accountType);
@@ -385,9 +390,9 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: "User identifier is required." }, { status: 400 });
         }
 
-        const isAuthorized = await verifyUserAccess(req, identifier);
-        if (!isAuthorized) {
-            return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
+        const access = await verifyUserAccess(req, identifier);
+        if (!access.authorized) {
+            return NextResponse.json({ error: access.error }, { status: access.status });
         }
 
         const Model = getModel(accountType);

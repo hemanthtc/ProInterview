@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> };
 // DELETE: Deletes a specific roadmap
 export async function DELETE(req: NextRequest, ctx: Ctx) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -31,7 +31,7 @@ export async function DELETE(req: NextRequest, ctx: Ctx) {
 // PATCH: Updates tasks checked or extends the expiry date
 export async function PATCH(req: NextRequest, ctx: Ctx) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

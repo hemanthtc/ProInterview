@@ -50,7 +50,38 @@ export function getStorageItem(key: string): string | null {
     if (typeof window === "undefined") return null;
 
     if (key === "userLoggedIn") {
-        // 1. Check expiration timestamp if stored
+        // 1. Check active sessionToken first: auto-heals userLoggedIn and cookie if valid
+        try {
+            const token = localStorage.getItem("sessionToken") || sessionStorage.getItem("sessionToken") || tempMemory["sessionToken"];
+            if (token) {
+                let isExpired = false;
+                try {
+                    const parts = token.split(".");
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+                        if (payload.exp && Date.now() > payload.exp) {
+                            isExpired = true;
+                        }
+                    }
+                } catch {}
+
+                if (!isExpired) {
+                    try {
+                        localStorage.setItem("userLoggedIn", "true");
+                    } catch {}
+                    tempMemory["userLoggedIn"] = "true";
+                    if (typeof document !== "undefined") {
+                        document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+                    }
+                    return "true";
+                } else {
+                    removeStorageItem("userLoggedIn");
+                    return null;
+                }
+            }
+        } catch {}
+
+        // 2. Check expiration timestamp if stored (for sessions without a JWT token)
         try {
             const exp = localStorage.getItem("userSessionExpiresAt") || tempMemory["userSessionExpiresAt"];
             if (exp) {
@@ -62,35 +93,37 @@ export function getStorageItem(key: string): string | null {
             }
         } catch {}
 
-        // 2. Active sessionToken takes highest priority and auto-heals userLoggedIn
+        // 3. Local or temporary memory status
         try {
-            const token = localStorage.getItem("sessionToken") || tempMemory["sessionToken"];
-            if (token) {
-                try {
-                    localStorage.setItem("userLoggedIn", "true");
-                } catch {}
-                tempMemory["userLoggedIn"] = "true";
-                if (typeof document !== "undefined") {
+            const fromLocal = localStorage.getItem("userLoggedIn");
+            if (fromLocal === "true") {
+                if (typeof document !== "undefined" && !document.cookie.includes("userLoggedIn=true")) {
                     document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
                 }
                 return "true";
             }
-        } catch {}
-
-        try {
-            const fromLocal = localStorage.getItem("userLoggedIn");
-            if (fromLocal === "true") return "true";
             if (fromLocal === "guest") return "guest";
         } catch {}
+
         const fromTemp = tempMemory["userLoggedIn"];
         if (fromTemp === "true") return "true";
         if (fromTemp === "guest") return "guest";
+
+        // 4. Cross-check document.cookie and auto-heal localStorage
         if (typeof document !== "undefined" && document.cookie) {
             const match = document.cookie.match(/(?:^|;\s*)userLoggedIn=([^;]+)/);
             if (match) {
                 const val = match[1].trim();
-                if (val === "true") return "true";
-                if (val === "guest") return "guest";
+                if (val === "true") {
+                    try { localStorage.setItem("userLoggedIn", "true"); } catch {}
+                    tempMemory["userLoggedIn"] = "true";
+                    return "true";
+                }
+                if (val === "guest") {
+                    try { localStorage.setItem("userLoggedIn", "guest"); } catch {}
+                    tempMemory["userLoggedIn"] = "guest";
+                    return "guest";
+                }
             }
         }
         return null;

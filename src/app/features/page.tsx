@@ -847,7 +847,7 @@ function FeaturesContent() {
         const loggedIn = initialUserVal === "true" || (initialHasToken && initialUserVal !== "guest");
         const guest = !loggedIn && initialUserVal === "guest";
         if (!loggedIn && !guest) {
-            router.push("/login");
+            router.push("/login?redirect=/features");
             return;
         }
 

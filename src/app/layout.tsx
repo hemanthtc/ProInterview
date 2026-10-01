@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import ErrorBoundary from "../components/ErrorBoundary";
 import PwaRegister from "../components/PwaRegister";
 import RateLimitToaster from "../components/RateLimitToaster";
+import AuthInitializer from "../components/auth/AuthInitializer";
 import "./globals.css";
 import "../components/prointerviewer/ProInterviewer.css";
 
@@ -65,6 +66,7 @@ export default function RootLayout({
                 <ErrorBoundary fallbackTitle="ProInterview hit an unexpected error">
                     {children}
                 </ErrorBoundary>
+                <AuthInitializer />
                 <PwaRegister />
                 <RateLimitToaster />
             </body>

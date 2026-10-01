@@ -53,9 +53,9 @@ function publicRoom(r: {
     };
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Sign in to view community rooms." }, { status: 401 });
         }

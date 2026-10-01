@@ -222,7 +222,8 @@ export default function JobsPage() {
 
     useEffect(() => {
         async function init() {
-            if (getStorageItem("userLoggedIn") !== "true") {
+            const userLogged = getStorageItem("userLoggedIn");
+            if (userLogged !== "true" && userLogged !== "guest") {
                 router.push("/login?redirect=/jobs");
                 return;
             }

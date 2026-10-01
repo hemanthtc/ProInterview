@@ -405,7 +405,7 @@ export default function RealisticInterviewRoom() {
     useEffect(() => {
         const isLoggedIn = getStorageItem("userLoggedIn") === "true";
         if (!isLoggedIn) {
-            router.push("/login");
+            router.push("/login?redirect=/realistic-interview");
             return;
         }
         setIsAuthChecked(true);

@@ -324,7 +324,7 @@ export default function InterviewRoom() {
     useEffect(() => {
         const isLoggedIn = getStorageItem("userLoggedIn") === "true";
         if (!isLoggedIn) {
-            router.push("/login");
+            router.push("/login?redirect=/interview");
             return;
         }
         setIsAuthChecked(true);

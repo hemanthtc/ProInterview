@@ -376,14 +376,8 @@ export default function LabsPage() {
     const [hiddenTools, setHiddenTools] = useState<string[]>([]);
 
     useEffect(() => {
-        if (getStorageItem("userLoggedIn") !== "true") {
-            router.push("/login?redirect=/labs");
-        } else {
-            Promise.resolve().then(() => {
-                setIsCheckingAuth(false);
-            });
-        }
-    }, [router]);
+        setIsCheckingAuth(false);
+    }, []);
 
     // Fetch hidden tools from admin config
     useEffect(() => {
