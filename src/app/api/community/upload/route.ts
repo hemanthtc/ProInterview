@@ -11,7 +11,7 @@ const MAX_VIDEO_SIZE = 15 * 1024 * 1024; // 15MB
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

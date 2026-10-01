@@ -9,8 +9,11 @@ import { generateOtp, hashOtp, otpExpiry } from "@/utils/otp";
 import { rateLimit } from "@/utils/rateLimit";
 import type { AccountType, OtpSendResponse } from "@/types/auth";
 
-// Seed default organization accounts into their dedicated collections
+// Seed default organization accounts into their dedicated collections (runs once per server lifecycle)
+let _orgSeeded = false;
 async function seedDefaultOrgAccounts() {
+    if (_orgSeeded) return;
+    _orgSeeded = true;
     try {
         const seedAdminPassword = process.env.SEED_ADMIN_PASSWORD;
         const seedEmployeePassword = process.env.SEED_EMPLOYEE_PASSWORD;

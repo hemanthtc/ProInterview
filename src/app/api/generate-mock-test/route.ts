@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
-import { generateContentWithTimeout } from "@/utils/gemini";
 import {
     enforceRateLimit,
     jsonError,
@@ -11,7 +10,7 @@ import {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -26,17 +25,6 @@ export async function POST(req: NextRequest) {
         const parsed = await parseJsonBody(req, mockTestBodySchema);
         if (!parsed.ok) return parsed.response;
         const { aptitudePath, role, domain } = parsed.data;
-
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY environment variable" }, { status: 500 });
-        }
-
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0.7 }
-        });
 
         const isCampus = aptitudePath === "onCampus";
         const candidateContext = role ? `Target Role: ${role}` : domain ? `Discipline: ${domain}` : "Engineering & Professional Candidate";
@@ -106,33 +94,12 @@ The JSON must adhere to the following schema structure:
 
 Ensure the questions are realistic, technically accurate, and completely unique. MCQ correctAnswers must match the index of the options array (0 to 3). Coding templates must be valid skeleton functions.`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await generateContentWithTimeout(model.generateContent(systemPrompt), 60000);
-                break;
-            } catch (retryErr: any) {
-                const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
-                                    (retryErr?.message && (retryErr.message.includes("429") || retryErr.message.includes("503") || retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error (${retryErr?.status || '503'}), retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-
-        if (!result) {
-            return NextResponse.json({ error: "AI rate-limited after retries." }, { status: 429 });
-        }
-
-        const textResponse = result.response.text().trim();
+        const textResponse = await generateWithFallback(systemPrompt, {
+            generationConfig: { temperature: 0.7 },
+        });
         let parsedData;
         try {
-            const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-            parsedData = JSON.parse(cleanJson);
+            parsedData = parseJsonFromModel(textResponse);
         } catch (e) {
             console.error("Failed to parse JSON response from Gemini for mock test generation");
             return NextResponse.json({ error: "Failed to parse mock assessment questions output from AI" }, { status: 500 });

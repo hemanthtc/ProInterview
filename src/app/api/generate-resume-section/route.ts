@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     try {
         // Enforce active session
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -47,10 +47,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required fields (section, topic, explanation)" }, { status: 400 });
         }
 
-        const apiKey = process.env.GEMINI_API_KEY;
-        if (!apiKey || apiKey === "dummy") {
-            return NextResponse.json({ description: generateSectionFallback(section, topic, explanation), isFallback: true });
-        }
+
 
         let sectionPrompt = "";
         if (section === "workExperience") {

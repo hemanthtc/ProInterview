@@ -1,20 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
         // Enforce active session
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
-
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
-        }
-        const genAI = new GoogleGenerativeAI(API_KEY);
 
         const { sessions } = await req.json();
 
@@ -31,11 +25,6 @@ export async function POST(req: NextRequest) {
 - Summary: ${s.summary ?? "No summary available."}`;
         }).join("\n\n");
 
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0.7 }
-        });
-
         const prompt = `You are an elite technical career coach and interview specialist. A candidate has shared their recent interview session history with you. Analyze their performance trends and provide highly personalized, actionable coaching guidance.
 
 Here is their interview history (from newest to oldest):
@@ -51,25 +40,9 @@ Based on this data, provide a structured coaching report with:
 
 Be honest, empathetic, and concise. Do not be vague. Format your response clearly with the numbered sections above.`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(prompt);
-                break;
-            } catch (retryErr: any) {
-                if (retryErr?.status === 429 && attempt < 2) {
-                    const delay = (attempt + 1) * 5000;
-                    console.warn(`Gemini 429 rate limit hit, retrying in ${delay}ms`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-        if (!result) {
-            return NextResponse.json({ error: "AI rate-limited after retries." }, { status: 429 });
-        }
-        const text = result.response.text();
+        const text = await generateWithFallback(prompt, {
+            generationConfig: { temperature: 0.7 }
+        });
 
         return NextResponse.json({ guidance: text });
     } catch (err: any) {

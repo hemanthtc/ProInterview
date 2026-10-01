@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 import { isS3Configured, getJSON, uploadJSON, pingS3, getS3FilmRoomKey, deleteObject } from "@/utils/s3";
 
@@ -107,7 +107,7 @@ function fallbackFilm(transcript: string, summary?: string, scores?: any): FilmR
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -149,7 +149,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -163,27 +163,6 @@ export async function POST(req: NextRequest) {
         if (!transcript.trim()) {
             return NextResponse.json({ error: "transcript is required" }, { status: 400 });
         }
-
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            const fallback = fallbackFilm(transcript, summary, scores);
-            if (timestamp && isS3Configured()) {
-                try {
-                    const key = getS3FilmRoomKey(session.identifier, timestamp);
-                    await uploadJSON(key, fallback);
-                } catch (err) {
-                    console.error("Failed saving S3 fallback film:", err);
-                }
-            }
-            return NextResponse.json(fallback);
-        }
-
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-flash-latest",
-            generationConfig: { temperature: 0.35 },
-        });
-
         const prompt = `You are an interview film-room coach. Annotate this mock interview like sports game film.
 
 Transcript:
@@ -224,38 +203,14 @@ Rules:
 - Prefer actionable notes over generic praise.
 - For every "gap" annotation, include rewrite + retakePrompt.`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(prompt);
-                break;
-            } catch (retryErr: any) {
-                const isTransient =
-                    retryErr?.status === 429 ||
-                    retryErr?.status === 503 ||
-                    (retryErr?.message &&
-                        (retryErr.message.includes("429") ||
-                            retryErr.message.includes("503") ||
-                            retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    await new Promise((r) => setTimeout(r, (attempt + 1) * 3000));
-                } else {
-                    console.warn("Film-room Gemini failed; using fallback.", retryErr?.message || retryErr);
-                    const fallback = fallbackFilm(transcript, summary, scores);
-                    if (timestamp && isS3Configured()) {
-                        try {
-                            const key = getS3FilmRoomKey(session.identifier, timestamp);
-                            await uploadJSON(key, fallback);
-                        } catch (err) {
-                            console.error("Failed saving S3 fallback film:", err);
-                        }
-                    }
-                    return NextResponse.json(fallback);
-                }
-            }
-        }
-
-        if (!result) {
+        let parsed: any;
+        try {
+            const rawText = await generateWithFallback(prompt, {
+                generationConfig: { temperature: 0.35 },
+            });
+            parsed = parseJsonFromModel(rawText);
+        } catch (retryErr: any) {
+            console.warn("Film-room Gemini failed; using fallback.", retryErr?.message || retryErr);
             const fallback = fallbackFilm(transcript, summary, scores);
             if (timestamp && isS3Configured()) {
                 try {
@@ -268,14 +223,8 @@ Rules:
             return NextResponse.json(fallback);
         }
 
+        // parsed already loaded via parseJsonFromModel
         try {
-            const rawText = result.response
-                .text()
-                .trim()
-                .replace(/^```(?:json)?\s*/i, "")
-                .replace(/\s*```$/i, "")
-                .trim();
-            const parsed = JSON.parse(rawText);
             const annotations: FilmAnnotation[] = Array.isArray(parsed.annotations)
                 ? parsed.annotations.map((a: any, i: number) => ({
                       t: typeof a.t === "number" ? a.t : i * 40,
@@ -349,7 +298,7 @@ Rules:
 
 export async function DELETE(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

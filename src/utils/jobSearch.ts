@@ -1154,6 +1154,114 @@ export function scoreJob(
 }
 
 // --------------------------------------------------------------------------
+// 7b. ANTI-BIAS JOB FILTER — ensures fair, unbiased job matching
+// Removes discriminatory language from job descriptions and filters out
+// listings that contain explicit bias based on protected characteristics.
+// --------------------------------------------------------------------------
+
+/**
+ * Patterns that indicate biased/discriminatory job descriptions.
+ * Jobs matching HARD_REJECT patterns are excluded entirely.
+ * Jobs matching SOFT_STRIP patterns have the biased text removed.
+ */
+
+// Hard-reject: explicit discrimination that makes the listing unlawful/unethical
+const BIAS_HARD_REJECT: RegExp[] = [
+    // Gender-exclusive (not just "preferred" but "only", "must be")
+    /\b(only\s+(?:male|female|men|women)\s+(?:candidates?|applicants?|persons?)\s+(?:need|should|may|can)\s+apply)\b/i,
+    /\b((?:male|female|men|women)\s+only)\b/i,
+    // Caste / Religion
+    /\b((?:upper|lower|forward|backward)\s+caste)\b/i,
+    /\b(only\s+(?:hindu|muslim|christian|sikh|buddhist|jain|brahmin|kshatriya|dalit|obc|sc|st)\s+(?:candidates?|applicants?))\b/i,
+    // Marital status as hard requirement
+    /\b(must\s+be\s+(?:un)?married)\b/i,
+    /\b(only\s+(?:un)?married\s+(?:candidates?|applicants?|persons?))\b/i,
+    // Nationality / ethnicity as exclusion (beyond work authorization)
+    /\b((?:no|not)\s+(?:foreigners?|non-?indians?|africans?|muslims?|christians?))\b/i,
+];
+
+// Soft-strip: biased language that can be removed without destroying the listing
+const BIAS_SOFT_STRIP: RegExp[] = [
+    // Gender preferences
+    /\b((?:male|female|men|women)\s+(?:candidates?|applicants?)\s+preferred)\b/ig,
+    /\b(prefer(?:ably|red)?\s+(?:male|female|men|women))\b/ig,
+    /\b(looking\s+for\s+(?:a\s+)?(?:male|female)\s+candidate)\b/ig,
+    // Age preferences (e.g. "age 22-28 only", "below 30 years")
+    /\b(age\s*(?:limit|range|group)?\s*:?\s*\d{2}\s*[-–to]+\s*\d{2}\s*(?:years?)?(?:\s+only)?)\b/ig,
+    /\b((?:below|under|above|over|max(?:imum)?|min(?:imum)?)\s+\d{2}\s+years?\s+(?:of\s+age\s+)?(?:only|preferred|required)?)\b/ig,
+    /\b(candidates?\s+(?:aged?|between)\s+\d{2}\s*[-–to]+\s*\d{2})\b/ig,
+    // Marital status preferences
+    /\b((?:un)?married\s+(?:candidates?|persons?|applicants?)\s+preferred)\b/ig,
+    /\b(marital\s+status\s*:?\s*(?:single|married|unmarried|divorced))\b/ig,
+    // Physical appearance / attractiveness
+    /\b((?:good|pleasant|attractive)\s+(?:looking|appearance|personality)\s+(?:required|preferred|mandatory|must))\b/ig,
+    /\b((?:fair|slim|tall|short)\s+(?:complexion|built|height|candidate)\s+(?:preferred|required|only))\b/ig,
+    // College tier bias
+    /\b(only\s+(?:from\s+)?(?:iit|nit|bits|top[-\s]?tier|tier[-\s]?1|premier|elite)\s+(?:colleges?|universities?|institutes?))\b/ig,
+    /\b((?:iit|nit|bits|top[-\s]?tier|tier[-\s]?1|premier)\s+(?:colleges?|universities?|graduates?)\s+(?:preferred|only|required))\b/ig,
+    // Mother tongue / language bias (beyond job-relevant communication)
+    /\b(mother\s+tongue\s*:?\s*\w+\s+(?:only|required|preferred|mandatory))\b/ig,
+    // Disability / physical ability bias (unless genuinely occupational)
+    /\b((?:physically\s+)?(?:handicapped?|disabled?)\s+(?:persons?\s+)?(?:need\s+not|cannot|should\s+not)\s+apply)\b/ig,
+];
+
+/**
+ * Check if a job description contains hard-reject bias patterns.
+ * Returns the matched pattern string or null if clean.
+ */
+export function detectHardBias(text: string): string | null {
+    if (!text) return null;
+    for (const pattern of BIAS_HARD_REJECT) {
+        const match = text.match(pattern);
+        if (match) return match[0];
+    }
+    return null;
+}
+
+/**
+ * Strip soft-bias language from job description text.
+ * Returns cleaned text with discriminatory phrases removed.
+ */
+export function stripBiasedLanguage(text: string): string {
+    if (!text) return text;
+    let cleaned = text;
+    for (const pattern of BIAS_SOFT_STRIP) {
+        cleaned = cleaned.replace(pattern, "");
+    }
+    // Clean up leftover artifacts (double spaces, empty parentheses, etc.)
+    return cleaned
+        .replace(/\(\s*\)/g, "")
+        .replace(/\s{2,}/g, " ")
+        .replace(/\n\s*\n\s*\n/g, "\n\n")
+        .trim();
+}
+
+/**
+ * Sanitize a single job listing for bias.
+ * - Hard-reject returns null (job should be excluded)
+ * - Soft-strip cleans the description text
+ */
+export function sanitizeJobForBias<T extends { description?: string; fullDescription?: string; role?: string }>(
+    job: T
+): T | null {
+    const fullText = `${job.role || ""} ${job.description || ""} ${job.fullDescription || ""}`;
+
+    // Hard reject: explicit discrimination
+    const hardBias = detectHardBias(fullText);
+    if (hardBias) {
+        console.warn(`[Anti-Bias] Rejected job "${job.role}" — discriminatory content: "${hardBias}"`);
+        return null;
+    }
+
+    // Soft strip: remove biased language but keep the listing
+    return {
+        ...job,
+        description: stripBiasedLanguage(job.description || ""),
+        fullDescription: stripBiasedLanguage(job.fullDescription || ""),
+    };
+}
+
+// --------------------------------------------------------------------------
 // 8. ROBUST DEDUPLICATION
 // --------------------------------------------------------------------------
 
@@ -1812,8 +1920,15 @@ export async function searchMatchingJobs(
         if (result.status === "fulfilled") collected.push(...result.value);
     }
 
+    // Anti-bias filter: remove discriminatory listings and strip biased language
+    const sanitized: typeof collected = [];
+    for (const job of collected) {
+        const clean = sanitizeJobForBias(job);
+        if (clean) sanitized.push(clean);
+    }
+
     // Merge and robustly deduplicate by URL and normalized (company + role + location)
-    const deduplicated = deduplicateJobs(collected);
+    const deduplicated = deduplicateJobs(sanitized);
 
     // Score and rank using factual compatibility
     const ranked = deduplicated

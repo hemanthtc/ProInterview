@@ -33,9 +33,9 @@ function makeCode() {
     return crypto.randomBytes(4).toString("hex");
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         await connectDB();
@@ -64,7 +64,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
         await connectDB();

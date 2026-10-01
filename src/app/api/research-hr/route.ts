@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 import {
     buildPersonDescription,
@@ -41,16 +41,6 @@ async function synthesizeInterviewIntel(input: {
     profile?: HappenstanceProfile | null;
     source: "happenstance" | "gemini_fallback";
 }): Promise<HrInterviewIntel> {
-    const API_KEY = process.env.GEMINI_API_KEY;
-    if (!API_KEY) {
-        throw new Error("Missing GEMINI_API_KEY environment variable");
-    }
-
-    const genAI = new GoogleGenerativeAI(API_KEY);
-    const model = genAI.getGenerativeModel({
-        model: "gemini-flash-latest",
-        generationConfig: { temperature: 0.35 },
-    });
 
     const profileContext = profileToPromptContext(input.profile);
     const skillsLine = input.skills?.length ? input.skills.join(", ") : "not specified";
@@ -96,33 +86,9 @@ Rules:
 - If profile data is thin, still give useful generic-but-role-aware guidance and lower confidence.
 - Never invent private reviews; phrase inferences as "likely" / "based on public signals".
 - Do not include markdown fences.`;
-
-    let result;
-    for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-            result = await model.generateContent(prompt);
-            break;
-        } catch (retryErr: any) {
-            const isTransient =
-                retryErr?.status === 429 ||
-                retryErr?.status === 503 ||
-                (retryErr?.message &&
-                    (retryErr.message.includes("429") ||
-                        retryErr.message.includes("503") ||
-                        retryErr.message.includes("demand")));
-            if (isTransient && attempt < 2) {
-                await new Promise((r) => setTimeout(r, (attempt + 1) * 3000));
-            } else {
-                throw retryErr;
-            }
-        }
-    }
-
-    if (!result) {
-        throw new Error("AI rate-limited while synthesizing HR interview intel");
-    }
-
-    const textResponse = result.response.text().trim();
+        const textResponse = await generateWithFallback(prompt, {
+            generationConfig: { temperature: 0.2 },
+        });
     try {
         const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
         const parsed = JSON.parse(cleanJson);
@@ -181,7 +147,7 @@ Rules:
 /** Start Happenstance research (or Gemini-only fallback). */
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

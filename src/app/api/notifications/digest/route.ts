@@ -13,7 +13,7 @@ async function isAuthorized(req: NextRequest): Promise<boolean> {
     const headerSecret = req.headers.get("x-cron-secret");
     if (cronSecret && headerSecret && headerSecret === cronSecret) return true;
 
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     return Boolean(session && session.role === "admin");
 }
 

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { getVerifiedSession } from "@/utils/auth";
-import { generateWithFallback, generateContentWithTimeout } from "@/utils/gemini";
+import { generateWithFallback } from "@/utils/gemini";
 import {
     analyzeInterviewBodySchema,
     enforceRateLimit,
@@ -24,7 +23,7 @@ export async function POST(req: NextRequest) {
     let transcript = "";
     try {
         // Enforce active session
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -36,11 +35,7 @@ export async function POST(req: NextRequest) {
         );
         if (blocked) return blocked;
 
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
-        }
-        const genAI = new GoogleGenerativeAI(API_KEY);
+
 
         const parsedBody = await parseJsonBody(req, analyzeInterviewBodySchema, 2_000_000);
         if (!parsedBody.ok) return parsedBody.response;

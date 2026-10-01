@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -14,17 +14,6 @@ export async function POST(req: NextRequest) {
         if (!emailText || !emailText.trim()) {
             return NextResponse.json({ error: "Missing emailText parameter" }, { status: 400 });
         }
-
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY environment variable" }, { status: 500 });
-        }
-
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0.1 }
-        });
 
         const systemPrompt = `You are an expert AI recruiting and employment document analyst.
 Your task is to analyze the provided email text and extract structured information, classifying it as either a job invitation/interview/application notification OR an offer letter.
@@ -110,33 +99,13 @@ Respond ONLY with a valid JSON block containing:
 }
 Do not include any markdown format blocks or notes outside the JSON.`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(systemPrompt);
-                break;
-            } catch (retryErr: any) {
-                const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
-                                    (retryErr?.message && (retryErr.message.includes("429") || retryErr.message.includes("503") || retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error (${retryErr?.status || '503'}), retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
+        const textResponse = await generateWithFallback(systemPrompt, {
+            generationConfig: { temperature: 0.1 },
+        });
 
-        if (!result) {
-            return NextResponse.json({ error: "AI rate-limited after retries." }, { status: 429 });
-        }
-
-        const textResponse = result.response.text().trim();
         let parsedData;
         try {
-            const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-            parsedData = JSON.parse(cleanJson);
+            parsedData = parseJsonFromModel(textResponse);
         } catch (e) {
             console.error("Failed to parse JSON response from Gemini for email analysis:", textResponse);
             return NextResponse.json({

@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
-import { generateContentWithTimeout } from "@/utils/gemini";
 import {
     aptitudeQuizBodySchema,
     enforceRateLimit,
@@ -19,7 +18,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -34,17 +33,6 @@ export async function POST(req: NextRequest) {
         const parsed = await parseJsonBody(req, aptitudeQuizBodySchema);
         if (!parsed.ok) return parsed.response;
         const { category, role, domain } = parsed.data;
-
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY environment variable" }, { status: 500 });
-        }
-
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0.7 },
-        });
 
         const categoryLabel = CATEGORY_LABELS[category];
         const targetContext = role ? `Target Role: ${role}` : domain ? `Career Domain: ${domain}` : "General Professional Assessment";
@@ -79,36 +67,9 @@ The JSON must adhere to the following schema:
 
 Ensure the questions are realistic, technically accurate, and unique. Provide exactly 4 options. Make sure correctAnswer corresponds to the correct option index (0 to 3).`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await generateContentWithTimeout(model.generateContent(systemPrompt), 35000);
-                break;
-            } catch (retryErr: unknown) {
-                const err = retryErr as { status?: number; message?: string };
-                const isTransient =
-                    err?.status === 429 ||
-                    err?.status === 503 ||
-                    (err?.message &&
-                        (err.message.includes("429") ||
-                            err.message.includes("503") ||
-                            err.message.includes("demand") ||
-                            err.message.includes("timed out")));
-                if (isTransient && attempt < 2) {
-                    const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error, retrying in ${delay}ms...`);
-                    await new Promise((r) => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-
-        if (!result) {
-            return NextResponse.json({ error: "AI rate-limited after retries." }, { status: 429 });
-        }
-
-        const textResponse = result.response.text().trim();
+        const textResponse = await generateWithFallback(systemPrompt, {
+            generationConfig: { temperature: 0.7 },
+        });
         try {
             const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
             const parsedData = JSON.parse(cleanJson);

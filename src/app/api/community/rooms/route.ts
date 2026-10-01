@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
 /** Create / open a DM with another online student (opaque publicId). */
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Sign in to start a direct message." }, { status: 401 });
         }

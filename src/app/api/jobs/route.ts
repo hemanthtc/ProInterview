@@ -7,6 +7,7 @@ import {
     scoreJob,
     deduplicateJobs,
     webSearchUrls,
+    sanitizeJobForBias,
     INDIA_FALLBACK_JOBS,
     type JobType,
     type MatchedJob,
@@ -305,14 +306,18 @@ function scoreFallbackJobs(
     filter?: string,
     jobSearchQuery?: string
 ): MatchedJob[] {
-    return ALL_FALLBACK_JOBS.map((job) => {
-        const base = {
-            ...job,
-            applyUrl: job.applyUrl || "#",
-            source: job.source || "ProInterview curated",
-        };
-        return scoreJob(base, profile, location, filter, jobSearchQuery);
-    })
+    return ALL_FALLBACK_JOBS
+        .map((job) => {
+            const base = {
+                ...job,
+                applyUrl: job.applyUrl || "#",
+                source: job.source || "ProInterview curated",
+            };
+            // Anti-bias: sanitize fallback jobs too
+            return sanitizeJobForBias(base);
+        })
+        .filter((j): j is NonNullable<typeof j> => j !== null)
+        .map((job) => scoreJob(job, profile, location, filter, jobSearchQuery))
         .filter((j) => j.matchPercent >= 10)
         .sort((a, b) => b.matchPercent - a.matchPercent);
 }

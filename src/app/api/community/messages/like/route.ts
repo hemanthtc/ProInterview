@@ -5,7 +5,7 @@ import { isS3Configured, s3LikeMessage } from "@/utils/s3Community";
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Sign in to like messages." }, { status: 401 });
         }

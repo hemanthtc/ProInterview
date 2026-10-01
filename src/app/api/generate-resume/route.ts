@@ -1785,7 +1785,7 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
 export async function POST(req: NextRequest) {
     try {
         // Enforce active session
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -1950,10 +1950,7 @@ export async function POST(req: NextRequest) {
             }
         }
 
-        const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-        if (!GEMINI_API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY in environment" }, { status: 500 });
-        }
+
 
         let systemPrompt = `You are extracting and restructuring an existing resume. Your primary objective is factual preservation, not creative generation.
 Extract and organize ALL candidate credentials from the provided sources into a structured JSON document.

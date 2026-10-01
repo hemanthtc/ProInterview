@@ -7,7 +7,7 @@ import { getVerifiedSession } from "@/utils/auth";
 
 // Auth verification helper
 async function verifyAdminAccess(req: NextRequest, targetAdminId: string) {
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     if (!session || session.role !== "admin") return false;
     return targetAdminId.trim().toLowerCase() === session.identifier.trim().toLowerCase();
 }

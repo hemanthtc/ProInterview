@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
         // Enforce active session
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -17,11 +17,6 @@ export async function POST(req: NextRequest) {
         const additionalInfo = (formData.get("additionalInfo") as string) || "";
         const roadmapImages = formData.getAll("roadmapImages") as File[];
         const hasImages = roadmapImages.length > 0;
-
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY environment variable" }, { status: 500 });
-        }
 
         const allowedImageTypes = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
         const maxImages = 4;
@@ -52,12 +47,6 @@ export async function POST(req: NextRequest) {
                 error: "Course, company, location, and additional requirements are required when no roadmap images are uploaded."
             }, { status: 400 });
         }
-
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0.3 }
-        });
 
         const systemPrompt = `You are a world-class Technical Career Coach and Principal Curriculum Architect.
 Your task is to generate an exhaustive, highly-structured, progressive interview preparation roadmap.
@@ -146,33 +135,12 @@ Respond ONLY with a valid JSON block matching this structure. Do not write any m
             });
         }
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(promptParts);
-                break;
-            } catch (retryErr: any) {
-                const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
-                                    (retryErr?.message && (retryErr.message.includes("429") || retryErr.message.includes("503") || retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error (${retryErr?.status || '503'}), retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-
-        if (!result) {
-            return NextResponse.json({ error: "AI rate-limited after retries." }, { status: 429 });
-        }
-
-        const textResponse = result.response.text().trim();
+        const textResponse = await generateWithFallback(promptParts, {
+            generationConfig: { temperature: 0.3 },
+        });
         let parsedData;
         try {
-            const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-            parsedData = JSON.parse(cleanJson);
+            parsedData = parseJsonFromModel(textResponse);
         } catch (e) {
             console.error("Failed to parse JSON response from Gemini for Roadmap:", textResponse);
             const fallbackTitle = course.trim() || (company.trim() ? `${company.trim()} Career Prep Roadmap` : "Software Engineer Career Roadmap");

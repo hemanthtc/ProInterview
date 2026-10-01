@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 // POST — Update page contents for a chapter
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session || session.role !== "admin") {
             return NextResponse.json(
                 { error: "Unauthorized access: Please sign in as an Administrator." },

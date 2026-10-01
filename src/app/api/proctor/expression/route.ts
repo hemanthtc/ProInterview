@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 import { rateLimit } from "@/utils/rateLimit";
 import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
@@ -13,7 +13,7 @@ function isExpression(value: string): value is FaceExpression {
 }
 
 export async function POST(req: NextRequest) {
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     if (!session) {
         return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
     }
@@ -32,38 +32,25 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "A small webcam JPEG data URL is required." }, { status: 400 });
     }
 
-    const API_KEY = process.env.GEMINI_API_KEY;
-    if (!API_KEY || API_KEY === "dummy") {
-        return NextResponse.json({
-            expression: "neutral",
-            faceVisible: true,
-            attention: "unknown",
-            source: "fallback",
-        });
-    }
-
     try {
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0 },
-        });
         const comma = image.indexOf(",");
         const base64 = comma >= 0 ? image.slice(comma + 1) : image;
         const mime = image.slice(5, image.indexOf(";")) || "image/jpeg";
 
-        const result = await model.generateContent([
-            {
-                text: `You are a coding-assessment proctor. Classify the candidate webcam frame.
+        const textResponse = await generateWithFallback(
+            [
+                {
+                    text: `You are a coding-assessment proctor. Classify the candidate webcam frame.
 Return ONLY JSON: {"expression":"neutral|focused|smiling|frowning|surprised|looking_away|no_face","faceVisible":true|false,"attention":"on_screen|away|unknown"}
 Rules: one person expected; looking_away if eyes/head are clearly off-camera; no_face if no face is visible.
 ${ANTI_LEAK_SUFFIX}`,
-            },
-            { inlineData: { mimeType: mime, data: base64 } },
-        ]);
+                },
+                { inlineData: { mimeType: mime, data: base64 } },
+            ],
+            { generationConfig: { temperature: 0 } }
+        );
 
-        const raw = result.response.text().trim().replace(/^```json\s*|\s*```$/g, "");
-        const parsed = JSON.parse(raw) as { expression?: string; faceVisible?: boolean; attention?: string };
+        const parsed = parseJsonFromModel(textResponse) as { expression?: string; faceVisible?: boolean; attention?: string };
         const expression = isExpression(String(parsed.expression || "")) ? parsed.expression : "neutral";
         return NextResponse.json({
             expression,

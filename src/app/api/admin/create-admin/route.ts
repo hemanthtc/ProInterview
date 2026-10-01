@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     try {
         await connectDB();
 
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         const privilegedAdmin = (process.env.SEED_ADMIN_IDENTIFIER || "hemanthtchemu2003@gmail.com").trim().toLowerCase();
         if (!session || session.role !== "admin" || session.identifier.trim().toLowerCase() !== privilegedAdmin) {
             return NextResponse.json({ error: "Unauthorized access: Admin creation is restricted." }, { status: 403 });

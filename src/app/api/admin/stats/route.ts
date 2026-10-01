@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
         }
 
         // Verify request belongs to authenticated admin session
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session || session.role !== "admin" || adminId.trim().toLowerCase() !== session.identifier.trim().toLowerCase()) {
             return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }

@@ -18,9 +18,9 @@ async function resolveDisplayName(identifier: string): Promise<string> {
 }
 
 /** Heartbeat + list of students currently online in community (auth required, no emails). */
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -59,7 +59,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }

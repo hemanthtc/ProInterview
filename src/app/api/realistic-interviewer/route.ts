@@ -11,11 +11,11 @@ import { getVerifiedSession } from "@/utils/auth";
 import { ANTI_LEAK_SUFFIX } from "@/utils/promptGuard";
 import { isSoftwareOrCodingRole } from "@/utils/domainClassifier";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }

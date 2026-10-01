@@ -5,7 +5,7 @@ import { isS3Configured, listS3ObjectsWithDetails, deleteS3ObjectsBulk } from "@
 
 async function checkAuth(req: NextRequest): Promise<boolean> {
     // 1. Session-based Admin check
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     if (session && session.role === "admin") {
         return true;
     }

@@ -30,7 +30,7 @@ function fallbackNegotiate(mode: string, userMessage: string, targetComp?: strin
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -52,10 +52,7 @@ export async function POST(req: NextRequest) {
 
         const safeMode = mode === "simulate" ? "simulate" : "coach";
 
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json(fallbackNegotiate(safeMode, userMessage, targetComp));
-        }
+
 
         const historyText = Array.isArray(history)
             ? history

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateWithFallback, parseJsonFromModel, getAllGeminiApiKeys } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
@@ -16,17 +16,11 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: "Missing required parameters" }, { status: 400 });
         }
 
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
+        const keys = getAllGeminiApiKeys();
+        if (keys.length === 0 || (keys.length === 1 && keys[0] === "dummy")) {
             console.warn("GEMINI_API_KEY is not configured. Falling back to mock grading.");
             return NextResponse.json(getFallbackGrading(questionTitle, code, language));
         }
-
-        const genAI = new GoogleGenerativeAI(API_KEY);
-        const model = genAI.getGenerativeModel({
-            model: "gemini-3.1-flash-lite",
-            generationConfig: { temperature: 0.2 }
-        });
 
         const prompt = `You are a technical interviewer and automated compiler validator.
 Analyze the following coding solution submitted by a candidate.
@@ -55,39 +49,16 @@ JSON Schema:
 
 Ensure all JSON keys match exactly. Do not output anything else.`;
 
-        let result;
-        for (let attempt = 0; attempt < 3; attempt++) {
-            try {
-                result = await model.generateContent(prompt);
-                break;
-            } catch (retryErr: any) {
-                const isTransient = retryErr?.status === 429 || retryErr?.status === 503 || 
-                                    (retryErr?.message && (retryErr.message.includes("429") || retryErr.message.includes("503") || retryErr.message.includes("demand")));
-                if (isTransient && attempt < 2) {
-                    const delay = (attempt + 1) * 3000;
-                    console.warn(`Gemini transient error (${retryErr?.status || '503'}), retrying in ${delay}ms...`);
-                    await new Promise(r => setTimeout(r, delay));
-                } else {
-                    throw retryErr;
-                }
-            }
-        }
-
-        if (!result) {
-            return NextResponse.json({ error: "AI rate-limited after retries." }, { status: 429 });
-        }
-
-        const textResponse = result.response.text().trim();
-        let parsedData;
         try {
-            const cleanJson = textResponse.replace(/```json/gi, "").replace(/```/g, "").trim();
-            parsedData = JSON.parse(cleanJson);
-        } catch (_e) {
-            console.error("Failed to parse JSON response from Gemini for code grading:", textResponse);
+            const textResponse = await generateWithFallback(prompt, {
+                generationConfig: { temperature: 0.2 },
+            });
+            const parsedData = parseJsonFromModel(textResponse);
+            return NextResponse.json(parsedData);
+        } catch (aiErr) {
+            console.error("Gemini code grading failed, using fallback:", aiErr);
             return NextResponse.json(getFallbackGrading(questionTitle, code, language));
         }
-
-        return NextResponse.json(parsedData);
     } catch (error: any) {
         console.error("Code grading error:", error);
         return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });

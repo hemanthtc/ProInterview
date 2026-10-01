@@ -6,7 +6,7 @@ import { getVerifiedSession } from "@/utils/auth";
 
 // Admin auth check helper using secure sessions
 async function checkAdminAuth(req: NextRequest, targetAdminId?: string) {
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     if (!session || session.role !== "admin") return false;
 
     // If a target adminId is provided (e.g. from query parameters or body), it must match the session identifier

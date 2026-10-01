@@ -11,9 +11,9 @@ import { sendCoachEmail, coachCancellationEmailHtml } from "@/utils/mailer";
 export const dynamic = "force-dynamic";
 
 /** GET — list the signed-in user's own coach bookings, newest first. */
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -33,7 +33,7 @@ export async function GET() {
 }
 
 async function cancelOwnBooking(req: NextRequest): Promise<NextResponse> {
-    const session = await getVerifiedSession();
+    const session = await getVerifiedSession(req);
     if (!session) {
         return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
     }

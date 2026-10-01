@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { generateWithFallback } from "@/utils/gemini";
 import JSZip from "jszip";
 import { isSafeUrl } from "@/utils/ssrf";
@@ -75,7 +74,7 @@ async function fetchUrlText(url: string) {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access: Please sign in." }, { status: 401 });
         }
@@ -111,10 +110,7 @@ export async function POST(req: NextRequest) {
             projectText += await fetchGithubPublicRepos(github);
         }
 
-        const API_KEY = process.env.GEMINI_API_KEY;
-        if (!API_KEY) {
-            return NextResponse.json({ error: "Missing GEMINI_API_KEY" }, { status: 500 });
-        }
+
 
         const buildFallbackResponse = (reason: string) => {
             const hasSignal = Boolean(hasResume || github || linkedin || portfolioUrl);

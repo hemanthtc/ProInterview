@@ -17,7 +17,7 @@ import { enforceRateLimit, jsonError } from "@/utils/http";
 import { redactPii } from "@/utils/pii";
 import { isSoftwareOrCodingRole } from "@/utils/domainClassifier";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 
 export async function POST(req: NextRequest) {
     try {
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
         } = await req.json();
 
         // Logged-in users are metered by account; guests (public practice mode) are metered by IP.
-        const session = await getVerifiedSession();
+        const session = await getVerifiedSession(req);
         const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
         const identifier = session?.identifier || `anon:${forwarded}`;
         const rlKey = session?.identifier || forwarded;

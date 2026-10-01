@@ -5,16 +5,16 @@ import { getVerifiedSession } from "@/utils/auth";
 
 export const dynamic = "force-dynamic";
 
-async function requireAdmin() {
-    const session = await getVerifiedSession();
+async function requireAdmin(req: NextRequest) {
+    const session = await getVerifiedSession(req);
     if (!session || session.role !== "admin") return null;
     return session;
 }
 
 /** GET — list the full admin-editable coach catalog (active + inactive). */
-export async function GET() {
+export async function GET(req: NextRequest) {
     try {
-        const session = await requireAdmin();
+        const session = await requireAdmin(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
@@ -32,7 +32,7 @@ export async function GET() {
 /** POST — create or update (upsert by coachId) a coach catalog entry. */
 export async function POST(req: NextRequest) {
     try {
-        const session = await requireAdmin();
+        const session = await requireAdmin(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
 /** DELETE — remove a coach catalog entry by coachId. */
 export async function DELETE(req: NextRequest) {
     try {
-        const session = await requireAdmin();
+        const session = await requireAdmin(req);
         if (!session) {
             return NextResponse.json({ error: "Unauthorized access." }, { status: 403 });
         }
