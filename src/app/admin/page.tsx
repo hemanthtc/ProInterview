@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { logoutUser } from "@/utils/authExpiry";
 import StudyMaterialsManager from "@/components/admin/StudyMaterialsManager";
 import FeedbackAdminPanel from "@/components/admin/FeedbackAdminPanel";
 import LabsVisibilityManager from "@/components/admin/LabsVisibilityManager";
@@ -292,22 +293,7 @@ export default function AdminDashboard() {
 
     // ── Logout ──────────────────────────────────────────────────────────────────
     const handleLogout = async () => {
-        try {
-            const role = localStorage.getItem("userRole"); // "admin" or "employee"
-            const identifier = localStorage.getItem("userIdentifier");
-            if (identifier && role) {
-                await fetch("/api/auth/logout", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ identifier, accountType: role })
-                });
-            }
-        } catch (e) {
-            console.error("Failed to notify logout to server", e);
-        }
-        ["userLoggedIn","userName","userIdentifier","userRole","userType",
-         "userOrgName","userSubscriptionPlan"].forEach(k => localStorage.removeItem(k));
-        router.push("/login");
+        await logoutUser("/login");
     };
 
     // ── Add Employee ────────────────────────────────────────────────────────────

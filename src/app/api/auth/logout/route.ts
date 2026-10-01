@@ -6,23 +6,38 @@ import { clearSessionCookie, shouldSetSecureCookie } from "@/utils/auth";
 
 export async function POST(req: NextRequest) {
     try {
-        await connectDB();
-        const { identifier, accountType } = await req.json();
+        let identifier: string | undefined;
+        let accountType: string | undefined;
 
-        if (!identifier || !accountType) {
-            return NextResponse.json({ error: "identifier and accountType are required." }, { status: 400 });
+        try {
+            const body = await req.json();
+            identifier = body?.identifier;
+            accountType = body?.accountType;
+        } catch {
+            // Body is optional on logout
         }
 
-        const lookupFilter = { $or: [{ identifier }, { identifier: identifier.toLowerCase() }] };
+        if (identifier && accountType) {
+            try {
+                await connectDB();
+                const lookupFilter = { $or: [{ identifier }, { identifier: identifier.toLowerCase() }] };
 
-        if (accountType === "admin") {
-            await OrgAdmin.findOneAndUpdate(lookupFilter, { isOnline: false });
-        } else if (accountType === "employee") {
-            await OrgEmployee.findOneAndUpdate(lookupFilter, { isOnline: false });
+                if (accountType === "admin") {
+                    await OrgAdmin.findOneAndUpdate(lookupFilter, { isOnline: false });
+                } else if (accountType === "employee") {
+                    await OrgEmployee.findOneAndUpdate(lookupFilter, { isOnline: false });
+                }
+            } catch (dbErr) {
+                console.warn("Non-critical DB update error on logout:", dbErr);
+            }
         }
 
-        // Clear secure HttpOnly session cookie
-        await clearSessionCookie(req);
+        // Clear secure HttpOnly session cookie in cookieStore
+        try {
+            await clearSessionCookie(req);
+        } catch (cookieErr) {
+            console.warn("clearSessionCookie warning:", cookieErr);
+        }
 
         const isSecure = shouldSetSecureCookie(req);
         const response = NextResponse.json({ success: true, message: "Logged out successfully from server." });
@@ -31,18 +46,24 @@ export async function POST(req: NextRequest) {
             secure: isSecure,
             sameSite: "lax",
             path: "/",
-            expires: new Date(0)
+            expires: new Date(0),
+            maxAge: 0
         });
         response.cookies.set("userLoggedIn", "", {
             httpOnly: false,
             secure: isSecure,
             sameSite: "lax",
             path: "/",
-            expires: new Date(0)
+            expires: new Date(0),
+            maxAge: 0
         });
         return response;
     } catch (error: any) {
         console.error("Logout API error:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+        const isSecure = shouldSetSecureCookie(req);
+        const fallbackRes = NextResponse.json({ success: true, message: "Logged out with fallback." });
+        fallbackRes.cookies.set("session", "", { httpOnly: true, secure: isSecure, sameSite: "lax", path: "/", expires: new Date(0), maxAge: 0 });
+        fallbackRes.cookies.set("userLoggedIn", "", { httpOnly: false, secure: isSecure, sameSite: "lax", path: "/", expires: new Date(0), maxAge: 0 });
+        return fallbackRes;
     }
 }

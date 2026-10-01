@@ -13,7 +13,7 @@ import { pullSessionsFromCloud, syncSessionsToCloud } from "../../utils/cloudSyn
 import BrandLogo from "../../components/BrandLogo";
 import PhotoCropperModal from "../../components/profile/PhotoCropperModal";
 import { uploadFileToS3 } from "../../utils/s3ClientUpload";
-import { authFetch } from "../../utils/authExpiry";
+import { authFetch, logoutUser } from "../../utils/authExpiry";
 import { formatResumeDataToText } from "../../utils/formatResume";
 
 function dataUrlToFile(dataUrl: string, filename: string): File {
@@ -412,25 +412,7 @@ export default function ProfilePage() {
     };
 
     const handleLogout = async () => {
-        try {
-            const role = getStorageItem("userRole");
-            const identifier = getStorageItem("userIdentifier");
-            if (identifier && role) {
-                await fetch("/api/auth/logout", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ identifier, accountType: role })
-                });
-            }
-        } catch (e) {
-            console.error("Failed to notify logout to server", e);
-        }
-        removeStorageItem("userLoggedIn");
-        removeStorageItem("userName");
-        removeStorageItem("userIdentifier");
-        removeStorageItem("userType");
-        removeStorageItem("userRole");
-        router.push("/");
+        await logoutUser("/");
     };
 
     const initiatePayment = async (planName: string) => {

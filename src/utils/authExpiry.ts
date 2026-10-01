@@ -1,27 +1,7 @@
-import { getStorageItem, removeStorageItem } from "./storage";
+import { getStorageItem } from "./storage";
+import { clearAllAuthSession, logoutUser, AUTH_STORAGE_KEYS } from "./authClient";
 
-const AUTH_STORAGE_KEYS = [
-    "userLoggedIn",
-    "sessionToken",
-    "userSessionExpiresAt",
-    "userName",
-    "userIdentifier",
-    "userType",
-    "userRole",
-    "userSubscriptionPlan",
-    "userProfilePhoto",
-    "userOrgName",
-    "userAdminId",
-    "userDepartment",
-    "userAdditionalEmail",
-    "userGithub",
-    "userLinkedin",
-    "userPortfolio",
-    "userResumeCvName",
-    "userResumeCvText",
-    "userPhone",
-    "userEducationData",
-];
+export { clearAllAuthSession, logoutUser, AUTH_STORAGE_KEYS };
 
 let isHandlingExpiry = false;
 
@@ -35,18 +15,7 @@ export function handleSessionExpired(customMessage?: string): void {
     isHandlingExpiry = true;
 
     try {
-        // 1. Wipe all local authentication keys
-        AUTH_STORAGE_KEYS.forEach((key) => {
-            removeStorageItem(key);
-            try {
-                localStorage.removeItem(key);
-                sessionStorage.removeItem(key);
-            } catch {}
-        });
-
-        // 2. Clear client-accessible cookie
-        document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
-        document.cookie = "session=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
+        clearAllAuthSession();
 
         // 3. Optional message
         if (customMessage) {

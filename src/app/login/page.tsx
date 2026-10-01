@@ -104,9 +104,16 @@ function LoginContent() {
     const redirectParam = searchParams ? searchParams.get("redirect") : null;
 
     const handleGuestModeLogin = useCallback(() => {
+        try {
+            localStorage.removeItem("sessionToken");
+            sessionStorage.removeItem("sessionToken");
+        } catch {}
+        removeStorageItem("sessionToken");
         setStorageItem("userLoggedIn", "guest");
         setStorageItem("userIdentifier", "guest_user");
         setStorageItem("userName", "Guest User");
+        setStorageItem("userRole", "guest");
+        setStorageItem("userType", "guest");
         document.cookie = "userLoggedIn=guest; path=/; max-age=86400; SameSite=Lax";
         const dest = (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") && redirectParam !== "/login")
             ? redirectParam

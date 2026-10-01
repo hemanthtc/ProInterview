@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
-import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical, Code2, Clapperboard, FileSearch, Lock, Unlock, Trophy, CheckCircle2, HelpCircle, RefreshCw } from "lucide-react";
+import { ArrowRight, ArrowLeft, Video, FileText, Settings, ShieldCheck, MessageSquare, Github, Linkedin, UploadCloud, Loader2, Download, Globe, Play, Trash2, Sparkles, X, Award, Briefcase, Check, UserCircle, AlertTriangle, User, Plus, Mail, Map, Compass, BookOpen, ListTodo, ExternalLink, ChevronDown, ChevronUp, Copy, CheckCircle, Sun, Moon, Eye, Cpu, Code, Search, Terminal, Menu, Building2, TrendingUp, Clock, Handshake, Dumbbell, CalendarClock, ShieldAlert, Database, Home, Flame, FlaskConical, Code2, Clapperboard, FileSearch, Lock, Unlock, Trophy, CheckCircle2, HelpCircle, RefreshCw, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buildPrepSnapshot } from "../../utils/labProgress";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,7 +34,7 @@ import type { CampusPathId } from "../../types/interviewPrep";
 import BrandLogo from "../../components/BrandLogo";
 import NotificationBell from "../../components/NotificationBell";
 import { triggerSelfHealing } from "../../utils/offlineSync";
-import { authFetch, handleSessionExpired } from "../../utils/authExpiry";
+import { authFetch, handleSessionExpired, logoutUser } from "../../utils/authExpiry";
 
 import type { SavedResume, SavedRoadmap, PortfolioAnalysisCache, RoadmapData, PausedInterviewSession } from "../../types/features";
 import type { EmailAnalysisResult } from "../../types/analysis";
@@ -842,16 +842,20 @@ function FeaturesContent() {
     };
 
     useEffect(() => {
-        const loggedIn = getStorageItem("userLoggedIn") === "true";
-        const guest = getStorageItem("userLoggedIn") === "guest";
+        const initialUserVal = getStorageItem("userLoggedIn");
+        const initialHasToken = !!getStorageItem("sessionToken");
+        const loggedIn = initialUserVal === "true" || (initialHasToken && initialUserVal !== "guest");
+        const guest = !loggedIn && initialUserVal === "guest";
         if (!loggedIn && !guest) {
             router.push("/login");
             return;
         }
 
         const syncState = () => {
-            const l = getStorageItem("userLoggedIn") === "true";
-            const g = getStorageItem("userLoggedIn") === "guest";
+            const userVal = getStorageItem("userLoggedIn");
+            const hasToken = !!getStorageItem("sessionToken");
+            const l = userVal === "true" || (hasToken && userVal !== "guest");
+            const g = !l && userVal === "guest";
             setIsLoggedIn(l);
             setIsGuest(g);
             setIsRealisticMode(getStorageItem("globalInterviewMode") === "realistic");
@@ -4192,12 +4196,21 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                             <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
                                                 You are in Guest Mode. To save your progress, use AI resume editing, unlock realistic mock interviews, and access cloud storage, please create an account.
                                             </p>
-                                            <Link 
-                                                href="/login" 
-                                                className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
-                                            >
-                                                Sign In or Register
-                                            </Link>
+                                            <div className="flex flex-col gap-2">
+                                                <Link 
+                                                    href="/login" 
+                                                    className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
+                                                >
+                                                    Sign In or Register
+                                                </Link>
+                                                <button
+                                                    onClick={() => logoutUser("/")}
+                                                    className="flex items-center justify-center gap-1.5 w-full bg-white/5 hover:bg-red-500/15 text-slate-300 hover:text-red-400 border border-white/10 hover:border-red-500/30 text-xs py-2 rounded-xl transition-all font-medium cursor-pointer"
+                                                >
+                                                    <LogOut className="w-3.5 h-3.5" />
+                                                    Exit Guest Mode
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
@@ -4310,8 +4323,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                     >
                                         <div className="w-5 h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[10px]">US</div>
                                         My Profile
-                                    </Link>
-                                ) : isGuest ? (
+                                                       ) : isGuest ? (
                                     <div className="flex flex-col items-center gap-2 w-full max-w-xs">
                                         <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 px-6 py-3 rounded-full font-bold w-full justify-center">
                                             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
@@ -4321,14 +4333,24 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                             Sign in to save your interview progress, access mock interviews, AI resume generation, and cloud storage.
                                         </p>
                                         <Link 
-                                            href="/login"
+                                            href="/login" 
                                             onClick={() => setMobileMenuOpen(false)}
                                             className="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2.5 rounded-xl w-full text-center mt-1"
                                         >
                                             Sign In or Register
                                         </Link>
+                                        <button
+                                            onClick={() => {
+                                                setMobileMenuOpen(false);
+                                                logoutUser("/");
+                                            }}
+                                            className="flex items-center justify-center gap-1.5 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs py-2.5 rounded-xl transition-all font-medium cursor-pointer"
+                                        >
+                                            <LogOut className="w-3.5 h-3.5" />
+                                            Exit Guest Mode
+                                        </button>
                                     </div>
-                                ) : (
+                                ) : (                 ) : (
                                     <Link
                                         href="/login"
                                         onClick={() => setMobileMenuOpen(false)}

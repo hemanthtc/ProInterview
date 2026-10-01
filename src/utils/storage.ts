@@ -86,8 +86,12 @@ export function getStorageItem(key: string): string | null {
         if (fromTemp === "true") return "true";
         if (fromTemp === "guest") return "guest";
         if (typeof document !== "undefined" && document.cookie) {
-            if (document.cookie.includes("userLoggedIn=true")) return "true";
-            if (document.cookie.includes("userLoggedIn=guest")) return "guest";
+            const match = document.cookie.match(/(?:^|;\s*)userLoggedIn=([^;]+)/);
+            if (match) {
+                const val = match[1].trim();
+                if (val === "true") return "true";
+                if (val === "guest") return "guest";
+            }
         }
         return null;
     }
@@ -227,27 +231,63 @@ export function purgeAllUserLocalCaches(): void {
 
 export function removeStorageItem(key: string): void {
     if (typeof window === "undefined") return;
+
     if (key === "userLoggedIn") {
-        localStorage.removeItem("userLoggedIn");
-        localStorage.removeItem("userSessionExpiresAt");
-        localStorage.removeItem("userIdentifier");
-        localStorage.removeItem("userName");
-        delete tempMemory["userLoggedIn"];
-        delete tempMemory["userSessionExpiresAt"];
-        delete tempMemory["userIdentifier"];
-        delete tempMemory["userName"];
+        const authKeys = [
+            "userLoggedIn",
+            "sessionToken",
+            "userSessionExpiresAt",
+            "userName",
+            "userIdentifier",
+            "userType",
+            "userRole",
+            "userSubscriptionPlan",
+            "userProfilePhoto",
+            "userOrgName",
+            "userAdminId",
+            "userDepartment",
+            "userAdditionalEmail",
+            "userGithub",
+            "userLinkedin",
+            "userPortfolio",
+            "userResumeCvName",
+            "userResumeCvText",
+            "userPhone",
+            "userEducationData"
+        ];
+        authKeys.forEach((k) => {
+            try { localStorage.removeItem(k); } catch {}
+            try { sessionStorage.removeItem(k); } catch {}
+            delete tempMemory[k];
+        });
+
         if (typeof document !== "undefined") {
-            document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            const past = "Thu, 01 Jan 1970 00:00:00 GMT";
+            document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
+            document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0`;
+            document.cookie = `userLoggedIn=; expires=${past}; max-age=0`;
+            document.cookie = `session=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
+            document.cookie = `session=; path=/; expires=${past}; max-age=0`;
+            document.cookie = `session=; expires=${past}; max-age=0`;
         }
         purgeAllUserLocalCaches();
         emitStorageChange(key);
         return;
     }
+
+    if (GLOBAL_KEYS.includes(key)) {
+        try { localStorage.removeItem(key); } catch {}
+        try { sessionStorage.removeItem(key); } catch {}
+        delete tempMemory[key];
+        emitStorageChange(key);
+        return;
+    }
+
     const isLoggedIn =
         localStorage.getItem("userLoggedIn") === "true" ||
         (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
     if (isLoggedIn) {
-        localStorage.removeItem(getScopedKey(key));
+        try { localStorage.removeItem(getScopedKey(key)); } catch {}
     } else {
         delete tempMemory[getScopedKey(key)];
     }

@@ -7,12 +7,13 @@ const emptySubscribe = () => () => {};
 import { 
     ArrowRight, FileText, Settings, ShieldCheck, MessageSquare, Download, Play, Trash2, Sparkles, Sun, Moon, Eye, Menu, X,
     Compass, TrendingUp, Database, Code, CalendarClock, Award, Flame, User, Home as HomeIcon, FlaskConical,
-    Code2, Clapperboard, FileSearch
+    Code2, Clapperboard, FileSearch, LogOut
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { buildPrepSnapshot } from "../utils/labProgress";
 import { marked } from "marked";
 import { getStorageItem, setStorageItem, removeStorageItem } from "../utils/storage";
+import { logoutUser } from "../utils/authClient";
 import { createInitialThemeState, persistTheme, type ThemeMode } from "../utils/theme";
 import { deferEffectWork } from "../utils/deferEffect";
 import BrandLogo from "../components/BrandLogo";
@@ -480,8 +481,10 @@ export default function Home() {
         window.addEventListener("resize", checkMobile);
 
         const syncAuthStateAndData = () => {
-            const loggedIn = getStorageItem("userLoggedIn") === "true" || !!getStorageItem("sessionToken");
-            const guest = !loggedIn && getStorageItem("userLoggedIn") === "guest";
+            const userLoggedVal = getStorageItem("userLoggedIn");
+            const hasSessionToken = !!getStorageItem("sessionToken");
+            const loggedIn = userLoggedVal === "true" || (hasSessionToken && userLoggedVal !== "guest");
+            const guest = !loggedIn && userLoggedVal === "guest";
             const role = localStorage.getItem("userRole");
             if (loggedIn && role === "admin") {
                 router.push("/admin");
@@ -1088,6 +1091,16 @@ export default function Home() {
                                     >
                                         Sign In or Register
                                     </Link>
+                                    <button
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            logoutUser("/");
+                                        }}
+                                        className="flex items-center justify-center gap-1.5 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs py-2.5 rounded-xl transition-all font-medium cursor-pointer"
+                                    >
+                                        <LogOut className="w-3.5 h-3.5" />
+                                        Exit Guest Mode
+                                    </button>
                                 </div>
                             ) : (
                                 <Link 
@@ -1256,12 +1269,21 @@ export default function Home() {
                                 <p className="text-[11px] text-slate-400 leading-relaxed mb-3">
                                     You are in Guest Mode. To save your progress, use AI resume editing, unlock realistic mock interviews, and access cloud storage, please create an account.
                                 </p>
-                                <Link 
-                                    href="/login" 
-                                    className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
-                                >
-                                    Sign In or Register
-                                </Link>
+                                <div className="flex flex-col gap-2">
+                                    <Link 
+                                        href="/login" 
+                                        className="block text-center w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs py-2 rounded-xl transition-all"
+                                    >
+                                        Sign In or Register
+                                    </Link>
+                                    <button
+                                        onClick={() => logoutUser("/")}
+                                        className="flex items-center justify-center gap-1.5 w-full bg-white/5 hover:bg-red-500/15 text-slate-300 hover:text-red-400 border border-white/10 hover:border-red-500/30 text-xs py-2 rounded-xl transition-all font-medium cursor-pointer"
+                                    >
+                                        <LogOut className="w-3.5 h-3.5" />
+                                        Exit Guest Mode
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ) : (
@@ -1442,6 +1464,16 @@ export default function Home() {
                                 >
                                     Sign In or Register
                                 </Link>
+                                <button
+                                    onClick={() => {
+                                        setMobileMenuOpen(false);
+                                        logoutUser("/");
+                                    }}
+                                    className="flex items-center justify-center gap-1.5 w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs py-2.5 rounded-xl transition-all font-medium cursor-pointer"
+                                >
+                                    <LogOut className="w-3.5 h-3.5" />
+                                    Exit Guest Mode
+                                </button>
                             </div>
                         ) : (
                             <Link 
