@@ -58,6 +58,8 @@ export function handleSessionExpired(customMessage?: string): void {
         // 4. Clean navigation to login with expired param
         const currentPath = window.location.pathname;
         const redirectParam = currentPath && currentPath !== "/login" && currentPath !== "/" ? `&redirect=${encodeURIComponent(currentPath)}` : "";
+        // Full page reload intentionally clears all in-memory client state on auth expiration
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination
         window.location.href = `/login?expired=1${redirectParam}`;
     } finally {
         setTimeout(() => {
