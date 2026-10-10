@@ -136,18 +136,27 @@ describe("Synthetic Generator Accuracy & Topic Fidelity", () => {
     });
 
     describe("Verbatim Accuracy Rules (Directive 2)", () => {
-        it("exports VERBATIM_ACCURACY_RULES containing Rules 1 through 9 verbatim", () => {
+        it("exports VERBATIM_ACCURACY_RULES containing Rules 1 through 12 verbatim", () => {
             expect(VERBATIM_ACCURACY_RULES).toContain("ACCURACY AND VERIFICATION RULES");
-            expect(VERBATIM_ACCURACY_RULES).toContain("1. VERIFY CLAIMS ACCORDING TO CLAIM TYPE");
-            expect(VERBATIM_ACCURACY_RULES).toContain("2. AVOID FALSE PRECISION");
-            expect(VERBATIM_ACCURACY_RULES).toContain("3. VERIFY EXAMPLES, CALCULATIONS, COMMANDS, AND CODE");
-            expect(VERBATIM_ACCURACY_RULES).toContain("4. FORMATTING AND SYNTAX INTEGRITY");
-            expect(VERBATIM_ACCURACY_RULES).toContain("5. INTERNAL CONSISTENCY");
-            expect(VERBATIM_ACCURACY_RULES).toContain("6. DO NOT ALTER THE EXISTING GENERATION STYLE");
-            expect(VERBATIM_ACCURACY_RULES).toContain("7. GROUNDING AND VERIFICATION FAILOVER");
-            expect(VERBATIM_ACCURACY_RULES).toContain("8. TOPIC AND DOMAIN FIDELITY");
-            expect(VERBATIM_ACCURACY_RULES).toContain("9. HEDGING AND EPISTEMIC HONESTY");
-            expect(VERBATIM_ACCURACY_RULES).toContain("always use web verification before finalizing");
+            // Original rules 1 to 5
+            expect(VERBATIM_ACCURACY_RULES).toContain("1. Verify by type of claim:");
+            expect(VERBATIM_ACCURACY_RULES).toContain("2. Avoid false precision.");
+            expect(VERBATIM_ACCURACY_RULES).toContain("3. Examples and code:");
+            expect(VERBATIM_ACCURACY_RULES).toContain("4. Formatting integrity:");
+            expect(VERBATIM_ACCURACY_RULES).toContain("5. Internal consistency:");
+            // Rules 6 to 9
+            expect(VERBATIM_ACCURACY_RULES).toContain("6. Topic fidelity (highest priority):");
+            expect(VERBATIM_ACCURACY_RULES).toContain("7. Factual precision across subjects:");
+            expect(VERBATIM_ACCURACY_RULES).toContain("8. Self-review before finalizing:");
+            expect(VERBATIM_ACCURACY_RULES).toContain("9. When uncertain, say less rather than more.");
+            // New rules 10 to 12
+            expect(VERBATIM_ACCURACY_RULES).toContain("10. Output-safe formatting:");
+            expect(VERBATIM_ACCURACY_RULES).toContain("11. One fact, one value:");
+            expect(VERBATIM_ACCURACY_RULES).toContain("12. Use the research notes as a starting point, not as proof.");
+            // Key content assertions
+            expect(VERBATIM_ACCURACY_RULES).toContain("always run a web search to verify");
+            expect(VERBATIM_ACCURACY_RULES).toContain("10^-34, x^2, Mn^2+, 4e^-");
+            expect(VERBATIM_ACCURACY_RULES).toContain("Do not use box-drawing characters, Unicode arrows, or emoji");
         });
     });
 });

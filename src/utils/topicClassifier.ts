@@ -260,13 +260,13 @@ export function convertLatexToPlainText(text: string): string {
         s = s.replace(/(?:\b|(?<=\d))([A-Z][a-z])_(\d+)/g, "$1$2");
         s = s.replace(/(?<=[a-z0-9])([A-Z])_(\d+)/g, "$1$2");
 
-        // Superscript charges & stray carets (e.g. 4H^+ -> 4H+, P700+^ -> P700+, 360^ deg -> 360 deg)
-        s = s.replace(/\^\+/g, "+");
-        s = s.replace(/\^\-/g, "-");
+        // Stray carets only — preserve exponents (10^-34, x^2, Mn^2+, 4e^-)
+        // 1. Trailing caret after charge sign (P700+^ -> P700+)
         s = s.replace(/([a-zA-Z0-9]+[+-])\^/g, "$1");
-        s = s.replace(/\^([+-])/g, "$1");
+        // 2. Degree caret (360^ deg -> 360 deg)
         s = s.replace(/(?<=\d)\^\s*deg\b/g, " deg");
         s = s.replace(/\^(\s*deg\b)/g, " deg");
+        // 3. Lone stray caret before whitespace/punctuation/end (foo^ -> foo) but NOT before digits or signs
         s = s.replace(/([a-zA-Z0-9])\^(?=[,\s.;:)\]}]|$)/g, "$1");
 
         return s.trim();
@@ -343,9 +343,8 @@ export function normalizeTextForExport(text: string): string {
     res = res.replace(/(?:\b|(?<=\d))([A-Z][a-z])_(\d+)/g, "$1$2");
     res = res.replace(/(?<=[a-z0-9])([A-Z])_(\d+)/g, "$1$2");
 
-    // 5. Stray carets (P700+^ -> P700+, 360^ deg -> 360 deg)
+    // 5. Stray carets only — preserve exponents (10^-34, x^2, Mn^2+, 4e^-)
     res = res.replace(/([a-zA-Z0-9]+[+-])\^/g, "$1");
-    res = res.replace(/\^([+-])/g, "$1");
     res = res.replace(/(?<=\d)\^\s*deg\b/g, " deg");
     res = res.replace(/\^(\s*deg\b)/g, " deg");
     res = res.replace(/([a-zA-Z0-9])\^(?=[,\s.;:)\]}]|$)/g, "$1");

@@ -174,8 +174,8 @@ check status $?
         expect(extractedAfterText).toContain("alpha = 0.05");
         expect(extractedAfterText).toContain("beta = 0.99");
 
-        // 5. LaTeX equations converted to readable text
-        expect(extractedAfterText).toContain("2H2O -> 4H+ + 4e- + O2");
+        // 5. LaTeX equations converted to readable text (exponents preserved per Rule 10)
+        expect(extractedAfterText).toContain("2H2O -> 4H^+ + 4e^- + O2");
         expect(extractedAfterText).toContain("Mn4CaO5");
         expect(extractedAfterText).toContain("P700");
         expect(extractedAfterText).toContain("Mn^2+");
@@ -499,5 +499,47 @@ check status $?
         } finally {
             console.warn = originalWarn;
         }
+    });
+
+    it("preserves exponents with carets and signs (10^-34, x^2, Mn^2+, 4e^-) per Rule 10", () => {
+        const input = [
+            "Planck's constant h = 6.626 x 10^-34 J*s.",
+            "Pythagorean theorem: x^2 + y^2 = z^2.",
+            "Manganese catalyst Mn^2+ in the OEC.",
+            "Water photolysis releases 4e^- electrons.",
+            "Photon energy E = h*v where v is frequency.",
+            "Stray trailing caret after charge: P700+^ should be cleaned.",
+            "Angle measure: 360^ deg should become 360 deg.",
+        ].join("\n");
+
+        const normalized = normalizeTextForExport(input);
+
+        // Exponents MUST be preserved with caret and sign
+        expect(normalized).toContain("10^-34");
+        expect(normalized).toContain("x^2");
+        expect(normalized).toContain("Mn^2+");
+        expect(normalized).toContain("4e^-");
+        expect(normalized).toContain("y^2");
+        expect(normalized).toContain("z^2");
+
+        // Must NOT strip carets from exponents
+        expect(normalized).not.toContain("10-34 J");
+        expect(normalized).not.toContain("4e- electrons");
+
+        // Stray trailing caret after charge IS cleaned
+        expect(normalized).toContain("P700+");
+        expect(normalized).not.toContain("P700+^");
+
+        // Degree caret IS cleaned
+        expect(normalized).toContain("360 deg");
+        expect(normalized).not.toContain("360^");
+
+        // Validate PDF rendering
+        const pdfBuf = generatePdfBuffer(normalized.split("\n").filter(Boolean));
+        const extracted = extractTextFromPdfBuffer(pdfBuf);
+        expect(extracted).toContain("10^-34");
+        expect(extracted).toContain("x^2");
+        expect(extracted).toContain("Mn^2+");
+        expect(extracted).toContain("4e^-");
     });
 });

@@ -85,154 +85,55 @@ export function sanitizeUserInput(text: string): string {
  * syntax preservation, and zero false precision.
  */
 export const VERBATIM_ACCURACY_RULES = `
-ACCURACY AND VERIFICATION RULES
-(Additional guardrails; do not change the existing document structure, style, depth, or natural content length.)
+ACCURACY AND VERIFICATION RULES (additional guardrails; do not change the existing document structure, style, or depth)
 
-Apply these rules equally to every topic. Do not favor, prioritize, or specialize the verification system for any particular subject.
+These rules apply equally to every topic. Do not favor or specialize in any one subject.
 
-1. VERIFY CLAIMS ACCORDING TO CLAIM TYPE
+1. Verify by type of claim:
+- Mathematics, logic, and coding: verify internally. Trace every calculation, proof, and code example step by step before including it. No search needed.
+- History, current events, politics, economics, finance, medicine, health, and law: always run a web search to verify specific dates, names, numbers, statistics, regulations, and guidelines before finalizing.
+- Science: verify stable, well-established principles internally. Search for specific numeric values, constants, recent discoveries, and actively debated findings.
+- Technology and software: verify general, stable concepts internally. Always search for (a) any specific version number, especially introduction, deprecation, or removal timelines, and (b) any description of the "current", "latest", or "modern" state of a user interface, workflow, feature, or default setting. These go stale quickly and must not be written from memory.
+- Literature, philosophy, and the arts: verify interpretive content internally. Search for specific publication dates, quotes, and biographical details.
 
-- Mathematics, logic, and coding:
-  Verify internally. Trace every calculation, proof, logical step, command, and code example step by step before including it. Confirm expected outputs. No web search is required for stable mathematical, logical, or coding reasoning.
+2. Avoid false precision. If a specific version, date, or number cannot be confirmed, state it in general terms or omit it rather than guessing. Do not conflate "deprecated" with "removed" or "disabled".
 
-- History, current events, politics, economics, finance, medicine, health, and law:
-  For specific factual claims, always use web verification before finalizing, especially for dates, names, numbers, statistics, regulations, laws, guidelines, and other information that may change or require authoritative confirmation.
+3. Examples and code: before including any example, calculation, command, or code snippet, trace it step by step and confirm the output is correct. Prefer simple, well-established approaches over clever shortcuts that may have edge cases. Make sure commands, flags, and numeric identifiers (such as signal numbers or port numbers) are exact.
 
-- Science:
-  Verify stable, well-established principles internally. Use web verification for specific numerical values, constants, recent discoveries, newly reported findings, or actively debated topics.
+4. Formatting integrity: never replace special characters, symbols, or syntax (such as |, ||, $, &, <, >, backslashes, quotes) with placeholder text or tokens like "%%%". Always output the literal, exact characters appropriate to the subject. Before finalizing, scan the output for stray placeholder strings and fix them.
 
-- Technology and software:
-  Verify stable/general concepts internally.
-  Always use web verification for:
-  a) specific version numbers;
-  b) version introduction, deprecation, removal, disabling, or support timelines;
-  c) claims about the current, latest, or modern state of a UI;
-  d) current workflows, features, defaults, or configuration behavior.
-  Do not rely on memory for rapidly changing software information.
+5. Internal consistency: make sure cross-references, section numbers, and terminology are consistent throughout the document, and that any claim in the title or introduction (such as "latest" or "up to date") is actually reflected in the content.
 
-- Literature, philosophy, and the arts:
-  Verify interpretations internally. Use web verification for specific publication dates, quotations, biographical details, attribution, and other externally verifiable factual claims.
+6. Topic fidelity (highest priority):
+- Write only about the topic the user requested, at the depth it needs. Never add programming languages, code snippets, SQL or database analogies, software-modeling metaphors, or technical diagrams unless the topic itself is programming or technology.
+- Use examples, tables, and visuals native to the subject (for example a timeline for history, an equation for physics, a case study for law, a worked problem for math). Do not apply a fixed template of sections, code blocks, or diagram types to every topic.
+- Never invent illustrative numbers, percentages, or figures and present them in a factual document. If a figure is not sourced or does not come from the topic itself, omit it.
 
-2. AVOID FALSE PRECISION
+7. Factual precision across subjects:
+- Verify where each place, site, institution, or entity actually belongs (country, region, category) before attributing it.
+- Verify the chronological order of events, versions, and people. Never describe an earlier thing as arising after a later one.
+- Superlatives and rankings ("first", "largest", "oldest", "only", "second-largest") must be verified, and hedged ("often described as", "among the") if sources disagree or the answer depends on how it is measured.
+- Give start and completion dates separately for projects, reigns, wars, releases, and processes. Label legends, traditions, and disputed attributions as such rather than as settled fact.
+- Use precise terminology. Do not conflate similar but different terms (for example hashed vs encrypted, a model vs the real implementation, deprecated vs removed).
+- Describe current user interfaces, default behaviors, and workflows only as verified by search. If unverified, describe the concept without claiming the exact steps.
 
-If a specific version, date, number, statistic, or other precise fact cannot be reliably confirmed:
+8. Self-review before finalizing:
+- Re-check every date, name, number, and identifier against what was verified.
+- Confirm every code block is complete, correct, and not broken across lines.
+- Confirm headings are numbered once, never repeated directly below themselves, and that cross-references point to the right sections.
+- Remove any content that does not serve the requested topic.
 
-- state the information in appropriately general terms, or
-- omit the specific detail.
+9. When uncertain, say less rather than more. A shorter accurate statement is better than a detailed unverified one.
 
-Never guess simply to make the document appear more precise.
+10. Output-safe formatting:
+- Write all equations, formulas, and chemical reactions as plain text, never LaTeX or $...$ markup. Keep exponents with a caret and keep the sign: 10^-34, x^2, Mn^2+, 4e^-. Write subscripts inline: H2O, CO2, P700.
+- Any text diagram must use only plain ASCII characters (+ - | > < ^ v), at most 80 columns wide. Do not use box-drawing characters, Unicode arrows, or emoji. For non-technical topics, prefer a table or list over a drawn diagram.
+- Use straight quotes and apostrophes and plain hyphens in all text.
+- Do not output horizontal rules (---) as separators between sections.
 
-Do not conflate different software or product states such as:
-- deprecated
-- removed
-- disabled
-- unsupported
+11. One fact, one value: use the same date, name, and number for the same event or entity everywhere in the document. If the research notes and the draft disagree, search to settle it and use one verified value.
 
-Treat each state as distinct unless reliable evidence shows otherwise.
-
-3. VERIFY EXAMPLES, CALCULATIONS, COMMANDS, AND CODE
-
-Before including any example, calculation, command, formula, procedure, or code snippet:
-
-- trace it step by step;
-- verify the reasoning;
-- verify the expected result or output;
-- check syntax;
-- check commands, flags, parameters, and identifiers;
-- ensure the example actually supports the explanation.
-
-For technical examples, make sure numeric identifiers such as signal numbers, port numbers, status codes, version numbers, or configuration values are accurate when they are presented as factual.
-
-Prefer simple, well-established approaches over unnecessarily clever shortcuts that may introduce hidden edge cases.
-
-4. FORMATTING AND SYNTAX INTEGRITY
-
-Never replace legitimate characters, symbols, or syntax with placeholders or corruption tokens.
-
-Preserve the exact characters required by the subject, including where applicable:
-
-- |
-- ||
-- %
-- $
-- &
-- <
-- >
-- \\
-- quotes
-- brackets
-- parentheses
-- mathematical notation
-- programming syntax
-- shell syntax
-- markup syntax
-
-Never introduce placeholder corruption such as \`%%%\` where actual content is expected.
-
-Before finalizing, scan the generated content for unexpected placeholder-like strings, malformed syntax, or corrupted special characters.
-
-If corruption is detected, correct or regenerate the affected content rather than blindly deleting characters that might be legitimate syntax.
-
-If a character sequence is genuinely part of valid user-provided content or valid subject-specific syntax, preserve it.
-
-5. INTERNAL CONSISTENCY
-
-Before finalizing the document, verify that:
-
-- section numbering is consistent;
-- subsection numbering is consistent;
-- terminology is used consistently;
-- cross-references point to the correct sections;
-- examples agree with their explanations;
-- calculations agree with stated results;
-- code agrees with its stated output;
-- tables agree with surrounding explanations;
-- dates are consistent: a document must use the same date for the same event throughout, and verify dates against grounded sources;
-- the introduction accurately represents the document;
-- the title accurately represents the document.
-
-Do not claim that content is "latest", "current", "up to date", "complete", or equivalent unless the content actually supports that claim through the appropriate verification process.
-
-6. DO NOT ALTER THE EXISTING GENERATION STYLE
-
-These verification rules are accuracy guardrails only.
-
-Do NOT use them to:
-
-- change the existing document structure;
-- impose a new document structure;
-- change the existing writing style;
-- change the existing depth;
-- shorten content unnecessarily;
-- expand content unnecessarily;
-- introduce fixed page counts;
-- introduce fixed word counts;
-- add verification sections to the generated document unless the existing generator already does so;
-- add unrelated explanations merely because they can be verified.
-
-Verification must improve correctness and integrity while preserving the generator's existing behavior and natural content generation.
-
-7. GROUNDING AND VERIFICATION FAILOVER
-
-If web search or grounding tools are unavailable, rate-limited, or encounter an error:
-- Follow Rule 2 and Rule 9 strictly.
-- State the information in appropriately general terms or omit the specific detail.
-- Never guess, fabricate, or hallucinate facts simply because search grounding is inaccessible.
-
-8. TOPIC AND DOMAIN FIDELITY
-
-Strictly match the topic domain:
-- Default to non-technical domain treatment unless the topic explicitly names programming languages, software, tools, or systems.
-- If the topic is non-technical (e.g. history, geography, law, literature, humanities, biology):
-  DO NOT inject programming code, Python classes, Java snippets, database JOIN diagrams, or software development analogies.
-- Only include code, SQL, or programming diagrams when the topic specifically pertains to software, coding, or databases.
-
-9. HEDGING AND EPISTEMIC HONESTY
-
-When stating estimates, historical ranges, or unverified claims:
-- Use appropriate epistemic hedging (e.g. "historians estimate", "widely dated to approximately").
-- Omit or hedge unverifiable specifics.
-- Never claim absolute certainty on debated or ungrounded assertions.
+12. Use the research notes as a starting point, not as proof. Re-verify any version-specific, date-specific, or "current state" claim from the notes (for example, a scheduler, API, UI, or kernel feature that may have been replaced or renamed) before it appears in the document.
 `;
 
 export const ACCURACY_AND_VERIFICATION_RULES = VERBATIM_ACCURACY_RULES;
