@@ -7,6 +7,7 @@ import {
   preferTextModels,
 } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
+import { isFactualDomainTopic } from "@/utils/topicClassifier";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = "force-dynamic";
@@ -84,6 +85,9 @@ export async function POST(req: NextRequest) {
       targetModel = "gemini-3-flash-preview";
     }
 
+    // Adaptive Google Search grounding: enabled for factual domains on text calls (jsonMode cannot use grounding)
+    const enableGrounding = !jsonMode && isFactualDomainTopic(prompt);
+
     for (const key of candidateKeys) {
       const genAI = new GoogleGenerativeAI(key);
       const detectedKeyModels = await fetchKeySupportedModels(key);
@@ -112,18 +116,38 @@ export async function POST(req: NextRequest) {
               generationConfig.responseMimeType = "application/json";
             }
 
-            const model = genAI.getGenerativeModel(
-              {
-                model: modelName,
-                generationConfig,
-              },
-              { timeout: UPSTREAM_TIMEOUT_MS }
-            );
+            const modelParams: any = {
+              model: modelName,
+              generationConfig,
+            };
 
-            const result = await model.generateContent(prompt);
+            if (enableGrounding) {
+              modelParams.tools = [{ googleSearch: {} }];
+            }
+
+            let result: any;
+            try {
+              const model = genAI.getGenerativeModel(modelParams, { timeout: UPSTREAM_TIMEOUT_MS });
+              result = await model.generateContent(prompt);
+            } catch (toolErr: any) {
+              // Adaptive failover: if search tool is unsupported on this model, retry without tools
+              if (enableGrounding && modelParams.tools) {
+                console.warn(`[Synthetic Gemini Grounding] Tool unsupported on ${modelName}; falling back to standard generation.`);
+                delete modelParams.tools;
+                const fallbackModel = genAI.getGenerativeModel(modelParams, { timeout: UPSTREAM_TIMEOUT_MS });
+                result = await fallbackModel.generateContent(prompt);
+              } else {
+                throw toolErr;
+              }
+            }
+
             const text = result?.response?.text();
 
             if (text) {
+              // Directive 3: Detect and log stray %%% placeholders without guessing characters
+              if (text.includes("%%%")) {
+                console.warn('[Synthetic Gemini Guard] Detected placeholder "%%%" in model output; flagged and preserved.');
+              }
               return NextResponse.json({ text });
             }
           } catch (err: any) {
