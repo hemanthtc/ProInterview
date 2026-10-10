@@ -56,7 +56,7 @@ const zxEndIdx = code.indexOf(zxEnd, zxStartIdx);
 if (zxEndIdx === -1) throw new Error('zxEnd not found');
 
 const zxReplacement = `if(e.contentType===\`document\`||e.format===\`markdown\`)return(e.data||[]).map(e=>{if(!e.content)return\`# \${e.title||e.section||\`Section\`}\`;let t=(e.title||'').replace(/^\\s*\\d+[\\.\\-\\)]\\s*/,'').trim().toLowerCase(),n=String(e.content).split('\\n');if(n.length>0&&n[0].trim().startsWith('# ')){let r=n[0].trim().replace(/^#\\s+(\\d+[\\.\\-\\)]\\s*)?/,'').trim().toLowerCase();if(r===t||t.includes(r)||r.includes(t))n.shift()}return n.join('\\n').trim()}).join('\\n\\n---\\n\\n')`;
-code = code.slice(0, zxStartIdx) + zxReplacement + code.slice(zxEndIdx);
+code = code.slice(0, zxStartIdx) + zxReplacement + code.slice(zxEndIdx + 1);
 console.log('✓ Patch 6 applied.');
 
 // Patch 7: researchTopic prompt
