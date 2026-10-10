@@ -585,9 +585,13 @@ export default function InterviewRoom() {
                 if (pR && pR !== "N/A") portfolioRating = pR;
             }
 
+            const sessionToken = getStorageItem("sessionToken");
             const res = await fetch("/api/interviewer", {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    ...(sessionToken ? { "Authorization": `Bearer ${sessionToken}` } : {})
+                },
                 body: JSON.stringify({
                     resume,
                     github,
@@ -652,6 +656,8 @@ export default function InterviewRoom() {
                 const errorMsg = "API Error: " + data.error;
                 setMessages(prev => [...prev, { role: "assistant", content: errorMsg }]);
                 speakText("I encountered an error connecting to the AI. Please check your API key and server logs.");
+            } else {
+                setMessages(prev => [...prev, { role: "assistant", content: "Interview response unavailable. Please try again." }]);
             }
         } catch (err) {
             console.error("Error fetching AI response", err);

@@ -46,7 +46,7 @@ export function getWorkingGeminiKey(): string {
     return keys[0];
 }
 
-export function getGeminiModel(model = "gemini-3-flash-preview") {
+export function getGeminiModel(model = "gemini-3.8-flash") {
     const key = getWorkingGeminiKey();
     if (!key || key === "dummy") throw new Error("GEMINI_API_KEY is not configured");
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
@@ -86,15 +86,16 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 // The "-latest" aliases auto-track Google's newest release, so upgrading the key/model
 // needs no code change.
 export const ADVANCED_CANDIDATE_MODELS = [
+  "gemini-3.8-flash",
+  "gemini-3.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-flash-latest",
   "gemini-3-flash-preview",
   "gemini-3.1-flash-lite-preview",
-  "gemini-3.5-flash",
-  "gemini-3.8-flash",
-  "gemini-2.5-flash",
-  "gemini-flash-latest",
   "gemini-flash-lite-latest",
   "gemini-pro-latest",
   "gemini-2.5-pro",
+  "gemini-2.5-flash",
 ];
 
 /**
@@ -107,13 +108,14 @@ export function preferTextModels(models: string[]): string[] {
     !/(1\.5|2\.0)/i.test(m);
   const score = (m: string) => {
     let s = 0;
-    if (m === "gemini-3-flash-preview") s -= 40;
-    if (m === "gemini-3.1-flash-lite-preview") s -= 35;
-    if (m === "gemini-3.5-flash") s -= 30;
-    if (m === "gemini-3.8-flash") s -= 25;
-    if (m === "gemini-2.5-flash") s -= 20;
-    if (m === "gemini-flash-latest") s -= 15;
-    if (m === "gemini-2.5-flash-lite") s -= 10;
+    if (m === "gemini-3.8-flash") s -= 45;
+    if (m === "gemini-3.5-flash") s -= 40;
+    if (m === "gemini-3.5-flash-lite") s -= 35;
+    if (m === "gemini-flash-latest") s -= 30;
+    if (m === "gemini-3-flash-preview") s -= 25;
+    if (m === "gemini-3.1-flash-lite-preview") s -= 20;
+    if (m === "gemini-2.5-flash") s -= 10;
+    if (m === "gemini-2.5-flash-lite") s -= 5;
     if (m.includes("flash")) s -= 5;
     if (m.includes("latest")) s -= 3;
     if (m.includes("lite")) s += 1;
@@ -166,7 +168,7 @@ export async function generateWithFallback(
     const keys = getAllGeminiApiKeys();
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
-    const primaryModel = options.model || "gemini-2.5-flash";
+    const primaryModel = options.model || "gemini-3.8-flash";
     // Total execution budget across all candidate models (respect caller's timeout up to 45s for deep generations like resume synthesis)
     const overallTimeout = Math.min(options.timeout ?? 25000, 45000);
     const deadline = Date.now() + overallTimeout;
@@ -190,10 +192,10 @@ export async function generateWithFallback(
         // Include all reliable flash and pro models without artificial exclusions
         const candidateList = Array.from(new Set([
             primaryModel,
-            "gemini-2.5-flash",
-            "gemini-flash-latest",
-            "gemini-2.5-flash-lite",
+            "gemini-3.8-flash",
             "gemini-3.5-flash",
+            "gemini-3.5-flash-lite",
+            "gemini-flash-latest",
             ...validTextModels,
             ...ADVANCED_CANDIDATE_MODELS,
         ])).filter(m => 
@@ -207,8 +209,8 @@ export async function generateWithFallback(
             return !exhaustedAt || now - exhaustedAt >= 15 * 1000;
         });
 
-        // Try up to 3 active candidate models within the available deadline
-        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 3);
+        // Try up to 5 active candidate models within the available deadline
+        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 5);
 
         // Automatically detect multi-turn conversation arrays ([{ role, parts }]) and wrap in { contents }
         // so the GoogleGenerativeAI SDK does not erroneously serialize { role, parts } as nested Part objects

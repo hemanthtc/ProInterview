@@ -40,7 +40,7 @@ async function extractTextFromFile(file: File): Promise<string> {
             ];
 
             const text = (await generateWithFallback(promptParts, {
-                model: "gemini-2.5-flash",
+                model: "gemini-3.8-flash",
                 timeout: 25000
             })).trim();
 
@@ -87,7 +87,7 @@ async function extractTextFromFile(file: File): Promise<string> {
                     "Extract and transcribe all text from this PDF document verbatim. Keep all details, work history, education, skills, and contact info. Return only the extracted text without conversational wrapper."
                 ];
                 const text = (await generateWithFallback(promptParts, {
-                    model: "gemini-2.5-flash",
+                    model: "gemini-3.8-flash",
                     timeout: 25000
                 })).trim();
                 if (text) {

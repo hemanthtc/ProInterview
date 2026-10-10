@@ -3114,6 +3114,12 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
             setStorageItem("portfolioScoringEnabled", "true");
 
             removeStorageItem("resumeFromPaused"); // ensure fresh start
+            try {
+                sessionStorage.removeItem("prointerview_session_ended");
+                sessionStorage.removeItem("prointerview_realistic_session_ended");
+                sessionStorage.removeItem("prointerview_completed_session");
+                sessionStorage.removeItem("prointerview_completed_realistic_session");
+            } catch { /* ignore */ }
 
             if (globalMode === "realistic") {
                 router.push("/realistic-interview");

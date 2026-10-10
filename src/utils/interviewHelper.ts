@@ -38,6 +38,8 @@ Stay in character but still drive a useful mock interview. Do not claim private 
 `;
 }
 
+const githubReposCache = new Map<string, { at: number; text: string }>();
+
 export async function fetchGithubPublicRepos(githubUrl?: string): Promise<string> {
     if (!githubUrl) return "";
     try {
@@ -53,6 +55,11 @@ export async function fetchGithubPublicRepos(githubUrl?: string): Promise<string
         // Ensure username is not a reserved path
         if (["features", "setup", "login", "labs", "coaches", "jobs", "pricing", "organizations", "terms", "privacy", "blog", "about", "contact", "support"].includes(username.toLowerCase())) {
             return "";
+        }
+
+        const hit = githubReposCache.get(username.toLowerCase());
+        if (hit && Date.now() - hit.at < 15 * 60 * 1000) {
+            return hit.text;
         }
 
         const controller = new AbortController();
@@ -77,6 +84,7 @@ export async function fetchGithubPublicRepos(githubUrl?: string): Promise<string
             reposText += `  Stars: ${repo.stargazers_count} | Fork count: ${repo.forks_count}\n`;
             reposText += `  URL: ${repo.html_url}\n\n`;
         }
+        githubReposCache.set(username.toLowerCase(), { at: Date.now(), text: reposText });
         return reposText;
     } catch {
         return "";

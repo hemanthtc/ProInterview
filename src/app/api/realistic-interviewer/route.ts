@@ -140,7 +140,7 @@ ${ANTI_LEAK_SUFFIX}`;
         let responseResult: string;
         try {
             responseResult = await generateWithFallback({ contents: conversationContents }, {
-                model: "gemini-2.5-flash",
+                model: "gemini-3.8-flash",
                 generationConfig: { temperature: 0.7 }
             });
         } catch (genErr: any) {

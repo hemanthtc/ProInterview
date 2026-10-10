@@ -2172,7 +2172,7 @@ CRITICAL ATS RESUME OPTIMIZATION & ZERO-DELETION RULES:
         let parsedJson: unknown = null;
         try {
             const rawText = (await generateWithFallback(promptParts, { 
-                model: "gemini-2.5-flash",
+                model: "gemini-3.8-flash",
                 timeout: 35000,
                 generationConfig: { 
                     temperature: 0.2,

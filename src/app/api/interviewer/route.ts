@@ -43,15 +43,19 @@ export async function POST(req: NextRequest) {
                 console.warn("interviewer: plan lookup skipped", planErr);
             }
         }
-        const usage = await checkAndIncrementUsage(identifier, "gemini", userPlan);
-        if (!usage.allowed) {
-            return NextResponse.json(
-                { error: `Monthly AI interview usage limit reached (${usage.limit}/month). Upgrade to Pro or sign in for more.` },
-                {
-                    status: 429,
-                    headers: usage.retryAfterSec ? { "Retry-After": String(usage.retryAfterSec) } : undefined,
-                }
-            );
+        try {
+            const usage = await checkAndIncrementUsage(identifier, "gemini", userPlan);
+            if (!usage.allowed) {
+                return NextResponse.json(
+                    { error: `Monthly AI interview usage limit reached (${usage.limit}/month). Upgrade to Pro or sign in for more.` },
+                    {
+                        status: 429,
+                        headers: usage.retryAfterSec ? { "Retry-After": String(usage.retryAfterSec) } : undefined,
+                    }
+                );
+            }
+        } catch (usageErr) {
+            console.warn("interviewer: usage check bypassed due to db connection error", usageErr);
         }
 
         const safeCompany = company || "the hiring organization";
@@ -180,7 +184,7 @@ ${ANTI_LEAK_SUFFIX}`;
         let responseResult: string;
         try {
             responseResult = await generateWithFallback({ contents: conversationContents }, {
-                model: "gemini-2.5-flash",
+                model: "gemini-3.8-flash",
                 generationConfig: { temperature: 0.7 }
             });
         } catch (genErr: any) {
