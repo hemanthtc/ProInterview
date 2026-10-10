@@ -19,6 +19,7 @@ import { RESUME_TEMPLATES } from "../../data/templates";
 import { RESUME_PRESETS } from "../../data/resumePresets";
 import { getStorageItem, setStorageItem, removeStorageItem, getInterviewResumeText } from "../../utils/storage";
 import { ALL_ROLE_OPTIONS, BROAD_COMPANY_OPTIONS, getRoleTopicDescription } from "../../utils/domainClassifier";
+import { isTechnicalTopic } from "../../utils/topicClassifier";
 import { createInitialThemeState, persistTheme, type ThemeMode } from "../../utils/theme";
 import { deferEffectWork } from "../../utils/deferEffect";
 import { buildPrepPackFromEmail, extractMeetingUrl } from "../../utils/prepPack";
@@ -2546,17 +2547,18 @@ function FeaturesContent() {
                     step: "generating"
                 });
 
-                const prompt = `Write an exhaustive, high-yield technical study guide and documentation chapter for the topic: "${topic}".
-Context: ${phaseSubfolderName} of an interview preparation roadmap for a ${roadmapCourse || "Software Engineer"} position at ${roadmapCompany || "a top tech company"}.
+                const isTopicTech = isTechnicalTopic(topic) || isTechnicalTopic(roadmapCourse || "");
+                const prompt = `Write an exhaustive, high-yield study guide and documentation chapter for the topic: "${topic}".
+Context: ${phaseSubfolderName} of an interview preparation roadmap for a ${roadmapCourse || "Candidate"} position at ${roadmapCompany || "a top organization"}.
 
 Structure the study guide with:
 1. 📌 Conceptual Overview & Core Fundamentals
 2. 🏗️ Architecture, Core Mechanisms & Component Breakdown
-3. 💻 Production Code Implementation & Idiomatic Patterns
+${isTopicTech ? "3. 💻 Production Code Implementation & Idiomatic Patterns" : "3. 🏛️ Practical Applications, Methodologies & Standard Working Procedures"}
 4. ⚠️ Common Traps, Edge Cases & Performance Trade-offs
 5. 🎯 Top 5 Likely Interview Questions & Model Answers
 
-Format cleanly with rich Markdown headings, bullet points, and code blocks.`;
+Format cleanly with rich Markdown headings and bullet points.${isTopicTech ? " Include clean code blocks." : " Do NOT include programming code or software classes for non-technical subjects."}`;
 
                 let contentText = "";
                 try {
@@ -2574,7 +2576,9 @@ Format cleanly with rich Markdown headings, bullet points, and code blocks.`;
                 }
 
                 if (!contentText.trim()) {
-                    contentText = `# ${topic} — Comprehensive Study Guide\n\n## 1. Overview\nThis guide covers fundamental principles, best practices, and interview-ready concepts for **${topic}** as part of ${phaseSubfolderName}.\n\n## 2. Key Architecture & Principles\n- Core mental models and execution mechanisms.\n- State flow and resource lifecycle management.\n- Scalability considerations and performance bottlenecks.\n\n## 3. Best Practice Implementation\n\`\`\`javascript\n// Production implementation pattern for ${topic}\nfunction initialize${topic.replace(/[^a-zA-Z0-9]/g, "")}() {\n    console.log("Initializing ${topic} workflow with error boundaries and optimizations.");\n}\n\`\`\`\n\n## 4. Top Interview Questions & Trade-offs\n1. **How does ${topic} compare with alternative approaches?**\n2. **What are the primary performance optimizations for ${topic}?**\n3. **How do you handle edge cases and debugging in high-concurrency environments?**\n\n## 5. Review Checklist\n- [ ] Mastered core definitions and data flow.\n- [ ] Able to explain trade-offs without notes.\n- [ ] Practiced writing clean code snippets.`;
+                    contentText = isTopicTech
+                        ? `# ${topic} — Comprehensive Study Guide\n\n## 1. Overview\nThis guide covers fundamental principles, best practices, and interview-ready concepts for **${topic}** as part of ${phaseSubfolderName}.\n\n## 2. Key Architecture & Principles\n- Core mental models and execution mechanisms.\n- State flow and resource lifecycle management.\n- Scalability considerations and performance bottlenecks.\n\n## 3. Best Practice Implementation\n\`\`\`javascript\n// Production implementation pattern for ${topic}\nfunction initialize${topic.replace(/[^a-zA-Z0-9]/g, "")}() {\n    console.log("Initializing ${topic} workflow with error boundaries and optimizations.");\n}\n\`\`\`\n\n## 4. Top Interview Questions & Trade-offs\n1. **How does ${topic} compare with alternative approaches?**\n2. **What are the primary performance optimizations for ${topic}?**\n3. **How do you handle edge cases and debugging in high-concurrency environments?**\n\n## 5. Review Checklist\n- [ ] Mastered core definitions and data flow.\n- [ ] Able to explain trade-offs without notes.\n- [ ] Practiced writing clean code snippets.`
+                        : `# ${topic} — Comprehensive Study Guide\n\n## 1. Overview\nThis guide covers fundamental principles, key concepts, and interview-ready foundations for **${topic}** as part of ${phaseSubfolderName}.\n\n## 2. Key Frameworks & Principles\n- Core concepts and theoretical foundations.\n- Historical and practical contextual drivers.\n- Strategic considerations and structural analysis.\n\n## 3. Practical Applications & Working Procedures\n- Applied methodologies and standard domain procedures.\n- Core execution framework and implementation workflows.\n- Realistic operational scenarios and evaluation criteria.\n\n## 4. Top Interview Questions & Trade-offs\n1. **How does ${topic} compare with alternative frameworks or eras?**\n2. **What are the primary challenges and considerations when analyzing ${topic}?**\n3. **What critical trade-offs arise in real-world scenarios?**\n\n## 5. Review Checklist\n- [ ] Mastered core definitions and concepts.\n- [ ] Able to explain domain trade-offs with clarity.\n- [ ] Reviewed high-yield analysis models.`;
                 }
 
                 setPhaseStudyProgress({
