@@ -7,7 +7,7 @@ import {
   preferTextModels,
 } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
-import { isFactualDomainTopic } from "@/utils/topicClassifier";
+import { isGroundingTopic } from "@/utils/topicClassifier";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const dynamic = "force-dynamic";
@@ -85,8 +85,9 @@ export async function POST(req: NextRequest) {
       targetModel = "gemini-3-flash-preview";
     }
 
-    // Adaptive Google Search grounding: enabled for factual domains on text calls (jsonMode cannot use grounding)
-    const enableGrounding = !jsonMode && isFactualDomainTopic(prompt);
+    // Grounding: Enabled for factual domains AND tech versions/releases/deprecations on text calls.
+    // Note: tools and jsonMode cannot be combined per Gemini API specification (responseMimeType: 'application/json' rejects tools).
+    const enableGrounding = !jsonMode && isGroundingTopic(prompt);
 
     for (const key of candidateKeys) {
       const genAI = new GoogleGenerativeAI(key);
@@ -126,20 +127,54 @@ export async function POST(req: NextRequest) {
             }
 
             let result: any;
+            let ungroundedFallback = false;
             try {
               const model = genAI.getGenerativeModel(modelParams, { timeout: UPSTREAM_TIMEOUT_MS });
               result = await model.generateContent(prompt);
             } catch (toolErr: any) {
-              // Adaptive failover: if search tool is unsupported on this model, retry without tools
-              if (enableGrounding && modelParams.tools) {
-                console.warn(`[Synthetic Gemini Grounding] Tool unsupported on ${modelName}; falling back to standard generation.`);
+              const status = toolErr?.status ?? toolErr?.statusCode;
+              const errStr = String(toolErr?.message || "");
+
+              // Never retry without tools on 429, 5xx or network errors (rethrow those)
+              const is429 = status === 429 || errStr.includes("429") || errStr.includes("RESOURCE_EXHAUSTED");
+              const is5xx = (typeof status === "number" && status >= 500 && status < 600) || status === 503 || status === 500 || status === 502 || status === 504;
+              const isNetwork =
+                toolErr?.name === "AbortError" ||
+                toolErr?.name === "FetchError" ||
+                toolErr?.code === "ECONNRESET" ||
+                toolErr?.code === "ETIMEDOUT" ||
+                toolErr?.code === "ENOTFOUND" ||
+                errStr.includes("fetch failed") ||
+                errStr.includes("network");
+
+              if (is429 || is5xx || isNetwork) {
+                throw toolErr;
+              }
+
+              // Retry without tools ONLY when status === 400 or the error is INVALID_ARGUMENT (no includes("400"))
+              const is400OrInvalidArgument =
+                status === 400 ||
+                toolErr?.errorDetails?.status === "INVALID_ARGUMENT" ||
+                errStr.includes("INVALID_ARGUMENT");
+
+              if (modelParams.tools && is400OrInvalidArgument) {
+                console.warn(`[Synthetic Gemini Grounding] Search tool rejected with HTTP 400 / INVALID_ARGUMENT on ${modelName} (${toolErr?.message || toolErr}). Retrying fallback generation without tools.`);
                 delete modelParams.tools;
+                ungroundedFallback = true;
                 const fallbackModel = genAI.getGenerativeModel(modelParams, { timeout: UPSTREAM_TIMEOUT_MS });
                 result = await fallbackModel.generateContent(prompt);
               } else {
                 throw toolErr;
               }
             }
+
+            // Always log groundingMetadata.webSearchQueries on every call
+            const firstCandidate = result?.response?.candidates?.[0];
+            const webSearchQueries =
+              firstCandidate?.groundingMetadata?.webSearchQueries ||
+              result?.response?.groundingMetadata?.webSearchQueries ||
+              [];
+            console.log(`[Synthetic Gemini Grounding] webSearchQueries for model ${modelName}:`, webSearchQueries);
 
             const text = result?.response?.text();
 
@@ -148,7 +183,15 @@ export async function POST(req: NextRequest) {
               if (text.includes("%%%")) {
                 console.warn('[Synthetic Gemini Guard] Detected placeholder "%%%" in model output; flagged and preserved.');
               }
-              return NextResponse.json({ text });
+              const isGrounded = enableGrounding && !ungroundedFallback;
+              return NextResponse.json(
+                { text, grounded: isGrounded },
+                {
+                  headers: {
+                    "X-Grounded": isGrounded ? "true" : "false",
+                  },
+                }
+              );
             }
           } catch (err: any) {
             lastErrorMsg = err?.message || String(err);

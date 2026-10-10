@@ -187,6 +187,7 @@ Before finalizing the document, verify that:
 - calculations agree with stated results;
 - code agrees with its stated output;
 - tables agree with surrounding explanations;
+- dates are consistent: a document must use the same date for the same event throughout, and verify dates against grounded sources;
 - the introduction accurately represents the document;
 - the title accurately represents the document.
 

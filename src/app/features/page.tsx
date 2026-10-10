@@ -2558,7 +2558,7 @@ ${isTopicTech ? "3. 💻 Production Code Implementation & Idiomatic Patterns" : 
 4. ⚠️ Common Traps, Edge Cases & Performance Trade-offs
 5. 🎯 Top 5 Likely Interview Questions & Model Answers
 
-Format cleanly with rich Markdown headings and bullet points.${isTopicTech ? " Include clean code blocks." : " Do NOT include programming code or software classes for non-technical subjects."}`;
+Format cleanly with rich Markdown headings and bullet points. Write equations and math as plain text, never LaTeX ($...$, \\frac). Any text diagrams must use ASCII only (+ - | > v, max 80 cols). Single Date Rule: use the exact same date for the same event throughout. ${isTopicTech ? "Include clean code blocks." : "Prefer a table or list over a drawn diagram. Do NOT include programming code or software classes for non-technical subjects."}`;
 
                 let contentText = "";
                 try {
