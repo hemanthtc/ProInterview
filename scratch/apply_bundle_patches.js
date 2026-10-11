@@ -159,5 +159,7 @@ code = code.slice(0, genStartIdx) + genReplacement + code.slice(genEndIdx + genE
 console.log('✓ Patch 11 (generateDataBatch section prompt with rules) applied.');
 
 fs.writeFileSync(bundlePath, code, 'utf8');
-console.log('All patches successfully applied to:', bundlePath);
+const cacheBustedPath = 'public/synthetic-data-generator/assets/index-73e7cd43.js';
+fs.writeFileSync(cacheBustedPath, code, 'utf8');
+console.log('All patches successfully applied to:', bundlePath, 'and', cacheBustedPath);
 console.log('Final code length:', code.length);
