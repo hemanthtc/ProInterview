@@ -25,14 +25,16 @@ const qdReplacement = [
     't=t.replace(/\\$\\{([A-Za-z0-9_?#$!*@-]{1,64})\\}/g,m=>{sVars.push(m);return"\\u001A::SVAR::"+(sVars.length-1)+"::\\u001A"});',
     't=t.replace(/(?:^|[\\s"\'(;,=\\\\/:|&])\\$(PATH|USER|HOME|SHELL|TERM|PWD|LANG|LC_[A-Z]+|EDITOR|TEMP|TMP|UID|PID|IFS|OPTARG|OPTIND|HOSTNAME|\\?)(?![a-zA-Z0-9_])/g,m=>{sVars.push(m.trimStart());let lead=m.slice(0,m.length-m.trimStart().length);return lead+"\\u001A::SVAR::"+(sVars.length-1)+"::\\u001A"});',
     'let tf=x=>{return x.replace(/\\\\frac\\s*\\{([^{}]+)\\}\\s*\\{([^{}]+)\}/g,(_m,n,d)=>{let nT=n.trim(),dT=d.trim(),nV=Number(nT),dV=Number(dT);if(!isNaN(nV)&&!isNaN(dV)&&dV!==0){if(nT==="14"&&dT==="3")return"14/3 = 4.67";if(!Number.isInteger(nV/dV)&&dV>1&&nV!==1)return nT+"/"+dT+" = "+(nV/dV).toFixed(2);return nT+"/"+dT}return nT+"/"+dT})',
-    '.replace(/\\\\(?:xrightarrow|rightarrow|to)\\b(?:\\{[^{}]*\\})?/g,"->").replace(/->\\{([^{}]+)\\}/g,"->").replace(/\\\\leftarrow\\b/g,"<-").replace(/\\\\leftrightarrow\\b/g,"<->")',
+    '.replace(/\\\\(?:xrightarrow|rightarrow|longrightarrow|to)\\b(?:\\{[^{}]*\\})?/g,"->").replace(/->\\{([^{}]+)\\}/g,"->").replace(/\\\\(?:longleftrightarrow|leftrightarrow)\\b/g,"<->").replace(/\\\\implies\\b/g,"->").replace(/\\\\leftarrow\\b/g,"<-")',
     '.replace(/\\\\(?:text|mathrm|mathbf|mathit)\\s*\\{([^{}]+)\\}/g,"$1")',
     '.replace(/\\\\(log|ln|exp|sin|cos|tan|det|max|min|lim)\\b/g,"$1")',
     '.replace(/\\\\cdot\\b/g,"*").replace(/\\\\times\\b/g,"x").replace(/\\\\approx\\b/g,"~")',
     '.replace(/\\\\(?:leq|le)\\b/g,"<=").replace(/\\\\(?:geq|ge)\\b/g,">=").replace(/\\\\(?:neq|ne)\\b/g,"!=")',
     '.replace(/\\\\pm\\b/g,"+/-").replace(/\\\\infty\\b/g,"infinity").replace(/\\\\div\\b/g,"/").replace(/\\\\circ\\b/g," deg")',
     '.replace(/\\\\uparrow\\b/g,"^").replace(/\\\\downarrow\\b/g,"v").replace(/\\\\,/g," ")',
-    '.replace(/\\\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)\\b/gi,m=>m.slice(1))',
+    '.replace(/\\\\(?:quad|qquad)\\b/g," ").replace(/\\\\sim\\b/g,"~").replace(/\\\\gg\\b/g,">>").replace(/\\\\ll\\b/g,"<<").replace(/\\\\bullet\\b/g,"*").replace(/\\\\_/g,"_")',
+    '.replace(/\\\\left\\s*([(\\[{|.]?)/g,(_m,g)=>g===\'.\'?\'\':(g||\'(\')).replace(/\\\\right\\s*([)\\]}|.]?)/g,(_m,g)=>g===\'.\'?\'\':(g||\')\'))',
+    '.replace(/\\\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?![a-zA-Z])/gi,m=>m.slice(1))',
     '.replace(/_\\{([^{}]+)\\}/g,"$1").replace(/\\^\\{([^{}]+)\\}/g,(_m,i)=>{let tr=i.trim();return"^"+tr})',
     '.replace(/\\b([A-Za-z])_([A-Za-z])\\b/g,"$1$2").replace(/(?:\\b|(?<=\\d))(PQH|CF|PQ|PC|Cyt|PS|PSI|PSII|RuBP|PGA|G3P|Fd|FNR|Chl|Pheo|NADP|NADPH|ATP|ADP|CO|SO|NO|PO|OH|alpha|beta|gamma|delta)_(\\d+)/g,"$1$2").replace(/(?:\\b|(?<=\\d))([A-Za-z])_(\\d+)([A-Za-z0-9]*)/g,"$1$2$3").replace(/(?:\\b|(?<=\\d))([A-Z][a-z])_(\\d+)/g,"$1$2").replace(/(?<=[a-z0-9])([A-Z])_(\\d+)/g,"$1$2")',
     '.replace(/([a-zA-Z0-9]+[+-])\\^/g,"$1").replace(/(?<=\\d)\\^\\s*deg\\b/g," deg").replace(/\\^(\\s*deg\\b)/g," deg").replace(/([a-zA-Z0-9])\\^(?=[,\\s.;:)\\]}]|$)/g,"$1")};',
@@ -103,7 +105,7 @@ if (!code.includes(tfOld)) throw new Error('tfOld target not found');
 code = code.replace(tfOld, tfNew);
 
 const tfHeadingOld = 'if(l+12>a-16&&(r.addPage(),l=20),e.type===`heading`){let t=[13,11.5,10.5,9.5,9,8.5][Math.min(e.level-1,5)];';
-const tfHeadingNew = 'if(l+12>a-16&&(r.addPage(),l=20),e.type===`heading`){let cleanH=e.text.replace(/^\\s*\\d+[\\.\\-\\)]\\s*/,``).trim().toLowerCase();if(!firstH1Pdf&&e.level<=2&&(cleanH===cleanSecTitle.toLowerCase()||cleanSecTitle.toLowerCase().includes(cleanH)||cleanH.includes(cleanSecTitle.toLowerCase()))){firstH1Pdf=!0;return}firstH1Pdf=!0;let t=[13,11.5,10.5,9.5,9,8.5][Math.min(e.level-1,5)];';
+const tfHeadingNew = 'if(l+12>a-16&&(r.addPage(),l=20),e.type===`heading`){let cleanH=e.text.replace(/^\\s*\\d+[\\.\\-\\)]\\s*/,``).trim().toLowerCase();if(!firstH1Pdf&&e.level<=3&&(cleanH===cleanSecTitle.toLowerCase()||cleanSecTitle.toLowerCase().includes(cleanH)||cleanH.includes(cleanSecTitle.toLowerCase()))){firstH1Pdf=!0;return}firstH1Pdf=!0;let t=[13,11.5,10.5,9.5,9,8.5][Math.min(e.level-1,5)];';
 if (!code.includes(tfHeadingOld)) throw new Error('tfHeadingOld target not found');
 code = code.replace(tfHeadingOld, tfHeadingNew);
 

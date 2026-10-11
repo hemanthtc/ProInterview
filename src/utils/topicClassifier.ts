@@ -208,11 +208,12 @@ export function convertLatexToPlainText(text: string): string {
             return `${nTrim}/${dTrim}`;
         });
 
-        // Arrows (including \xrightarrow{...} and ->{...})
-        s = s.replace(/\\(?:xrightarrow|rightarrow|to)\b(?:\{[^{}]*\})?/g, "->");
+        // Arrows (including \xrightarrow{...}, \longrightarrow, and ->{...})
+        s = s.replace(/\\(?:xrightarrow|rightarrow|longrightarrow|to)\b(?:\{[^{}]*\})?/g, "->");
+        s = s.replace(/\\(?:longleftrightarrow|leftrightarrow)\b/g, "<->");
+        s = s.replace(/\\(?:implies)\b/g, "->");
         s = s.replace(/->\{([^{}]+)\}/g, "->");
         s = s.replace(/\\leftarrow\b/g, "<-");
-        s = s.replace(/\\leftrightarrow\b/g, "<->");
         s = s.replace(/\\uparrow\b/g, "^");
         s = s.replace(/\\downarrow\b/g, "v");
 
@@ -233,10 +234,20 @@ export function convertLatexToPlainText(text: string): string {
         s = s.replace(/\\infty\b/g, "infinity");
         s = s.replace(/\\(?:div)\b/g, "/");
         s = s.replace(/\\circ\b/g, " deg");
+        s = s.replace(/\\(?:quad|qquad)\b/g, " ");
+        s = s.replace(/\\sim\b/g, "~");
+        s = s.replace(/\\gg\b/g, ">>");
+        s = s.replace(/\\ll\b/g, "<<");
+        s = s.replace(/\\bullet\b/g, "*");
         s = s.replace(/\\,/g, " ");
+        s = s.replace(/\\_/g, "_");
 
-        // Greek letters in LaTeX commands
-        s = s.replace(/\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)\b/gi, (m) => m.slice(1));
+        // LaTeX sizing delimiters
+        s = s.replace(/\\left\s*([(\[{|.]?)/g, (_m, g) => (g === "." ? "" : (g || "(")));
+        s = s.replace(/\\right\s*([)\]}|.]?)/g, (_m, g) => (g === "." ? "" : (g || ")")));
+
+        // Greek letters in LaTeX commands (support adjacent numbers like \alpha3\beta3)
+        s = s.replace(/\\(alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|omicron|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega)(?![a-zA-Z])/gi, (m) => m.slice(1));
 
         // Subscripts with braces: _{700} -> 700, _{i} -> i
         s = s.replace(/_\{([^{}]+)\}/g, (_m, inner) => {

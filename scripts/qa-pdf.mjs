@@ -120,6 +120,13 @@ export function validatePdfText(text) {
         if (/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(inner)) {
             continue;
         }
+        // Exclude shell commands with command substitution $(...) or subshell
+        const lineStart = text.lastIndexOf('\n', mathMatch.index);
+        const lineEnd = text.indexOf('\n', mathMatch.index);
+        const fullLine = text.slice(lineStart === -1 ? 0 : lineStart + 1, lineEnd === -1 ? text.length : lineEnd).trim();
+        if (/^\$\s+.*\$\(/.test(fullLine) || /^(?:echo|kill|pgrep)\b/.test(inner)) {
+            continue;
+        }
         errors.push(`Detected raw LaTeX math expression: "$${inner}$"`);
     }
 
@@ -161,11 +168,12 @@ export function validatePdfText(text) {
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         if (/^[-*_]{3,}$/.test(line)) {
-            // Permit YAML frontmatter or diff markers (immediately adjacent to key-value pairs or diff lines)
+            // Permit YAML frontmatter, diff markers, or terminal directory listings / process output dividers
             const prev = i > 0 ? lines[i - 1] : "";
             const next = i < lines.length - 1 ? lines[i + 1] : "";
             const isYamlOrDiff = /^[a-zA-Z0-9_-]+\s*:\s+/.test(next) || /^[a-zA-Z0-9_-]+\s*:\s+/.test(prev) || next.startsWith("diff ") || prev.startsWith("diff ");
-            if (!isYamlOrDiff) {
+            const isTerminalDivider = /^[a-z-]{10,}\s+\d+/.test(prev) || /^[A-Z][a-z]+ process \d+/.test(next);
+            if (!isYamlOrDiff && !isTerminalDivider) {
                 errors.push(`Detected raw printed markdown horizontal rule: "${line}"`);
                 break;
             }
