@@ -40,6 +40,8 @@ html.theme-light body {
 html.theme-light .bg-\[\#050505\],
 html.theme-light .bg-\[\#050510\],
 html.theme-light .bg-\[\#0b0f19\],
+html.theme-light .bg-\[\#0b0b10\],
+html.theme-light .bg-\[\#0b0b10\]\/80,
 html.theme-light .bg-black {
   background-color: #f8fafc !important;
 }
@@ -105,6 +107,7 @@ html.theme-light .hover\:text-white:hover {
   color: #0f172a !important;
 }
 
+html.theme-light .text-white\/85,
 html.theme-light .text-white\/80 {
   color: #1e293b !important;
 }
@@ -842,6 +845,28 @@ html.theme-eyeprotect .bg-emerald-500\/10 {
 
 html.theme-eyeprotect .text-emerald-100\/90 {
   color: #0f5629 !important;
+}
+
+/* Eye Comfort Mode (theme-eyeprotect) dark background translations & high contrast text */
+html.theme-eyeprotect .bg-\[\#0b0b10\],
+html.theme-eyeprotect .bg-\[\#0b0b10\]\/80,
+html.theme-eyeprotect .bg-\[\#050505\],
+html.theme-eyeprotect .bg-\[\#050510\],
+html.theme-eyeprotect .bg-\[\#0b0f19\] {
+  background-color: #f4ebd9 !important;
+  color: #2d241e !important;
+}
+
+html.theme-eyeprotect .text-white\/85,
+html.theme-eyeprotect .text-white\/80,
+html.theme-eyeprotect .text-white\/70 {
+  color: #2d241e !important;
+}
+
+html.theme-eyeprotect .text-white\/60,
+html.theme-eyeprotect .text-white\/50,
+html.theme-eyeprotect .text-white\/40 {
+  color: #5e4b3c !important;
 }
 
 /* Light Mode Overrides - Crisp High Contrast Input Borders */
