@@ -3396,7 +3396,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                 onClick={() => setIsMockTestMode(false)}
                                 className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer font-sans"
                             >
-                                \u2190 Exit Mock Results
+                                <ArrowLeft className="w-3.5 h-3.5" /> Exit Mock Results
                             </button>
                             <h3 className="text-lg font-bold text-white font-sans">
                                 Off-Campus Mock Test Results
@@ -3440,7 +3440,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                     : "border-transparent text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                \uD83D\uDCCB MCQ Solutions Review
+                                📋 MCQ Solutions Review
                             </button>
                             <button
                                 type="button"
@@ -3450,7 +3450,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                     : "border-transparent text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                \uD83D\uDCBB Coding Solutions Review
+                                💻 Coding Solutions Review
                             </button>
                         </div>
 
@@ -3543,7 +3543,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                         <div key={q.id} className="border border-white/5 bg-[#0d0d12]/30 rounded-xl p-6 space-y-4 font-sans">
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-white/5 pb-3">
                                                 <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                                                    \uD83D\uDCBB {q.title}
+                                                    💻 {q.title}
                                                     <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
                                                         {lang}
                                                     </span>
@@ -3578,10 +3578,10 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                                     Status: {grading.status}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
-                                                                    \u23F1 Time: {grading.timeComplexity}
+                                                                    ⏱️ Time: {grading.timeComplexity}
                                                                 </span>
                                                                 <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-white/5 border border-white/5 text-white/70">
-                                                                    \uD83D\uDCBE Space: {grading.spaceComplexity}
+                                                                    💾 Space: {grading.spaceComplexity}
                                                                 </span>
                                                             </div>
                                                             <div className="space-y-1">
@@ -3652,21 +3652,21 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                     <div className="flex flex-wrap items-center gap-3 font-sans">
                         {mockProctorWarnings > 0 && (
                             <span className="px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold bg-yellow-500/15 border border-yellow-500/20 text-yellow-500 flex items-center gap-1">
-                                \u26A0\uFE0F Proctor: {mockProctorWarnings}/3
+                                ⚠️ Proctor: {mockProctorWarnings}/3
                             </span>
                         )}
                         <span className={`px-3 py-1.5 rounded-lg text-[10px] font-extrabold border ${isTimerWarning
                             ? "bg-red-500/10 border-red-500/20 text-red-400 animate-pulse"
                             : "bg-indigo-500/10 border-indigo-500/20 text-indigo-400"
                             }`}>
-                            {"\u23F1"} {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
+                            ⏱️ {Math.floor(mockTimeRemaining / 60)}:{(mockTimeRemaining % 60).toString().padStart(2, "0")} Mins
                         </span>
                         <button
                             type="button"
                             onClick={triggerSubmitMockTestConfirmation}
                             className="px-4.5 py-1.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 border border-green-500/20 text-white font-extrabold text-[10px] rounded-lg tracking-wider uppercase transition-all duration-200 cursor-pointer shadow-[0_0_15px_rgba(16,185,129,0.15)]"
                         >
-                            \u2713 Submit Test
+                            ✓ Submit Test
                         </button>
                     </div>
                 </div>
@@ -3685,7 +3685,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                     : "text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                \uD83D\uDCCB MCQs
+                                📋 MCQs
                             </button>
                             <button
                                 type="button"
@@ -3698,7 +3698,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                     : "text-white/40 hover:text-white/70"
                                     }`}
                             >
-                                \uD83D\uDCBB Coding
+                                💻 Coding
                             </button>
                         </div>
 
@@ -3865,7 +3865,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        \u2190 Previous
+                                        <ArrowLeft className="w-3.5 h-3.5" /> Previous
                                     </button>
 
                                     <button
@@ -3879,7 +3879,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                             : "bg-white/5 border-white/5 text-white/50 hover:text-white"
                                             }`}
                                     >
-                                        \u2B50 {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
+                                        ⭐ {mockTestMCQReview[currentMCQ.id] ? "Marked for Review" : "Mark for Review"}
                                     </button>
 
                                     <button
@@ -3894,7 +3894,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                         }}
                                         className="px-4.5 py-2.5 bg-pink-650 hover:bg-pink-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)] flex items-center gap-1.5"
                                     >
-                                        {currentMockQuestionIndex < 24 ? "Next MCQ \u2192" : "Proceed to Coding C1 \u2192"}
+                                        {currentMockQuestionIndex < 24 ? "Next MCQ →" : "Proceed to Coding C1 →"}
                                     </button>
                                 </div>
                             </div>
@@ -4001,7 +4001,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                         </>
                                                     ) : (
                                                         <>
-                                                            \u2699 Run AI Code Grade
+                                                            ⚙️ Run AI Code Grade
                                                         </>
                                                     )}
                                                 </button>
@@ -4027,10 +4027,10 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                         Score: {out.score} / 10 Points
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                                                        \u23F1 Time: {out.timeComplexity}
+                                                        ⏱️ Time: {out.timeComplexity}
                                                     </span>
                                                     <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                                                        \uD83D\uDCBE Space: {out.spaceComplexity}
+                                                        💾 Space: {out.spaceComplexity}
                                                     </span>
                                                 </div>
                                                 <div className="space-y-1 leading-relaxed">
@@ -4056,7 +4056,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                         onClick={() => setCurrentMockQuestionIndex(prev => prev - 1)}
                                         className="px-4.5 py-2.5 bg-white/5 hover:bg-white/10 disabled:bg-white/0 disabled:text-white/20 border border-white/5 disabled:border-transparent text-white/70 hover:text-white font-bold rounded-xl transition-all text-xs cursor-pointer flex items-center gap-1.5"
                                     >
-                                        \u2190 Previous Coding
+                                        <ArrowLeft className="w-3.5 h-3.5" /> Previous Coding
                                     </button>
 
                                     <button
@@ -4070,7 +4070,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                         }}
                                         className="px-4.5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(79,70,229,0.15)] flex items-center gap-1.5"
                                     >
-                                        {currentMockQuestionIndex < 2 ? "Next Coding \u2192" : "\u2713 Finish & Review Test"}
+                                        {currentMockQuestionIndex < 2 ? "Next Coding →" : "✓ Finish & Review Test"}
                                     </button>
                                 </div>
                             </div>
@@ -5180,7 +5180,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                             <div className="flex items-center gap-3 text-[10px] text-white/25 pt-0.5">
                                                                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full border border-white/20" /> Empty</span>
                                                                 <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-purple-500 border border-purple-400" /> Filled</span>
-                                                                <span className="ml-auto">1=Basic \u00B7 5=Native</span>
+                                                                <span className="ml-auto">1=Basic · 5=Native</span>
                                                             </div>
                                                         )}
                                                     </div>
@@ -5515,9 +5515,9 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                                 </h1>
                                                                 <div className={`flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] mt-1 text-neutral-500 justify-start ${selectedTemplateId === "classic" ? "justify-center" : ""}`}>
                                                                     {resEmail && <span>Email: {resEmail}</span>}
-                                                                    {resPhone && <span>\u2022 Phone: {resPhone}</span>}
-                                                                    {github && <span>\u2022 GitHub: {github.replace('https://', '')}</span>}
-                                                                    {linkedin && <span>\u2022 LinkedIn: {linkedin.replace('https://', '')}</span>}
+                                                                    {resPhone && <span>• Phone: {resPhone}</span>}
+                                                                    {github && <span>• GitHub: {github.replace('https://', '')}</span>}
+                                                                    {linkedin && <span>• LinkedIn: {linkedin.replace('https://', '')}</span>}
                                                                 </div>
                                                             </div>
 
@@ -5678,7 +5678,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                             </div>
                                             <div>
                                                 <h3 className="text-xl font-bold text-white">AI Email Analyser</h3>
-                                                <p className="text-xs text-white/50">Paste or import an interview email \u2014 extract details, research the HR contact on Happenstance, and prep for their likely questions &amp; tone</p>
+                                                <p className="text-xs text-white/50">Paste or import an interview email — extract details, research the HR contact on Happenstance, and prep for their likely questions &amp; tone</p>
                                             </div>
                                         </div>
 
@@ -7347,7 +7347,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                             </span>
                                                         )}
                                                         <span className="px-3 py-1.5 rounded-lg text-[10px] font-extrabold bg-pink-500/15 border border-pink-500/20 text-pink-400">
-                                                            \u23F1 {quizTimeRemaining}s
+                                                            ⏱️ {quizTimeRemaining}s
                                                         </span>
                                                     </div>
                                                 </div>
@@ -7449,7 +7449,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                                 }}
                                                                 className="px-6 py-2.5 bg-pink-650 hover:bg-pink-500 disabled:bg-white/5 disabled:text-white/20 disabled:border-transparent text-white font-bold rounded-xl transition-all text-xs cursor-pointer shadow-[0_0_15px_rgba(236,72,153,0.1)]"
                                                             >
-                                                                {currentQuizQuestionIndex + 1 < quizQuestionsList.length ? "Submit Answer \u2192" : "\u2713 Finish Quiz"}
+                                                                {currentQuizQuestionIndex + 1 < quizQuestionsList.length ? "Submit Answer →" : "✓ Finish Quiz"}
                                                             </button>
                                                         </div>
                                                     </div>
@@ -7468,7 +7468,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                             onClick={() => setAptitudePath(null)}
                                                             className="px-3.5 py-1.5 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 hover:border-white/20 transition-all font-bold text-xs rounded-xl flex items-center gap-1 cursor-pointer"
                                                         >
-                                                            {"\u2190"} Change Path
+                                                            <ArrowLeft className="w-3.5 h-3.5" /> Change Path
                                                         </button>
                                                     )}
                                                     <h3 id="aptitude-dialog-title" className="text-lg font-bold text-white flex items-center gap-2">
@@ -7496,7 +7496,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                             <div className="space-y-2 text-left z-10">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="px-2.5 py-1 rounded bg-pink-500/10 border border-pink-500/20 text-pink-400 text-[9px] font-black uppercase tracking-wider">PLACEMENT READY</span>
-                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">\u23F1 60 MINUTES TEST</span>
+                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">⏱️ 60 MINUTES TEST</span>
                                                                 </div>
                                                                 <h4 className="text-base font-extrabold text-white">On-Campus Placement Mock Assessment Simulator</h4>
                                                                 <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
@@ -7515,7 +7515,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
                                                                     </span>
                                                                 ) : (
-                                                                    "\u26A1 Launch Mock Test"
+                                                                    "⚡ Launch Mock Test"
                                                                 )}
                                                             </button>
                                                             <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-pink-500/5 rounded-full blur-3xl pointer-events-none" />
@@ -7528,7 +7528,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                             <div className="space-y-2 text-left z-10">
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="px-2.5 py-1 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[9px] font-black uppercase tracking-wider">OFF-CAMPUS CHALLENGE</span>
-                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">\u23F1 60 MINUTES TEST</span>
+                                                                    <span className="text-[9px] font-black text-white/30 uppercase tracking-wider">⏱️ 60 MINUTES TEST</span>
                                                                 </div>
                                                                 <h4 className="text-base font-extrabold text-white">Off-Campus Placement Mock Assessment Simulator</h4>
                                                                 <p className="text-xs text-white/65 leading-relaxed font-semibold max-w-xl">
@@ -7547,7 +7547,7 @@ Generate 5 rigorous, practical interview questions (not trivial trivia). Return 
                                                                         <Loader2 className="w-3.5 h-3.5 animate-spin" /> Generating...
                                                                     </span>
                                                                 ) : (
-                                                                    "\u26A1 Launch Mock Test"
+                                                                    "⚡ Launch Mock Test"
                                                                 )}
                                                             </button>
                                                             <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />

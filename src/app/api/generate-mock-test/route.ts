@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
 import { getVerifiedSession } from "@/utils/auth";
+import { onCampusMCQs, onCampusCodingQuestions } from "@/data/onCampusMockTestData";
+import { offCampusMCQs, offCampusCodingQuestions } from "@/data/offCampusMockTestData";
 import {
     enforceRateLimit,
     jsonError,
@@ -94,18 +96,25 @@ The JSON must adhere to the following schema structure:
 
 Ensure the questions are realistic, technically accurate, and completely unique. MCQ correctAnswers must match the index of the options array (0 to 3). Coding templates must be valid skeleton functions.`;
 
-        const textResponse = await generateWithFallback(systemPrompt, {
-            generationConfig: { temperature: 0.7 },
-        });
-        let parsedData;
         try {
-            parsedData = parseJsonFromModel(textResponse);
-        } catch {
-            console.error("Failed to parse JSON response from Gemini for mock test generation");
-            return NextResponse.json({ error: "Failed to parse mock assessment questions output from AI" }, { status: 500 });
+            const textResponse = await generateWithFallback(systemPrompt, {
+                model: "gemini-3.5-flash",
+                timeout: 40000,
+                generationConfig: { temperature: 0.7 },
+            });
+            const parsedData = parseJsonFromModel(textResponse);
+            if (Array.isArray(parsedData?.mcqs) && parsedData.mcqs.length > 0) {
+                return NextResponse.json(parsedData);
+            }
+        } catch (genErr) {
+            console.warn("AI generation for mock test failed or timed out, returning curated fallback:", genErr);
         }
 
-        return NextResponse.json(parsedData);
+        return NextResponse.json({
+            mcqs: isCampus ? onCampusMCQs : offCampusMCQs,
+            coding: isCampus ? onCampusCodingQuestions : offCampusCodingQuestions,
+            fallback: true
+        });
     } catch (error: unknown) {
         console.error("Mock assessment generation error:", error);
         return jsonError(error, 500, "Internal server error");
