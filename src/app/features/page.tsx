@@ -852,6 +852,12 @@ function FeaturesContent() {
             return;
         }
 
+        const role = getStorageItem("userRole");
+        if (loggedIn && role === "admin") {
+            router.replace("/admin");
+            return;
+        }
+
         const syncState = () => {
             const userVal = getStorageItem("userLoggedIn");
             const hasToken = !!getStorageItem("sessionToken");

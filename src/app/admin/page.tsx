@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { logoutUser } from "@/utils/authExpiry";
+import { getStorageItem, setStorageItem } from "@/utils/storage";
 import StudyMaterialsManager from "@/components/admin/StudyMaterialsManager";
 import FeedbackAdminPanel from "@/components/admin/FeedbackAdminPanel";
 import LabsVisibilityManager from "@/components/admin/LabsVisibilityManager";
@@ -238,19 +239,19 @@ export default function AdminDashboard() {
 
     // ── Auth Guard ─────────────────────────────────────────────────────────────
     useEffect(() => {
-        const loggedIn = localStorage.getItem("userLoggedIn");
-        const role = localStorage.getItem("userRole");
+        const loggedIn = getStorageItem("userLoggedIn");
+        const role = getStorageItem("userRole");
 
         if (loggedIn !== "true" || role !== "admin") {
             router.push("/");
             return;
         }
 
-        const id   = localStorage.getItem("userIdentifier") || "";
-        const name = localStorage.getItem("userName") || "Admin";
-        const org  = localStorage.getItem("userOrgName") || "Organization";
+        const id   = getStorageItem("userIdentifier") || "";
+        const name = getStorageItem("userName") || "Admin";
+        const org  = getStorageItem("userOrgName") || "Organization";
 
-        const savedTheme = localStorage.getItem("globalTheme") as any;
+        const savedTheme = getStorageItem("globalTheme") as any;
 
         Promise.resolve().then(() => {
             setAdminId(id);
@@ -403,7 +404,7 @@ export default function AdminDashboard() {
     const toggleTheme = () => {
         const next = theme === "dark" ? "light" : "dark";
         setTheme(next);
-        localStorage.setItem("globalTheme", next);
+        setStorageItem("globalTheme", next);
         document.documentElement.className = `theme-${next}`;
         document.documentElement.style.colorScheme = next;
     };

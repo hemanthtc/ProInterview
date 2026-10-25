@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import LabAuthBanner from "@/components/labs/LabAuthBanner";
 import { speakInterviewText, stopSpeechInterviewText } from "@/utils/speakInterview";
+import { getStorageItem } from "@/utils/storage";
 
 type SpeechRecognitionInstance = any;
 
@@ -160,7 +161,7 @@ export default function PanelInterviewPage() {
             setInput("");
         }
         try {
-            const resume = typeof window !== "undefined" ? localStorage.getItem("userResumeCvText") || "" : "";
+            const resume = typeof window !== "undefined" ? getStorageItem("userResumeCvText") || "" : "";
             const res = await fetch("/api/panel-interviewer", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -168,11 +169,11 @@ export default function PanelInterviewPage() {
                     history,
                     message: opening ? "" : text,
                     resume,
-                    company: localStorage.getItem("targetCompany") || "a tech company",
-                    role: localStorage.getItem("preferredRoles") || "Software Engineer",
+                    company: getStorageItem("targetCompany") || "a tech company",
+                    role: getStorageItem("preferredRoles") || "Software Engineer",
                     activePanelistId: activeId,
-                    sessionId: localStorage.getItem("userIdentifier") || "anon",
-                    companyClone: localStorage.getItem("companyCloneMode") !== "false",
+                    sessionId: getStorageItem("userIdentifier") || "anon",
+                    companyClone: getStorageItem("companyCloneMode") !== "false",
                 }),
             });
             const data = await res.json();

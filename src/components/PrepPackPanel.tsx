@@ -421,7 +421,7 @@ export default function PrepPackPanel({
                         <button
                             type="button"
                             onClick={async () => {
-                                const email = localStorage.getItem("userIdentifier") || "";
+                                const email = getStorageItem("userIdentifier") || "";
                                 if (!email || !email.includes("@")) {
                                     alert("Sign in with email to send reminder notifications.");
                                     return;

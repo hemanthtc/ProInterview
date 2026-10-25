@@ -288,12 +288,12 @@ export default function JobsPage() {
 
     // Fetch user profile resume from database
     const fetchProfileResume = async (silent = false) => {
-        const userIdentifier = localStorage.getItem("userIdentifier");
+        const userIdentifier = getStorageItem("userIdentifier");
         if (!userIdentifier) return;
         if (!silent) setFetchingProfile(true);
         setError("");
         try {
-            const userType = localStorage.getItem("userType") || "user";
+            const userType = getStorageItem("userType") || "user";
             const res = await fetch(
                 `/api/auth/profile?identifier=${encodeURIComponent(userIdentifier)}&accountType=${encodeURIComponent(userType)}`
             );
@@ -462,17 +462,17 @@ export default function JobsPage() {
     const runAtsMatchForJob = async (job: MatchedJob) => {
         let activeResume = resumeText;
         if (!activeResume) {
-            activeResume = localStorage.getItem("userResumeCvText") || "";
+            activeResume = getStorageItem("userResumeCvText") || "";
             if (activeResume) {
                 setResumeText(activeResume);
             }
         }
 
         if (!activeResume) {
-            const userIdentifier = localStorage.getItem("userIdentifier");
+            const userIdentifier = getStorageItem("userIdentifier");
             if (userIdentifier) {
                 try {
-                    const userType = localStorage.getItem("userType") || "user";
+                    const userType = getStorageItem("userType") || "user";
                     const res = await fetch(
                         `/api/auth/profile?identifier=${encodeURIComponent(userIdentifier)}&accountType=${encodeURIComponent(userType)}`
                     );

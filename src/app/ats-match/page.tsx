@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { FileSearch, Loader2, Moon, Sun, Eye, FileUp, UserCheck, Trash2, X, Image as ImageIcon, Info } from "lucide-react";
 import { authFetch, handleSessionExpired } from "@/utils/authExpiry";
+import { getStorageItem, setStorageItem } from "@/utils/storage";
 
 export default function AtsMatchPage() {
     const [resumeText, setResumeText] = useState("");
@@ -123,21 +124,21 @@ export default function AtsMatchPage() {
         setError("");
         setParsing(true);
         try {
-            // 1. Check all local storage keys
+            // 1. Check all tab and local storage keys
             let text =
-                localStorage.getItem("userResumeCvText") ||
-                localStorage.getItem("resumeCvText") ||
-                localStorage.getItem("resumeText") ||
+                getStorageItem("userResumeCvText") ||
+                getStorageItem("resumeCvText") ||
+                getStorageItem("resumeText") ||
                 "";
             let name =
-                localStorage.getItem("userResumeCvName") ||
-                localStorage.getItem("resumeCvName") ||
-                localStorage.getItem("resumeFileName") ||
+                getStorageItem("userResumeCvName") ||
+                getStorageItem("resumeCvName") ||
+                getStorageItem("resumeFileName") ||
                 "";
 
             if (!text) {
                 try {
-                    const profileRaw = localStorage.getItem("prointerview_user_profile");
+                    const profileRaw = getStorageItem("prointerview_user_profile");
                     if (profileRaw) {
                         const parsed = JSON.parse(profileRaw);
                         text = parsed.resumeCvText || parsed.resumeText || "";
@@ -148,11 +149,11 @@ export default function AtsMatchPage() {
                 }
             }
 
-            // 2. Fallback to /api/auth/profile if missing from localStorage
+            // 2. Fallback to /api/auth/profile if missing from storage
             if (!text) {
                 const identifier =
-                    localStorage.getItem("userIdentifier") ||
-                    localStorage.getItem("userEmail") ||
+                    getStorageItem("userIdentifier") ||
+                    getStorageItem("userEmail") ||
                     "";
                 if (identifier) {
                     const res = await authFetch(`/api/auth/profile?identifier=${encodeURIComponent(identifier)}`);
@@ -161,8 +162,8 @@ export default function AtsMatchPage() {
                         if (data.user?.resumeCvText) {
                             text = data.user.resumeCvText;
                             name = name || data.user.resumeCvName || "Profile_Resume.pdf";
-                            localStorage.setItem("userResumeCvText", text);
-                            if (name) localStorage.setItem("userResumeCvName", name);
+                            setStorageItem("userResumeCvText", text);
+                            if (name) setStorageItem("userResumeCvName", name);
                         }
                     }
                 }

@@ -312,4 +312,68 @@ describe("ProInterview Independent User Sessions Per Browser Tab", () => {
             expect(session).toBeNull();
         });
     });
+
+    describe("Test F: Role-based Interface Routing and Auth Guard Validation", () => {
+        it("properly isolates admin, employee, and user roles in distinct tabs and verifies admin auth guard passes", () => {
+            const adminTab = createTabContext("prointerview_tab_ADMIN");
+            const userTab = createTabContext("prointerview_tab_USER");
+            const employeeTab = createTabContext("prointerview_tab_EMP");
+
+            // Setup Admin Tab
+            vi.stubGlobal("window", adminTab.window);
+            vi.stubGlobal("sessionStorage", adminTab.sessionStorage);
+            vi.stubGlobal("localStorage", adminTab.localStorage);
+            resetTabSessionForTesting();
+            initTabSession();
+            setStorageItem("userLoggedIn", "true");
+            setStorageItem("userRole", "admin");
+            setStorageItem("userIdentifier", "admin_root");
+            setStorageItem("userOrgName", "Enterprise Inc");
+
+            // Admin Auth Guard checks
+            expect(getStorageItem("userLoggedIn")).toBe("true");
+            expect(getStorageItem("userRole")).toBe("admin");
+            expect(getStorageItem("userOrgName")).toBe("Enterprise Inc");
+
+            // Verify admin passes the /admin auth guard
+            const adminGuardPasses = getStorageItem("userLoggedIn") === "true" && getStorageItem("userRole") === "admin";
+            expect(adminGuardPasses).toBe(true);
+
+            // Setup User Tab
+            vi.stubGlobal("window", userTab.window);
+            vi.stubGlobal("sessionStorage", userTab.sessionStorage);
+            vi.stubGlobal("localStorage", userTab.localStorage);
+            resetTabSessionForTesting();
+            initTabSession();
+            setStorageItem("userLoggedIn", "true");
+            setStorageItem("userRole", "user");
+            setStorageItem("userIdentifier", "student@university.edu");
+
+            // User should NOT pass /admin auth guard
+            expect(getStorageItem("userLoggedIn")).toBe("true");
+            expect(getStorageItem("userRole")).toBe("user");
+            const userGuardPasses = getStorageItem("userLoggedIn") === "true" && getStorageItem("userRole") === "admin";
+            expect(userGuardPasses).toBe(false);
+
+            // Setup Employee Tab
+            vi.stubGlobal("window", employeeTab.window);
+            vi.stubGlobal("sessionStorage", employeeTab.sessionStorage);
+            vi.stubGlobal("localStorage", employeeTab.localStorage);
+            resetTabSessionForTesting();
+            initTabSession();
+            setStorageItem("userLoggedIn", "true");
+            setStorageItem("userRole", "employee");
+            setStorageItem("userIdentifier", "emp_42");
+            setStorageItem("userOrgName", "Acme Labs");
+            setStorageItem("userDepartment", "AI Platform");
+
+            expect(getStorageItem("userLoggedIn")).toBe("true");
+            expect(getStorageItem("userRole")).toBe("employee");
+            expect(getStorageItem("userOrgName")).toBe("Acme Labs");
+            expect(getStorageItem("userDepartment")).toBe("AI Platform");
+
+            vi.unstubAllGlobals();
+        });
+    });
 });
+

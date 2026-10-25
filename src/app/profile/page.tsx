@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, LogOut, Download, User, Award, Trash2, Sparkles, Loader2, ChevronDown, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, AlertTriangle } from "lucide-react";
+import { ArrowLeft, LogOut, Download, User, Award, Trash2, Sparkles, Loader2, ChevronDown, Pencil, Check, X, GraduationCap, Camera, Sun, Moon, Eye, FileText, AlertTriangle, ShieldCheck, Briefcase } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import type { ProfileInterviewSession, ProfileToastState } from "../../types/profile";
 import { useRouter } from "next/navigation";
@@ -127,6 +127,11 @@ export default function ProfilePage() {
     const [subscriptionExpiresAt, setSubscriptionExpiresAt] = useState<string | null>(null);
     const [showDegradedBanner, setShowDegradedBanner] = useState(false);
 
+    // Organization & Employee Details
+    const [orgRole, setOrgRole] = useState<string>("user");
+    const [orgName, setOrgName] = useState<string>("");
+    const [orgDepartment, setOrgDepartment] = useState<string>("");
+
     // Razorpay Checkout Payment States
     const [selectedPlanForPayment, setSelectedPlanForPayment] = useState<string | null>(null);
     const [paymentStatus, setPaymentStatus] = useState<"idle" | "requesting" | "verifying" | "success" | "error">("idle");
@@ -181,6 +186,13 @@ export default function ProfilePage() {
         setUserName(exactUser);
         setEditNameValue(exactUser);
         setUserIdentifier(identifier);
+
+        const role = getStorageItem("userRole") || "user";
+        const storedOrg = getStorageItem("userOrgName") || "";
+        const storedDept = getStorageItem("userDepartment") || "";
+        setOrgRole(role);
+        setOrgName(storedOrg);
+        setOrgDepartment(storedDept);
 
             const storedPhoto = getStorageItem("userProfilePhoto") || "";
             setProfilePhoto(storedPhoto);
@@ -305,6 +317,18 @@ export default function ProfilePage() {
                             }
                             if (u.createdAt) {
                                 setMemberSince(new Date(u.createdAt).toLocaleDateString());
+                            }
+                            if (u.organizationName) {
+                                setOrgName(u.organizationName);
+                                setStorageItem("userOrgName", u.organizationName);
+                            }
+                            if (u.department) {
+                                setOrgDepartment(u.department);
+                                setStorageItem("userDepartment", u.department);
+                            }
+                            if (u.orgRole) {
+                                setOrgRole(u.orgRole);
+                                setStorageItem("userRole", u.orgRole);
                             }
                         }
                     }
@@ -1284,6 +1308,27 @@ You have been successfully upgraded to ${selectedPlanForPayment}.
                                         Verified
                                     </span>
                                 </div>
+
+                                {orgRole === "admin" && (
+                                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30">
+                                            <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                                            Administrator • {orgName || "Organization"}
+                                        </span>
+                                        <Link href="/admin" className="text-[11px] font-semibold text-purple-400 hover:text-purple-300 underline flex items-center gap-0.5">
+                                            Open Admin Console &rarr;
+                                        </Link>
+                                    </div>
+                                )}
+
+                                {orgRole === "employee" && (
+                                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-1">
+                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                                            <Briefcase className="w-3.5 h-3.5 text-emerald-400" />
+                                            {orgName || "Organization"} Employee {orgDepartment ? `• ${orgDepartment}` : ""}
+                                        </span>
+                                    </div>
+                                )}
 
                                 <p className="text-xs sm:text-sm text-white/50 flex items-center justify-center sm:justify-start gap-1.5 font-medium">
                                     <User className="w-3.5 h-3.5 text-indigo-400 shrink-0" />

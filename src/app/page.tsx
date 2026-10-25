@@ -486,6 +486,7 @@ export default function Home() {
     const [showModeSwitchModal, setShowModeSwitchModal] = useState<{ isOpen: boolean; targetUrl: string; targetLabel: string } | null>(null);
     const [snap, setSnap] = useState<any>(null);
     const [progressActiveTab, setProgressActiveTab] = useState<"filmroom" | "interview" | "aptitude">("interview");
+    const [userRole, setUserRole] = useState<string>("");
 
     useEffect(() => {
         setIsHydrated(true);
@@ -497,7 +498,8 @@ export default function Home() {
             const hasSessionToken = !!getStorageItem("sessionToken");
             const loggedIn = userLoggedVal === "true" || (hasSessionToken && userLoggedVal !== "guest");
             const guest = !loggedIn && userLoggedVal === "guest";
-            const role = localStorage.getItem("userRole");
+            const role = getStorageItem("userRole") || "";
+            setUserRole(role);
             if (loggedIn && role === "admin") {
                 router.push("/admin");
                 return;
@@ -1080,13 +1082,24 @@ export default function Home() {
                             <div className="w-full max-w-xs border-t border-white/10 my-4" />
 
                             {isLoggedIn ? (
-                                <Link 
-                                    href="/profile" 
-                                    onClick={() => setMobileMenuOpen(false)}
-                                    className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-6 py-3 rounded-full transition-colors font-bold w-full max-w-xs justify-center shadow-[0_0_15px_rgba(79,70,229,0.2)]"
-                                >
-                                    My Profile
-                                </Link>
+                                userRole === "admin" ? (
+                                    <Link 
+                                        href="/admin" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-2 bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/40 px-6 py-3 rounded-full transition-colors font-bold w-full max-w-xs justify-center shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                                    >
+                                        <ShieldCheck className="w-4 h-4 text-purple-400" />
+                                        Admin Panel
+                                    </Link>
+                                ) : (
+                                    <Link 
+                                        href="/profile" 
+                                        onClick={() => setMobileMenuOpen(false)}
+                                        className="flex items-center gap-2 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-6 py-3 rounded-full transition-colors font-bold w-full max-w-xs justify-center shadow-[0_0_15px_rgba(79,70,229,0.2)]"
+                                    >
+                                        {userRole === "employee" ? "Employee Profile" : "My Profile"}
+                                    </Link>
+                                )
                             ) : isGuest ? (
                                 <div className="flex flex-col items-center gap-2 w-full max-w-xs">
                                     <div className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 px-6 py-3 rounded-full font-bold w-full justify-center">
@@ -1264,10 +1277,19 @@ export default function Home() {
 
 
                     {isLoggedIn ? (
-                        <Link href="/profile" className="flex items-center gap-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-3.5 sm:px-5 flex-shrink-0 relative py-1.5 sm:py-2 rounded-full transition-colors font-bold ml-1 sm:ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
-                            <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[9px] sm:text-[10px]">US</div>
-                            My Profile
-                        </Link>
+                        userRole === "admin" ? (
+                            <Link href="/admin" className="flex items-center gap-1.5 bg-purple-600/20 text-purple-300 border border-purple-500/30 hover:bg-purple-600/40 px-3.5 sm:px-5 flex-shrink-0 relative py-1.5 sm:py-2 rounded-full transition-colors font-bold ml-1 sm:ml-2 shadow-[0_0_15px_rgba(168,85,247,0.2)]">
+                                <ShieldCheck className="w-4 h-4 text-purple-400" />
+                                Admin Panel
+                            </Link>
+                        ) : (
+                            <Link href="/profile" className="flex items-center gap-1.5 bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/40 px-3.5 sm:px-5 flex-shrink-0 relative py-1.5 sm:py-2 rounded-full transition-colors font-bold ml-1 sm:ml-2 shadow-[0_0_15px_rgba(79,70,229,0.2)]">
+                                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-indigo-500 flex shrink-0 items-center justify-center text-white text-[9px] sm:text-[10px]">
+                                    {userRole === "employee" ? "EM" : "US"}
+                                </div>
+                                {userRole === "employee" ? "Employee Profile" : "My Profile"}
+                            </Link>
+                        )
                     ) : isGuest ? (
                         <div className="relative group shrink-0 ml-1 sm:ml-2">
                             <button className="flex items-center gap-1.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 hover:bg-amber-500/20 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition-all font-bold shadow-[0_0_15px_rgba(245,158,11,0.1)] cursor-pointer">

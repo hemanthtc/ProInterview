@@ -110,9 +110,11 @@ function LoginContent() {
         const hasToken = !!getStorageItem("sessionToken");
         if (loggedVal === "true" || hasToken) {
             const role = getStorageItem("userRole") || "user";
-            const dest = (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") && redirectParam !== "/login")
-                ? redirectParam
-                : (role === "admin" ? "/admin" : "/features");
+            const dest = role === "admin"
+                ? (redirectParam && redirectParam.startsWith("/admin") ? redirectParam : "/admin")
+                : (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") && redirectParam !== "/login")
+                    ? redirectParam
+                    : "/features";
             router.replace(dest);
         }
     }, [router, redirectParam, searchParams]);
@@ -248,7 +250,7 @@ function LoginContent() {
 
         let destination = "/features";
         if (role === "admin") {
-            destination = "/admin";
+            destination = (redirectParam && redirectParam.startsWith("/admin")) ? redirectParam : "/admin";
         } else if (redirectParam && redirectParam.startsWith("/") && !redirectParam.startsWith("//") && redirectParam !== "/login") {
             destination = redirectParam;
         }
