@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { FileSearch, Loader2, Moon, Sun, Eye, FileUp, UserCheck, Trash2, X, Image as ImageIcon, Info } from "lucide-react";
+import { FileSearch, Loader2, Moon, Sun, Eye, FileUp, UserCheck, Trash2, X, Image as ImageIcon, Info, Link2, Globe, Sparkles, CheckCircle2, AlertCircle } from "lucide-react";
 import { authFetch, handleSessionExpired } from "@/utils/authExpiry";
 import { getStorageItem, setStorageItem } from "@/utils/storage";
+import { formatAndAlignJobDescription } from "@/utils/formatJobDescription";
+
 
 export default function AtsMatchPage() {
     const [resumeText, setResumeText] = useState("");
@@ -13,6 +15,10 @@ export default function AtsMatchPage() {
     const [role, setRole] = useState("");
     const [resumeFileName, setResumeFileName] = useState("");
     const [jdFileName, setJdFileName] = useState("");
+    const [jobUrl, setJobUrl] = useState("");
+    const [fetchingUrl, setFetchingUrl] = useState(false);
+    const [urlError, setUrlError] = useState("");
+    const [urlSuccess, setUrlSuccess] = useState("");
     const [parsing, setParsing] = useState(false);
     const [parsingJd, setParsingJd] = useState(false);
     const [result, setResult] = useState<any>(null);
@@ -104,9 +110,11 @@ export default function AtsMatchPage() {
                 throw new Error(`Server returned status ${res.status}. Could not parse file output.`);
             }
             if (!res.ok) throw new Error(data.error || "Failed to parse resume");
-            const text = String(data.text || "").trim();
+            let text = String(data.text || "").trim();
+            // Clean any stray file header banners e.g. "--- [File: ... ] ---"
+            text = text.replace(/^---\s*\[(?:File|Image OCR)[^\]]*\]\s*---\s*/gi, "").trim();
             if (!text || text.length < 20) {
-                throw new Error(`OCR Extraction Failed: Could not transcribe text from '${file.name}'. Please re-upload a clearer screenshot or document file.`);
+                throw new Error(`Extraction Failed: No readable text could be extracted from '${file.name}'. Please ensure the PDF has a readable text layer or re-upload a clearer document.`);
             }
             setResumeText(text);
         } catch (e: unknown) {
@@ -170,9 +178,10 @@ export default function AtsMatchPage() {
             }
 
             if (text && text.trim()) {
-                setResumeText(text.trim());
+                const cleanedText = text.replace(/^---\s*\[(?:File|Image OCR)[^\]]*\]\s*---\s*/gi, "").trim();
+                setResumeText(cleanedText);
                 setResumeFileName(name || "Profile_Resume");
-                localStorage.setItem("atsMatch_resumeText", text.trim());
+                localStorage.setItem("atsMatch_resumeText", cleanedText);
                 if (name) localStorage.setItem("atsMatch_resumeFileName", name);
             } else {
                 throw new Error("No saved resume found in your account profile. Please upload a resume first or add one in Profile Settings.");
@@ -215,11 +224,13 @@ export default function AtsMatchPage() {
                 throw new Error(`Server returned status ${res.status}. Could not parse job description file.`);
             }
             if (!res.ok) throw new Error(data.error || "Failed to parse job description file");
-            const text = String(data.text || "").trim();
+            let text = String(data.text || "").trim();
+            text = text.replace(/^---\s*\[(?:File|Image OCR)[^\]]*\]\s*---\s*/gi, "").trim();
             if (!text || text.length < 10) {
                 throw new Error(`OCR Extraction Failed: Could not transcribe text from '${file.name}'. Please re-upload a clearer screenshot or document file.`);
             }
-            setJobDescription(text);
+            const aligned = formatAndAlignJobDescription(text);
+            setJobDescription(aligned || text);
         } catch (e: unknown) {
             setError(e instanceof Error ? e.message : "JD upload failed");
             setJdFileName("");
@@ -231,18 +242,87 @@ export default function AtsMatchPage() {
         }
     }
 
+    async function onFetchJobUrl() {
+        const trimmedUrl = jobUrl.trim();
+        if (!trimmedUrl) {
+            setUrlError("Please paste a job posting URL first.");
+            return;
+        }
+
+        setUrlError("");
+        setUrlSuccess("");
+        setError("");
+        setFetchingUrl(true);
+
+        try {
+            const res = await authFetch("/api/ats-match/extract-url", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ url: trimmedUrl }),
+            });
+
+            if (res.status === 401) {
+                handleSessionExpired("Your session has expired. Please sign in again to fetch job descriptions.");
+                return;
+            }
+
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+                throw new Error(data.error || "Failed to extract job description from the provided URL.");
+            }
+
+            const rawJd = (data.jobDescription || "").trim();
+            if (!rawJd) {
+                throw new Error("No readable job description content was found on that page. Please paste the text manually.");
+            }
+
+            const alignedJd = formatAndAlignJobDescription(rawJd, data.role || role, data.company || company, data.location);
+            setJobDescription(alignedJd);
+
+            // Auto-fill company and role if detected and user hasn't typed them yet
+            if (data.company && !company.trim()) {
+                setCompany(data.company);
+            }
+            if (data.role && !role.trim()) {
+                setRole(data.role);
+            }
+
+
+            let host = "";
+            try {
+                host = new URL(trimmedUrl.startsWith("http") ? trimmedUrl : `https://${trimmedUrl}`).hostname.replace(/^www\./, "");
+            } catch {
+                host = "URL";
+            }
+
+            setJdFileName(`Imported from ${host}`);
+            setUrlSuccess(`Extracted job description from ${host}!`);
+        } catch (err: any) {
+            setUrlError(err?.message || "Failed to extract job description. Please check the URL or paste the text directly.");
+        } finally {
+            setFetchingUrl(false);
+        }
+    }
+
     function clearJd() {
         setJobDescription("");
         setJdFileName("");
+        setJobUrl("");
+        setUrlError("");
+        setUrlSuccess("");
         localStorage.removeItem("atsMatch_jobDescription");
         localStorage.removeItem("atsMatch_jdFileName");
     }
+
 
     function handleBackToLabs() {
         setResumeText("");
         setResumeFileName("");
         setJobDescription("");
         setJdFileName("");
+        setJobUrl("");
+        setUrlError("");
+        setUrlSuccess("");
         setCompany("");
         setRole("");
         setResult(null);
@@ -556,12 +636,122 @@ export default function AtsMatchPage() {
                             </div>
                         )}
 
+                        {/* Job Posting URL Input Section (Directly above the Job Description box) */}
+                        <div className={`p-2.5 rounded-xl border transition-all ${
+                            theme === "eyeprotect"
+                                ? "bg-[#fffcf5] border-[#8c8578]/30 shadow-xs"
+                                : isLight
+                                ? "bg-slate-50/90 border-slate-200 shadow-xs"
+                                : "bg-white/[0.03] border-white/10"
+                        }`}>
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <span className={`text-[11px] font-bold flex items-center gap-1.5 ${
+                                    theme === "eyeprotect" ? "text-[#0b5f58]" : isLight ? "text-slate-800" : "text-white/90"
+                                }`}>
+                                    <Link2 className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                                    <span>Import from Job Posting URL</span>
+                                </span>
+                                <span className={`text-[10px] hidden sm:inline ${
+                                    theme === "eyeprotect" ? "text-[#57534e]" : isLight ? "text-slate-500" : "text-white/40"
+                                }`}>
+                                    LinkedIn, Indeed, Greenhouse, Lever, etc.
+                                </span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                                <div className="relative flex-1 min-w-0">
+                                    <div className={`absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none ${
+                                        isLight ? "text-slate-400" : "text-white/35"
+                                    }`}>
+                                        <Globe className="w-3.5 h-3.5 shrink-0" />
+                                    </div>
+                                    <input
+                                        type="url"
+                                        value={jobUrl}
+                                        onChange={(e) => {
+                                            setJobUrl(e.target.value);
+                                            if (urlError) setUrlError("");
+                                            if (urlSuccess) setUrlSuccess("");
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === "Enter") {
+                                                e.preventDefault();
+                                                void onFetchJobUrl();
+                                            }
+                                        }}
+                                        placeholder="Paste job posting URL (e.g. https://...)..."
+                                        className={`w-full pl-8 pr-7 py-1.5 text-xs rounded-lg border focus:outline-none transition ${
+                                            theme === "eyeprotect"
+                                                ? "bg-[#fffcf5] border-[#8c8578]/50 text-[#1c1917] placeholder:text-[#57534e]/60 focus:border-[#0b5f58]"
+                                                : isLight
+                                                ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-sky-500 shadow-xs"
+                                                : "bg-black/50 border-white/15 text-white placeholder:text-white/35 focus:border-sky-400"
+                                        }`}
+                                    />
+                                    {jobUrl && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setJobUrl("");
+                                                setUrlError("");
+                                                setUrlSuccess("");
+                                            }}
+                                            className="absolute inset-y-0 right-0 pr-2 flex items-center text-white/40 hover:text-white cursor-pointer"
+                                            title="Clear URL"
+                                        >
+                                            <X className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => void onFetchJobUrl()}
+                                    disabled={fetchingUrl || !jobUrl.trim()}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-not-allowed shadow-xs ${
+                                        theme === "eyeprotect"
+                                            ? "bg-[#0b5f58] hover:bg-[#084842] text-white"
+                                            : isLight
+                                            ? "bg-sky-600 hover:bg-sky-500 text-white"
+                                            : "bg-sky-500/25 hover:bg-sky-500/35 text-sky-200 border border-sky-400/30"
+                                    }`}
+                                    title="Verify URL and extract job description"
+                                >
+                                    {fetchingUrl ? (
+                                        <>
+                                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                                            <span>Extracting…</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                                            <span>Fetch JD</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+
+                            {/* Validation Feedback */}
+                            {urlError && (
+                                <div className="mt-1.5 text-[11px] font-medium text-rose-500 flex items-start gap-1">
+                                    <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                                    <span className="leading-tight">{urlError}</span>
+                                </div>
+                            )}
+                            {urlSuccess && (
+                                <div className="mt-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                                    <span className="leading-tight">{urlSuccess}</span>
+                                </div>
+                            )}
+                        </div>
+
                         <textarea
                             suppressHydrationWarning
                             value={jobDescription}
                             onChange={(e) => setJobDescription(e.target.value)}
-                            placeholder="Paste job description text here or upload PDF/Doc/Image screenshot above…"
-                            className={`w-full h-[260px] sm:h-[300px] overflow-y-auto rounded-xl border px-3.5 py-2.5 text-sm focus:outline-none transition ${
+                            placeholder="Paste job description text here, or use the URL extractor / file upload above…"
+                            className={`w-full h-[260px] sm:h-[300px] overflow-y-auto rounded-xl border px-3.5 py-2.5 text-xs sm:text-sm font-sans leading-relaxed whitespace-pre-wrap focus:outline-none transition ${
                                 isLight
                                     ? "bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 shadow-sm"
                                     : "bg-black/40 border-white/10 text-white placeholder:text-white/40 focus:border-sky-500/50"

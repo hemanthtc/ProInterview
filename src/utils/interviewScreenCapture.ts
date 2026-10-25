@@ -577,43 +577,51 @@ function compositeFallbackScreenshot(container: HTMLElement, whiteboardFallback?
         const wbMainY = curRightY;
         const wbMainH = topY + availH - wbMainY - 12;
 
-        const sidebarW = 140;
+        const sidebarW = 145;
         const wbCanvasX = rightPanelX + 12 + sidebarW + 8;
         const wbCanvasW = rightPanelW - 24 - sidebarW - 8;
 
         // Shape Library Sidebar
         drawRoundedRect(ctx, rightPanelX + 12, wbMainY, sidebarW, wbMainH, 10);
-        ctx.fillStyle = isLight ? "#f8fafc" : "rgba(0, 0, 0, 0.3)";
+        ctx.fillStyle = isLight ? "#f8fafc" : "rgba(0, 0, 0, 0.35)";
         ctx.fill();
         ctx.strokeStyle = cCardBorder;
         ctx.stroke();
 
-        ctx.fillStyle = cTextMuted;
+        ctx.fillStyle = "#818cf8";
         ctx.font = "bold 10px sans-serif";
-        ctx.fillText("CORE ARCHITECTURE", rightPanelX + 20, wbMainY + 22);
+        ctx.fillText("LIBRARY", rightPanelX + 20, wbMainY + 20);
+
+        ctx.fillStyle = cTextMuted;
+        ctx.font = "bold 9px sans-serif";
+        ctx.fillText("CORE ARCHITECTURE", rightPanelX + 20, wbMainY + 36);
 
         const coreShapes = [
             "Client / Browser",
             "API Gateway",
             "Load Balancer",
             "Microservice",
-            "Auth / JWT",
+            "Database / SQL",
+            "Redis Cache",
             "Queue / Kafka",
             "Pub/Sub Topic",
         ];
-        let shapePillY = wbMainY + 32;
+        let shapePillY = wbMainY + 44;
         for (const shape of coreShapes) {
             if (shapePillY > wbMainY + wbMainH - 24) break;
-            drawRoundedRect(ctx, rightPanelX + 18, shapePillY, sidebarW - 12, 20, 5);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.05)";
+            drawRoundedRect(ctx, rightPanelX + 18, shapePillY, sidebarW - 12, 22, 6);
+            ctx.fillStyle = isLight ? "#ffffff" : "rgba(255, 255, 255, 0.04)";
             ctx.fill();
+            ctx.strokeStyle = isLight ? "rgba(0, 0, 0, 0.08)" : "rgba(255, 255, 255, 0.08)";
+            ctx.stroke();
+
             ctx.fillStyle = cTextPrimary;
             ctx.font = "10px sans-serif";
-            ctx.fillText(shape, rightPanelX + 26, shapePillY + 14);
-            shapePillY += 24;
+            ctx.fillText(shape, rightPanelX + 26, shapePillY + 15);
+            shapePillY += 26;
         }
 
-        // Top Drawing Toolbar
+        // Top Drawing Toolbar (Streamlined & Non-overlapping)
         const toolbarH = 34;
         const toolbarY = wbMainY;
         drawRoundedRect(ctx, wbCanvasX, toolbarY, wbCanvasW, toolbarH, 8);
@@ -622,14 +630,60 @@ function compositeFallbackScreenshot(container: HTMLElement, whiteboardFallback?
         ctx.strokeStyle = cCardBorder;
         ctx.stroke();
 
-        const toolIcons = ["V", "H", "P", "T", "▢", "○", "◇", "➔", "—", "⌫", "Undo", "Redo", "Zoom+", "Zoom-", "Clear"];
-        let toolX = wbCanvasX + 12;
-        ctx.font = "11px sans-serif";
-        for (const tool of toolIcons) {
-            if (toolX > wbCanvasX + wbCanvasW - 60) break;
-            ctx.fillStyle = tool === "P" ? "#f97316" : cTextMuted;
-            ctx.fillText(tool, toolX, toolbarY + 22);
-            toolX += 26;
+        // Mode Segment: Move | Draw | Erase
+        const modeSegmentW = 160;
+        drawRoundedRect(ctx, wbCanvasX + 6, toolbarY + 4, modeSegmentW, 26, 6);
+        ctx.fillStyle = isLight ? "#e2e8f0" : "rgba(0, 0, 0, 0.4)";
+        ctx.fill();
+
+        // Move pill
+        ctx.fillStyle = cTextMuted;
+        ctx.font = "bold 10px sans-serif";
+        ctx.fillText("Move", wbCanvasX + 16, toolbarY + 20);
+
+        // Draw pill (Active)
+        drawRoundedRect(ctx, wbCanvasX + 54, toolbarY + 6, 50, 22, 5);
+        ctx.fillStyle = isLight ? "#0891b2" : "rgba(6, 182, 212, 0.25)";
+        ctx.fill();
+        ctx.strokeStyle = isLight ? "#0891b2" : "rgba(34, 211, 238, 0.4)";
+        ctx.stroke();
+        ctx.fillStyle = isLight ? "#ffffff" : "#67e8f9";
+        ctx.fillText("Draw", wbCanvasX + 66, toolbarY + 20);
+
+        // Erase pill
+        ctx.fillStyle = cTextMuted;
+        ctx.fillText("Erase", wbCanvasX + 116, toolbarY + 20);
+
+        // Action Buttons: Shapes | Delete | Clear | Export PNG | Maximize
+        const actionButtons = [
+            { label: "Shapes", isHighlight: false },
+            { label: "Delete", isHighlight: false },
+            { label: "Clear", isHighlight: false },
+            { label: "Export PNG", isHighlight: false },
+            { label: "Maximize", isHighlight: true },
+        ];
+
+        let curBtnX = wbCanvasX + modeSegmentW + 12;
+        ctx.font = "bold 10px sans-serif";
+        for (const btn of actionButtons) {
+            const textW = ctx.measureText(btn.label).width;
+            const btnW = textW + 16;
+            if (curBtnX + btnW > wbCanvasX + wbCanvasW - 8) break;
+
+            drawRoundedRect(ctx, curBtnX, toolbarY + 5, btnW, 24, 6);
+            ctx.fillStyle = btn.isHighlight
+                ? (isLight ? "rgba(245, 158, 11, 0.15)" : "rgba(245, 158, 11, 0.2)")
+                : (isLight ? "#ffffff" : "rgba(255, 255, 255, 0.06)");
+            ctx.fill();
+            ctx.strokeStyle = btn.isHighlight
+                ? "rgba(245, 158, 11, 0.4)"
+                : (isLight ? "rgba(0, 0, 0, 0.1)" : "rgba(255, 255, 255, 0.1)");
+            ctx.stroke();
+
+            ctx.fillStyle = btn.isHighlight ? "#fbbf24" : cTextPrimary;
+            ctx.fillText(btn.label, curBtnX + 8, toolbarY + 20);
+
+            curBtnX += btnW + 6;
         }
 
         // Whiteboard Canvas Drawing Area

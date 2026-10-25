@@ -268,9 +268,17 @@ export async function generateWithFallback(
                     continue;
                 }
 
-                if (is429OrQuota || is503OrOverloaded) {
+                if (is429OrQuota) {
+                    // Google AI Studio quota limits apply to the entire key/project, not per model.
+                    // Immediately mark key as exhausted and rotate to next key or fallback to avoid wasting 20+ seconds.
+                    quotaExhaustedKeys.set(key, Date.now());
+                    console.warn(`[Gemini API] Quota exhausted (429/RESOURCE_EXHAUSTED) on key (...${key.slice(-6)}). Skipping remaining models for this key.`);
+                    break;
+                }
+
+                if (is503OrOverloaded) {
                     quotaExhaustedModels.set(`${key}:${modelName}`, Date.now());
-                    console.warn(`[Gemini API] Quota/503 hit on key (...${key.slice(-6)}) model ${modelName}. Rotating to next model.`);
+                    console.warn(`[Gemini API] 503 high demand on key (...${key.slice(-6)}) model ${modelName}. Rotating to next model.`);
                     continue;
                 }
 

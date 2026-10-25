@@ -164,8 +164,8 @@ export async function extractResumeDocument(file: File | Blob, fileName = ""): P
         let pageCount = 1;
 
         try {
-            // @ts-expect-error pdf-parse lacks default type definitions
-            const pdfParseModule = await import("pdf-parse");
+            // @ts-expect-error pdf-parse lacks default type definitions; import lib directly to bypass index.js debug file ENOENT bug
+            const pdfParseModule = await import("pdf-parse/lib/pdf-parse.js");
             const pdfParse = pdfParseModule.default ?? pdfParseModule;
 
             const buffer = Buffer.from(arrayBuffer);

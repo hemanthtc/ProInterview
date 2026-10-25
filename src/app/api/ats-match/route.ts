@@ -130,7 +130,7 @@ Respond ONLY with valid JSON matching this schema:
                     temperature: 0.1,
                     responseMimeType: "application/json"
                 },
-                timeout: 25000
+                timeout: 12000
             });
 
             const parsed = parseJsonFromModel(raw) as Record<string, unknown>;

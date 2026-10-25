@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Mic, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play, ChevronDown, ChevronUp } from "lucide-react";
+import { Mic, Video, VideoOff, PhoneOff, Send, Volume2, Loader2, AlertTriangle, ShieldAlert, Pause, Code as CodeIcon, PenTool, MessageSquare, Save, Download, Sun, Moon, Eye, Film, Share2, Play, ChevronDown, ChevronUp, Maximize2, Minimize2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
@@ -74,6 +74,7 @@ export default function InterviewRoom() {
     const [boardShapes, setBoardShapes] = useState<BoardShape[]>([]);
     const [boardHasFreehand, setBoardHasFreehand] = useState(false);
     const [isQuestionCollapsed, setIsQuestionCollapsed] = useState(false);
+    const [isWorkspaceMaximized, setIsWorkspaceMaximized] = useState(false);
     const [voiceCoach, setVoiceCoach] = useState<VoiceCoachSnapshot | null>(null);
     const [shareUrl, setShareUrl] = useState("");
     const [shareBusy, setShareBusy] = useState(false);
@@ -1822,8 +1823,8 @@ export default function InterviewRoom() {
 
                         {/* ===== LEFT SIDE: Transcript & Controls ===== */}
                         <div 
-                            style={{ width: typeof window !== 'undefined' && window.innerWidth >= 1024 ? `${practicalPanelRatio}%` : undefined }} 
-                            className={`flex-col gap-3 h-full shrink-0 lg:min-w-[200px] w-full lg:w-auto min-h-0 ${mobileWorkspaceView === "transcript" ? "flex" : "hidden lg:flex"}`}
+                            style={{ width: !isWorkspaceMaximized && typeof window !== 'undefined' && window.innerWidth >= 1024 ? `${practicalPanelRatio}%` : undefined }} 
+                            className={`flex-col gap-3 h-full shrink-0 lg:min-w-[200px] w-full lg:w-auto min-h-0 ${isWorkspaceMaximized ? "hidden" : mobileWorkspaceView === "transcript" ? "flex" : "hidden lg:flex"}`}
                         >
                             {/* Chat / Transcript Panel (Compact) */}
                             <div className="flex flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden flex-grow min-h-0">
@@ -1948,13 +1949,15 @@ export default function InterviewRoom() {
                         </div>
 
                         {/* ===== RESIZER DIVIDER BAR ===== */}
-                        <div 
-                            onMouseDown={handleMouseDown} 
-                            className="hidden lg:flex w-1.5 hover:w-2 bg-white/10 hover:bg-indigo-500/50 cursor-col-resize transition-all h-auto self-stretch rounded-full mx-1 z-30 items-center justify-center group shrink-0"
-                            title="Drag to resize panels"
-                        >
-                            <div className="w-1 h-8 rounded-full bg-white/20 group-hover:bg-white/50" />
-                        </div>
+                        {!isWorkspaceMaximized && (
+                            <div 
+                                onMouseDown={handleMouseDown} 
+                                className="hidden lg:flex w-1.5 hover:w-2 bg-white/10 hover:bg-indigo-500/50 cursor-col-resize transition-all h-auto self-stretch rounded-full mx-1 z-30 items-center justify-center group shrink-0"
+                                title="Drag to resize panels"
+                            >
+                                <div className="w-1 h-8 rounded-full bg-white/20 group-hover:bg-white/50" />
+                            </div>
+                        )}
 
                         {/* ===== RIGHT SIDE: Workspace Panel (Code / Canvas) (Flex-1) ===== */}
                         <div className={`flex-grow flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-2xl min-w-0 h-full relative min-h-0 ${mobileWorkspaceView === "workspace" ? "flex" : "hidden lg:flex"}`}>
@@ -1976,8 +1979,24 @@ export default function InterviewRoom() {
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
-                                        onClick={() => setInteractionMode("chat")}
-                                        className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                        type="button"
+                                        onClick={() => setIsWorkspaceMaximized(!isWorkspaceMaximized)}
+                                        className={`flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-lg transition-all cursor-pointer border ${
+                                            isWorkspaceMaximized
+                                                ? "bg-amber-500/20 text-amber-300 border-amber-500/40 font-bold"
+                                                : "text-white/70 hover:text-white bg-white/5 hover:bg-white/10 border-white/10"
+                                        }`}
+                                        title={isWorkspaceMaximized ? "Restore split interview view" : "Maximize whiteboard to full width"}
+                                    >
+                                        {isWorkspaceMaximized ? <Minimize2 className="w-3.5 h-3.5 text-amber-400" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                                        <span className="hidden sm:inline">{isWorkspaceMaximized ? "Split View" : "Maximize"}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsWorkspaceMaximized(false);
+                                            setInteractionMode("chat");
+                                        }}
+                                        className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-white/10"
                                     >
                                         <MessageSquare className="w-3 h-3" /> Back to Chat
                                     </button>
@@ -2067,9 +2086,9 @@ export default function InterviewRoom() {
 
                             {/* Architecture & System Design Whiteboard Panel */}
                             {interactionMode === "draw" && (
-                                <div className="flex-grow flex flex-col p-3 gap-2.5 min-h-0 overflow-hidden h-full">
+                                <div className="flex-grow flex flex-col p-2.5 sm:p-3 gap-2 min-h-0 overflow-hidden h-full">
                                     {/* Single active question banner */}
-                                    <div className={`border rounded-xl p-2.5 shrink-0 flex flex-col gap-1 transition-all ${
+                                    <div className={`border rounded-xl px-3 py-2 shrink-0 flex flex-col gap-1 transition-all ${
                                         theme === "light"
                                             ? "bg-amber-500/10 border-amber-500/25 text-amber-950"
                                             : theme === "eyeprotect"
@@ -2080,17 +2099,17 @@ export default function InterviewRoom() {
                                             <div className="flex items-center gap-2">
                                                 <PenTool className="w-3.5 h-3.5 text-orange-400" />
                                                 <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">
-                                                    Architecture / Diagram Challenge
+                                                    Architecture Challenge
                                                 </span>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)}
-                                                className="text-[11px] opacity-70 hover:opacity-100 flex items-center gap-1 transition-opacity cursor-pointer"
+                                                className="text-[11px] opacity-70 hover:opacity-100 flex items-center gap-1 transition-opacity cursor-pointer font-medium"
                                             >
                                                 {isQuestionCollapsed ? (
                                                     <>
-                                                        <span>Show Full Question</span>
+                                                        <span>Expand Prompt</span>
                                                         <ChevronDown className="w-3.5 h-3.5" />
                                                     </>
                                                 ) : (
@@ -2102,7 +2121,7 @@ export default function InterviewRoom() {
                                             </button>
                                         </div>
                                         {!isQuestionCollapsed && (
-                                            <p className={`text-xs sm:text-sm leading-relaxed font-medium line-clamp-3 hover:line-clamp-none transition-all ${
+                                            <p className={`text-xs leading-relaxed font-medium line-clamp-2 hover:line-clamp-none transition-all ${
                                                 theme === "light" ? "text-slate-700" : theme === "eyeprotect" ? "text-[#451a03]" : "text-white/90"
                                             }`}>
                                                 {(activePracticalTask?.questionText ||
@@ -2130,6 +2149,9 @@ export default function InterviewRoom() {
                                             onFreehandChange={setBoardHasFreehand}
                                             onSubmitDiagram={handleSubmitWhiteboardDiagram}
                                             isSubmitting={isLoading}
+                                            showSubmitInToolbar={false}
+                                            onToggleMaximize={() => setIsWorkspaceMaximized(!isWorkspaceMaximized)}
+                                            isMaximized={isWorkspaceMaximized}
                                             theme={theme}
                                             isLight={theme === "light"}
                                         />

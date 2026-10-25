@@ -10,7 +10,7 @@ import {
     type DragEvent,
     type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Download, Eraser, MousePointer2, PenLine, Trash2, ChevronDown, Save } from "lucide-react";
+import { Download, Eraser, MousePointer2, PenLine, Trash2, ChevronDown, Save, Maximize2, Minimize2, Boxes } from "lucide-react";
 import {
     BoardShape,
     BoardShapeKind,
@@ -26,6 +26,9 @@ interface InteractiveWhiteboardProps {
     onFreehandChange?: (hasInk: boolean) => void;
     onSubmitDiagram?: () => void;
     isSubmitting?: boolean;
+    showSubmitInToolbar?: boolean;
+    onToggleMaximize?: () => void;
+    isMaximized?: boolean;
     theme?: "dark" | "light" | "eyeprotect";
     isLight?: boolean;
     className?: string;
@@ -579,12 +582,25 @@ function MiniShapeSymbol({ kind }: { kind: BoardShapeKind }) {
 }
 
 const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, InteractiveWhiteboardProps>(
-    function InteractiveWhiteboard({ shapes, onShapesChange, onFreehandChange, onSubmitDiagram, isSubmitting = false, theme = "dark", isLight = false, className = "" }: InteractiveWhiteboardProps, ref) {
+    function InteractiveWhiteboard({
+        shapes,
+        onShapesChange,
+        onFreehandChange,
+        onSubmitDiagram,
+        isSubmitting = false,
+        showSubmitInToolbar = false,
+        onToggleMaximize,
+        isMaximized = false,
+        theme = "dark",
+        isLight = false,
+        className = ""
+    }: InteractiveWhiteboardProps, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gridCanvasRef = useRef<HTMLCanvasElement>(null);
     const boardRef = useRef<HTMLDivElement>(null);
     const drawing = useRef(false);
     const inkRef = useRef(false);
+    const [hasInkState, setHasInkState] = useState(false);
     const dragShapeId = useRef<string | null>(null);
     const dragNode = useRef<"start" | "end" | null>(null);
     const dragNodeShapeId = useRef<string | null>(null);
@@ -720,6 +736,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
             ctx.stroke();
             if (tool === "draw" && !inkRef.current) {
                 inkRef.current = true;
+                setHasInkState(true);
                 onFreehandChange?.(true);
             }
         };
@@ -859,6 +876,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
         if (!ctx) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         inkRef.current = false;
+        setHasInkState(false);
         onFreehandChange?.(false);
     }
 
@@ -1073,21 +1091,22 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
 
     const canvasInteractive = tool === "draw" || tool === "erase";
     return (
-        <div className={`grid grid-cols-1 ${desktopLibraryOpen ? "lg:grid-cols-[230px_1fr] lg:grid-rows-[auto_auto_1fr]" : "lg:grid-cols-1 lg:grid-rows-[auto_auto_1fr]"} gap-2.5 items-stretch w-full h-full flex-1 min-h-0 ${className}`}>
+        <div className={`grid grid-cols-1 ${desktopLibraryOpen ? "lg:grid-cols-[220px_1fr] lg:grid-rows-[auto_1fr]" : "lg:grid-cols-1 lg:grid-rows-[auto_1fr]"} gap-2 items-stretch w-full h-full flex-1 min-h-0 ${className}`}>
             {/* 1. Toolbar & Buttons Row */}
-            <div className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-1" : "lg:col-start-1 lg:row-start-1"} flex flex-wrap items-center justify-between gap-2 w-full shrink-0`}>
-                <div className="flex flex-wrap items-center gap-2">
-                    <div className={`inline-flex rounded-xl border p-1 ${
+            <div className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-1" : "lg:col-start-1 lg:row-start-1"} flex flex-wrap items-center justify-between gap-1.5 w-full shrink-0`}>
+                <div className="flex flex-wrap items-center gap-1.5">
+                    {/* Tool mode selector */}
+                    <div className={`inline-flex rounded-lg border p-0.5 ${
                         theme === "eyeprotect"
                             ? "border-[#8c8578] bg-[#fffcf5] shadow-sm"
                             : isLight
                             ? "border-slate-300 bg-white shadow-sm"
-                            : "border-white/10 bg-black/30"
+                            : "border-white/10 bg-black/40"
                     }`}>
                         {(
                             [
-                                { id: "select" as const, icon: MousePointer2, title: "Select / move" },
-                                { id: "draw" as const, icon: PenLine, title: "Freestyle draw" },
+                                { id: "select" as const, icon: MousePointer2, title: "Select & Move shapes" },
+                                { id: "draw" as const, icon: PenLine, title: "Freestyle pen" },
                                 { id: "erase" as const, icon: Eraser, title: "Erase ink" },
                             ] as const
                         ).map((t) => {
@@ -1099,13 +1118,13 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                                     type="button"
                                     title={t.title}
                                     onClick={() => setTool(t.id)}
-                                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                                    className={`inline-flex items-center gap-1 rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
                                         isActive
                                             ? theme === "eyeprotect"
                                                 ? "bg-[#0b5f58] text-white font-bold"
                                                 : isLight
                                                 ? "bg-cyan-600 text-white font-bold shadow-sm"
-                                                : "bg-cyan-500/25 text-cyan-100"
+                                                : "bg-cyan-500/25 text-cyan-200 font-bold border border-cyan-400/30"
                                             : theme === "eyeprotect"
                                             ? "text-[#1c1917] hover:bg-[#f5ebd9]"
                                             : isLight
@@ -1114,16 +1133,17 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                                     }`}
                                 >
                                     <Icon className="h-3.5 w-3.5" />
-                                    {t.id === "select" ? "Move" : t.id === "draw" ? "Draw" : "Erase"}
+                                    <span>{t.id === "select" ? "Move" : t.id === "draw" ? "Draw" : "Erase"}</span>
                                 </button>
                             );
                         })}
                     </div>
 
+                    {/* Shapes Library Toggle Button */}
                     <button
                         type="button"
                         onClick={() => setDesktopLibraryOpen(!desktopLibraryOpen)}
-                        className={`hidden lg:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                        className={`hidden lg:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
                             desktopLibraryOpen
                                 ? isLight
                                     ? "border-indigo-300 bg-indigo-50 text-indigo-700 font-bold"
@@ -1134,64 +1154,90 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                         }`}
                         title={desktopLibraryOpen ? "Hide shapes library to maximize canvas" : "Show shapes library"}
                     >
-                        <span>{desktopLibraryOpen ? "Hide Shapes" : "Show Shapes"}</span>
+                        <Boxes className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
+                        <span>{desktopLibraryOpen ? "Hide Shapes" : "Shapes"}</span>
                     </button>
 
+                    {/* Delete selected shape */}
                     <button
                         type="button"
                         disabled={!selectedId}
                         onClick={deleteSelectedShape}
-                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${
                             theme === "eyeprotect"
                                 ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917] hover:bg-[#f5ebd9] shadow-sm"
                                 : isLight
                                 ? "border-slate-300 bg-white text-slate-800 hover:bg-slate-100 shadow-sm"
-                                : "border-white/15 bg-white/10 text-white hover:bg-white/20"
+                                : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10"
                         }`}
-                        title={selectedId ? "Delete selected shape" : "Select a shape on board to delete"}
+                        title={selectedId ? "Delete selected shape" : "Select a shape to delete"}
                     >
-                        <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                        <Trash2 className="h-3.5 w-3.5 text-rose-400 shrink-0" />
                         <span>Delete</span>
                     </button>
+
+                    {/* Clear all */}
                     <button
                         type="button"
                         onClick={clearAll}
-                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition cursor-pointer ${
                             theme === "eyeprotect"
                                 ? "border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100 shadow-sm"
                                 : isLight
                                 ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm"
-                                : "border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
+                                : "border-rose-500/30 bg-rose-500/10 text-rose-300 hover:bg-rose-500/20"
                         }`}
                         title="Clear whiteboard canvas"
                     >
                         <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                        <span>Clear board</span>
+                        <span className="hidden sm:inline">Clear</span>
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
+                    {/* Maximize toggle button if supported by parent */}
+                    {onToggleMaximize && (
+                        <button
+                            type="button"
+                            onClick={onToggleMaximize}
+                            className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition cursor-pointer shadow-sm ${
+                                isMaximized
+                                    ? "border-amber-400/50 bg-amber-500/20 text-amber-300 font-bold"
+                                    : isLight
+                                    ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+                                    : "border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white"
+                            }`}
+                            title={isMaximized ? "Restore split layout" : "Maximize whiteboard workspace"}
+                        >
+                            {isMaximized ? <Minimize2 className="h-3.5 w-3.5 text-amber-400" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                            <span className="hidden sm:inline">{isMaximized ? "Restore" : "Maximize"}</span>
+                        </button>
+                    )}
+
+                    {/* Export PNG button */}
                     <button
                         type="button"
                         onClick={exportPng}
-                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer shadow-sm ${
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold transition cursor-pointer shadow-sm ${
                             theme === "eyeprotect"
                                 ? "border-[#0b5f58] bg-[#0b5f58] text-white hover:bg-[#084842]"
                                 : isLight
                                 ? "border-cyan-600 bg-cyan-600 text-white hover:bg-cyan-700"
-                                : "border-cyan-400/40 bg-cyan-500/25 text-cyan-100 hover:bg-cyan-500/35"
+                                : "border-cyan-400/40 bg-cyan-500/20 text-cyan-200 hover:bg-cyan-500/30"
                         }`}
-                        title="Export current diagram as a PNG image"
+                        title="Export current diagram as PNG"
                     >
                         <Download className="h-3.5 w-3.5 shrink-0" />
-                        <span>Export PNG</span>
+                        <span className="hidden sm:inline">Export PNG</span>
                     </button>
-                    {onSubmitDiagram && (
+
+                    {/* Submit Diagram only if showSubmitInToolbar is true (prevents duplicate with workspace header) */}
+                    {showSubmitInToolbar && onSubmitDiagram && (
                         <button
                             type="button"
                             onClick={onSubmitDiagram}
                             disabled={isSubmitting}
-                            className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-500/20 cursor-pointer transition-all disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-500/20 cursor-pointer transition-all disabled:opacity-50"
                             title="Submit diagram to interviewer for architectural review"
                         >
                             <Save className="h-3.5 w-3.5 shrink-0" />
@@ -1204,12 +1250,12 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
             {/* 2. Shape Library Sidebar (desktop: left column, mobile: collapsible) */}
             {desktopLibraryOpen && (
                 <div 
-                    className={`lg:col-start-1 lg:row-start-1 lg:row-span-3 border rounded-xl p-3 space-y-2.5 w-full shrink-0 h-full max-h-[580px] lg:max-h-full overflow-y-auto ${
+                    className={`lg:col-start-1 lg:row-start-1 lg:row-span-2 border rounded-xl p-2.5 space-y-2 w-full shrink-0 h-full max-h-[500px] lg:max-h-full overflow-y-auto ${
                         theme === "eyeprotect"
                             ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917]"
                             : isLight
                             ? "border-slate-300 bg-white text-slate-800"
-                            : "border-white/10 bg-black/25"
+                            : "border-white/10 bg-black/30"
                     }`}
                     aria-label="Shape Palette Categories"
                 >
@@ -1283,12 +1329,13 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                                                     onDragStart={(e) => onPaletteDragStart(e, item.kind)}
                                                     onClick={() => {
                                                         const board = boardRef.current;
+                                                        const boardW = board?.clientWidth ?? 600;
+                                                        const boardH = board?.clientHeight ?? 400;
                                                         const scale = board && board.clientWidth < 480 ? 0.72 : 1;
-                                                        const shape = createBoardShape(
-                                                            item.kind,
-                                                            24 + shapes.length * 10,
-                                                            24 + shapes.length * 8
-                                                        );
+                                                        // Place shapes near visible center of the board
+                                                        const spawnX = Math.max(16, Math.min(boardW - 120, Math.round(boardW / 2 - 45 + ((shapes.length % 6) * 16))));
+                                                        const spawnY = Math.max(16, Math.min(boardH - 90, Math.round(boardH / 2 - 35 + ((shapes.length % 6) * 16))));
+                                                        const shape = createBoardShape(item.kind, spawnX, spawnY);
                                                         if (scale !== 1) {
                                                             shape.w = Math.round(shape.w * scale);
                                                             shape.h = Math.round(shape.h * scale);
@@ -1318,14 +1365,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 </div>
             )}
 
-            {/* 3. Description text */}
-            <p className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-2" : "lg:col-start-1 lg:row-start-2"} text-[11px] shrink-0 ${
-                theme === "eyeprotect" ? "text-[#57534e] font-medium" : isLight ? "text-slate-600 font-medium" : "text-white/40"
-            }`}>
-                Drag shapes onto the board (or tap to place), move them in Select mode, or switch to Draw for freestyle.
-            </p>
-
-            {/* 4. Whiteboard Canvas grid workspace */}
+            {/* 3. Whiteboard Canvas grid workspace */}
             <div
                 ref={boardRef}
                 onDragOver={onBoardDragOver}
@@ -1336,7 +1376,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-3" : "lg:col-start-1 lg:row-start-3"} relative w-full overflow-hidden rounded-xl border touch-none transition-colors duration-300 flex-1 min-h-[380px] h-full ${
+                className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-2" : "lg:col-start-1 lg:row-start-2"} relative w-full overflow-hidden rounded-xl border touch-none transition-colors duration-300 flex-1 min-h-[220px] sm:min-h-[260px] h-full ${
                     theme === "eyeprotect"
                         ? "bg-[#fffcf5] border-[#8c8578]/40"
                         : isLight
@@ -1344,6 +1384,14 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                         : "bg-[#0b1220] border-white/10"
                 }`}
             >
+                {/* Empty board subtle guide */}
+                {shapes.length === 0 && !hasInkState && (
+                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-center p-4 z-[1]">
+                        <span className="text-[11px] font-medium tracking-wide text-white/20 select-none">
+                            Select shapes from library or switch to Draw for freehand sketch
+                        </span>
+                    </div>
+                )}
                 {/* Layer 0: Grid background */}
                 <canvas
                     ref={gridCanvasRef}

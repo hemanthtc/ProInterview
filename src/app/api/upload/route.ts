@@ -41,11 +41,11 @@ async function extractTextFromFile(file: File): Promise<string> {
 
             const text = (await generateWithFallback(promptParts, {
                 model: "gemini-3.8-flash",
-                timeout: 25000
+                timeout: 30000
             })).trim();
 
             if (text) {
-                return `--- [Image OCR: ${file.name}] ---\n${text}\n`;
+                return text;
             }
         } catch (e: any) {
             console.error("Image OCR text extraction failed for " + file.name + ":", e?.message || e);
@@ -60,8 +60,8 @@ async function extractTextFromFile(file: File): Promise<string> {
 
         // 1. Try local pdf-parse first (instant for text-based PDFs)
         try {
-            // @ts-expect-error pdf-parse does not have default type definitions
-            const pdfParseModule = await import("pdf-parse");
+            // @ts-expect-error pdf-parse lacks default type definitions; import lib directly to bypass index.js debug file ENOENT bug
+            const pdfParseModule = await import("pdf-parse/lib/pdf-parse.js");
             const pdfParse = pdfParseModule.default ?? pdfParseModule;
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
@@ -72,8 +72,8 @@ async function extractTextFromFile(file: File): Promise<string> {
             pdfParseFailed = true;
         }
 
-        // 2. If it is a scanned PDF (little to no text extracted, less than 350 chars) or pdf-parse failed, use Gemini multimodal OCR
-        if (pdfParseFailed || extractedText.length < 350) {
+        // 2. If it is a scanned PDF (little to no text extracted, less than 50 chars) or pdf-parse failed, use Gemini multimodal OCR
+        if (pdfParseFailed || extractedText.length < 50) {
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 const base64Data = Buffer.from(arrayBuffer).toString("base64");
@@ -87,18 +87,25 @@ async function extractTextFromFile(file: File): Promise<string> {
                     "Extract and transcribe all text from this PDF document verbatim. Keep all details, work history, education, skills, and contact info. Return only the extracted text without conversational wrapper."
                 ];
                 const text = (await generateWithFallback(promptParts, {
-                    model: "gemini-3.8-flash",
-                    timeout: 25000
+                    timeout: 45000
                 })).trim();
-                if (text) {
+                if (text && text.length > 20) {
                     extractedText = text;
                 }
             } catch (e: any) {
                 console.error("Gemini PDF extraction fallback failed for " + file.name + ":", e?.message || e);
+                const msg = e?.message || String(e);
+                if (msg.includes("rate-limited") || msg.includes("quota") || msg.includes("RESOURCE_EXHAUSTED") || msg.includes("429")) {
+                    throw new Error(`The uploaded PDF ("${file.name}") has no text layer (it is an image-based/scanned printout), and AI visual OCR is currently rate-limited by Google. Please upload your original document with text (e.g. Deekshith_BC_Resume.pdf) or paste the text directly.`);
+                }
             }
         }
 
-        return `--- [File: ${file.name}] ---\n${extractedText}\n`;
+        if (!extractedText || !extractedText.trim()) {
+            throw new Error(`Could not extract readable text from PDF "${file.name}". The document appears to have no text layer and visual OCR could not transcribe it.`);
+        }
+
+        return extractedText.trim();
     }
 
     if (name.endsWith(".docx") || file.type.includes("wordprocessingml") || name.endsWith(".doc")) {
@@ -114,7 +121,7 @@ async function extractTextFromFile(file: File): Promise<string> {
                     .replace(/[ \t]+/g, " ")
                     .replace(/\n\s*\n/g, "\n")
                     .trim();
-                return `--- [File: ${file.name}] ---\n${cleanText}\n`;
+                return cleanText;
             }
         } catch (e) {
             console.error("DOCX extraction failed for " + file.name + ":", e);
@@ -148,7 +155,7 @@ async function extractTextFromFile(file: File): Promise<string> {
     if (file.size > 2000000) return "";
     try {
         const text = await file.text();
-        return `--- [File: ${file.name}] ---\n${text.substring(0, 3000)}\n`;
+        return text.substring(0, 5000).trim();
     } catch {
         return "";
     }
@@ -222,6 +229,7 @@ export async function POST(req: NextRequest) {
         let combinedText = "";
         let lastError = "";
         const stored: { name: string; key: string; url: string }[] = [];
+        const isMultiple = files.length > 1;
 
         for (const f of files) {
             const arrayBuffer = await f.arrayBuffer();
@@ -230,7 +238,14 @@ export async function POST(req: NextRequest) {
             // Re-parse from buffer for text extraction (File stream may be consumed)
             const blob = new File([buffer], f.name, { type: f.type });
             try {
-                combinedText += await extractTextFromFile(blob);
+                const text = await extractTextFromFile(blob);
+                if (text && text.trim()) {
+                    if (isMultiple) {
+                        combinedText += `--- [File: ${f.name}] ---\n${text.trim()}\n\n`;
+                    } else {
+                        combinedText = text.trim();
+                    }
+                }
             } catch (err: any) {
                 lastError = err?.message || String(err);
             }
@@ -255,30 +270,33 @@ export async function POST(req: NextRequest) {
         }
 
         if (portfolioUrl) {
-            combinedText += await fetchUrlText(portfolioUrl);
+            const urlText = await fetchUrlText(portfolioUrl);
+            if (urlText && urlText.trim()) {
+                combinedText += (combinedText ? "\n\n" : "") + urlText.trim();
+            }
         }
 
         if (!combinedText || !combinedText.trim()) {
             if (lastError && (lastError.includes("rate-limited") || lastError.includes("quota") || lastError.includes("RESOURCE_EXHAUSTED") || lastError.includes("429"))) {
                 return NextResponse.json(
-                    { error: "Image OCR is temporarily unavailable: Gemini AI is currently rate-limited. Please paste the job description text directly into the box, or try again in a moment." },
+                    { error: lastError },
                     { status: 429 }
                 );
             }
             if (lastError && (lastError.includes("timeout") || lastError.includes("timed out") || lastError.includes("504"))) {
                 return NextResponse.json(
-                    { error: "Image OCR timed out while transcribing the file. Please upload a smaller screenshot or paste the job description text directly." },
+                    { error: "Document transcription timed out. Please upload a standard text PDF or paste the text directly." },
                     { status: 504 }
                 );
             }
             return NextResponse.json(
-                { error: "Image OCR failed: Could not transcribe text from file. Please re-upload a clearer screenshot or document file, or paste the job description text directly." },
+                { error: lastError || "Failed to extract text from document. Please ensure the file has a readable text layer or paste the text directly." },
                 { status: 422 }
             );
         }
 
         return NextResponse.json({
-            text: combinedText,
+            text: combinedText.trim(),
             s3Configured: isS3Configured(),
             stored: stored.length ? stored : undefined,
         });
