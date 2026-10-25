@@ -86,9 +86,9 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 // Fast, sub-2s models (gemini-3.5-flash, gemini-3-flash-preview, gemini-3.1-flash-lite)
 // are prioritized first to guarantee immediate responsiveness during interviews.
 export const ADVANCED_CANDIDATE_MODELS = [
-  "gemini-3.5-flash",
   "gemini-3-flash-preview",
   "gemini-3.1-flash-lite",
+  "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
   "gemini-3.8-flash",
   "gemini-3.1-flash-lite-preview",
@@ -109,9 +109,9 @@ export function preferTextModels(models: string[]): string[] {
     m !== "gemini-2.5-flash"; // 404 deprecated for new users
   const score = (m: string) => {
     let s = 0;
-    if (m === "gemini-3.5-flash") s -= 50;
-    if (m === "gemini-3-flash-preview") s -= 45;
-    if (m === "gemini-3.1-flash-lite") s -= 40;
+    if (m === "gemini-3-flash-preview") s -= 50;
+    if (m === "gemini-3.1-flash-lite") s -= 45;
+    if (m === "gemini-3.5-flash") s -= 40;
     if (m === "gemini-3.5-flash-lite") s -= 35;
     if (m === "gemini-3.1-flash-lite-preview") s -= 30;
     if (m === "gemini-3.8-flash") s -= 25;
@@ -192,9 +192,9 @@ export async function generateWithFallback(
         // Include all reliable flash and pro models without artificial exclusions
         const candidateList = Array.from(new Set([
             primaryModel,
-            "gemini-3.5-flash",
             "gemini-3-flash-preview",
             "gemini-3.1-flash-lite",
+            "gemini-3.5-flash",
             "gemini-3.5-flash-lite",
             "gemini-3.8-flash",
             ...validTextModels,

@@ -1268,7 +1268,9 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
 
     const seenCerts = new Set<string>();
     const cleanedCerts: any[] = [];
-    for (const item of (Array.isArray(parsed.certifications) ? parsed.certifications : [])) {
+    for (const rawItem of (Array.isArray(parsed.certifications) ? parsed.certifications : [])) {
+        if (!rawItem) continue;
+        const item = typeof rawItem === 'string' ? { name: rawItem, issuer: "", date: "", description: "" } : rawItem;
         if (!item || typeof item !== 'object') continue;
         item.name = cleanField(item.name || "").trim();
         if (!item.name || /^(&|and)\s*workshops/i.test(item.name) || /^(certifications|workshops|licenses|certificates)$/i.test(item.name.toLowerCase())) {
@@ -1613,10 +1615,38 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
         "volunteer", "extracurricular", "activities", "languages",
     ]);
     if (Array.isArray(parsed.skills)) {
-        parsed.skills = parsed.skills.filter((s: any) => {
-            const name = (s.name || "").trim().toLowerCase().replace(/\.+$/, "");
+        parsed.skills = parsed.skills.map((s: any) => {
+            if (typeof s === 'string') {
+                return { name: s.trim().replace(/\.+$/, ""), level: "", category: "" };
+            }
+            if (s && typeof s === 'object') {
+                return {
+                    name: (s.name || s.skill || "").trim().replace(/\.+$/, ""),
+                    level: (s.level || "").trim(),
+                    category: (s.category || "").trim()
+                };
+            }
+            return null;
+        }).filter((s: any) => {
+            if (!s || !s.name) return false;
+            const name = s.name.toLowerCase();
             return name.length > 0 && !BANNED_SKILL_NAMES.has(name);
         });
+    }
+
+    if (Array.isArray(parsed.languages)) {
+        parsed.languages = parsed.languages.map((l: any) => {
+            if (typeof l === 'string') {
+                return { name: l.trim().replace(/\.+$/, ""), proficiency: "" };
+            }
+            if (l && typeof l === 'object') {
+                return {
+                    name: (l.name || l.language || "").trim().replace(/\.+$/, ""),
+                    proficiency: (l.proficiency || l.level || "").trim()
+                };
+            }
+            return null;
+        }).filter((l: any) => l && l.name && l.name.length > 0);
     }
 
     // Fix 2B: Reclassify internship entries from projects → workExperience
@@ -2170,10 +2200,10 @@ CRITICAL ATS RESUME OPTIMIZATION & ZERO-DELETION RULES:
 
         let parsedJson: unknown = null;
         try {
-            // Set timeout to 27s (safely below AWS Amplify / API Gateway 29s proxy limit, giving Gemini sufficient time for full extraction)
+            // Set timeout to 28s (safely below AWS Amplify / API Gateway 29s proxy limit, giving Gemini sufficient time for full extraction)
             const rawText = (await generateWithFallback(promptParts, { 
-                model: "gemini-3.8-flash",
-                timeout: 27000,
+                model: "gemini-3-flash-preview",
+                timeout: 28000,
                 generationConfig: { 
                     temperature: 0.2,
                     responseMimeType: "application/json"

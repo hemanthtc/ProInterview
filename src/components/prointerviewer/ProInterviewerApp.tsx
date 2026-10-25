@@ -416,7 +416,20 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   // Apply a prebuilt template
   const handleSelectTemplate = (template: ResumeTemplate) => {
     setActiveTemplateId(template.id);
-    setCurrentStyle(template.style);
+    setCurrentStyle(prev => ({
+      ...template.style,
+      visibleSections: {
+        summary: Boolean(resumeData.personalInfo.summary),
+        experience: resumeData.workExperience.length > 0,
+        education: resumeData.education.length > 0,
+        projects: resumeData.projects.length > 0,
+        skills: resumeData.skills.length > 0,
+        languages: resumeData.languages.length > 0,
+        certifications: resumeData.certifications.length > 0,
+        ...(prev.visibleSections || {})
+      },
+      sectionOrder: prev.sectionOrder || template.style.sectionOrder || ['summary', 'experience', 'education', 'projects', 'skills', 'languages', 'certifications']
+    }));
     triggerToast(`Applied template: "${template.name}"`);
   };
 
@@ -1022,14 +1035,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             linkedin: result.personalInfo.linkedin || "",
             github: result.personalInfo.github || "",
             website: result.personalInfo.website || "",
-            summary: result.summary || updatedData.personalInfo.summary
+            summary: result.summary || result.personalInfo?.summary || updatedData.personalInfo.summary
           };
           if (isUploadingResume && aiSourceMode !== 'resume') {
             const storedPhoto = getStorageItem("userProfilePhoto") || "";
             updatedData.personalInfo.avatar = storedPhoto || "";
           }
-        } else if (result.summary) {
-          updatedData.personalInfo = { ...updatedData.personalInfo, summary: result.summary };
+        } else if (result.summary || result.personalInfo?.summary) {
+          updatedData.personalInfo = { ...updatedData.personalInfo, summary: result.summary || result.personalInfo?.summary };
         }
 
         if (Array.isArray(result.workExperience) && result.workExperience.length > 0) {
@@ -1041,9 +1054,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             startDate: job.startDate || "",
             endDate: job.endDate || "",
             current: !!job.current,
-            description: job.description || ""
+            description: Array.isArray(job.description) ? job.description.join("\n") : (job.description || "")
           }));
-        } else if (isUploadingResume) {
+        } else if (isUploadingResume && Array.isArray(result.workExperience)) {
           updatedData.workExperience = [];
         }
 
@@ -1058,7 +1071,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             endDate: edu.endDate || "",
             cgpa: edu.cgpa || "",
             percentage: edu.percentage || "",
-            description: edu.description || "",
+            description: Array.isArray(edu.description) ? edu.description.join("\n") : (edu.description || ""),
             degreeType: edu.degreeType || ""
           }));
         } else if (isUploadingResume && Array.isArray(result.education)) {
@@ -1067,16 +1080,17 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         if (Array.isArray(result.projects) && result.projects.length > 0) {
           const validProjects = result.projects.filter((p: any) => {
-            if (!p || !p.name) return false;
-            const name = p.name.trim();
+            if (!p) return false;
+            const name = typeof p === 'string' ? p.trim() : (p.name || "").trim();
             const nameLower = name.toLowerCase();
-            if (nameLower === "project" || nameLower === "untitled project") return false;
+            if (!name || nameLower === "project" || nameLower === "untitled project") return false;
             if (nameLower.startsWith("tech:") || nameLower.startsWith("technologies:") || nameLower.startsWith("stack:")) return false;
             if (/^(?:developer|engineer|lead|full\s*stack\s+developer|ai\s+developer|software\s+engineer)$/i.test(name)) return false;
             return true;
           });
 
-          updatedData.projects = validProjects.map((proj: any, index: number) => {
+          updatedData.projects = validProjects.map((rawProj: any, index: number) => {
+            const proj = typeof rawProj === 'string' ? { name: rawProj, description: "", technologies: [], link: "", role: "Developer" } : rawProj;
             const role = (proj.role || "").replace(/^(?:role|position)\s*[:\-–—]\s*/i, "").replace(/[|–—]/g, "").trim() || "Developer";
             let name = (proj.name || "")
               .replace(/^(?:project\s*\d*[:\s]|\d+[\.\)]\s*|[•\-*▪▫–—✦✓]\s*)/i, "")
@@ -1095,7 +1109,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             return {
               id: `proj-ai-${Date.now()}-${index}`,
               name,
-              description: proj.description || "",
+              description: Array.isArray(proj.description) ? proj.description.join("\n") : (proj.description || ""),
               technologies: Array.from(new Set(techList)),
               link: proj.link || "",
               role
@@ -1106,29 +1120,40 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         }
 
         if (Array.isArray(result.skills) && result.skills.length > 0) {
-          updatedData.skills = result.skills.map((skill: any, index: number) => ({
-            id: `skill-ai-${Date.now()}-${index}`,
-            name: skill.name || "",
-            level: skill.level || "",
-            category: skill.category || ""
-          }));
+          updatedData.skills = result.skills.map((skill: any, index: number) => {
+            const name = typeof skill === 'string' ? skill : (skill.name || skill.skill || "");
+            const level = typeof skill === 'string' ? "" : (skill.level || "");
+            const category = typeof skill === 'string' ? "" : (skill.category || "");
+            return {
+              id: `skill-ai-${Date.now()}-${index}`,
+              name: name.trim().replace(/\.+$/, ""),
+              level: level.trim(),
+              category: category.trim()
+            };
+          }).filter((s: any) => s.name.length > 0);
         } else if (isUploadingResume && Array.isArray(result.skills)) {
           updatedData.skills = [];
         }
 
         if (Array.isArray(result.languages) && result.languages.length > 0) {
-          updatedData.languages = result.languages.map((lang: any, index: number) => ({
-            id: `lang-ai-${Date.now()}-${index}`,
-            name: lang.name || "",
-            proficiency: lang.proficiency || ""
-          }));
-        } else if (isUploadingResume) {
+          updatedData.languages = result.languages.map((lang: any, index: number) => {
+            const name = typeof lang === 'string' ? lang : (lang.name || lang.language || "");
+            const proficiency = typeof lang === 'string' ? "" : (lang.proficiency || lang.level || "");
+            return {
+              id: `lang-ai-${Date.now()}-${index}`,
+              name: name.trim().replace(/\.+$/, ""),
+              proficiency: proficiency.trim()
+            };
+          }).filter((l: any) => l.name.length > 0);
+        } else if (isUploadingResume && Array.isArray(result.languages)) {
           updatedData.languages = [];
         }
 
         if (Array.isArray(result.certifications) && result.certifications.length > 0) {
           const cleanedCerts: any[] = [];
-          for (const c of result.certifications) {
+          for (const rawC of result.certifications) {
+            if (!rawC) continue;
+            const c = typeof rawC === 'string' ? { name: rawC, issuer: "", date: "", description: "" } : rawC;
             if (!c || !c.name) continue;
             const name = (c.name || "").trim();
             const isFrag = (
@@ -1158,9 +1183,9 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             issuer: cert.issuer || "",
             date: cert.date || "",
             link: cert.link || "",
-            description: cert.description || ""
+            description: Array.isArray(cert.description) ? cert.description.join("\n") : (cert.description || "")
           }));
-        } else if (isUploadingResume) {
+        } else if (isUploadingResume && Array.isArray(result.certifications)) {
           updatedData.certifications = [];
         }
 
@@ -1177,7 +1202,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               description: it.description || ""
             }))
           }));
-        } else if (isUploadingResume) {
+        } else if (isUploadingResume && Array.isArray(result.customSections)) {
           updatedData.customSections = [];
         }
 
