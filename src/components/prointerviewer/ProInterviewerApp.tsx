@@ -1072,7 +1072,6 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             const nameLower = name.toLowerCase();
             if (nameLower === "project" || nameLower === "untitled project") return false;
             if (nameLower.startsWith("tech:") || nameLower.startsWith("technologies:") || nameLower.startsWith("stack:")) return false;
-            if (name.endsWith(".") || name.endsWith("...") || /^(built|developed|designed|implemented|engineered|created|voice-first|deep\s+learning|centralized|resume-aware|optimization|streamlit\s+web\s+interface)\b/i.test(name)) return false;
             if (/^(?:developer|engineer|lead|full\s*stack\s+developer|ai\s+developer|software\s+engineer)$/i.test(name)) return false;
             return true;
           });
@@ -1083,6 +1082,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               .replace(/^(?:project\s*\d*[:\s]|\d+[\.\)]\s*|[•\-*▪▫–—✦✓]\s*)/i, "")
               .replace(/https?:\/\/[^\s]+/gi, "")
               .replace(/[-–—|:]\s*$/, "")
+              .replace(/\.+$/, "")
               .trim();
             const techList = Array.isArray(proj.technologies) ? [...proj.technologies] : [];
             const domainTagRegex = /(?:(?<=[a-zA-Z0-9])|\b)(\d+\s*nm\s+Technology|FPGA\s+Implementation|IIoT\s*&\s*Embedded\s+Systems|Embedded\s*&\s*Solar\s+Power\s+Integration|IoT\s*&\s*Embedded\s+Systems|VLSI\s+Design|Embedded\s+Systems|Machine\s+Learning|Deep\s+Learning|Computer\s+Vision)\s*$/i;
@@ -1183,8 +1183,23 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         setCurrentStyle(prev => {
           const vs = { ...(prev.visibleSections || {}) };
+          if (updatedData.personalInfo.summary) {
+            vs.summary = true;
+          }
+          if (updatedData.workExperience.length > 0) {
+            vs.experience = true;
+          }
+          if (updatedData.education.length > 0) {
+            vs.education = true;
+          }
           if (updatedData.projects.length > 0) {
             vs.projects = true;
+          }
+          if (updatedData.skills.length > 0) {
+            vs.skills = true;
+          }
+          if (updatedData.languages.length > 0) {
+            vs.languages = true;
           }
           if (updatedData.certifications.length > 0) {
             vs.certifications = true;

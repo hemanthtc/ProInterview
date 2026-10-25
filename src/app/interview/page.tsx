@@ -19,7 +19,7 @@ import InteractiveWhiteboard, { type InteractiveWhiteboardHandle } from "@/compo
 import type { BoardShape } from "@/utils/systemDesignBoard";
 import { detectInterfaceIssue } from "../../utils/interviewIssueDetector";
 import ReportIssueModal from "../../components/interview/ReportIssueModal";
-import { captureInterviewRoomScreenshot } from "../../utils/interviewScreenCapture";
+import { captureInterviewRoomScreenshot, preloadScreenCapture } from "../../utils/interviewScreenCapture";
 
 export default function InterviewRoom() {
     const router = useRouter();
@@ -329,6 +329,7 @@ export default function InterviewRoom() {
     }, [isCallEnded, terminatedForCheating, stopInterviewRuntime]);
 
     useEffect(() => {
+        preloadScreenCapture();
         const isLoggedIn = getStorageItem("userLoggedIn") === "true";
         if (!isLoggedIn) {
             router.push("/login?redirect=/interview");

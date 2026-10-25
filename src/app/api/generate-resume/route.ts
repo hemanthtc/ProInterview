@@ -260,7 +260,8 @@ function generateResumeFallback(params: {
             let currentExp: any = null;
             for (let i = 0; i < expLines.length; i++) {
                 const line = expLines[i];
-                const dateMatch = line.match(/\b(\d{2}\/\d{4}|\d{4})\s*[-–to\s]+\s*(\d{2}\/\d{4}|\d{4}|present|current)\b/i);
+                const dateMatch = line.match(/\b((?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*|\d{1,2}\/\d{4}|\d{4}))\s*[-–—to\s]+\s*((?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*|\d{1,2}\/\d{4}|\d{4}|present|current))\b/i) ||
+                    line.match(/\b(\d{4})\s*[-–—to\s]+\s*(\d{4}|present|current)\b/i);
                 const isBullet = /^[•\-*▪▫–—✦✓]\s*/.test(line);
 
                 if (dateMatch && !isBullet) {
@@ -298,8 +299,11 @@ function generateResumeFallback(params: {
                     if (nextLine && !nextLine.startsWith("-") && !nextLine.startsWith("•")) {
                         i++;
                     }
-                } else if (currentExp && isBullet) {
-                    currentExp.description += (currentExp.description ? "\n" : "") + line;
+                } else if (currentExp) {
+                    const isNewSection = /^(?:education|academic|skills|technical\s+skills|projects|certifications|languages|awards)\b/i.test(line);
+                    if (!isNewSection) {
+                        currentExp.description += (currentExp.description ? "\n" : "") + line;
+                    }
                 }
             }
             if (currentExp && (currentExp.company || currentExp.position)) {
@@ -598,8 +602,8 @@ function generateResumeFallback(params: {
                     continue;
                 }
 
-                // 4. Check if this line is a sentence or description fragment
-                const isSentence = line.endsWith(".") || line.endsWith("...") || /^(built|developed|designed|implemented|engineered|created|voice-first\s+ai|deep\s+learning\s+plant|centralized\s+mern|resume-aware\s+ai|synthetic\s+data\s+generator\s+app|global\s+news\s+agg|optimization\s+bottlenecks)\b/i.test(line);
+                // 4. Check if this line is a long sentence or paragraph description fragment
+                const isSentence = (line.endsWith(".") && line.length > 100) || line.endsWith("...") || line.length > 140;
 
                 // 5. Genuine project header checks
                 const isNumbered = /^(?:project\s*\d*[:\s]|\d+[\.\)]\s*)/i.test(line);
@@ -612,7 +616,8 @@ function generateResumeFallback(params: {
                     isNumbered ||
                     hasTechNext ||
                     hasRoleNext ||
-                    hasUrlNext
+                    hasUrlNext ||
+                    (nextIsBullet && line.length < 90)
                 );
 
                 const lineWithoutUrlLen = line.replace(/https?:\/\/[^\s]+/gi, "").trim().length;
@@ -631,6 +636,7 @@ function generateResumeFallback(params: {
                     } else {
                         cleanName = cleanName.replace(/https?:\/\/[^\s]+/gi, "");
                     }
+                    cleanName = cleanName.replace(/\.+$/, "").trim();
 
                     let role = "Developer";
                     let technologies: string[] = [];
@@ -1500,20 +1506,19 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
             if (nameLower === "project" || nameLower === "untitled project") return false;
             // Discard lines that are tech stack lists
             if (nameLower.startsWith("tech:") || nameLower.startsWith("technologies:") || nameLower.startsWith("stack:")) return false;
-            // Discard sentence fragments ending with a period (these are descriptions, not titles)
-            if (name.endsWith(".") || name.endsWith("...") || /^(built|developed|designed|implemented|engineered|created|voice-first|deep\s+learning|centralized|resume-aware|optimization|streamlit\s+web\s+interface)\b/i.test(name)) return false;
-            // Discard standalone roles
+            // Discard standalone roles without project name
             if (/^(?:developer|engineer|lead|full\s*stack\s+developer|ai\s+developer|software\s+engineer)$/i.test(name)) return false;
             return true;
         });
 
         // Clean each project's fields:
         parsed.projects.forEach((p: any) => {
-            // Clean name: strip any leading numbering, URLs, or trailing punctuation
+            // Clean name: strip any leading numbering, URLs, or trailing punctuation and periods
             p.name = p.name
                 .replace(/^(?:project\s*\d*[:\s]|\d+[\.\)]\s*|[•\-*▪▫–—✦✓]\s*)/i, "")
                 .replace(/https?:\/\/[^\s]+/gi, "")
                 .replace(/[-–—|:]\s*$/, "")
+                .replace(/\.+$/, "")
                 .trim();
 
             // If description has "Tech: ...", extract it into technologies
@@ -1533,21 +1538,15 @@ function verifyAndRepairResumeData(parsed: any, rawText: string, existingResume?
         });
     }
 
-    // RECOVERY: If parsed.projects is empty OR if multiple projects were collapsed into 1 giant project
-    const singleProjHasCollapsedProjects = parsed.projects.length === 1 && (
-        /(?:role|position)\s*:\s*(?:team\s+leader|developer|lead|engineer|designer)/i.test(parsed.projects[0].description || "") ||
-        /\b(?:Braille\s+E-Reader|Smart\s+Parking|Automated\s+Name\s+Board)\b/i.test(parsed.projects[0].description || "")
-    );
-
-    if ((parsed.projects.length === 0 || singleProjHasCollapsedProjects) && rawText) {
+    // RECOVERY: If parsed.projects is empty, recover from rawText source
+    if (parsed.projects.length === 0 && rawText) {
         const fallback = generateResumeFallback({ resumeText: rawText });
-        if (fallback.projects.length > 1 || (parsed.projects.length === 0 && fallback.projects.length > 0)) {
+        if (fallback.projects.length > 0) {
             parsed.projects = fallback.projects.filter((p: any) => {
                 const nameLower = (p.name || "").toLowerCase().trim();
                 return nameLower !== "project" && 
                        nameLower !== "untitled project" && 
-                       !nameLower.startsWith("tech:") && 
-                       !p.name.endsWith(".");
+                       !nameLower.startsWith("tech:");
             });
         }
     }
@@ -2171,10 +2170,10 @@ CRITICAL ATS RESUME OPTIMIZATION & ZERO-DELETION RULES:
 
         let parsedJson: unknown = null;
         try {
-            // Set timeout to 18s (safely below AWS Amplify / API Gateway 29s proxy limit)
+            // Set timeout to 27s (safely below AWS Amplify / API Gateway 29s proxy limit, giving Gemini sufficient time for full extraction)
             const rawText = (await generateWithFallback(promptParts, { 
                 model: "gemini-3.8-flash",
-                timeout: 18000,
+                timeout: 27000,
                 generationConfig: { 
                     temperature: 0.2,
                     responseMimeType: "application/json"
