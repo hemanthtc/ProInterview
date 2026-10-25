@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import JSZip from "jszip";
 import { getVerifiedSession } from "@/utils/auth";
 import { generateWithFallback, parseJsonFromModel } from "@/utils/gemini";
+import { parseResumePipeline } from "@/utils/resumeParser";
 
 export const maxDuration = 60;
 export const dynamic = "force-dynamic";
@@ -1979,7 +1980,41 @@ export async function POST(req: NextRequest) {
             }
         }
 
+        // Dedicated Zero-Fabrication Resume AutoFill Pipeline
+        if (optimizeAts !== "true" && hasResumeSource) {
+            try {
+                let combinedText = resumeFileText || resumeText || "";
+                if (portfolioText) {
+                    combinedText = (combinedText ? combinedText + "\n\n" : "") + portfolioText;
+                }
+                if (projectText) {
+                    combinedText = (combinedText ? combinedText + "\n\n" : "") + projectText;
+                }
+                if (parsedInputText) {
+                    combinedText = (combinedText ? combinedText + "\n\n" : "") + parsedInputText;
+                }
 
+                const mergePolicy = (formData.get("mergePolicy") as any) || "replace";
+                const pipelineResult = await parseResumePipeline({
+                    file: resumeFile || undefined,
+                    fileName: resumeFile?.name,
+                    resumeText: combinedText || undefined,
+                    existingResume: parsedExistingResume,
+                    mergePolicy
+                });
+
+                return NextResponse.json({
+                    ...pipelineResult.mappedResumeData,
+                    canonical: pipelineResult.canonical,
+                    warnings: pipelineResult.warnings,
+                    isScanned: pipelineResult.isScanned,
+                    recordCounts: pipelineResult.recordCounts,
+                    isFallback: pipelineResult.isFallback
+                });
+            } catch (pipelineErr: any) {
+                console.warn("[Resume Generation] Pipeline error, attempting resilient recovery:", pipelineErr?.message || pipelineErr);
+            }
+        }
 
         let systemPrompt = `You are extracting and restructuring an existing resume. Your primary objective is factual preservation, not creative generation.
 Extract and organize ALL candidate credentials from the provided sources into a structured JSON document.

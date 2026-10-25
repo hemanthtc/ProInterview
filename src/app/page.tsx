@@ -479,7 +479,7 @@ export default function Home() {
     const [isRealisticMode, setIsRealisticMode] = useState(false);
     const [theme, setTheme] = useState<ThemeMode>(createInitialThemeState);
     const [activeSection, setActiveSection] = useState<"home" | "how-it-works">("home");
-    const isHydrated = useSyncExternalStore(emptySubscribe, () => true, () => false);
+    const [isHydrated, setIsHydrated] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isMobile, setIsMobile] = useState(() => (typeof window !== "undefined" ? window.innerWidth < 768 : false));
     const [activeModal, setActiveModal] = useState<string | null>(null);
@@ -488,6 +488,7 @@ export default function Home() {
     const [progressActiveTab, setProgressActiveTab] = useState<"filmroom" | "interview" | "aptitude">("interview");
 
     useEffect(() => {
+        setIsHydrated(true);
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         window.addEventListener("resize", checkMobile);
 

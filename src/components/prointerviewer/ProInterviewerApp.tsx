@@ -186,6 +186,12 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
   const [aiRoleMode, setAiRoleMode] = useState<'specified' | 'fresher'>('specified');
   const [aiSourceMode, setAiSourceMode] = useState<'resume' | 'portfolio' | 'both'>('resume');
   const [showVerifyAlertModal, setShowVerifyAlertModal] = useState<boolean>(false);
+  const [extractionWarnings, setExtractionWarnings] = useState<any[]>([]);
+  const [extractionMetadata, setExtractionMetadata] = useState<any | null>(null);
+  const [preUploadData, setPreUploadData] = useState<ResumeData | null>(null);
+  const [hasExistingDataOnUpload, setHasExistingDataOnUpload] = useState<boolean>(false);
+  const [pendingExtractedData, setPendingExtractedData] = useState<ResumeData | null>(null);
+  const [mergePolicyChoice, setMergePolicyChoice] = useState<'replace' | 'smart-merge'>('replace');
   const [hasPortfolioUrl, setHasPortfolioUrl] = useState<boolean>(false);
 
   // Prefetched account details states
@@ -998,6 +1004,15 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         formData.append('resumeText', accountResumeText);
       }
 
+      const hadExistingData = (
+        resumeData.workExperience.length > 0 ||
+        resumeData.education.length > 0 ||
+        resumeData.projects.length > 0 ||
+        resumeData.skills.length > 0
+      );
+      setPreUploadData({ ...resumeData });
+      setHasExistingDataOnUpload(hadExistingData);
+
       const res = await authFetch('/api/generate-resume', { method: 'POST', body: formData });
       if (res.status === 401) {
         removeStorageItem("userLoggedIn");
@@ -1031,10 +1046,10 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               : (result.personalInfo.title || updatedData.personalInfo.title),
             email: result.personalInfo.email || updatedData.personalInfo.email,
             phone: result.personalInfo.phone || updatedData.personalInfo.phone,
-            location: result.personalInfo.location || "",
-            linkedin: result.personalInfo.linkedin || "",
-            github: result.personalInfo.github || "",
-            website: result.personalInfo.website || "",
+            location: result.personalInfo.location || updatedData.personalInfo.location || "",
+            linkedin: result.personalInfo.linkedin || updatedData.personalInfo.linkedin || "",
+            github: result.personalInfo.github || updatedData.personalInfo.github || "",
+            website: result.personalInfo.website || updatedData.personalInfo.website || "",
             summary: result.summary || result.personalInfo?.summary || updatedData.personalInfo.summary
           };
           if (isUploadingResume && aiSourceMode !== 'resume') {
@@ -1047,7 +1062,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
 
         if (Array.isArray(result.workExperience) && result.workExperience.length > 0) {
           updatedData.workExperience = result.workExperience.map((job: any, index: number) => ({
-            id: `exp-ai-${Date.now()}-${index}`,
+            id: job.id || `exp-ai-${Date.now()}-${index}`,
             company: job.company || "",
             position: job.position || "",
             location: job.location || "",
@@ -1056,13 +1071,13 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             current: !!job.current,
             description: Array.isArray(job.description) ? job.description.join("\n") : (job.description || "")
           }));
-        } else if (isUploadingResume && Array.isArray(result.workExperience)) {
+        } else if (isUploadingResume && Array.isArray(result.workExperience) && !hadExistingData) {
           updatedData.workExperience = [];
         }
 
         if (Array.isArray(result.education) && result.education.length > 0) {
           updatedData.education = result.education.map((edu: any, index: number) => ({
-            id: `edu-ai-${Date.now()}-${index}`,
+            id: edu.id || `edu-ai-${Date.now()}-${index}`,
             institution: edu.institution || "",
             degree: edu.degree || "",
             fieldOfStudy: edu.fieldOfStudy || "",
@@ -1074,7 +1089,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             description: Array.isArray(edu.description) ? edu.description.join("\n") : (edu.description || ""),
             degreeType: edu.degreeType || ""
           }));
-        } else if (isUploadingResume && Array.isArray(result.education)) {
+        } else if (isUploadingResume && Array.isArray(result.education) && !hadExistingData) {
           updatedData.education = [];
         }
 
@@ -1107,7 +1122,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             }
 
             return {
-              id: `proj-ai-${Date.now()}-${index}`,
+              id: proj.id || `proj-ai-${Date.now()}-${index}`,
               name,
               description: Array.isArray(proj.description) ? proj.description.join("\n") : (proj.description || ""),
               technologies: Array.from(new Set(techList)),
@@ -1115,7 +1130,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
               role
             };
           });
-        } else if (isUploadingResume && Array.isArray(result.projects)) {
+        } else if (isUploadingResume && Array.isArray(result.projects) && !hadExistingData) {
           updatedData.projects = [];
         }
 
@@ -1125,13 +1140,13 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             const level = typeof skill === 'string' ? "" : (skill.level || "");
             const category = typeof skill === 'string' ? "" : (skill.category || "");
             return {
-              id: `skill-ai-${Date.now()}-${index}`,
+              id: skill.id || `skill-ai-${Date.now()}-${index}`,
               name: name.trim().replace(/\.+$/, ""),
               level: level.trim(),
               category: category.trim()
             };
           }).filter((s: any) => s.name.length > 0);
-        } else if (isUploadingResume && Array.isArray(result.skills)) {
+        } else if (isUploadingResume && Array.isArray(result.skills) && !hadExistingData) {
           updatedData.skills = [];
         }
 
@@ -1140,12 +1155,12 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
             const name = typeof lang === 'string' ? lang : (lang.name || lang.language || "");
             const proficiency = typeof lang === 'string' ? "" : (lang.proficiency || lang.level || "");
             return {
-              id: `lang-ai-${Date.now()}-${index}`,
+              id: lang.id || `lang-ai-${Date.now()}-${index}`,
               name: name.trim().replace(/\.+$/, ""),
               proficiency: proficiency.trim()
             };
           }).filter((l: any) => l.name.length > 0);
-        } else if (isUploadingResume && Array.isArray(result.languages)) {
+        } else if (isUploadingResume && Array.isArray(result.languages) && !hadExistingData) {
           updatedData.languages = [];
         }
 
@@ -1178,31 +1193,31 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           }
 
           updatedData.certifications = cleanedCerts.map((cert: any, index: number) => ({
-            id: `cert-ai-${Date.now()}-${index}`,
+            id: cert.id || `cert-ai-${Date.now()}-${index}`,
             name: cert.name || "",
             issuer: cert.issuer || "",
             date: cert.date || "",
             link: cert.link || "",
             description: Array.isArray(cert.description) ? cert.description.join("\n") : (cert.description || "")
           }));
-        } else if (isUploadingResume && Array.isArray(result.certifications)) {
+        } else if (isUploadingResume && Array.isArray(result.certifications) && !hadExistingData) {
           updatedData.certifications = [];
         }
 
         if (Array.isArray(result.customSections) && result.customSections.length > 0) {
           const validSections = result.customSections.filter((sect: any) => sect && sect.title && Array.isArray(sect.items) && sect.items.length > 0);
           updatedData.customSections = validSections.map((sect: any, sIdx: number) => ({
-            id: `custom-ai-${Date.now()}-${sIdx}`,
+            id: sect.id || `custom-ai-${Date.now()}-${sIdx}`,
             title: sect.title || "Additional Section",
-            items: sect.items.map((it: any, iIdx: number) => ({
-              id: `item-ai-${Date.now()}-${sIdx}-${iIdx}`,
+            items: (sect.items || []).map((it: any, iIdx: number) => ({
+              id: it.id || `item-ai-${Date.now()}-${sIdx}-${iIdx}`,
               title: it.title || "",
               subtitle: it.subtitle || "",
               date: it.date || "",
               description: it.description || ""
             }))
           }));
-        } else if (isUploadingResume && Array.isArray(result.customSections)) {
+        } else if (isUploadingResume && Array.isArray(result.customSections) && !hadExistingData) {
           updatedData.customSections = [];
         }
 
@@ -1235,6 +1250,21 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
           };
         });
 
+        setExtractionWarnings(result.warnings || []);
+        setExtractionMetadata(result.metadata || {
+          isScanned: !!result.isScanned,
+          recordCounts: result.recordCounts || {
+            education: updatedData.education.length,
+            workExperience: updatedData.workExperience.length,
+            projects: updatedData.projects.length,
+            skills: updatedData.skills.length,
+            certifications: updatedData.certifications.length,
+            languages: updatedData.languages.length,
+            customSections: updatedData.customSections.length
+          },
+          isFallback: !!result.isFallback
+        });
+        setPendingExtractedData(updatedData);
         setResumeData(updatedData);
         setShowAIModal(false);
         setMobileView('preview');
@@ -1251,15 +1281,98 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         setAiNotesCertifications('');
         setAiTargetRoles('');
         if (result.isFallback) {
-          triggerToast('Auto-filled with smart template (Gemini API was rate-limited)');
+          triggerToast('Auto-filled with smart fallback parser (preserves verified source facts)');
         } else {
-          triggerToast('AI autofill completed! Switched to Preview.');
+          triggerToast('AI autofill completed! Switched to Review.');
         }
       }
     } catch (err: any) {
       triggerToast('AI autofill notice: ' + (err.message || 'Server was busy. Please try again.'));
     } finally {
       setIsAILoading(false);
+    }
+  };
+
+  // Safe merge vs replace selector for user-edited data protection
+  const handleApplyMergeChoice = (choice: 'replace' | 'smart-merge') => {
+    setMergePolicyChoice(choice);
+    if (choice === 'smart-merge' && preUploadData && pendingExtractedData) {
+      const mergedPersonal = {
+        ...preUploadData.personalInfo,
+        name: pendingExtractedData.personalInfo.name || preUploadData.personalInfo.name,
+        title: pendingExtractedData.personalInfo.title || preUploadData.personalInfo.title,
+        email: pendingExtractedData.personalInfo.email || preUploadData.personalInfo.email,
+        phone: pendingExtractedData.personalInfo.phone || preUploadData.personalInfo.phone,
+        location: pendingExtractedData.personalInfo.location || preUploadData.personalInfo.location,
+        website: pendingExtractedData.personalInfo.website || preUploadData.personalInfo.website,
+        linkedin: pendingExtractedData.personalInfo.linkedin || preUploadData.personalInfo.linkedin,
+        github: pendingExtractedData.personalInfo.github || preUploadData.personalInfo.github,
+        summary: pendingExtractedData.personalInfo.summary || preUploadData.personalInfo.summary,
+      };
+
+      const mergedExp = [...preUploadData.workExperience];
+      for (const w of pendingExtractedData.workExperience) {
+        if (!mergedExp.some(e => e.company && w.company && e.company.toLowerCase().trim() === w.company.toLowerCase().trim())) {
+          mergedExp.push(w);
+        }
+      }
+
+      const mergedEdu = [...preUploadData.education];
+      for (const e of pendingExtractedData.education) {
+        if (!mergedEdu.some(ed => ed.institution && e.institution && ed.institution.toLowerCase().trim() === e.institution.toLowerCase().trim())) {
+          mergedEdu.push(e);
+        }
+      }
+
+      const mergedProj = [...preUploadData.projects];
+      for (const p of pendingExtractedData.projects) {
+        if (!mergedProj.some(pr => pr.name && p.name && pr.name.toLowerCase().trim() === p.name.toLowerCase().trim())) {
+          mergedProj.push(p);
+        }
+      }
+
+      const mergedSkills = [...preUploadData.skills];
+      for (const s of pendingExtractedData.skills) {
+        if (!mergedSkills.some(sk => sk.name && s.name && sk.name.toLowerCase().trim() === s.name.toLowerCase().trim())) {
+          mergedSkills.push(s);
+        }
+      }
+
+      const mergedCerts = [...preUploadData.certifications];
+      for (const c of pendingExtractedData.certifications) {
+        if (!mergedCerts.some(ct => ct.name && c.name && ct.name.toLowerCase().trim() === c.name.toLowerCase().trim())) {
+          mergedCerts.push(c);
+        }
+      }
+
+      const mergedLang = [...preUploadData.languages];
+      for (const l of pendingExtractedData.languages) {
+        if (!mergedLang.some(lg => lg.name && l.name && lg.name.toLowerCase().trim() === l.name.toLowerCase().trim())) {
+          mergedLang.push(l);
+        }
+      }
+
+      const mergedCustom = [...preUploadData.customSections];
+      for (const cs of pendingExtractedData.customSections) {
+        if (!mergedCustom.some(mc => mc.title && cs.title && mc.title.toLowerCase().trim() === cs.title.toLowerCase().trim())) {
+          mergedCustom.push(cs);
+        }
+      }
+
+      setResumeData({
+        personalInfo: mergedPersonal,
+        workExperience: mergedExp,
+        education: mergedEdu,
+        projects: mergedProj,
+        skills: mergedSkills,
+        languages: mergedLang,
+        certifications: mergedCerts,
+        customSections: mergedCustom
+      });
+      triggerToast('Smart merge applied! Kept your previous custom entries.');
+    } else if (choice === 'replace' && pendingExtractedData) {
+      setResumeData(pendingExtractedData);
+      triggerToast('Applied newly extracted resume.');
     }
   };
 
@@ -3585,7 +3698,7 @@ CRITICAL RULES FOR DESCRIPTIONS:
             </>
           )}
 
-          {/* AI VERIFICATION ALERT MODAL */}
+          {/* AI VERIFICATION & EXTRACTION REVIEW MODAL */}
           {showVerifyAlertModal && (
             <>
               <div 
@@ -3597,7 +3710,7 @@ CRITICAL RULES FOR DESCRIPTIONS:
                 }}
                 style={{
                   position: 'fixed', inset: 0, zIndex: 10000,
-                  background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)'
+                  background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)'
                 }} 
               />
               <div 
@@ -3608,55 +3721,226 @@ CRITICAL RULES FOR DESCRIPTIONS:
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
                   zIndex: 10001,
-                  maxWidth: '440px',
-                  width: '90%',
+                  maxWidth: '540px',
+                  width: '94%',
+                  maxHeight: '90vh',
+                  overflowY: 'auto',
                   boxSizing: 'border-box',
                   background: 'var(--panel-bg, #0f172a)',
                   border: '1px solid var(--panel-border, #1e293b)',
-                  borderRadius: '16px',
-                  padding: '1.5rem',
-                  boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)'
+                  borderRadius: '18px',
+                  padding: '1.75rem',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)'
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem', marginBottom: '1rem' }}>
+                {/* Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+                    <div style={{
+                      width: '2.8rem', height: '2.8rem', borderRadius: '12px',
+                      background: 'linear-gradient(135deg, #8b5cf6, #6366f1)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      color: '#fff', flexShrink: 0,
+                      boxShadow: '0 4px 14px rgba(99, 102, 241, 0.35)'
+                    }}>
+                      <Sparkles size={22} />
+                    </div>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                        Resume Extraction Review
+                      </h3>
+                      <p style={{ margin: '0.2rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        Factual parsing completed • Review extracted records
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowVerifyAlertModal(false)}
+                    style={{
+                      background: 'transparent', border: 'none', color: 'var(--text-muted)',
+                      cursor: 'pointer', padding: '0.4rem', borderRadius: '6px'
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Scanned PDF or Multimodal Extraction Badge */}
+                {extractionMetadata?.isScanned && (
                   <div style={{
-                    width: '2.75rem', height: '2.75rem', borderRadius: '50%',
-                    background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    color: '#6366f1', flexShrink: 0
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    background: 'rgba(56, 189, 248, 0.1)', border: '1px solid rgba(56, 189, 248, 0.3)',
+                    borderRadius: '8px', padding: '0.55rem 0.85rem', marginBottom: '1rem',
+                    fontSize: '0.78rem', color: '#38bdf8'
                   }}>
-                    <Sparkles size={22} />
+                    <FileText size={16} />
+                    <span>Scanned or image-based document detected: Multimodal vision extraction applied.</span>
                   </div>
-                  <div>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-main)' }}>
-                      Verify Extracted Information
-                    </h3>
-                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>
-                      AI Auto-Fill Completed
-                    </p>
-                  </div>
-                </div>
+                )}
 
+                {/* Record Counts Grid */}
                 <div style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.25)',
-                  borderRadius: '10px',
-                  padding: '0.85rem 1rem',
-                  fontSize: '0.82rem',
-                  color: 'var(--text-main)',
-                  lineHeight: 1.5,
-                  marginBottom: '1.25rem',
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: '0.6rem'
+                  display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem',
+                  marginBottom: '1.25rem'
                 }}>
-                  <AlertTriangle size={18} color="#f59e0b" style={{ flexShrink: 0, marginTop: '2px' }} />
-                  <span>
-                    Please verify your information once, as AI can occasionally make small mistakes or formatting errors.
-                  </span>
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '10px', padding: '0.65rem', textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#a78bfa' }}>
+                      {resumeData.education.length}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Education
+                    </div>
+                  </div>
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '10px', padding: '0.65rem', textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#38bdf8' }}>
+                      {resumeData.workExperience.length}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Experience
+                    </div>
+                  </div>
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '10px', padding: '0.65rem', textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#34d399' }}>
+                      {resumeData.projects.length}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Projects
+                    </div>
+                  </div>
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '10px', padding: '0.65rem', textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#f59e0b' }}>
+                      {resumeData.skills.length}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Skills
+                    </div>
+                  </div>
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '10px', padding: '0.65rem', textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#ec4899' }}>
+                      {resumeData.certifications.length}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Certificates
+                    </div>
+                  </div>
+                  <div style={{
+                    background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.07)',
+                    borderRadius: '10px', padding: '0.65rem', textAlign: 'center'
+                  }}>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#10b981' }}>
+                      {resumeData.customSections.length}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Custom Secs
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
+                {/* Warnings / Verification Items */}
+                {extractionWarnings.length > 0 && (
+                  <div style={{
+                    background: 'rgba(245, 158, 11, 0.08)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)',
+                    borderRadius: '10px',
+                    padding: '0.85rem 1rem',
+                    fontSize: '0.8rem',
+                    color: 'var(--text-main)',
+                    lineHeight: 1.45,
+                    marginBottom: '1.25rem'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.4rem', fontWeight: 700, color: '#f59e0b' }}>
+                      <AlertTriangle size={15} />
+                      <span>Extraction Notes & Verified Items</span>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '1.25rem' }}>
+                      {extractionWarnings.slice(0, 4).map((w, idx) => (
+                        <li key={idx} style={{ marginBottom: '0.25rem' }}>{w.message}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Existing Data Merge Policy Selector */}
+                {hasExistingDataOnUpload && (
+                  <div style={{
+                    background: 'rgba(99, 102, 241, 0.06)',
+                    border: '1px solid rgba(99, 102, 241, 0.2)',
+                    borderRadius: '10px',
+                    padding: '0.85rem 1rem',
+                    marginBottom: '1.25rem'
+                  }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#a78bfa', marginBottom: '0.4rem' }}>
+                      Merge with Existing Resume Data?
+                    </div>
+                    <p style={{ margin: '0 0 0.6rem 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      You already had resume entries before uploading this file. How would you like to apply the new data?
+                    </p>
+                    <div style={{ display: 'flex', gap: '0.6rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyMergeChoice('smart-merge')}
+                        style={{
+                          flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.76rem', fontWeight: 600,
+                          borderRadius: '6px', cursor: 'pointer',
+                          background: mergePolicyChoice === 'smart-merge' ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.04)',
+                          border: mergePolicyChoice === 'smart-merge' ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.1)',
+                          color: mergePolicyChoice === 'smart-merge' ? '#fff' : 'var(--text-muted)'
+                        }}
+                      >
+                        Smart Merge (Keep existing)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyMergeChoice('replace')}
+                        style={{
+                          flex: 1, padding: '0.5rem 0.75rem', fontSize: '0.76rem', fontWeight: 600,
+                          borderRadius: '6px', cursor: 'pointer',
+                          background: mergePolicyChoice === 'replace' ? 'rgba(99, 102, 241, 0.3)' : 'rgba(255, 255, 255, 0.04)',
+                          border: mergePolicyChoice === 'replace' ? '1px solid #6366f1' : '1px solid rgba(255, 255, 255, 0.1)',
+                          color: mergePolicyChoice === 'replace' ? '#fff' : 'var(--text-muted)'
+                        }}
+                      >
+                        Replace All (Use uploaded)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Footer Buttons */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.6rem', borderTop: '1px solid var(--panel-border)', paddingTop: '1rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowVerifyAlertModal(false);
+                      setMobileView('editor');
+                      onMobileViewChange?.('editor');
+                    }}
+                    style={{
+                      padding: '0.55rem 1.1rem', fontSize: '0.82rem', fontWeight: 600,
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      borderRadius: '0.5rem', color: 'var(--text-main)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Edit in Form
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -3665,13 +3949,13 @@ CRITICAL RULES FOR DESCRIPTIONS:
                       onMobileViewChange?.('preview');
                     }}
                     style={{
-                      padding: '0.55rem 1.25rem', fontSize: '0.82rem', fontWeight: 700,
+                      padding: '0.55rem 1.35rem', fontSize: '0.82rem', fontWeight: 700,
                       background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
                       color: '#fff', border: 'none', borderRadius: '0.5rem',
                       cursor: 'pointer', boxShadow: '0 0 15px rgba(99, 102, 241, 0.3)'
                     }}
                   >
-                    Got it, Review Resume
+                    Confirm & View Resume
                   </button>
                 </div>
               </div>

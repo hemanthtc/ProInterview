@@ -1,31 +1,13 @@
-import { getStorageItem, removeStorageItem } from "./storage";
+import { getStorageItem, removeStorageItem, TAB_AUTH_KEYS } from "./storage";
 
 export const AUTH_STORAGE_KEYS = [
-    "userLoggedIn",
-    "sessionToken",
-    "userSessionExpiresAt",
-    "userName",
-    "userIdentifier",
-    "userType",
-    "userRole",
-    "userSubscriptionPlan",
-    "userProfilePhoto",
-    "userOrgName",
-    "userAdminId",
-    "userDepartment",
-    "userAdditionalEmail",
-    "userGithub",
-    "userLinkedin",
-    "userPortfolio",
-    "userResumeCvName",
-    "userResumeCvText",
-    "userPhone",
-    "userEducationData",
+    ...TAB_AUTH_KEYS,
     "prointerview_todos",
 ];
 
 /**
- * Clears all client-side authentication tokens, user metadata, caches, and cookies.
+ * Clears authentication tokens, user metadata, and in-memory caches for the current tab.
+ * Does not clear shared cookies or other tabs' sessions.
  */
 export function clearAllAuthSession(): void {
     if (typeof window === "undefined") return;
@@ -33,36 +15,30 @@ export function clearAllAuthSession(): void {
     AUTH_STORAGE_KEYS.forEach((key) => {
         try {
             removeStorageItem(key);
-            localStorage.removeItem(key);
             sessionStorage.removeItem(key);
         } catch {}
     });
-
-    try {
-        const past = "Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
-        document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0`;
-        document.cookie = `userLoggedIn=; expires=${past}; max-age=0`;
-        document.cookie = `session=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
-        document.cookie = `session=; path=/; expires=${past}; max-age=0`;
-        document.cookie = `session=; expires=${past}; max-age=0`;
-    } catch {}
 }
 
 /**
- * Universally logs out any user (authenticated user or guest),
- * notifies server to clear HttpOnly cookies, purges all local storage,
- * dispatches storage sync events, and navigates cleanly to target path.
+ * Tab-scoped logout:
+ * Notifies the server of tab logout, purges this tab's storage and in-memory state,
+ * dispatches a local tab state change, and redirects only this tab.
+ * Does NOT clear other tabs' sessions or shared cookies unless global=true is requested.
  */
-export async function logoutUser(redirectTo: string = "/"): Promise<void> {
+export async function logoutUser(redirectTo: string = "/", isGlobal: boolean = false): Promise<void> {
     try {
         const identifier = getStorageItem("userIdentifier") || "";
         const role = getStorageItem("userRole") || getStorageItem("userType") || "user";
+        const token = getStorageItem("sessionToken") || "";
 
         await fetch("/api/auth/logout", {
             method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ identifier, accountType: role }),
+            headers: {
+                "Content-Type": "application/json",
+                ...(token ? { "Authorization": `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ identifier, accountType: role, tabOnly: !isGlobal, global: isGlobal }),
             signal: AbortSignal.timeout(3000)
         }).catch(() => {});
     } catch {}
@@ -70,7 +46,7 @@ export async function logoutUser(redirectTo: string = "/"): Promise<void> {
     clearAllAuthSession();
 
     if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("storage"));
+        // Dispatch only window-local event; do NOT fire cross-tab "storage" event
         window.dispatchEvent(new CustomEvent("ai-storage-change", { detail: { key: "userLoggedIn" } }));
 
         if (redirectTo) {
@@ -81,6 +57,7 @@ export async function logoutUser(redirectTo: string = "/"): Promise<void> {
 
 /**
  * Automatically attaches Authorization headers and cookies to all /api/ requests.
+ * Uses the session credential established specifically in this tab's sessionStorage.
  */
 export function installGlobalAuthFetchInterceptor(): void {
     if (typeof window === "undefined") return;
@@ -108,7 +85,7 @@ export function installGlobalAuthFetchInterceptor(): void {
         if (isInternalApi) {
             let token: string | null = null;
             try {
-                token = getStorageItem("sessionToken") || localStorage.getItem("sessionToken");
+                token = getStorageItem("sessionToken") || sessionStorage.getItem("sessionToken");
             } catch {}
 
             const modifiedInit: RequestInit = {
@@ -135,24 +112,20 @@ export function installGlobalAuthFetchInterceptor(): void {
 }
 
 /**
- * Reconciles cookie and localStorage states for persistent auth session across tabs.
+ * Reconciles tab-scoped authentication state for the current tab.
+ * Does not pull credentials from other tabs' storage.
  */
 export function syncClientAuthState(): void {
     if (typeof window === "undefined") return;
 
     try {
-        const token = localStorage.getItem("sessionToken") || sessionStorage.getItem("sessionToken");
-        const isLogged = localStorage.getItem("userLoggedIn") === "true" || !!token;
+        const token = sessionStorage.getItem("sessionToken");
+        const isLogged = sessionStorage.getItem("userLoggedIn") === "true" || !!token;
 
         if (isLogged) {
-            if (!document.cookie.includes("userLoggedIn=true")) {
-                document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
+            if (sessionStorage.getItem("userLoggedIn") !== "true") {
+                try { sessionStorage.setItem("userLoggedIn", "true"); } catch {}
             }
-            if (localStorage.getItem("userLoggedIn") !== "true") {
-                try { localStorage.setItem("userLoggedIn", "true"); } catch {}
-            }
-        } else if (document.cookie.includes("userLoggedIn=true")) {
-            try { localStorage.setItem("userLoggedIn", "true"); } catch {}
         }
     } catch {}
 }

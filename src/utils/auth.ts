@@ -137,41 +137,13 @@ export async function clearSessionCookie(req?: NextRequest | Request) {
 
 /**
  * Helper to verify requests inside Next.js route handlers.
- * Verifies the HttpOnly session cookie first, and falls back to
- * raw Cookie header, Authorization: Bearer <token>, or x-session-token headers.
+ * Verifies tab-specific Authorization: Bearer <token> or x-session-token headers FIRST,
+ * preventing a shared browser cookie from overriding an independent tab's session.
+ * Falls back to HttpOnly session cookie only when no tab-scoped header is provided.
  */
 export async function getVerifiedSession(req?: NextRequest | Request): Promise<SessionPayload | null> {
     try {
-        // 1. Try to read from HttpOnly session cookie via Next.js cookies()
-        try {
-            const cookieStore = await cookies();
-            const cookieToken = cookieStore.get("session")?.value;
-            if (cookieToken) {
-                const verified = verifyToken(cookieToken);
-                if (verified) return verified;
-            }
-        } catch {}
-
-        // 2. Also check req.cookies directly if NextRequest was provided
-        if (req && "cookies" in req && typeof (req as any).cookies?.get === "function") {
-            const reqCookieToken = (req as any).cookies.get("session")?.value;
-            if (reqCookieToken) {
-                const verified = verifyToken(reqCookieToken);
-                if (verified) return verified;
-            }
-        }
-
-        // 3. Fallback: Parse raw "cookie" header directly (crucial for proxies, Edge, and standard Request)
-        const rawCookie = req?.headers?.get("cookie");
-        if (rawCookie) {
-            const match = rawCookie.match(/(?:^|;\s*)session=([^;]+)/);
-            if (match) {
-                const verified = verifyToken(match[1]);
-                if (verified) return verified;
-            }
-        }
-
-        // 4. Fallback to Authorization header or custom header (x-session-token)
+        // 1. PRIORITY 1: Check Authorization: Bearer <token> or x-session-token headers
         let authHeader: string | null = null;
         if (req?.headers) {
             authHeader = req.headers.get("authorization") || req.headers.get("x-session-token");
@@ -190,6 +162,38 @@ export async function getVerifiedSession(req?: NextRequest | Request): Promise<S
             }
             if (token) {
                 const verified = verifyToken(token);
+                if (verified) return verified;
+                // An explicit tab token was provided but failed verification (e.g., expired or revoked).
+                // Do NOT fall back to a shared cookie from another user/tab!
+                return null;
+            }
+        }
+
+        // 2. PRIORITY 2: Fallback to HttpOnly session cookie when no tab-specific header was sent
+        try {
+            const cookieStore = await cookies();
+            const cookieToken = cookieStore.get("session")?.value;
+            if (cookieToken) {
+                const verified = verifyToken(cookieToken);
+                if (verified) return verified;
+            }
+        } catch {}
+
+        // Also check req.cookies directly if NextRequest was provided
+        if (req && "cookies" in req && typeof (req as any).cookies?.get === "function") {
+            const reqCookieToken = (req as any).cookies.get("session")?.value;
+            if (reqCookieToken) {
+                const verified = verifyToken(reqCookieToken);
+                if (verified) return verified;
+            }
+        }
+
+        // Fallback: Parse raw "cookie" header directly (crucial for proxies, Edge, and standard Request)
+        const rawCookie = req?.headers?.get("cookie");
+        if (rawCookie) {
+            const match = rawCookie.match(/(?:^|;\s*)session=([^;]+)/);
+            if (match) {
+                const verified = verifyToken(match[1]);
                 if (verified) return verified;
             }
         }

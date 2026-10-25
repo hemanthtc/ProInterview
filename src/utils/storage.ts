@@ -1,27 +1,10 @@
-const GLOBAL_KEYS = [
-    "appUsersDb",
-    "userLoggedIn",
-    "sessionToken",
-    "userSessionExpiresAt",
-    "userName",
-    "userIdentifier",
-    "userType",
-    "userRole",
-    "userSubscriptionPlan",
-    "userProfilePhoto",
-    "userOrgName",
-    "userAdminId",
-    "userDepartment",
-    "userAdditionalEmail",
-    "userGithub",
-    "userLinkedin",
-    "userPortfolio",
-    "userResumeCvName",
-    "userResumeCvText",
-    "userPhone",
-    "userEducationData",
-    "globalTheme",
-    "globalInterviewMode"
+import { TAB_AUTH_KEYS, DEVICE_PREF_KEYS, initTabSession } from "./tabSession";
+
+export { TAB_AUTH_KEYS, DEVICE_PREF_KEYS };
+
+export const GLOBAL_KEYS = [
+    ...TAB_AUTH_KEYS,
+    ...DEVICE_PREF_KEYS,
 ];
 
 const STORAGE_CHANGE_EVENT = "ai-storage-change";
@@ -31,7 +14,33 @@ const tempMemory: Record<string, string> = {};
 
 function emitStorageChange(key: string): void {
     if (typeof window === "undefined") return;
-    window.dispatchEvent(new CustomEvent(STORAGE_CHANGE_EVENT, { detail: { key } }));
+    try {
+        window.dispatchEvent(new CustomEvent(STORAGE_CHANGE_EVENT, { detail: { key } }));
+    } catch {}
+}
+
+/**
+ * Returns the tab-scoped storage mechanism (sessionStorage in browsers,
+ * with graceful fallback to localStorage in tests when window.sessionStorage is not stubbed).
+ */
+function getTabStorage(): Storage | null {
+    if (typeof window === "undefined") return null;
+    try {
+        if (typeof window.sessionStorage !== "undefined" && window.sessionStorage) {
+            return window.sessionStorage;
+        }
+    } catch {}
+    try {
+        if (typeof window.localStorage !== "undefined" && window.localStorage) {
+            return window.localStorage;
+        }
+    } catch {}
+    try {
+        if (typeof localStorage !== "undefined" && localStorage) {
+            return localStorage;
+        }
+    } catch {}
+    return null;
 }
 
 export function getScopedKey(key: string): string {
@@ -41,18 +50,35 @@ export function getScopedKey(key: string): string {
     }
     let userIdentifier = "guest";
     try {
-        userIdentifier = localStorage.getItem("userIdentifier") || "guest";
+        userIdentifier = getStorageItem("userIdentifier") || "guest";
     } catch {}
     return `${key}_${userIdentifier}`;
 }
 
 export function getStorageItem(key: string): string | null {
     if (typeof window === "undefined") return null;
+    initTabSession();
+    const tabStorage = getTabStorage();
 
     if (key === "userLoggedIn") {
-        // 1. Check active sessionToken first: auto-heals userLoggedIn and cookie if valid
+        // 1. Check expiration timestamp if stored (for sessions without a JWT token or test mocks)
         try {
-            const token = localStorage.getItem("sessionToken") || sessionStorage.getItem("sessionToken") || tempMemory["sessionToken"];
+            const exp =
+                tabStorage?.getItem("userSessionExpiresAt") ||
+                (typeof localStorage !== "undefined" ? localStorage.getItem("userSessionExpiresAt") : null) ||
+                tempMemory["userSessionExpiresAt"];
+            if (exp) {
+                if (Date.now() > Number(exp)) {
+                    // Session expired! Auto-logout and cleanup
+                    removeStorageItem("userLoggedIn");
+                    return null;
+                }
+            }
+        } catch {}
+
+        // 2. Check active sessionToken first in tab-scoped storage: auto-heals userLoggedIn if valid
+        try {
+            const token = tabStorage?.getItem("sessionToken") || tempMemory["sessionToken"];
             if (token) {
                 let isExpired = false;
                 try {
@@ -67,12 +93,9 @@ export function getStorageItem(key: string): string | null {
 
                 if (!isExpired) {
                     try {
-                        localStorage.setItem("userLoggedIn", "true");
+                        tabStorage?.setItem("userLoggedIn", "true");
                     } catch {}
                     tempMemory["userLoggedIn"] = "true";
-                    if (typeof document !== "undefined") {
-                        document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
-                    }
                     return "true";
                 } else {
                     removeStorageItem("userLoggedIn");
@@ -81,85 +104,61 @@ export function getStorageItem(key: string): string | null {
             }
         } catch {}
 
-        // 2. Check expiration timestamp if stored (for sessions without a JWT token)
+        // 3. Tab storage or temporary memory status
         try {
-            const exp = localStorage.getItem("userSessionExpiresAt") || tempMemory["userSessionExpiresAt"];
-            if (exp) {
-                if (Date.now() > Number(exp)) {
-                    // Session expired! Auto-logout and cleanup
-                    removeStorageItem("userLoggedIn");
-                    return null;
-                }
-            }
-        } catch {}
-
-        // 3. Local or temporary memory status
-        try {
-            const fromLocal = localStorage.getItem("userLoggedIn");
-            if (fromLocal === "true") {
-                if (typeof document !== "undefined" && !document.cookie.includes("userLoggedIn=true")) {
-                    document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
-                }
-                return "true";
-            }
-            if (fromLocal === "guest") return "guest";
+            const fromTab = tabStorage?.getItem("userLoggedIn");
+            if (fromTab === "true") return "true";
+            if (fromTab === "guest") return "guest";
         } catch {}
 
         const fromTemp = tempMemory["userLoggedIn"];
         if (fromTemp === "true") return "true";
         if (fromTemp === "guest") return "guest";
 
-        // 4. Cross-check document.cookie and auto-heal localStorage
-        if (typeof document !== "undefined" && document.cookie) {
-            const match = document.cookie.match(/(?:^|;\s*)userLoggedIn=([^;]+)/);
-            if (match) {
-                const val = match[1].trim();
-                if (val === "true") {
-                    try { localStorage.setItem("userLoggedIn", "true"); } catch {}
-                    tempMemory["userLoggedIn"] = "true";
-                    return "true";
-                }
-                if (val === "guest") {
-                    try { localStorage.setItem("userLoggedIn", "guest"); } catch {}
-                    tempMemory["userLoggedIn"] = "guest";
-                    return "guest";
-                }
-            }
-        }
         return null;
     }
 
-    // Global un-scoped keys (userName, userIdentifier, userType, userRole, etc.)
-    if (GLOBAL_KEYS.includes(key)) {
+    // Tab-scoped keys (sessionToken, userIdentifier, userName, userRole, etc.)
+    if (TAB_AUTH_KEYS.includes(key)) {
+        try {
+            const val = tabStorage?.getItem(key);
+            if (val !== null && val !== undefined) return val;
+        } catch {}
+        const fromTemp = tempMemory[key];
+        if (fromTemp !== null && fromTemp !== undefined) return fromTemp;
+        return null;
+    }
+
+    // Global device preferences (globalTheme, globalInterviewMode, etc.)
+    if (DEVICE_PREF_KEYS.includes(key)) {
         try {
             const val = localStorage.getItem(key);
             if (val !== null && val !== undefined) return val;
         } catch {}
         const fromTemp = tempMemory[key];
         if (fromTemp !== null && fromTemp !== undefined) return fromTemp;
+        return null;
     }
 
     let isLoggedIn = false;
     try {
         isLoggedIn =
-            localStorage.getItem("userLoggedIn") === "true" ||
-            Boolean(localStorage.getItem("sessionToken")) ||
+            tabStorage?.getItem("userLoggedIn") === "true" ||
+            Boolean(tabStorage?.getItem("sessionToken")) ||
             tempMemory["userLoggedIn"] === "true" ||
-            Boolean(tempMemory["sessionToken"]) ||
-            (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+            Boolean(tempMemory["sessionToken"]);
     } catch {
         isLoggedIn =
             tempMemory["userLoggedIn"] === "true" ||
-            Boolean(tempMemory["sessionToken"]) ||
-            (typeof document !== "undefined" && document.cookie.includes("userLoggedIn=true"));
+            Boolean(tempMemory["sessionToken"]);
     }
 
     const scopedKey = getScopedKey(key);
     try {
         if (isLoggedIn) {
-            return localStorage.getItem(scopedKey) || tempMemory[scopedKey] || localStorage.getItem(key) || null;
+            return tabStorage?.getItem(scopedKey) || localStorage.getItem(scopedKey) || tempMemory[scopedKey] || tabStorage?.getItem(key) || localStorage.getItem(key) || null;
         } else {
-            return tempMemory[scopedKey] || localStorage.getItem(key) || null;
+            return tempMemory[scopedKey] || tabStorage?.getItem(key) || localStorage.getItem(key) || null;
         }
     } catch {
         return tempMemory[scopedKey] || null;
@@ -168,26 +167,28 @@ export function getStorageItem(key: string): string | null {
 
 export function setStorageItem(key: string, value: string): void {
     if (typeof window === "undefined") return;
+    initTabSession();
+    const tabStorage = getTabStorage();
+
     if (key === "userLoggedIn") {
         if (value === "true") {
             const durationMs = 7 * 24 * 60 * 60 * 1000; // 7 days
             const expiresAt = String(Date.now() + durationMs);
             try {
-                localStorage.setItem("userLoggedIn", "true");
-                localStorage.setItem("userSessionExpiresAt", expiresAt);
+                tabStorage?.setItem("userLoggedIn", "true");
+                tabStorage?.setItem("userSessionExpiresAt", expiresAt);
             } catch {}
             tempMemory["userLoggedIn"] = "true";
             tempMemory["userSessionExpiresAt"] = expiresAt;
             if (typeof document !== "undefined") {
-                document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
                 document.cookie = "userLoggedIn=true; path=/; max-age=604800; SameSite=Lax";
             }
         } else if (value === "guest") {
             const durationMs = 24 * 60 * 60 * 1000; // 24 hours
             const expiresAt = String(Date.now() + durationMs);
             try {
-                localStorage.setItem("userLoggedIn", "guest");
-                localStorage.setItem("userSessionExpiresAt", expiresAt);
+                tabStorage?.setItem("userLoggedIn", "guest");
+                tabStorage?.setItem("userSessionExpiresAt", expiresAt);
             } catch {}
             tempMemory["userLoggedIn"] = "guest";
             tempMemory["userSessionExpiresAt"] = expiresAt;
@@ -196,20 +197,24 @@ export function setStorageItem(key: string, value: string): void {
             }
         } else {
             try {
-                localStorage.removeItem("userLoggedIn");
-                localStorage.removeItem("userSessionExpiresAt");
+                tabStorage?.removeItem("userLoggedIn");
+                tabStorage?.removeItem("userSessionExpiresAt");
             } catch {}
             delete tempMemory["userLoggedIn"];
             delete tempMemory["userSessionExpiresAt"];
-            if (typeof document !== "undefined") {
-                document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-            }
         }
         emitStorageChange(key);
         return;
     }
 
-    if (GLOBAL_KEYS.includes(key)) {
+    if (TAB_AUTH_KEYS.includes(key)) {
+        try { tabStorage?.setItem(key, value); } catch {}
+        tempMemory[key] = value;
+        emitStorageChange(key);
+        return;
+    }
+
+    if (DEVICE_PREF_KEYS.includes(key)) {
         try { localStorage.setItem(key, value); } catch {}
         tempMemory[key] = value;
         emitStorageChange(key);
@@ -219,44 +224,62 @@ export function setStorageItem(key: string, value: string): void {
     let isLoggedIn = false;
     try {
         isLoggedIn =
-            localStorage.getItem("userLoggedIn") === "true" ||
-            tempMemory["userLoggedIn"] === "true" ||
-            (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
+            tabStorage?.getItem("userLoggedIn") === "true" ||
+            tempMemory["userLoggedIn"] === "true";
     } catch {
         isLoggedIn =
-            tempMemory["userLoggedIn"] === "true" ||
-            (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
+            tempMemory["userLoggedIn"] === "true";
     }
 
+    const scopedKey = getScopedKey(key);
     try {
         if (isLoggedIn) {
-            localStorage.setItem(getScopedKey(key), value);
+            tabStorage?.setItem(scopedKey, value);
+            localStorage.setItem(scopedKey, value);
         } else {
-            tempMemory[getScopedKey(key)] = value;
+            tempMemory[scopedKey] = value;
         }
     } catch {
-        tempMemory[getScopedKey(key)] = value;
+        tempMemory[scopedKey] = value;
     }
     emitStorageChange(key);
 }
 
 export function purgeAllUserLocalCaches(): void {
     if (typeof window === "undefined") return;
-    const keysToRemove: string[] = [];
+    const currentId = getStorageItem("userIdentifier");
+    if (!currentId) return;
+    const suffix = `_${currentId}`;
+
+    const localKeysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
-        if (key && !GLOBAL_KEYS.includes(key)) {
-            keysToRemove.push(key);
+        if (key && key.endsWith(suffix)) {
+            localKeysToRemove.push(key);
         }
     }
-    keysToRemove.forEach((key) => {
+    localKeysToRemove.forEach((key) => {
         try {
             localStorage.removeItem(key);
         } catch {}
     });
 
+    const tabStorage = getTabStorage();
+    if (tabStorage) {
+        const tabKeysToRemove: string[] = [];
+        for (let i = 0; i < tabStorage.length; i++) {
+            const key = tabStorage.key(i);
+            if (key && (key.endsWith(suffix) || TAB_AUTH_KEYS.includes(key))) {
+                tabKeysToRemove.push(key);
+            }
+        }
+        tabKeysToRemove.forEach((key) => {
+            try { tabStorage.removeItem(key); } catch {}
+        });
+    }
+
     Object.keys(tempMemory).forEach((key) => {
-        if (!GLOBAL_KEYS.includes(key)) {
+        if (key.endsWith(suffix) || TAB_AUTH_KEYS.includes(key)) {
             delete tempMemory[key];
         }
     });
@@ -264,66 +287,46 @@ export function purgeAllUserLocalCaches(): void {
 
 export function removeStorageItem(key: string): void {
     if (typeof window === "undefined") return;
+    const tabStorage = getTabStorage();
 
     if (key === "userLoggedIn") {
-        const authKeys = [
-            "userLoggedIn",
-            "sessionToken",
-            "userSessionExpiresAt",
-            "userName",
-            "userIdentifier",
-            "userType",
-            "userRole",
-            "userSubscriptionPlan",
-            "userProfilePhoto",
-            "userOrgName",
-            "userAdminId",
-            "userDepartment",
-            "userAdditionalEmail",
-            "userGithub",
-            "userLinkedin",
-            "userPortfolio",
-            "userResumeCvName",
-            "userResumeCvText",
-            "userPhone",
-            "userEducationData"
-        ];
-        authKeys.forEach((k) => {
-            try { localStorage.removeItem(k); } catch {}
-            try { sessionStorage.removeItem(k); } catch {}
+        TAB_AUTH_KEYS.forEach((k) => {
+            try { tabStorage?.removeItem(k); } catch {}
+            try {
+                if (typeof localStorage !== "undefined") {
+                    localStorage.removeItem(k);
+                }
+            } catch {}
             delete tempMemory[k];
         });
-
-        if (typeof document !== "undefined") {
-            const past = "Thu, 01 Jan 1970 00:00:00 GMT";
-            document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
-            document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0`;
-            document.cookie = `userLoggedIn=; expires=${past}; max-age=0`;
-            document.cookie = `session=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
-            document.cookie = `session=; path=/; expires=${past}; max-age=0`;
-            document.cookie = `session=; expires=${past}; max-age=0`;
-        }
         purgeAllUserLocalCaches();
         emitStorageChange(key);
         return;
     }
 
-    if (GLOBAL_KEYS.includes(key)) {
-        try { localStorage.removeItem(key); } catch {}
-        try { sessionStorage.removeItem(key); } catch {}
+    if (TAB_AUTH_KEYS.includes(key)) {
+        try { tabStorage?.removeItem(key); } catch {}
+        try {
+            if (typeof localStorage !== "undefined") {
+                localStorage.removeItem(key);
+            }
+        } catch {}
         delete tempMemory[key];
         emitStorageChange(key);
         return;
     }
 
-    const isLoggedIn =
-        localStorage.getItem("userLoggedIn") === "true" ||
-        (typeof document !== "undefined" && Boolean(document.cookie?.includes("userLoggedIn=true")));
-    if (isLoggedIn) {
-        try { localStorage.removeItem(getScopedKey(key)); } catch {}
-    } else {
-        delete tempMemory[getScopedKey(key)];
+    if (DEVICE_PREF_KEYS.includes(key)) {
+        try { localStorage.removeItem(key); } catch {}
+        delete tempMemory[key];
+        emitStorageChange(key);
+        return;
     }
+
+    const scopedKey = getScopedKey(key);
+    try { tabStorage?.removeItem(scopedKey); } catch {}
+    try { localStorage.removeItem(scopedKey); } catch {}
+    delete tempMemory[scopedKey];
     emitStorageChange(key);
 }
 
@@ -373,6 +376,18 @@ export function clearUserScopedData(userIdentifier: string): void {
         }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    const tabStorage = getTabStorage();
+    if (tabStorage) {
+        const tabKeysToRemove: string[] = [];
+        for (let i = 0; i < tabStorage.length; i++) {
+            const key = tabStorage.key(i);
+            if (key && key.endsWith(suffix)) {
+                tabKeysToRemove.push(key);
+            }
+        }
+        tabKeysToRemove.forEach(key => tabStorage.removeItem(key));
+    }
 
     Object.keys(tempMemory).forEach(key => {
         if (key.endsWith(suffix)) {

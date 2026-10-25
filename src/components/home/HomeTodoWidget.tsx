@@ -27,20 +27,8 @@ export default function HomeTodoWidget({
     isLoggedIn = false,
 }: HomeTodoWidgetProps) {
     const effectiveIsLoggedIn = isLoggedIn || isUserLoggedIn();
-    const [todos, setTodos] = useState<TodoItem[]>(() => {
-        if (typeof window !== "undefined") return getLocalTodos();
-        return [];
-    });
-    const todayFormatted = useSyncExternalStore(
-        () => () => {},
-        () =>
-            new Date().toLocaleDateString(undefined, {
-                weekday: "short",
-                month: "short",
-                day: "numeric",
-            }),
-        () => ""
-    );
+    const [todos, setTodos] = useState<TodoItem[]>([]);
+    const [todayFormatted, setTodayFormatted] = useState("");
     const [newTitle, setNewTitle] = useState("");
     const [selectedPriority, setSelectedPriority] = useState<TodoPriority>("high");
     const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
@@ -60,6 +48,14 @@ export default function HomeTodoWidget({
     }, [effectiveIsLoggedIn]);
 
     useEffect(() => {
+        setTodos(getLocalTodos());
+        setTodayFormatted(
+            new Date().toLocaleDateString(undefined, {
+                weekday: "short",
+                month: "short",
+                day: "numeric",
+            })
+        );
         loadData();
 
         const handleStorageChange = () => {
