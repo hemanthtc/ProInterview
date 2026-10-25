@@ -91,7 +91,7 @@ export interface ShapeCategory {
 export const SHAPE_CATEGORIES: ShapeCategory[] = [
     {
         name: "Basic Shapes",
-        defaultOpen: false,
+        defaultOpen: true,
         shapes: [
             { kind: "box", label: "Rectangle", defaultLabel: "Component", w: 140, h: 72 },
             { kind: "circle", label: "Circle", defaultLabel: "Cache", w: 90, h: 90 },

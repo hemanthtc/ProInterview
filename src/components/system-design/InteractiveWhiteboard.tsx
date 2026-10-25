@@ -10,7 +10,7 @@ import {
     type DragEvent,
     type PointerEvent as ReactPointerEvent,
 } from "react";
-import { Download, Eraser, MousePointer2, PenLine, Trash2, ChevronDown } from "lucide-react";
+import { Download, Eraser, MousePointer2, PenLine, Trash2, ChevronDown, Save } from "lucide-react";
 import {
     BoardShape,
     BoardShapeKind,
@@ -24,8 +24,11 @@ interface InteractiveWhiteboardProps {
     shapes: BoardShape[];
     onShapesChange: (shapes: BoardShape[]) => void;
     onFreehandChange?: (hasInk: boolean) => void;
+    onSubmitDiagram?: () => void;
+    isSubmitting?: boolean;
     theme?: "dark" | "light" | "eyeprotect";
     isLight?: boolean;
+    className?: string;
 }
 
 export interface InteractiveWhiteboardHandle {
@@ -576,7 +579,7 @@ function MiniShapeSymbol({ kind }: { kind: BoardShapeKind }) {
 }
 
 const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, InteractiveWhiteboardProps>(
-    function InteractiveWhiteboard({ shapes, onShapesChange, onFreehandChange, theme = "dark", isLight = false }, ref) {
+    function InteractiveWhiteboard({ shapes, onShapesChange, onFreehandChange, onSubmitDiagram, isSubmitting = false, theme = "dark", isLight = false, className = "" }: InteractiveWhiteboardProps, ref) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const gridCanvasRef = useRef<HTMLCanvasElement>(null);
     const boardRef = useRef<HTMLDivElement>(null);
@@ -591,6 +594,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
     const [editingId, setEditingId] = useState<string | null>(null);
     const reactId = useId();
     const [mobileLibraryCollapsed, setMobileLibraryCollapsed] = useState(true);
+    const [desktopLibraryOpen, setDesktopLibraryOpen] = useState(true);
 
     const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>(() => {
         const initial: Record<string, boolean> = {};
@@ -1069,220 +1073,259 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
 
     const canvasInteractive = tool === "draw" || tool === "erase";
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-4 items-start w-full">
-            {/* 1. Toolbar & Buttons Row (desktop: row 1 col 2, mobile: naturally top) */}
-            <div className="lg:col-start-2 lg:row-start-1 flex flex-wrap items-center gap-2 w-full">
-                <div className={`inline-flex rounded-xl border p-1 ${
-                    theme === "eyeprotect"
-                        ? "border-[#8c8578] bg-[#fffcf5] shadow-sm"
-                        : isLight
-                        ? "border-slate-300 bg-white shadow-sm"
-                        : "border-white/10 bg-black/30"
-                }`}>
-                    {(
-                        [
-                            { id: "select" as const, icon: MousePointer2, title: "Select / move" },
-                            { id: "draw" as const, icon: PenLine, title: "Freestyle draw" },
-                            { id: "erase" as const, icon: Eraser, title: "Erase ink" },
-                        ] as const
-                    ).map((t) => {
-                        const Icon = t.icon;
-                        const isActive = tool === t.id;
-                        return (
-                            <button
-                                key={t.id}
-                                type="button"
-                                title={t.title}
-                                onClick={() => setTool(t.id)}
-                                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                                    isActive
-                                        ? theme === "eyeprotect"
-                                            ? "bg-[#0b5f58] text-white font-bold"
+        <div className={`grid grid-cols-1 ${desktopLibraryOpen ? "lg:grid-cols-[230px_1fr] lg:grid-rows-[auto_auto_1fr]" : "lg:grid-cols-1 lg:grid-rows-[auto_auto_1fr]"} gap-2.5 items-stretch w-full h-full flex-1 min-h-0 ${className}`}>
+            {/* 1. Toolbar & Buttons Row */}
+            <div className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-1" : "lg:col-start-1 lg:row-start-1"} flex flex-wrap items-center justify-between gap-2 w-full shrink-0`}>
+                <div className="flex flex-wrap items-center gap-2">
+                    <div className={`inline-flex rounded-xl border p-1 ${
+                        theme === "eyeprotect"
+                            ? "border-[#8c8578] bg-[#fffcf5] shadow-sm"
+                            : isLight
+                            ? "border-slate-300 bg-white shadow-sm"
+                            : "border-white/10 bg-black/30"
+                    }`}>
+                        {(
+                            [
+                                { id: "select" as const, icon: MousePointer2, title: "Select / move" },
+                                { id: "draw" as const, icon: PenLine, title: "Freestyle draw" },
+                                { id: "erase" as const, icon: Eraser, title: "Erase ink" },
+                            ] as const
+                        ).map((t) => {
+                            const Icon = t.icon;
+                            const isActive = tool === t.id;
+                            return (
+                                <button
+                                    key={t.id}
+                                    type="button"
+                                    title={t.title}
+                                    onClick={() => setTool(t.id)}
+                                    className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                                        isActive
+                                            ? theme === "eyeprotect"
+                                                ? "bg-[#0b5f58] text-white font-bold"
+                                                : isLight
+                                                ? "bg-cyan-600 text-white font-bold shadow-sm"
+                                                : "bg-cyan-500/25 text-cyan-100"
+                                            : theme === "eyeprotect"
+                                            ? "text-[#1c1917] hover:bg-[#f5ebd9]"
                                             : isLight
-                                            ? "bg-cyan-600 text-white font-bold shadow-sm"
-                                            : "bg-cyan-500/25 text-cyan-100"
-                                        : theme === "eyeprotect"
-                                        ? "text-[#1c1917] hover:bg-[#f5ebd9]"
-                                        : isLight
-                                        ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
-                                        : "text-white/60 hover:text-white"
-                                }`}
-                            >
-                                <Icon className="h-3.5 w-3.5" />
-                                {t.id === "select" ? "Move" : t.id === "draw" ? "Draw" : "Erase"}
-                            </button>
-                        );
-                    })}
-                </div>
-                <button
-                    type="button"
-                    disabled={!selectedId}
-                    onClick={deleteSelectedShape}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
-                        theme === "eyeprotect"
-                            ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917] hover:bg-[#f5ebd9] shadow-sm"
-                            : isLight
-                            ? "border-slate-300 bg-white text-slate-800 hover:bg-slate-100 shadow-sm"
-                            : "border-white/15 bg-white/10 text-white hover:bg-white/20"
-                    }`}
-                    title={selectedId ? "Delete selected shape" : "Select a shape on board to delete"}
-                >
-                    <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
-                    <span>Delete shape</span>
-                </button>
-                <button
-                    type="button"
-                    onClick={clearAll}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
-                        theme === "eyeprotect"
-                            ? "border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100 shadow-sm"
-                            : isLight
-                            ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm"
-                            : "border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
-                    }`}
-                >
-                    <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                    <span>Clear board</span>
-                </button>
-                <button
-                    type="button"
-                    onClick={exportPng}
-                    className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer shadow-sm ${
-                        theme === "eyeprotect"
-                            ? "border-[#0b5f58] bg-[#0b5f58] text-white hover:bg-[#084842]"
-                            : isLight
-                            ? "border-cyan-600 bg-cyan-600 text-white hover:bg-cyan-700"
-                            : "border-cyan-400/40 bg-cyan-500/25 text-cyan-100 hover:bg-cyan-500/35"
-                    }`}
-                >
-                    <Download className="h-3.5 w-3.5 shrink-0" />
-                    <span>Export PNG</span>
-                </button>
-            </div>
+                                            ? "text-slate-700 hover:text-slate-900 hover:bg-slate-100"
+                                            : "text-white/60 hover:text-white"
+                                    }`}
+                                >
+                                    <Icon className="h-3.5 w-3.5" />
+                                    {t.id === "select" ? "Move" : t.id === "draw" ? "Draw" : "Erase"}
+                                </button>
+                            );
+                        })}
+                    </div>
 
-            {/* 2. Shape Library Sidebar (desktop: col 1 row 1-3, mobile: rendered below buttons, above description/canvas) */}
-            <div 
-                className={`lg:col-start-1 lg:row-start-1 lg:row-span-3 border rounded-2xl p-4 space-y-3 w-full h-full lg:max-h-[720px] lg:overflow-y-auto ${
-                    theme === "eyeprotect"
-                        ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917]"
-                        : isLight
-                        ? "border-slate-300 bg-white text-slate-800"
-                        : "border-white/10 bg-black/25"
-                }`}
-                aria-label="Shape Palette Categories"
-            >
-                <div className="flex items-center justify-between gap-4 flex-wrap pb-1 border-b border-white/5">
-                    <div className="flex items-center gap-2.5">
-                        <h4 className="text-[11px] font-black uppercase tracking-wider text-indigo-400">Library</h4>
+                    <button
+                        type="button"
+                        onClick={() => setDesktopLibraryOpen(!desktopLibraryOpen)}
+                        className={`hidden lg:inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
+                            desktopLibraryOpen
+                                ? isLight
+                                    ? "border-indigo-300 bg-indigo-50 text-indigo-700 font-bold"
+                                    : "border-indigo-400/40 bg-indigo-500/20 text-indigo-300 font-bold"
+                                : isLight
+                                ? "border-slate-300 bg-white text-slate-700 hover:bg-slate-100 shadow-sm"
+                                : "border-white/10 bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"
+                        }`}
+                        title={desktopLibraryOpen ? "Hide shapes library to maximize canvas" : "Show shapes library"}
+                    >
+                        <span>{desktopLibraryOpen ? "Hide Shapes" : "Show Shapes"}</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        disabled={!selectedId}
+                        onClick={deleteSelectedShape}
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                            theme === "eyeprotect"
+                                ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917] hover:bg-[#f5ebd9] shadow-sm"
+                                : isLight
+                                ? "border-slate-300 bg-white text-slate-800 hover:bg-slate-100 shadow-sm"
+                                : "border-white/15 bg-white/10 text-white hover:bg-white/20"
+                        }`}
+                        title={selectedId ? "Delete selected shape" : "Select a shape on board to delete"}
+                    >
+                        <Trash2 className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+                        <span>Delete</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={clearAll}
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer ${
+                            theme === "eyeprotect"
+                                ? "border-rose-400 bg-rose-50 text-rose-800 hover:bg-rose-100 shadow-sm"
+                                : isLight
+                                ? "border-rose-300 bg-rose-50 text-rose-700 hover:bg-rose-100 shadow-sm"
+                                : "border-rose-500/40 bg-rose-500/15 text-rose-200 hover:bg-rose-500/25"
+                        }`}
+                        title="Clear whiteboard canvas"
+                    >
+                        <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                        <span>Clear board</span>
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button
+                        type="button"
+                        onClick={exportPng}
+                        className={`inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs font-bold transition cursor-pointer shadow-sm ${
+                            theme === "eyeprotect"
+                                ? "border-[#0b5f58] bg-[#0b5f58] text-white hover:bg-[#084842]"
+                                : isLight
+                                ? "border-cyan-600 bg-cyan-600 text-white hover:bg-cyan-700"
+                                : "border-cyan-400/40 bg-cyan-500/25 text-cyan-100 hover:bg-cyan-500/35"
+                        }`}
+                        title="Export current diagram as a PNG image"
+                    >
+                        <Download className="h-3.5 w-3.5 shrink-0" />
+                        <span>Export PNG</span>
+                    </button>
+                    {onSubmitDiagram && (
                         <button
                             type="button"
-                            onClick={toggleExpandAll}
-                            className={`text-[9px] text-indigo-400 hover:text-indigo-300 font-bold px-1.5 py-0.5 rounded border border-indigo-400/20 hover:border-indigo-400/50 bg-indigo-500/5 transition cursor-pointer ${
-                                mobileLibraryCollapsed ? "hidden lg:inline-block" : "inline-block"
-                            }`}
+                            onClick={onSubmitDiagram}
+                            disabled={isSubmitting}
+                            className="inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-md shadow-emerald-500/20 cursor-pointer transition-all disabled:opacity-50"
+                            title="Submit diagram to interviewer for architectural review"
                         >
-                            {allExpanded ? "Collapse All" : "Expand All"}
+                            <Save className="h-3.5 w-3.5 shrink-0" />
+                            <span>Submit Diagram</span>
                         </button>
-                    </div>
-                    {/* Mobile toggle */}
-                    <button
-                        type="button"
-                        onClick={() => setMobileLibraryCollapsed(!mobileLibraryCollapsed)}
-                        className="lg:hidden text-[10px] text-cyan-400 hover:text-cyan-300 font-bold border border-cyan-400/20 px-2 py-0.5 rounded bg-cyan-500/5 cursor-pointer"
-                    >
-                        {mobileLibraryCollapsed ? "Expand Library" : "Collapse Library"}
-                    </button>
-                </div>
-
-                {mobileLibraryCollapsed && (
-                    <button
-                        type="button"
-                        onClick={() => setMobileLibraryCollapsed(false)}
-                        className="lg:hidden w-full text-[10px] text-cyan-400 hover:text-cyan-300 font-bold border border-dashed border-cyan-400/30 rounded-lg p-3 text-center cursor-pointer bg-cyan-500/[0.02] hover:bg-cyan-500/[0.06] transition duration-200 select-none block"
-                    >
-                        Expand and select shapes & lines
-                    </button>
-                )}
-
-                <div className={`space-y-2 pr-0.5 pt-1 ${mobileLibraryCollapsed ? "hidden lg:block" : "block"}`}>
-                    {SHAPE_CATEGORIES.map((category) => {
-                        const isOpen = !!expandedCategories[category.name];
-                        return (
-                            <div 
-                                key={category.name} 
-                                className={`rounded-xl border transition-all ${
-                                    theme === "eyeprotect"
-                                        ? "border-[#8c8578]/50 bg-[#f5ebd9]/30"
-                                        : isLight
-                                        ? "border-slate-200 bg-slate-50/50"
-                                        : "border-white/5 bg-white/[0.01]"
-                                }`}
-                            >
-                                <button
-                                    type="button"
-                                    onClick={() => toggleCategory(category.name)}
-                                    className="w-full flex items-center justify-between px-3 py-2 text-[11px] font-bold hover:opacity-80 transition-opacity"
-                                >
-                                    <span>{category.name}</span>
-                                    <ChevronDown 
-                                        className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ${
-                                            isOpen ? "rotate-180" : ""
-                                        }`} 
-                                    />
-                                </button>
-
-                                {isOpen && (
-                                    <div className="px-3 pb-3 pt-1 grid grid-cols-5 gap-1 border-t border-white/5">
-                                        {category.shapes.map((item) => (
-                                            <button
-                                                key={`${reactId}-${item.kind}`}
-                                                type="button"
-                                                draggable
-                                                onDragStart={(e) => onPaletteDragStart(e, item.kind)}
-                                                onClick={() => {
-                                                    const board = boardRef.current;
-                                                    const scale = board && board.clientWidth < 480 ? 0.72 : 1;
-                                                    const shape = createBoardShape(
-                                                        item.kind,
-                                                        24 + shapes.length * 10,
-                                                        24 + shapes.length * 8
-                                                    );
-                                                    if (scale !== 1) {
-                                                        shape.w = Math.round(shape.w * scale);
-                                                        shape.h = Math.round(shape.h * scale);
-                                                    }
-                                                    onShapesChange([...shapes, shape]);
-                                                    setSelectedId(shape.id);
-                                                    setTool("select");
-                                                }}
-                                                className={`cursor-grab aspect-square rounded-lg border flex items-center justify-center transition active:cursor-grabbing hover:-translate-y-0.5 select-none hover:shadow-md ${
-                                                    theme === "eyeprotect"
-                                                        ? "border-[#8c8578] bg-[#fffcf5] hover:bg-[#f5ebd9]"
-                                                        : isLight
-                                                        ? "border-slate-300 bg-white hover:bg-slate-100"
-                                                        : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-indigo-400/50"
-                                                }`}
-                                                title={item.label}
-                                            >
-                                                <MiniShapeSymbol kind={item.kind} />
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        );
-                    })}
+                    )}
                 </div>
             </div>
 
-            {/* 3. Description text (desktop: row 2 col 2, mobile: third) */}
-            <p className={`lg:col-start-2 lg:row-start-2 text-[11px] ${
+            {/* 2. Shape Library Sidebar (desktop: left column, mobile: collapsible) */}
+            {desktopLibraryOpen && (
+                <div 
+                    className={`lg:col-start-1 lg:row-start-1 lg:row-span-3 border rounded-xl p-3 space-y-2.5 w-full shrink-0 h-full max-h-[580px] lg:max-h-full overflow-y-auto ${
+                        theme === "eyeprotect"
+                            ? "border-[#8c8578] bg-[#fffcf5] text-[#1c1917]"
+                            : isLight
+                            ? "border-slate-300 bg-white text-slate-800"
+                            : "border-white/10 bg-black/25"
+                    }`}
+                    aria-label="Shape Palette Categories"
+                >
+                    <div className="flex items-center justify-between gap-2 pb-1 border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                            <h4 className="text-[11px] font-black uppercase tracking-wider text-indigo-400">Library</h4>
+                            <button
+                                type="button"
+                                onClick={toggleExpandAll}
+                                className={`text-[9px] text-indigo-400 hover:text-indigo-300 font-bold px-1.5 py-0.5 rounded border border-indigo-400/20 hover:border-indigo-400/50 bg-indigo-500/5 transition cursor-pointer ${
+                                    mobileLibraryCollapsed ? "hidden lg:inline-block" : "inline-block"
+                                }`}
+                            >
+                                {allExpanded ? "Collapse All" : "Expand All"}
+                            </button>
+                        </div>
+                        {/* Mobile toggle */}
+                        <button
+                            type="button"
+                            onClick={() => setMobileLibraryCollapsed(!mobileLibraryCollapsed)}
+                            className="lg:hidden text-[10px] text-cyan-400 hover:text-cyan-300 font-bold border border-cyan-400/20 px-2 py-0.5 rounded bg-cyan-500/5 cursor-pointer"
+                        >
+                            {mobileLibraryCollapsed ? "Expand Library" : "Collapse"}
+                        </button>
+                    </div>
+
+                    {mobileLibraryCollapsed && (
+                        <button
+                            type="button"
+                            onClick={() => setMobileLibraryCollapsed(false)}
+                            className="lg:hidden w-full text-[10px] text-cyan-400 hover:text-cyan-300 font-bold border border-dashed border-cyan-400/30 rounded-lg p-2.5 text-center cursor-pointer bg-cyan-500/[0.02] hover:bg-cyan-500/[0.06] transition duration-200 select-none block"
+                        >
+                            Expand shapes & lines
+                        </button>
+                    )}
+
+                    <div className={`space-y-1.5 pr-0.5 pt-0.5 ${mobileLibraryCollapsed ? "hidden lg:block" : "block"}`}>
+                        {SHAPE_CATEGORIES.map((category) => {
+                            const isOpen = !!expandedCategories[category.name];
+                            return (
+                                <div 
+                                    key={category.name} 
+                                    className={`rounded-lg border transition-all ${
+                                        theme === "eyeprotect"
+                                            ? "border-[#8c8578]/50 bg-[#f5ebd9]/30"
+                                            : isLight
+                                            ? "border-slate-200 bg-slate-50/50"
+                                            : "border-white/5 bg-white/[0.01]"
+                                    }`}
+                                >
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleCategory(category.name)}
+                                        className="w-full flex items-center justify-between px-2.5 py-1.5 text-[11px] font-bold hover:opacity-80 transition-opacity"
+                                    >
+                                        <span>{category.name}</span>
+                                        <ChevronDown 
+                                            className={`w-3.5 h-3.5 opacity-50 transition-transform duration-200 ${
+                                                isOpen ? "rotate-180" : ""
+                                            }`} 
+                                        />
+                                    </button>
+
+                                    {isOpen && (
+                                        <div className="px-2 pb-2 pt-1 grid grid-cols-4 gap-1 border-t border-white/5">
+                                            {category.shapes.map((item) => (
+                                                <button
+                                                    key={`${reactId}-${item.kind}`}
+                                                    type="button"
+                                                    draggable
+                                                    onDragStart={(e) => onPaletteDragStart(e, item.kind)}
+                                                    onClick={() => {
+                                                        const board = boardRef.current;
+                                                        const scale = board && board.clientWidth < 480 ? 0.72 : 1;
+                                                        const shape = createBoardShape(
+                                                            item.kind,
+                                                            24 + shapes.length * 10,
+                                                            24 + shapes.length * 8
+                                                        );
+                                                        if (scale !== 1) {
+                                                            shape.w = Math.round(shape.w * scale);
+                                                            shape.h = Math.round(shape.h * scale);
+                                                        }
+                                                        onShapesChange([...shapes, shape]);
+                                                        setSelectedId(shape.id);
+                                                        setTool("select");
+                                                    }}
+                                                    className={`cursor-grab aspect-square rounded-md border flex items-center justify-center transition active:cursor-grabbing hover:-translate-y-0.5 select-none hover:shadow-md ${
+                                                        theme === "eyeprotect"
+                                                            ? "border-[#8c8578] bg-[#fffcf5] hover:bg-[#f5ebd9]"
+                                                            : isLight
+                                                            ? "border-slate-300 bg-white hover:bg-slate-100"
+                                                            : "border-white/10 bg-white/5 hover:bg-white/10 hover:border-indigo-400/50"
+                                                    }`}
+                                                    title={item.label}
+                                                >
+                                                    <MiniShapeSymbol kind={item.kind} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* 3. Description text */}
+            <p className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-2" : "lg:col-start-1 lg:row-start-2"} text-[11px] shrink-0 ${
                 theme === "eyeprotect" ? "text-[#57534e] font-medium" : isLight ? "text-slate-600 font-medium" : "text-white/40"
             }`}>
                 Drag shapes onto the board (or tap to place), move them in Select mode, or switch to Draw for freestyle.
             </p>
 
-            {/* 4. Whiteboard Canvas grid workspace (desktop: row 3 col 2, mobile: bottom) */}
+            {/* 4. Whiteboard Canvas grid workspace */}
             <div
                 ref={boardRef}
                 onDragOver={onBoardDragOver}
@@ -1293,7 +1336,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className={`lg:col-start-2 lg:row-start-3 relative w-full overflow-hidden rounded-2xl border aspect-[4/3] sm:aspect-[900/560] touch-none transition-colors duration-300 min-h-[440px] sm:min-h-[520px] lg:min-h-[560px] ${
+                className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-3" : "lg:col-start-1 lg:row-start-3"} relative w-full overflow-hidden rounded-xl border touch-none transition-colors duration-300 flex-1 min-h-[380px] h-full ${
                     theme === "eyeprotect"
                         ? "bg-[#fffcf5] border-[#8c8578]/40"
                         : isLight

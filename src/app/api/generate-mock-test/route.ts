@@ -102,7 +102,7 @@ Ensure the questions are realistic, technically accurate, and completely unique.
                 timeout: 40000,
                 generationConfig: { temperature: 0.7 },
             });
-            const parsedData = parseJsonFromModel(textResponse);
+            const parsedData = parseJsonFromModel(textResponse) as any;
             if (Array.isArray(parsedData?.mcqs) && parsedData.mcqs.length > 0) {
                 return NextResponse.json(parsedData);
             }

@@ -998,14 +998,14 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
       if (contentType.includes('application/json')) {
         result = await res.json();
       } else if (res.status === 504) {
-        throw new Error("The AI server timed out while processing your resume. Please try again or re-upload your resume.");
+        throw new Error("The AI server took longer than expected. Please try again or tap Customize.");
       } else {
         const text = await res.text();
         throw new Error(text || `Server returned HTTP ${res.status}`);
       }
 
       if (!res.ok || result.error) {
-        alert('AI generation failed: ' + (result.error || `HTTP ${res.status}`));
+        triggerToast('AI generation notice: ' + (result.error || `HTTP ${res.status}`));
       } else {
         const updatedData = { ...resumeData };
 
@@ -1217,7 +1217,7 @@ export default function ProInterviewerApp({ onClose, onAtsWarningChange, onMobil
         }
       }
     } catch (err: any) {
-      alert('AI autofill error: ' + (err.message || 'Unknown error'));
+      triggerToast('AI autofill notice: ' + (err.message || 'Server was busy. Please try again.'));
     } finally {
       setIsAILoading(false);
     }
@@ -1270,7 +1270,7 @@ CRITICAL RULES FOR DESCRIPTIONS:
       }
 
       if (!res.ok || result.error) {
-        alert('ATS optimization failed: ' + (result.error || `HTTP ${res.status}`));
+        triggerToast('ATS optimization notice: ' + (result.error || `HTTP ${res.status}`));
       } else {
         const updatedData = { ...resumeData };
 
@@ -1560,7 +1560,7 @@ CRITICAL RULES FOR DESCRIPTIONS:
         }
       }
     } catch (err: any) {
-      alert('ATS optimization error: ' + (err.message || 'Unknown error'));
+      triggerToast('ATS optimization notice: ' + (err.message || 'Server was busy. Please try again.'));
     } finally {
       setIsAILoading(false);
     }

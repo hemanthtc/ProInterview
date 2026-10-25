@@ -101,6 +101,7 @@ export default function FeedbackAdminPanel() {
 
     // Deleting state
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [viewingScreenshot, setViewingScreenshot] = useState<string | null>(null);
 
     const loadFeedbacks = useCallback(async () => {
         try {
@@ -434,16 +435,24 @@ export default function FeedbackAdminPanel() {
 
                                 {/* Attachment */}
                                 {item.attachmentUrl && (
-                                    <div>
-                                        <a
-                                            href={item.attachmentUrl}
-                                            target="_blank"
-                                            rel="noreferrer"
-                                            className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-bold underline"
+                                    <div className="pt-1">
+                                        <div className="text-[11px] font-semibold text-white/60 mb-1 flex items-center gap-1.5">
+                                            <Paperclip className="w-3.5 h-3.5 text-indigo-400" /> Attached Workspace Screenshot:
+                                        </div>
+                                        <div
+                                            onClick={() => setViewingScreenshot(item.attachmentUrl!)}
+                                            className="cursor-pointer inline-block rounded-xl border border-white/15 overflow-hidden max-w-sm group relative hover:border-indigo-400/60 transition-all shadow-md bg-black"
+                                            title="Click to view full-size interview room screenshot"
                                         >
-                                            <Paperclip className="w-3.5 h-3.5" />
-                                            View Attached Screenshot / Document
-                                        </a>
+                                            <img
+                                                src={item.attachmentUrl}
+                                                alt="Interview Room Capture"
+                                                className="w-full max-h-36 object-cover group-hover:scale-102 transition-transform duration-200 opacity-90 group-hover:opacity-100"
+                                            />
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-[11px] text-white font-bold backdrop-blur-xs">
+                                                <span>Click to Expand Full Screenshot</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -556,6 +565,37 @@ export default function FeedbackAdminPanel() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Full-Screen Screenshot Lightbox Modal */}
+            {viewingScreenshot && (
+                <div
+                    className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-md flex flex-col p-4 sm:p-6 animate-fadeIn"
+                    onClick={() => setViewingScreenshot(null)}
+                >
+                    <div className="flex items-center justify-between pb-3 text-white border-b border-white/10 shrink-0">
+                        <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm">Full Interview Room Diagnostic Capture</span>
+                            <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2 py-0.5 rounded-full font-mono">
+                                Whole Window Resolution
+                            </span>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setViewingScreenshot(null)}
+                            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center p-2 overflow-auto" onClick={(e) => e.stopPropagation()}>
+                        <img
+                            src={viewingScreenshot}
+                            alt="Full Interview Room Capture"
+                            className="max-w-full max-h-[85vh] rounded-xl border border-white/10 shadow-2xl object-contain bg-black"
+                        />
                     </div>
                 </div>
             )}

@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { getStorageItem, setStorageItem } from "../../utils/storage";
-import { ArrowLeft, Clapperboard, Loader2, Target, RefreshCw, Sparkles, ChevronRight, TrendingUp, Award } from "lucide-react";
+import { ArrowLeft, Clapperboard, Loader2, Target, RefreshCw, Sparkles, ChevronRight, TrendingUp, Award, AlertTriangle } from "lucide-react";
 
 interface FilmAnnotation {
     t: number;
@@ -38,6 +38,7 @@ interface InterviewSession {
     userIdentifier?: string;
     company?: string;
     role?: string;
+    reportedIssues?: string[];
 }
 
 const kindStyles: Record<FilmAnnotation["kind"], string> = {
@@ -551,6 +552,15 @@ export default function FilmRoomClient() {
                         </p>
                         {session.summary && (
                             <p className="text-sm opacity-70 leading-relaxed">{session.summary}</p>
+                        )}
+                        {session.reportedIssues && session.reportedIssues.length > 0 && (
+                            <div className="mt-3 p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2 text-xs">
+                                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                <div>
+                                    <span className="font-bold text-amber-300">Technical Issue Accommodations:</span>
+                                    <span className="opacity-80 ml-1.5">{session.reportedIssues.join("; ")}. Evaluated verbally without penalty.</span>
+                                </div>
+                            </div>
                         )}
                     </div>
                 )}

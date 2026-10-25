@@ -17,6 +17,9 @@ import { resolveCompanyBank } from "../../data/companyBanks";
 import { speakInterviewText, stopSpeechInterviewText } from "../../utils/speakInterview";
 import InteractiveWhiteboard, { type InteractiveWhiteboardHandle } from "@/components/system-design/InteractiveWhiteboard";
 import type { BoardShape } from "@/utils/systemDesignBoard";
+import { detectInterfaceIssue } from "../../utils/interviewIssueDetector";
+import ReportIssueModal from "../../components/interview/ReportIssueModal";
+import { captureInterviewRoomScreenshot } from "../../utils/interviewScreenCapture";
 
 export default function InterviewRoom() {
     const router = useRouter();
@@ -76,6 +79,10 @@ export default function InterviewRoom() {
     const [shareBusy, setShareBusy] = useState(false);
     const [hrPersonaName, setHrPersonaName] = useState("");
     const [companyCloneName, setCompanyCloneName] = useState("");
+    const [issueNotice, setIssueNotice] = useState<string>("");
+    const [showReportModal, setShowReportModal] = useState<boolean>(false);
+    const [sessionIssues, setSessionIssues] = useState<string[]>([]);
+    const sessionIssuesRef = useRef<string[]>([]);
     const lastSpeechAtRef = useRef<number>(Date.now());
     const speechStartedAtRef = useRef<number | null>(null);
     const lastSavedSessionTsRef = useRef<number | null>(null);
@@ -619,38 +626,46 @@ export default function InterviewRoom() {
             if (isCallEndedRef.current) return;
 
             if (data.message) {
-                let aiMessage = data.message;
-                
-                if (aiMessage.includes("[MODE:CODE]")) {
+                const rawAiMessage = data.message;
+                const hasCodeMode = /\[MODE:\s*CODE\]/i.test(rawAiMessage);
+                const hasDrawMode = /\[MODE:\s*DRAW\]/i.test(rawAiMessage);
+                const hasChatMode = /\[MODE:\s*CHAT\]/i.test(rawAiMessage);
+                const hasTerminate = /\[TERMINATE\]/i.test(rawAiMessage);
+
+                // Clean ALL protocol mode and termination tags cleanly so no tag leaks into UI, transcripts, or TTS
+                const cleanMessage = rawAiMessage
+                    .replace(/\[MODE:\s*(?:CHAT|CODE|DRAW)\]/gi, "")
+                    .replace(/\[TERMINATE\]/gi, "")
+                    .trim();
+
+                if (hasCodeMode) {
                     setInteractionMode("code");
-                    aiMessage = aiMessage.replace("[MODE:CODE]", "").trim();
-                    const codeBlockMatch = aiMessage.match(/```(?:[a-zA-Z0-9_-]+)?\s*([\s\S]*?)```/);
+                    const codeBlockMatch = cleanMessage.match(/```(?:[a-zA-Z0-9_-]+)?\s*([\s\S]*?)```/);
                     if (codeBlockMatch && codeBlockMatch[1]) {
                         const starter = codeBlockMatch[1].trim();
                         if (starter) {
                             setCodeContent(starter);
                         }
                     }
-                    setActivePracticalTask({ type: "code", questionText: aiMessage });
-                } else if (aiMessage.includes("[MODE:DRAW]")) {
+                    setActivePracticalTask({ type: "code", questionText: cleanMessage });
+                } else if (hasDrawMode) {
                     setInteractionMode("draw");
-                    aiMessage = aiMessage.replace("[MODE:DRAW]", "").trim();
-                    setActivePracticalTask({ type: "draw", questionText: aiMessage });
-                } else if (aiMessage.includes("[MODE:CHAT]")) {
-                    setInteractionMode("chat");
-                    aiMessage = aiMessage.replace("[MODE:CHAT]", "").trim();
-                    setActivePracticalTask(null);
+                    setActivePracticalTask({ type: "draw", questionText: cleanMessage });
+                } else if (hasChatMode) {
+                    // Do not forcefully close the candidate's active drawing/code workspace if an interface issue was reported
+                    const hadIssue = sessionIssuesRef.current.length > 0;
+                    if (!hadIssue) {
+                        setInteractionMode("chat");
+                        setActivePracticalTask(null);
+                    }
                 }
 
-                if (aiMessage.includes("[TERMINATE]")) {
-                    const cleanMessage = aiMessage.replace("[TERMINATE]", "").trim();
-                    setMessages(prev => [...prev, { role: "assistant", content: cleanMessage }]);
-                    speakText(cleanMessage);
+                setMessages(prev => [...prev, { role: "assistant", content: cleanMessage }]);
+                speakText(cleanMessage);
+
+                if (hasTerminate) {
                     // End call automatically when the AI signals it's time
                     setTimeout(() => endCall(), 3000);
-                } else {
-                    setMessages(prev => [...prev, { role: "assistant", content: aiMessage }]);
-                    speakText(aiMessage);
                 }
             } else if (data.error) {
                 const errorMsg = "API Error: " + data.error;
@@ -733,7 +748,58 @@ export default function InterviewRoom() {
             try { recognitionRef.current.stop(); } catch { }
         }
 
-        await triggerAiResponse(resumeTextRef.current, messagesRef.current, textToSend.trim(), undefined, attachment);
+        // Automatic interface issue verification & background diagnostic capture
+        const issueCheck = detectInterfaceIssue(textToSend, interactionMode);
+        if (issueCheck.isIssue) {
+            const issueLabel = `${issueCheck.tool.toUpperCase()}: ${issueCheck.summary || textToSend.slice(0, 40)}`;
+            setSessionIssues((prev) => [...prev, issueLabel]);
+            sessionIssuesRef.current = [...sessionIssuesRef.current, issueLabel];
+
+            // Pre-exit capture: Grab the FULL interview room window BEFORE any state change or AI response
+            const whiteboardVectorFallback = whiteboardRef.current?.getPngDataUrl() || "";
+            let screenshot = "";
+            try {
+                screenshot = await captureInterviewRoomScreenshot({
+                    containerId: "interview-room-container",
+                    whiteboardFallbackDataUrl: whiteboardVectorFallback,
+                });
+            } catch {
+                screenshot = whiteboardVectorFallback;
+            }
+            if (!screenshot) {
+                screenshot = whiteboardVectorFallback;
+            }
+
+            void fetch("/api/interview/report-issue", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    issueType: issueCheck.tool,
+                    userMessage: textToSend.trim(),
+                    screenshot,
+                    diagnostics: {
+                        interactionMode,
+                        activePracticalTask: activePracticalTask?.type || null,
+                        currentQuestion: activePracticalTask?.questionText || messagesRef.current.slice(-1)[0]?.content || "N/A",
+                        browser: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+                        screenResolution: typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "unknown",
+                        screenCaptureType: "Full Interview Room Window",
+                        timestamp: new Date().toISOString(),
+                    },
+                }),
+            }).then((res) => res.json()).then((data) => {
+                if (data?.success) {
+                    setIssueNotice(`Full-room diagnostic snapshot captured & logged for engineering (#${data.ticketId?.slice(-6) || "ticket"}).`);
+                    setTimeout(() => setIssueNotice(""), 8000);
+                }
+            }).catch(() => {});
+        }
+
+        const promptText = issueCheck.isIssue
+            ? `${textToSend.trim()}\n\n[SYSTEM DIRECTIVE FOR INTERVIEWER: The candidate reported a technical interface issue with the ${issueCheck.tool}. A full-screen window screenshot of the entire interview room has been automatically captured and logged for the engineering team. DO NOT penalize the candidate. DO NOT emit [MODE:CHAT] or close their workspace—keep their active whiteboard or code editor open so they can see their work. Acknowledge the issue with empathy, assure them the engineering team has received the diagnostic snapshot, and invite them to explain their solution verbally or in text instead.]`
+            : textToSend.trim();
+
+        await triggerAiResponse(resumeTextRef.current, messagesRef.current, promptText, undefined, attachment);
     };
 
     // Update recognition callbacks every render for fresh refs
@@ -841,6 +907,18 @@ export default function InterviewRoom() {
         } finally {
             setCodeBusy(false);
         }
+    };
+
+    const handleSubmitWhiteboardDiagram = () => {
+        const dataUrl = whiteboardRef.current?.getPngDataUrl();
+        if (dataUrl) {
+            handleSendMessage("I have completed and attached my architectural diagram / schematic for review.", dataUrl);
+        } else {
+            handleSendMessage("I have completed the diagram on the whiteboard.");
+        }
+        setBoardShapes([]);
+        setActivePracticalTask(null);
+        setInteractionMode("chat");
     };
 
     const shareScorecard = async () => {
@@ -1034,6 +1112,7 @@ export default function InterviewRoom() {
                 company: getStorageItem("targetCompany") || "",
                 role: getStorageItem("preferredRoles") || "",
                 voiceCoach: coachSnap || undefined,
+                reportedIssues: sessionIssues.length > 0 ? sessionIssues : undefined,
             };
             const updatedSessions = [newSession, ...oldSessions];
             setStorageItem("interviewSessions", JSON.stringify(updatedSessions));
@@ -1048,7 +1127,8 @@ export default function InterviewRoom() {
                 sessionStorage.setItem("prointerview_completed_session", JSON.stringify({
                     scores: scoresToSave,
                     messages: messagesRef.current,
-                    blobUrl: recordedBlobUrl
+                    blobUrl: recordedBlobUrl,
+                    reportedIssues: sessionIssues.length > 0 ? sessionIssues : undefined,
                 }));
             } catch { /* ignore */ }
             void syncSessionsToCloud();
@@ -1127,6 +1207,19 @@ export default function InterviewRoom() {
                                 />
                             </div>
                             <div className="bg-white/5 border border-white/10 rounded-xl p-6 mb-6 text-left">
+                                {sessionIssues.length > 0 && (
+                                    <div className="mb-4 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-3 text-xs">
+                                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                                        <div>
+                                            <div className="font-bold text-amber-300 uppercase tracking-wider text-[11px]">
+                                                Technical Glitch Accommodation Notice
+                                            </div>
+                                            <div className="text-white/80 mt-0.5 leading-relaxed">
+                                                During this session, an interface issue was reported ({sessionIssues.join("; ")}). An automatic diagnostic snapshot and visual capture were sent to the engineering team. Your evaluation was adjusted to evaluate your architecture verbally/via text without penalty.
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                                 <h3 className="text-xs font-bold text-white/40 uppercase tracking-widest mb-4">Final Evaluation</h3>
                                 {typeof finalScores.portfolio === 'number' && (
                                     <div className="flex justify-between items-center mb-3">
@@ -1394,7 +1487,7 @@ export default function InterviewRoom() {
     if (!isAuthChecked) return null;
 
     return (
-        <div className="min-h-screen lg:h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
+        <div id="interview-room-container" className="min-h-screen lg:h-screen bg-[#050510] text-white flex flex-col font-sans relative overflow-hidden">
             {/* Ambient dynamic glassmorphism background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
                 <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] bg-indigo-500/10 blur-[120px] rounded-full mix-blend-screen opacity-50 animate-[pulse_8s_ease-in-out_infinite]"></div>
@@ -1417,7 +1510,24 @@ export default function InterviewRoom() {
                             {warningCount}/{MAX_WARNINGS} Warnings
                         </div>
                     )}
-                    <div className="text-white/50 text-sm">Session recording...</div>
+                    <div className="text-white/50 text-sm hidden sm:block">Session recording...</div>
+
+                    {issueNotice && (
+                        <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs px-2.5 py-1 rounded-lg animate-fadeIn shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="max-w-[200px] truncate">{issueNotice}</span>
+                        </div>
+                    )}
+
+                    <button
+                        type="button"
+                        onClick={() => setShowReportModal(true)}
+                        className="p-1.5 sm:px-2.5 sm:py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-medium text-white/70 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                        title="Report interface glitch or bug with instant workspace screenshot"
+                    >
+                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                        <span className="hidden md:inline">Report Glitch</span>
+                    </button>
                     
                     {/* Return to Practical Button (only active when candidate stepped back to chat) */}
                     {activePracticalTask && interactionMode === "chat" && (
@@ -1613,8 +1723,8 @@ export default function InterviewRoom() {
                                     )}
                                 </div>
                             )}
-                            <div className="px-3 pt-3 shrink-0">
-                                <VoiceCoachPanel snapshot={voiceCoach} compact className="!p-3" />
+                            <div className="px-3 pt-2.5 shrink-0">
+                                <VoiceCoachPanel snapshot={voiceCoach} compact={false} theme={theme} />
                             </div>
                             <div className="flex-grow overflow-y-auto p-3 sm:p-4 flex flex-col gap-3 sm:gap-4 scroll-smooth min-h-0">
                                 {(() => {
@@ -1630,7 +1740,9 @@ export default function InterviewRoom() {
                                                 {msg.attachment && (
                                                     <img src={msg.attachment} alt="Attachment" className="max-w-full h-auto rounded-xl mb-2 border border-white/20" />
                                                 )}
-                                                <span className={(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "relative z-10 text-white drop-shadow-md" : ""}>{msg.content}</span>
+                                                <span className={(msg.role !== 'user' && isSpeaking && idx === displayMessages.length - 1) ? "relative z-10 text-white drop-shadow-md" : ""}>
+                                                    {msg.content.replace(/\[MODE:\s*(?:CHAT|CODE|DRAW)\]/gi, "").replace(/\[TERMINATE\]/gi, "").trim()}
+                                                </span>
                                             </div>
                                         </div>
                                     ));
@@ -1732,7 +1844,7 @@ export default function InterviewRoom() {
                                     </div>
                                 )}
                                 <div className="px-3 pt-2 shrink-0">
-                                    <VoiceCoachPanel snapshot={voiceCoach} compact className="!p-2.5" />
+                                    <VoiceCoachPanel snapshot={voiceCoach} compact={true} defaultCollapsed={true} theme={theme} />
                                 </div>
                                 <div className="flex-grow overflow-y-auto p-3 flex flex-col gap-3 scroll-smooth min-h-0">
                                     {(() => {
@@ -1859,14 +1971,27 @@ export default function InterviewRoom() {
                                             <span className="font-bold text-sm">Architecture Whiteboard</span>
                                         </div>
                                     )}
-                                    <span className="text-xs text-white/30 ml-2">Practical Question Active</span>
+                                    <span className="text-xs text-white/30 hidden sm:inline ml-2">Practical Question Active</span>
                                 </div>
-                                <button
-                                    onClick={() => setInteractionMode("chat")}
-                                    className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                                >
-                                    <MessageSquare className="w-3 h-3" /> Back to Chat
-                                </button>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setInteractionMode("chat")}
+                                        className="flex items-center gap-1.5 text-xs text-white/50 hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+                                    >
+                                        <MessageSquare className="w-3 h-3" /> Back to Chat
+                                    </button>
+                                    {interactionMode === "draw" && (
+                                        <button
+                                            type="button"
+                                            onClick={handleSubmitWhiteboardDiagram}
+                                            disabled={isLoading}
+                                            className="flex items-center gap-1.5 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 px-3.5 py-1.5 rounded-lg shadow-md shadow-emerald-500/20 cursor-pointer transition-all disabled:opacity-50"
+                                            title="Submit completed architecture diagram"
+                                        >
+                                            <Save className="w-3.5 h-3.5" /> Submit Diagram
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Code Editor Panel */}
@@ -1941,24 +2066,30 @@ export default function InterviewRoom() {
 
                             {/* Architecture & System Design Whiteboard Panel */}
                             {interactionMode === "draw" && (
-                                <div className="flex-grow flex flex-col p-3 sm:p-4 gap-3 min-h-0 overflow-y-auto">
+                                <div className="flex-grow flex flex-col p-3 gap-2.5 min-h-0 overflow-hidden h-full">
                                     {/* Single active question banner */}
-                                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 shrink-0 flex flex-col gap-1.5 shadow-sm">
+                                    <div className={`border rounded-xl p-2.5 shrink-0 flex flex-col gap-1 transition-all ${
+                                        theme === "light"
+                                            ? "bg-amber-500/10 border-amber-500/25 text-amber-950"
+                                            : theme === "eyeprotect"
+                                            ? "bg-[#f5ebd9] border-[#8c8578]/40 text-[#451a03]"
+                                            : "bg-white/5 border-white/10"
+                                    }`}>
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <PenTool className="w-4 h-4 text-orange-400" />
-                                                <span className="text-xs font-bold text-orange-300 uppercase tracking-wider">
+                                                <PenTool className="w-3.5 h-3.5 text-orange-400" />
+                                                <span className="text-xs font-bold text-orange-400 uppercase tracking-wider">
                                                     Architecture / Diagram Challenge
                                                 </span>
                                             </div>
                                             <button
                                                 type="button"
                                                 onClick={() => setIsQuestionCollapsed(!isQuestionCollapsed)}
-                                                className="text-[11px] text-white/50 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                                                className="text-[11px] opacity-70 hover:opacity-100 flex items-center gap-1 transition-opacity cursor-pointer"
                                             >
                                                 {isQuestionCollapsed ? (
                                                     <>
-                                                        <span>Show Question</span>
+                                                        <span>Show Full Question</span>
                                                         <ChevronDown className="w-3.5 h-3.5" />
                                                     </>
                                                 ) : (
@@ -1970,53 +2101,37 @@ export default function InterviewRoom() {
                                             </button>
                                         </div>
                                         {!isQuestionCollapsed && (
-                                            <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-medium">
-                                                {activePracticalTask?.questionText ||
+                                            <p className={`text-xs sm:text-sm leading-relaxed font-medium line-clamp-3 hover:line-clamp-none transition-all ${
+                                                theme === "light" ? "text-slate-700" : theme === "eyeprotect" ? "text-[#451a03]" : "text-white/90"
+                                            }`}>
+                                                {(activePracticalTask?.questionText ||
                                                     [...messages].reverse().find(m => m.role === "assistant")?.content ||
-                                                    "Please draw the requested architecture or diagram on the whiteboard below."}
+                                                    "Please draw the requested architecture or diagram on the whiteboard below.")
+                                                    .replace(/\[MODE:\s*(?:CHAT|CODE|DRAW)\]/gi, "")
+                                                    .replace(/\[TERMINATE\]/gi, "")
+                                                    .trim()}
                                             </p>
                                         )}
                                     </div>
 
                                     {/* Interactive Whiteboard Canvas */}
-                                    <div className="flex-grow rounded-xl overflow-hidden border border-white/10 relative min-h-[380px] flex flex-col bg-slate-950">
+                                    <div className={`flex-grow rounded-xl overflow-hidden border relative flex flex-col min-h-0 h-full ${
+                                        theme === "light"
+                                            ? "bg-slate-50 border-slate-200"
+                                            : theme === "eyeprotect"
+                                            ? "bg-[#fffcf5] border-[#8c8578]/40"
+                                            : "bg-slate-950 border-white/10"
+                                    }`}>
                                         <InteractiveWhiteboard
                                             ref={whiteboardRef}
                                             shapes={boardShapes}
                                             onShapesChange={setBoardShapes}
                                             onFreehandChange={setBoardHasFreehand}
+                                            onSubmitDiagram={handleSubmitWhiteboardDiagram}
+                                            isSubmitting={isLoading}
                                             theme={theme}
                                             isLight={theme === "light"}
                                         />
-                                    </div>
-
-                                    {/* Bottom Action Controls */}
-                                    <div className="flex flex-wrap items-center gap-2 shrink-0">
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                const dataUrl = whiteboardRef.current?.getPngDataUrl();
-                                                if (dataUrl) {
-                                                    handleSendMessage("I have completed and attached my architectural diagram / schematic for review.", dataUrl);
-                                                } else {
-                                                    handleSendMessage("I have completed the diagram on the whiteboard.");
-                                                }
-                                                setBoardShapes([]);
-                                                setActivePracticalTask(null);
-                                                setInteractionMode("chat");
-                                            }}
-                                            disabled={isLoading}
-                                            className="flex-1 py-3 bg-orange-600 hover:bg-orange-500 disabled:opacity-50 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer text-sm text-white shadow-lg shadow-orange-600/25"
-                                        >
-                                            <Save className="w-4 h-4" /> Submit Diagram to Interviewer
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={() => setBoardShapes([])}
-                                            className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-medium transition-colors cursor-pointer text-sm text-white/80"
-                                        >
-                                            Clear Board
-                                        </button>
                                     </div>
                                 </div>
                             )}
@@ -2026,6 +2141,31 @@ export default function InterviewRoom() {
                         </div>
                     </div>
                 )}      </main>
+
+            {/* Manual Interface Issue & Screenshot Modal */}
+            <ReportIssueModal
+                isOpen={showReportModal}
+                onClose={() => setShowReportModal(false)}
+                theme={theme}
+                getScreenshot={() => {
+                    const vectorFallback = whiteboardRef.current?.getPngDataUrl() || null;
+                    return captureInterviewRoomScreenshot({
+                        containerId: "interview-room-container",
+                        whiteboardFallbackDataUrl: vectorFallback,
+                    });
+                }}
+                diagnostics={{
+                    interactionMode,
+                    activePracticalTask: activePracticalTask?.type || null,
+                    currentQuestion: activePracticalTask?.questionText || messages.slice(-1)[0]?.content || "N/A",
+                    screenResolution: typeof window !== "undefined" ? `${window.innerWidth}x${window.innerHeight}` : "unknown",
+                }}
+                onSuccess={(ticketId) => {
+                    setSessionIssues((prev) => [...prev, `Manual ticket #${ticketId.slice(-6)}`]);
+                    setIssueNotice(`Diagnostic ticket #${ticketId.slice(-6)} logged with screenshot for engineering.`);
+                    setTimeout(() => setIssueNotice(""), 8000);
+                }}
+            />
         </div>
     );
 }

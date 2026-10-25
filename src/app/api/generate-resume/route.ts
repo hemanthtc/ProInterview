@@ -2171,9 +2171,10 @@ CRITICAL ATS RESUME OPTIMIZATION & ZERO-DELETION RULES:
 
         let parsedJson: unknown = null;
         try {
+            // Set timeout to 18s (safely below AWS Amplify / API Gateway 29s proxy limit)
             const rawText = (await generateWithFallback(promptParts, { 
                 model: "gemini-3.8-flash",
-                timeout: 35000,
+                timeout: 18000,
                 generationConfig: { 
                     temperature: 0.2,
                     responseMimeType: "application/json"
@@ -2186,7 +2187,7 @@ CRITICAL ATS RESUME OPTIMIZATION & ZERO-DELETION RULES:
                 // If optimizing an existing resume, fall back to existing data rather than empty defaults
                 parsedJson = { ...parsedExistingResume, isFallback: true };
             } else {
-                parsedJson = generateResumeFallback({
+                const fallbackObj = generateResumeFallback({
                     preferredRoles,
                     targetCompanies,
                     roleMode,
@@ -2197,6 +2198,7 @@ CRITICAL ATS RESUME OPTIMIZATION & ZERO-DELETION RULES:
                     candidateEmail: sourceMode === "resume" ? "" : (session.identifier && session.identifier.includes("@") ? session.identifier : ""),
                     resumeText: resumeFileText
                 });
+                parsedJson = { ...fallbackObj, isFallback: true };
             }
         }
 
