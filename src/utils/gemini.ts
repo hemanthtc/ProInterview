@@ -83,19 +83,20 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 }
 
 // Real, currently valid Gemini models for text generateContent, ordered by preference.
-// Fast, sub-2s models (gemini-3.5-flash, gemini-3-flash-preview, gemini-3.1-flash-lite)
+// Fast, sub-2s models (gemini-2.5-flash, gemini-3-flash-preview, gemini-3.1-flash-lite, gemini-3.5-flash)
 // are prioritized first to guarantee immediate responsiveness during interviews.
 export const ADVANCED_CANDIDATE_MODELS = [
+  "gemini-2.5-flash",
   "gemini-3-flash-preview",
   "gemini-3.1-flash-lite",
   "gemini-3.5-flash",
   "gemini-3.5-flash-lite",
-  "gemini-3.8-flash",
-  "gemini-3.1-flash-lite-preview",
   "gemini-flash-latest",
   "gemini-flash-lite-latest",
+  "gemini-3.1-flash-lite-preview",
   "gemini-pro-latest",
   "gemini-2.5-pro",
+  "gemini-3.8-flash",
 ];
 
 /**
@@ -105,17 +106,18 @@ export const ADVANCED_CANDIDATE_MODELS = [
 export function preferTextModels(models: string[]): string[] {
   const isTextModel = (m: string) =>
     !/(embedding|imagen|tts|audio|live|aqa|learnlm|veo|robotics)/i.test(m) &&
-    !/(1\.5|2\.0)/i.test(m) &&
-    m !== "gemini-2.5-flash"; // 404 deprecated for new users
+    !/(1\.5|2\.0)/i.test(m);
   const score = (m: string) => {
     let s = 0;
+    if (m === "gemini-2.5-flash") s -= 60;
     if (m === "gemini-3-flash-preview") s -= 50;
     if (m === "gemini-3.1-flash-lite") s -= 45;
     if (m === "gemini-3.5-flash") s -= 40;
     if (m === "gemini-3.5-flash-lite") s -= 35;
     if (m === "gemini-3.1-flash-lite-preview") s -= 30;
-    if (m === "gemini-3.8-flash") s -= 25;
-    if (m === "gemini-flash-latest") s -= 20;
+    if (m === "gemini-flash-latest") s -= 25;
+    if (m === "gemini-flash-lite-latest") s -= 20;
+    if (m === "gemini-3.8-flash") s -= 5;
     if (m.includes("flash")) s -= 5;
     if (m.includes("latest")) s -= 3;
     if (m.includes("lite")) s += 1;
@@ -192,18 +194,19 @@ export async function generateWithFallback(
         // Include all reliable flash and pro models without artificial exclusions
         const candidateList = Array.from(new Set([
             primaryModel,
+            "gemini-2.5-flash",
             "gemini-3-flash-preview",
             "gemini-3.1-flash-lite",
             "gemini-3.5-flash",
             "gemini-3.5-flash-lite",
-            "gemini-3.8-flash",
+            "gemini-flash-latest",
+            "gemini-flash-lite-latest",
             ...validTextModels,
             ...ADVANCED_CANDIDATE_MODELS,
         ])).filter(m => 
             !/(1\.5|2\.0)/i.test(m) &&
             m !== "gemini-2.0-pro-exp-02-05" &&
-            m !== "gemini-2.0-flash-thinking-exp-01-21" &&
-            m !== "gemini-2.5-flash"
+            m !== "gemini-2.0-flash-thinking-exp-01-21"
         );
 
         const activeModels = candidateList.filter((m) => {
@@ -211,8 +214,8 @@ export async function generateWithFallback(
             return !exhaustedAt || now - exhaustedAt >= 15 * 1000;
         });
 
-        // Try up to 5 active candidate models within the available deadline
-        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 5);
+        // Try up to 6 active candidate models within the available deadline
+        const modelsToTry = Array.from(new Set(activeModels.length > 0 ? activeModels : candidateList)).slice(0, 6);
 
         // Automatically detect multi-turn conversation arrays ([{ role, parts }]) and wrap in { contents }
         // so the GoogleGenerativeAI SDK does not erroneously serialize { role, parts } as nested Part objects
@@ -229,16 +232,18 @@ export async function generateWithFallback(
                 console.warn(`[Gemini API] Insufficient time remaining (${remainingTime}ms) before serverless deadline; terminating model loop.`);
                 break;
             }
-            // Allocate a responsive slice per attempt (max 9-10s) so hanging models don't exhaust the overall deadline
-            const perModelBudget = options.timeout ? Math.min(options.timeout, 20000) : 9000;
+            // Allocate a responsive slice per attempt (max 8-10s) so hanging models don't exhaust the overall deadline
+            const perModelBudget = options.timeout ? Math.min(Math.floor(options.timeout / 2.5), 10000) : 8000;
             const thisModelTimeout = Math.min(perModelBudget, Math.max(remainingTime - 1000, 3000));
 
             try {
+                console.log(`[Gemini API] Invoking model: ${modelName}`);
                 const model = genAI.getGenerativeModel(
                     { model: modelName, generationConfig: options.generationConfig },
                     { timeout: thisModelTimeout }
                 );
                 const result = await model.generateContent(requestPayload);
+                console.log(`[Gemini API] Model ${modelName} succeeded!`);
                 return result.response.text();
             } catch (err: any) {
                 const is404 = err?.status === 404 || (err?.message && (err.message.includes("404") || err.message.includes("not found") || err.message.includes("no longer available")));
@@ -269,11 +274,10 @@ export async function generateWithFallback(
                 }
 
                 if (is429OrQuota) {
-                    // Google AI Studio quota limits apply to the entire key/project, not per model.
-                    // Immediately mark key as exhausted and rotate to next key or fallback to avoid wasting 20+ seconds.
-                    quotaExhaustedKeys.set(key, Date.now());
-                    console.warn(`[Gemini API] Quota exhausted (429/RESOURCE_EXHAUSTED) on key (...${key.slice(-6)}). Skipping remaining models for this key.`);
-                    break;
+                    // Mark this specific model as quota exhausted and immediately rotate to next candidate model
+                    quotaExhaustedModels.set(`${key}:${modelName}`, Date.now());
+                    console.warn(`[Gemini API] Quota/429 hit on key (...${key.slice(-6)}) model ${modelName}. Rotating to next candidate model.`);
+                    continue;
                 }
 
                 if (is503OrOverloaded) {

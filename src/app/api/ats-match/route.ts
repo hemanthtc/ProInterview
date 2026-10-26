@@ -125,7 +125,7 @@ Respond ONLY with valid JSON matching this schema:
 
         try {
             const raw = await generateWithFallback(prompt, {
-                model: "gemini-3.8-flash",
+                model: "gemini-2.5-flash",
                 generationConfig: {
                     temperature: 0.1,
                     responseMimeType: "application/json"

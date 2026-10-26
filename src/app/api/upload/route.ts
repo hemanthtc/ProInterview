@@ -40,7 +40,7 @@ async function extractTextFromFile(file: File): Promise<string> {
             ];
 
             const text = (await generateWithFallback(promptParts, {
-                model: "gemini-3.8-flash",
+                model: "gemini-2.5-flash",
                 timeout: 30000
             })).trim();
 

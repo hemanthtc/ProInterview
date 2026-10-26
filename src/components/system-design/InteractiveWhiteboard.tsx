@@ -760,7 +760,10 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
         const board = boardRef.current;
         if (!board) return { x: 0, y: 0 };
         const r = board.getBoundingClientRect();
-        return { x: clientX - r.left, y: clientY - r.top };
+        return { 
+            x: clientX - r.left + (board.scrollLeft || 0), 
+            y: clientY - r.top + (board.scrollTop || 0) 
+        };
     }
 
     function onPaletteDragStart(e: DragEvent, kind: BoardShapeKind) {
@@ -915,8 +918,10 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
         if (grid) ctx.drawImage(grid, 0, 0);
 
         const rect = board.getBoundingClientRect();
-        const scaleX = out.width / Math.max(1, rect.width);
-        const scaleY = out.height / Math.max(1, rect.height);
+        const effectiveWidth = Math.max(rect.width, board.scrollWidth || 0);
+        const effectiveHeight = Math.max(rect.height, board.scrollHeight || 0);
+        const scaleX = out.width / Math.max(1, effectiveWidth);
+        const scaleY = out.height / Math.max(1, effectiveHeight);
 
         const POLYGON_MAP: Record<string, number[][]> = {
             diamond: [[50,3], [97,50], [50,97], [3,50]],
@@ -1333,8 +1338,8 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                                                         const boardH = board?.clientHeight ?? 400;
                                                         const scale = board && board.clientWidth < 480 ? 0.72 : 1;
                                                         // Place shapes near visible center of the board
-                                                        const spawnX = Math.max(16, Math.min(boardW - 120, Math.round(boardW / 2 - 45 + ((shapes.length % 6) * 16))));
-                                                        const spawnY = Math.max(16, Math.min(boardH - 90, Math.round(boardH / 2 - 35 + ((shapes.length % 6) * 16))));
+                                                        const spawnX = Math.max(16, (board?.scrollLeft || 0) + Math.round(boardW / 2 - 45 + ((shapes.length % 6) * 16)));
+                                                        const spawnY = Math.max(16, (board?.scrollTop || 0) + Math.round(boardH / 2 - 35 + ((shapes.length % 6) * 16)));
                                                         const shape = createBoardShape(item.kind, spawnX, spawnY);
                                                         if (scale !== 1) {
                                                             shape.w = Math.round(shape.w * scale);
@@ -1376,7 +1381,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                 onClick={() => {
                     if (tool === "select") setSelectedId(null);
                 }}
-                className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-2" : "lg:col-start-1 lg:row-start-2"} relative w-full overflow-hidden rounded-xl border touch-none transition-colors duration-300 flex-1 min-h-[220px] sm:min-h-[260px] h-full ${
+                className={`${desktopLibraryOpen ? "lg:col-start-2 lg:row-start-2" : "lg:col-start-1 lg:row-start-2"} relative w-full overflow-auto rounded-xl border touch-none transition-colors duration-300 flex-1 min-h-[220px] sm:min-h-[260px] h-full ${
                     theme === "eyeprotect"
                         ? "bg-[#fffcf5] border-[#8c8578]/40"
                         : isLight
@@ -1384,32 +1389,33 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                         : "bg-[#0b1220] border-white/10"
                 }`}
             >
-                {/* Empty board subtle guide */}
-                {shapes.length === 0 && !hasInkState && (
-                    <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-center p-4 z-[1]">
-                        <span className="text-[11px] font-medium tracking-wide text-white/20 select-none">
-                            Select shapes from library or switch to Draw for freehand sketch
-                        </span>
-                    </div>
-                )}
-                {/* Layer 0: Grid background */}
-                <canvas
-                    ref={gridCanvasRef}
-                    width={900}
-                    height={560}
-                    className="absolute inset-0 h-full w-full z-0 pointer-events-none"
-                />
-                {/* Layer 2: Ink canvas (always on top visually, interactive only in draw/erase mode) */}
-                <canvas
-                    ref={canvasRef}
-                    width={900}
-                    height={560}
-                    className={`absolute inset-0 h-full w-full touch-none z-[2] ${
-                        canvasInteractive ? "cursor-crosshair" : "pointer-events-none"
-                    }`}
-                />
-                {/* Layer 1: Shapes (between grid and ink, always visible) */}
-                <div className={`absolute inset-0 z-[1] ${canvasInteractive ? "pointer-events-none" : ""}`}>
+                <div className="relative min-w-[1500px] min-h-[950px] w-full h-full">
+                    {/* Empty board subtle guide */}
+                    {shapes.length === 0 && !hasInkState && (
+                        <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-center p-4 z-[1]">
+                            <span className="text-[11px] font-medium tracking-wide text-white/20 select-none">
+                                Select shapes from library or switch to Draw for freehand sketch
+                            </span>
+                        </div>
+                    )}
+                    {/* Layer 0: Grid background */}
+                    <canvas
+                        ref={gridCanvasRef}
+                        width={1800}
+                        height={1100}
+                        className="absolute inset-0 h-full w-full z-0 pointer-events-none"
+                    />
+                    {/* Layer 2: Ink canvas (always on top visually, interactive only in draw/erase mode) */}
+                    <canvas
+                        ref={canvasRef}
+                        width={1800}
+                        height={1100}
+                        className={`absolute inset-0 h-full w-full touch-none z-[2] ${
+                            canvasInteractive ? "cursor-crosshair" : "pointer-events-none"
+                        }`}
+                    />
+                    {/* Layer 1: Shapes (between grid and ink, always visible) */}
+                    <div className={`absolute inset-0 z-[1] ${canvasInteractive ? "pointer-events-none" : ""}`}>
                     {shapes.map((shape) => {
                         const isLine = typeof shape.x2 === "number" && typeof shape.y2 === "number";
                         const left = isLine ? Math.min(shape.x, shape.x2!) : shape.x;
@@ -1488,6 +1494,7 @@ const InteractiveWhiteboard = forwardRef<InteractiveWhiteboardHandle, Interactiv
                             </div>
                         );
                     })}
+                </div>
                 </div>
             </div>
         </div>

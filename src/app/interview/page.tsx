@@ -652,11 +652,13 @@ export default function InterviewRoom() {
                     setActivePracticalTask({ type: "code", questionText: cleanMessage });
                 } else if (hasDrawMode) {
                     setInteractionMode("draw");
+                    setIsWorkspaceMaximized(true);
                     setActivePracticalTask({ type: "draw", questionText: cleanMessage });
                 } else if (hasChatMode) {
-                    // Do not forcefully close the candidate's active drawing/code workspace if an interface issue was reported
+                    // Do not forcefully close the candidate's active drawing/code workspace if an interface issue was reported or practical task is active
                     const hadIssue = sessionIssuesRef.current.length > 0;
-                    if (!hadIssue) {
+                    const isWorkingOnTask = !!activePracticalTask;
+                    if (!hadIssue && !isWorkingOnTask) {
                         setInteractionMode("chat");
                         setActivePracticalTask(null);
                     }
@@ -1499,73 +1501,75 @@ export default function InterviewRoom() {
             {/* Hidden canvas for face detection */}
             <canvas ref={canvasRef} className="hidden" />
 
-            <header className="p-4 border-b border-white/10 flex justify-between items-center bg-black/40 backdrop-blur-xl z-10">
-                <h1 className="font-bold text-xl flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
-                    Interview Room
-                </h1>
-                <div className="flex items-center gap-4">
-                    {/* Warning counter */}
-                    {warningCount > 0 && (
-                        <div className="flex items-center gap-1.5 text-yellow-400 text-sm font-medium bg-yellow-500/10 px-3 py-1.5 rounded-lg border border-yellow-500/20">
-                            <AlertTriangle className="w-4 h-4" />
-                            {warningCount}/{MAX_WARNINGS} Warnings
-                        </div>
-                    )}
-                    <div className="text-white/50 text-sm hidden sm:block">Session recording...</div>
+            {!isWorkspaceMaximized && (
+                <header className="p-4 border-b border-white/10 flex justify-between items-center bg-black/40 backdrop-blur-xl z-10">
+                    <h1 className="font-bold text-xl flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                        Interview Room
+                    </h1>
+                    <div className="flex items-center gap-4">
+                        {/* Warning counter */}
+                        {warningCount > 0 && (
+                            <div className="flex items-center gap-1.5 text-yellow-400 text-sm font-medium bg-yellow-500/10 px-3 py-1.5 rounded-lg border border-yellow-500/20">
+                                <AlertTriangle className="w-4 h-4" />
+                                {warningCount}/{MAX_WARNINGS} Warnings
+                            </div>
+                        )}
+                        <div className="text-white/50 text-sm hidden sm:block">Session recording...</div>
 
-                    {issueNotice && (
-                        <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs px-2.5 py-1 rounded-lg animate-fadeIn shrink-0">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                            <span className="max-w-[200px] truncate">{issueNotice}</span>
-                        </div>
-                    )}
+                        {issueNotice && (
+                            <div className="flex items-center gap-1.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-xs px-2.5 py-1 rounded-lg animate-fadeIn shrink-0">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                                <span className="max-w-[200px] truncate">{issueNotice}</span>
+                            </div>
+                        )}
 
-                    <button
-                        type="button"
-                        onClick={() => setShowReportModal(true)}
-                        className="p-1.5 sm:px-2.5 sm:py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-medium text-white/70 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
-                        title="Report interface glitch or bug with instant workspace screenshot"
-                    >
-                        <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-                        <span className="hidden md:inline">Report Glitch</span>
-                    </button>
-                    
-                    {/* Return to Practical Button (only active when candidate stepped back to chat) */}
-                    {activePracticalTask && interactionMode === "chat" && (
-                        <motion.button
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            onClick={() => setInteractionMode(activePracticalTask.type)}
-                            className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 border border-indigo-400/40 transition-all cursor-pointer animate-pulse shrink-0"
-                            title="Resume active practical problem"
+                        <button
+                            type="button"
+                            onClick={() => setShowReportModal(true)}
+                            className="p-1.5 sm:px-2.5 sm:py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg text-xs font-medium text-white/70 hover:text-white transition-all flex items-center gap-1.5 cursor-pointer shrink-0"
+                            title="Report interface glitch or bug with instant workspace screenshot"
                         >
-                            {activePracticalTask.type === "code" ? (
-                                <>
-                                    <CodeIcon className="w-3.5 h-3.5" />
-                                    <span>Resume Code Editor</span>
-                                </>
-                            ) : (
-                                <>
-                                    <PenTool className="w-3.5 h-3.5" />
-                                    <span>Resume Whiteboard</span>
-                                </>
-                            )}
-                        </motion.button>
-                    )}
+                            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="hidden md:inline">Report Glitch</span>
+                        </button>
+                        
+                        {/* Return to Practical Button (only active when candidate stepped back to chat) */}
+                        {activePracticalTask && interactionMode === "chat" && (
+                            <motion.button
+                                initial={{ scale: 0.9, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                onClick={() => setInteractionMode(activePracticalTask.type)}
+                                className="px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-500/30 border border-indigo-400/40 transition-all cursor-pointer animate-pulse shrink-0"
+                                title="Resume active practical problem"
+                            >
+                                {activePracticalTask.type === "code" ? (
+                                    <>
+                                        <CodeIcon className="w-3.5 h-3.5" />
+                                        <span>Resume Code Editor</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <PenTool className="w-3.5 h-3.5" />
+                                        <span>Resume Whiteboard</span>
+                                    </>
+                                )}
+                            </motion.button>
+                        )}
 
-                    {/* Theme Toggle Button */}
-                    <button 
-                        onClick={cycleTheme}
-                        className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
-                        title={`Current Theme: ${theme}. Click to switch.`}
-                    >
-                        {theme === "dark" && <Moon className="w-4 h-4" />}
-                        {theme === "light" && <Sun className="w-4 h-4" />}
-                        {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
-                    </button>
-                </div>
-            </header>
+                        {/* Theme Toggle Button */}
+                        <button 
+                            onClick={cycleTheme}
+                            className="p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-white/80 hover:text-white transition-all flex items-center justify-center shrink-0 cursor-pointer"
+                            title={`Current Theme: ${theme}. Click to switch.`}
+                        >
+                            {theme === "dark" && <Moon className="w-4 h-4" />}
+                            {theme === "light" && <Sun className="w-4 h-4" />}
+                            {theme === "eyeprotect" && <Eye className="w-4 h-4 text-amber-400" />}
+                        </button>
+                    </div>
+                </header>
+            )}
 
             {/* Suspicious activity warning banner */}
             {suspiciousMessage && (
@@ -1580,7 +1584,7 @@ export default function InterviewRoom() {
                 </motion.div>
             )}
 
-            <main className={`flex-grow flex flex-col lg:flex-row p-4 lg:p-6 gap-4 lg:gap-6 relative ${interactionMode !== "chat" ? "max-w-none px-4 lg:px-6 lg:overflow-hidden" : "max-w-7xl"} mx-auto w-full min-h-0`}>
+            <main className={`flex-grow flex flex-col lg:flex-row ${isWorkspaceMaximized ? "p-1 lg:p-2" : "p-4 lg:p-6"} gap-4 lg:gap-6 relative ${interactionMode !== "chat" ? "max-w-none px-2 lg:px-4 lg:overflow-hidden" : "max-w-7xl"} mx-auto w-full min-h-0`}>
                 {interactionMode === "chat" ? (
                     <>
                         {/* Videos Section */}
@@ -1962,7 +1966,7 @@ export default function InterviewRoom() {
                         {/* ===== RIGHT SIDE: Workspace Panel (Code / Canvas) (Flex-1) ===== */}
                         <div className={`flex-grow flex-col bg-[#111] border border-white/5 rounded-2xl overflow-hidden shadow-2xl min-w-0 h-full relative min-h-0 ${mobileWorkspaceView === "workspace" ? "flex" : "hidden lg:flex"}`}>
                             {/* Code/Draw Header */}
-                            <div className="p-3 border-b border-white/10 bg-black/20 flex items-center justify-between shrink-0">
+                            <div className="p-3 border-b border-white/10 bg-black/20 flex flex-wrap items-center justify-between gap-2 shrink-0">
                                 <div className="flex items-center gap-2">
                                     {interactionMode === "code" ? (
                                         <div className="flex items-center gap-2 text-emerald-400">
@@ -1975,8 +1979,97 @@ export default function InterviewRoom() {
                                             <span className="font-bold text-sm">Architecture Whiteboard</span>
                                         </div>
                                     )}
-                                    <span className="text-xs text-white/30 hidden sm:inline ml-2">Practical Question Active</span>
+                                    <span className="text-xs text-white/30 hidden xl:inline ml-2">Practical Question Active</span>
                                 </div>
+
+                                {/* In-Place Quick Call & Chat Controls (Visible when maximized or on wider screens) */}
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {/* Call Controls Group */}
+                                    <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-lg p-1">
+                                        <button
+                                            type="button"
+                                            onClick={toggleVideo}
+                                            className={`p-1.5 rounded-md transition-all cursor-pointer ${
+                                                videoActive ? "text-white/80 hover:text-white hover:bg-white/10" : "bg-red-500/20 text-red-400"
+                                            }`}
+                                            title={videoActive ? "Turn off camera" : "Turn on camera"}
+                                        >
+                                            {videoActive ? <Video className="w-3.5 h-3.5" /> : <VideoOff className="w-3.5 h-3.5" />}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={pauseCall}
+                                            className="p-1.5 rounded-md text-yellow-400 hover:bg-yellow-500/20 transition-all cursor-pointer"
+                                            title="Pause interview"
+                                        >
+                                            <Pause className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={endCall}
+                                            className="p-1.5 rounded-md bg-red-600 hover:bg-red-500 text-white transition-all cursor-pointer shadow-sm"
+                                            title="End interview call"
+                                        >
+                                            <PhoneOff className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+
+                                    {/* Proctoring Warning Badge (if any) */}
+                                    {warningCount > 0 && (
+                                        <div className="flex items-center gap-1 text-yellow-400 text-xs font-semibold bg-yellow-500/10 px-2.5 py-1.5 rounded-lg border border-yellow-500/20 shrink-0" title="Proctoring warnings">
+                                            <AlertTriangle className="w-3.5 h-3.5" />
+                                            <span>{warningCount}/{MAX_WARNINGS}</span>
+                                        </div>
+                                    )}
+
+                                    {/* Quick Voice / Text Chat Input */}
+                                    <div className="flex items-center gap-1.5 bg-black/40 border border-white/10 rounded-lg px-2 py-1">
+                                        <input
+                                            type="text"
+                                            value={userInput}
+                                            onChange={(e) => setUserInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === "Enter" && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    handleSendMessage();
+                                                }
+                                            }}
+                                            placeholder="Ask interviewer..."
+                                            className="bg-transparent text-xs text-white placeholder-white/30 outline-none w-28 sm:w-40 md:w-56"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (isListening) {
+                                                    recognitionRef.current?.stop();
+                                                    setIsListening(false);
+                                                } else {
+                                                    window.speechSynthesis?.cancel();
+                                                    setIsSpeaking(false);
+                                                    speechStartedAtRef.current = Date.now();
+                                                    recognitionRef.current?.start();
+                                                    setIsListening(true);
+                                                }
+                                            }}
+                                            className={`p-1 rounded-md transition-all cursor-pointer ${
+                                                isListening ? "bg-green-500 text-black animate-pulse shadow-md shadow-green-500/40" : "text-white/60 hover:text-white hover:bg-white/10"
+                                            }`}
+                                            title={isListening ? "Listening... click to stop" : "Speak to AI"}
+                                        >
+                                            <Mic className="w-3.5 h-3.5" />
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSendMessage()}
+                                            disabled={!userInput.trim() || isLoading}
+                                            className="p-1 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-40 transition-all cursor-pointer shadow-sm"
+                                            title="Send message"
+                                        >
+                                            <Send className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <div className="flex items-center gap-2">
                                     <button
                                         type="button"
