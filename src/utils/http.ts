@@ -39,6 +39,9 @@ export function enforceRateLimit(
     opts: { limit: number; windowMs?: number },
     action?: string
 ): NextResponse | null {
+    if (process.env.NODE_ENV === "development") {
+        return null;
+    }
     const rl = rateLimit(key, opts);
     if (!rl.allowed) return jsonRateLimited(rl.retryAfterSec, action);
     return null;

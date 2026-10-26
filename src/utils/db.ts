@@ -14,7 +14,7 @@ if (!cached) {
     cached = (global as any).mongoose = { conn: null, promise: null };
 }
 
-async function fetchWithTimeout(url: string, init?: RequestInit, timeoutMs = 2500): Promise<Response> {
+async function fetchWithTimeout(url: string, init?: RequestInit, timeoutMs = 6000): Promise<Response> {
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -60,14 +60,28 @@ async function resolveSrvConnectionString(srvUri: string): Promise<string> {
 
         const host = hostPort.split(":")[0];
 
-        // 1. Fetch SRV records via Cloudflare DoH (port 443)
-        const srvUrl = `https://cloudflare-dns.com/dns-query?name=_mongodb._tcp.${encodeURIComponent(host)}&type=SRV`;
-        const srvRes = await fetchWithTimeout(srvUrl, { headers: { "accept": "application/dns-json" } });
-        if (!srvRes.ok) {
-            throw new Error(`Cloudflare DoH SRV query failed with status: ${srvRes.status}`);
-        }
-        
-        const srvData = await srvRes.json();
+        // Helper to query Cloudflare first, then Google DoH
+        const queryDoH = async (name: string, type: string) => {
+            try {
+                const cfUrl = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(name)}&type=${type}`;
+                const res = await fetchWithTimeout(cfUrl, { headers: { "accept": "application/dns-json" } }, 4000);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.Answer && data.Answer.length > 0) return data;
+                }
+            } catch {
+                // fall through to Google DoH
+            }
+            const googleUrl = `https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`;
+            const resGoogle = await fetchWithTimeout(googleUrl, undefined, 4000);
+            if (resGoogle.ok) {
+                return await resGoogle.json();
+            }
+            throw new Error(`Both Cloudflare and Google DoH failed for ${name} (${type})`);
+        };
+
+        // 1. Fetch SRV records via DoH (port 443)
+        const srvData = await queryDoH(`_mongodb._tcp.${host}`, "SRV");
         if (!srvData.Answer || srvData.Answer.length === 0) {
             throw new Error("No SRV records found for the MongoDB Atlas host.");
         }
@@ -87,18 +101,18 @@ async function resolveSrvConnectionString(srvUri: string): Promise<string> {
             throw new Error("Failed to parse replica set nodes from SRV query.");
         }
 
-        // 2. Fetch TXT records via Cloudflare DoH for cluster options
-        const txtUrl = `https://cloudflare-dns.com/dns-query?name=${encodeURIComponent(host)}&type=TXT`;
-        const txtRes = await fetchWithTimeout(txtUrl, { headers: { "accept": "application/dns-json" } });
-        
+        // 2. Fetch TXT records via DoH for cluster options
         let txtOptions = "";
-        if (txtRes.ok) {
-            const txtData = await txtRes.json();
+        try {
+            const txtData = await queryDoH(host, "TXT");
             if (txtData.Answer && txtData.Answer.length > 0) {
                 const rawTxt = txtData.Answer[0].data || "";
                 txtOptions = rawTxt.replace(/^"|"$/g, "").replace(/\\/g, "");
             }
+        } catch {
+            // Optional TXT options
         }
+
 
         const combinedOptionsList: string[] = [];
         if (txtOptions) combinedOptionsList.push(txtOptions);

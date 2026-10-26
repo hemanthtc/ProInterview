@@ -46,11 +46,12 @@ export function getWorkingGeminiKey(): string {
     return keys[0];
 }
 
-export function getGeminiModel(model = "gemini-3.5-flash") {
+export function getGeminiModel(model = "gemini-2.5-flash") {
     const key = getWorkingGeminiKey();
     if (!key || key === "dummy") throw new Error("GEMINI_API_KEY is not configured");
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
 }
+
 
 /**
  * Executes a Gemini model request with an explicit timeout to prevent hanging request threads.
@@ -170,7 +171,7 @@ export async function generateWithFallback(
     const keys = getAllGeminiApiKeys();
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
-    const primaryModel = options.model || "gemini-3.5-flash";
+    const primaryModel = options.model || "gemini-2.5-flash";
     // Total execution budget across all candidate models (respect caller's timeout up to 45s for deep generations like resume synthesis)
     const overallTimeout = Math.min(options.timeout ?? 32000, 45000);
     const deadline = Date.now() + overallTimeout;

@@ -140,9 +140,10 @@ ${ANTI_LEAK_SUFFIX}`;
         let responseResult: string;
         try {
             responseResult = await generateWithFallback({ contents: conversationContents }, {
-                model: "gemini-3.5-flash",
+                model: "gemini-2.5-flash",
                 generationConfig: { temperature: 0.7 },
-                timeout: 28000
+                timeout: 20000
+
             });
         } catch (genErr: any) {
             console.warn("Realistic Interviewer Gemini error, using fallback message:", genErr?.message || genErr);

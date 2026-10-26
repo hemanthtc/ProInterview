@@ -20,6 +20,8 @@ import type { BoardShape } from "@/utils/systemDesignBoard";
 import { detectInterfaceIssue } from "../../utils/interviewIssueDetector";
 import ReportIssueModal from "../../components/interview/ReportIssueModal";
 import { captureInterviewRoomScreenshot, preloadScreenCapture } from "../../utils/interviewScreenCapture";
+import { RealisticHumanRenderer } from "@/components/Avatar/RealisticHumanRenderer";
+import { useAvatarSpeech } from "@/hooks/useAvatarSpeech";
 
 export default function RealisticInterviewRoom() {
     const router = useRouter();
@@ -75,6 +77,24 @@ export default function RealisticInterviewRoom() {
     const [avatarError, setAvatarError] = useState<string | null>(null);
     const tavusTalkAbortControllerRef = useRef<AbortController | null>(null);
     const isTavusInitializingRef = useRef<boolean>(false);
+
+    // 3D Realistic Avatar & Neural Speech Hook (fallback / non-Tavus mode)
+    const avatarSpeech = useAvatarSpeech({
+        onStart: () => setIsSpeaking(true),
+        onEnd: () => setIsSpeaking(false),
+    });
+
+    // Synchronize 3D avatar facial state with interview conversation activity
+    useEffect(() => {
+        if (avatarSpeech.isSpeaking) return;
+        if (isLoading) {
+            avatarSpeech.setState("thinking");
+        } else if (isListening) {
+            avatarSpeech.setState("listening");
+        } else {
+            avatarSpeech.setState("idle");
+        }
+    }, [isLoading, isListening, avatarSpeech.isSpeaking, avatarSpeech]);
 
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const recordedChunksRef = useRef<Blob[]>([]);
@@ -387,6 +407,7 @@ export default function RealisticInterviewRoom() {
 
         stopCamera();
         stopSpeechInterviewText();
+        avatarSpeech.stop();
 
         if (avatarVideoRef.current) {
             avatarVideoRef.current.pause();
@@ -871,7 +892,7 @@ export default function RealisticInterviewRoom() {
     const handleVoiceAndVideo = (text: string) => {
         if (isCallEndedRef.current) return;
         if (avatarType === "svg") {
-            speakText(text);
+            void avatarSpeech.speak(text);
         } else {
             triggerTavusVideo(text);
         }
@@ -891,9 +912,16 @@ export default function RealisticInterviewRoom() {
                 window.speechSynthesis.cancel();
             }
 
-            // Ensure Daily CallObject is joined AND Tavus remote participant has joined the room
+            // If Tavus is not selected or not connected, immediately speak via 3D realistic avatar (0ms delay)
+            const isTavusReady = avatarType === "tavus" && !!dailyCallRef.current && !!conversationIdRef.current;
+            if (!isTavusReady) {
+                void avatarSpeech.speak(text);
+                return;
+            }
+
+            // If Tavus is active, quickly verify room connection (max 1.2s instead of 15s)
             let attempts = 0;
-            while (attempts < 60) {
+            while (attempts < 6) {
                 if (isCallEndedRef.current || terminatedForCheating) return;
                 const currentCall = dailyCallRef.current;
                 const participants = currentCall?.participants?.();
@@ -901,7 +929,7 @@ export default function RealisticInterviewRoom() {
                 if (currentCall && currentCall.meetingState?.() === "joined-meeting" && (hasRemote || isDidAvailable)) {
                     break;
                 }
-                await new Promise(r => setTimeout(r, 250));
+                await new Promise(r => setTimeout(r, 200));
                 attempts++;
             }
 
@@ -912,8 +940,8 @@ export default function RealisticInterviewRoom() {
                 console.log("Attempting to send conversation.echo to Tavus via Daily CallObject:", cleanText);
                 let messageDelivered = false;
 
-                // Retry loop with 500ms backoff to allow WebRTC data channel to finish connection setup
-                for (let retry = 0; retry < 12; retry++) {
+                // Quick retry loop for WebRTC data channel
+                for (let retry = 0; retry < 4; retry++) {
                     if (isCallEndedRef.current || terminatedForCheating) break;
                     try {
                         call.sendAppMessage({
@@ -928,25 +956,24 @@ export default function RealisticInterviewRoom() {
                         messageDelivered = true;
                         break;
                     } catch (sendErr: any) {
-                        console.warn(`sendAppMessage attempt ${retry + 1} waiting for data channel (${sendErr?.message || sendErr}), retrying in 500ms...`);
-                        await new Promise(r => setTimeout(r, 500));
+                        await new Promise(r => setTimeout(r, 250));
                     }
                 }
 
                 if (!messageDelivered && !isCallEndedRef.current && !terminatedForCheating) {
-                    console.warn("Tavus data channel handshake timed out. Falling back to speech synthesis.");
-                    speakText(text);
+                    console.warn("Tavus data channel handshake timed out. Falling back to 3D avatar & neural speech.");
+                    void avatarSpeech.speak(text);
                 }
             } else {
-                console.warn("Daily CallObject not connected. Falling back to speech synthesis.");
-                speakText(text);
+                void avatarSpeech.speak(text);
             }
         } catch (err) {
             console.error("Tavus Stream speak error:", err);
-            speakText(text);
+            void avatarSpeech.speak(text);
         } finally {
             setIsAvatarGenerating(false);
         }
+
     };
 
     const triggerAiResponse = async (resume: string, history: { role: string, content: string, attachment?: string }[], nextMessage: string, forceType?: string, attachment?: string) => {
@@ -1081,13 +1108,7 @@ export default function RealisticInterviewRoom() {
 
     const speakText = (text: string) => {
         if (isCallEndedRef.current) return;
-        void speakInterviewText(text, {
-            provider: getStorageItem("aiProvider") || "gemini",
-            voiceLanguage: getStorageItem("voiceLanguage") || "en-IN",
-            isListening: () => isListeningRef.current,
-            onStart: () => setIsSpeaking(true),
-            onEnd: () => setIsSpeaking(false),
-        });
+        void avatarSpeech.speak(text);
     };
 
     // Keep refs for fresh state
@@ -1111,6 +1132,7 @@ export default function RealisticInterviewRoom() {
         if (!textToSend.trim() && !attachment) return;
         if (isLoadingRef.current) return;
         window.speechSynthesis.cancel();
+        avatarSpeech.stop();
         setIsSpeaking(false);
 
         // Take a camera snapshot if video is active
@@ -2049,7 +2071,7 @@ export default function RealisticInterviewRoom() {
                                                 ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
                                                 : "bg-indigo-500/15 border-indigo-500/30 text-indigo-300"
                                         }`}>
-                                            {avatarType === "svg" ? "0 Credits • SVG Active" : "Live Video Active"}
+                                            {avatarType === "svg" ? "0 Credits • 3D Avatar" : "Live Video Active"}
                                         </span>
                                     </div>
 
@@ -2063,9 +2085,9 @@ export default function RealisticInterviewRoom() {
                                                     ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25 font-extrabold"
                                                     : "text-white/60 hover:text-white hover:bg-white/5"
                                             }`}
-                                            title="Default mode: SVG Voice AI (0 API Credits consumed)"
+                                            title="Default mode: 3D Realistic Digital Human Avatar (0 API Credits consumed)"
                                         >
-                                            <span>⚡ SVG Avatar</span>
+                                            <span>⚡ 3D Avatar</span>
                                             <span className="text-[9px] opacity-75 font-normal">(0 Credits)</span>
                                         </button>
 
@@ -2109,45 +2131,16 @@ export default function RealisticInterviewRoom() {
 
                                     <div className="relative flex items-center justify-center z-0 w-full h-full">
                                         {avatarType === "svg" ? (
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0d0d1e] to-[#0a0a14] p-6 overflow-hidden">
-                                                {/* Futuristic Orb Animation */}
-                                                <div className="relative w-44 h-44 flex items-center justify-center">
-                                                    {/* Pulsing Outer Ring */}
-                                                    <motion.div
-                                                        className="absolute inset-0 rounded-full border border-indigo-500/25"
-                                                        animate={isSpeaking ? { scale: [1, 1.35, 1], opacity: [0.15, 0.45, 0.15] } : { scale: 1, opacity: 0.08 }}
-                                                        transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                                                    />
-                                                    {/* Orbiting Ring */}
-                                                    <motion.div
-                                                        className="absolute inset-2 rounded-full border-t-2 border-indigo-500/40 border-r-2 border-purple-500/40 border-b-2 border-transparent"
-                                                        animate={{ rotate: 360 }}
-                                                        transition={{ repeat: Infinity, duration: 6, ease: "linear" }}
-                                                    />
-                                                    {/* Glowing Core */}
-                                                    <motion.div
-                                                        className="w-24 h-24 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-[0_0_50px_rgba(99,102,241,0.35)] relative z-10"
-                                                        animate={isSpeaking ? { scale: [1, 1.1, 1], boxShadow: ["0 0 50px rgba(99, 102, 241, 0.35)", "0 0 80px rgba(99, 102, 241, 0.7)", "0 0 50px rgba(99, 102, 241, 0.35)"] } : { scale: 1 }}
-                                                        transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
-                                                    >
-                                                        <Volume2 className="w-10 h-10 text-white animate-pulse" />
-                                                    </motion.div>
-                                                </div>
-                                                <div className="mt-8 text-center px-4 space-y-2">
-                                                    <h3 className="text-xs font-black tracking-widest uppercase bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent">
-                                                        AI Voice Synthesizer Active
-                                                    </h3>
-                                                    <p className="text-white/50 text-[11px] leading-relaxed max-w-xs">
-                                                        Default credit-saving mode. Full speech & audio interview capabilities active without consuming video API credits.
-                                                    </p>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleSwitchAvatarType("tavus")}
-                                                        className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[11px] font-bold text-indigo-300 hover:text-white transition-all cursor-pointer shadow-md"
-                                                    >
-                                                        <span>🎥 Switch to Live Video Avatar</span>
-                                                    </button>
-                                                </div>
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0d0d1e] to-[#0a0a14] overflow-hidden">
+                                                <RealisticHumanRenderer
+                                                    state={avatarSpeech.state}
+                                                    currentViseme={avatarSpeech.currentViseme}
+                                                    visemeIntensity={avatarSpeech.visemeIntensity}
+                                                    audioEnergy={avatarSpeech.audioEnergy}
+                                                    modelUrl="/models/facecap.glb"
+                                                    transcoderPath="/libs/basis/"
+                                                    className="w-full h-full"
+                                                />
                                             </div>
                                          ) : (
                                              <>
@@ -2285,27 +2278,22 @@ export default function RealisticInterviewRoom() {
                                         onClick={() => handleSwitchAvatarType("svg")}
                                         className={`px-1.5 py-0.5 rounded transition-all cursor-pointer ${avatarType === "svg" ? "bg-purple-600 text-white shadow-sm" : "text-white/50 hover:text-white"}`}
                                     >
-                                        SVG
+                                        3D Avatar
                                     </button>
                                 </div>
 
                                 <div className="relative flex items-center justify-center z-0 w-full h-full">
                                     {avatarType === "svg" ? (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-[#0a0a14] via-[#0d0d1e] to-[#0a0a14] p-4 overflow-hidden">
-                                            <div className="relative w-28 h-28 flex items-center justify-center">
-                                                <motion.div
-                                                    className="absolute inset-0 rounded-full border border-indigo-500/25"
-                                                    animate={isSpeaking ? { scale: [1, 1.3, 1], opacity: [0.15, 0.45, 0.15] } : { scale: 1, opacity: 0.08 }}
-                                                    transition={{ repeat: Infinity, duration: 1.8, ease: "easeInOut" }}
-                                                />
-                                                <motion.div
-                                                    className="w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.35)] relative z-10"
-                                                    animate={isSpeaking ? { scale: [1, 1.1, 1] } : { scale: 1 }}
-                                                    transition={{ repeat: Infinity, duration: 1.2, ease: "easeInOut" }}
-                                                >
-                                                    <Volume2 className="w-6 h-6 text-white animate-pulse" />
-                                                </motion.div>
-                                            </div>
+                                        <div className="relative w-full h-full min-h-[220px] bg-slate-950 flex items-center justify-center overflow-hidden">
+                                            <RealisticHumanRenderer
+                                                state={avatarSpeech.state}
+                                                currentViseme={avatarSpeech.currentViseme}
+                                                visemeIntensity={avatarSpeech.visemeIntensity}
+                                                audioEnergy={avatarSpeech.audioEnergy}
+                                                modelUrl="/models/facecap.glb"
+                                                transcoderPath="/libs/basis/"
+                                                className="w-full h-full"
+                                            />
                                         </div>
                                     ) : (
                                         <>

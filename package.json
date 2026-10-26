@@ -25,12 +25,14 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-select": "^5.10.2",
+    "three": "^0.186.1",
     "zod": "^3.25.17"
   },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "tts": "python server/tts/standalone_tts_server.py --port 8001",
     "test": "vitest run",
     "test:edu": "node --experimental-strip-types scripts/test-runner.mjs",
     "test:watch": "vitest",
@@ -44,6 +46,7 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.186.0",
     "aws-cdk": "^2.1143.0",
     "aws-cdk-lib": "^2.244.0",
     "caniuse-lite": "^1.0.30001809",

@@ -133,6 +133,10 @@ export async function checkAndIncrementUsage(
     kind: MeterKind,
     plan = "Free Tier"
 ): Promise<{ allowed: boolean; remaining: number; limit: number; retryAfterSec?: number }> {
+    // In development mode or local testing, never block developers with monthly lockouts
+    if (process.env.NODE_ENV === "development") {
+        return { allowed: true, remaining: 9999, limit: 9999 };
+    }
     await ensurePrepProgress(identifier);
     const limits = getPlanLimits(plan);
     const key = kind === "gemini" ? "geminiCalls" : kind === "sarvam" ? "sarvamCalls" : "coachBookings";
