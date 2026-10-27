@@ -31,6 +31,16 @@ export class AvatarAudioService {
     }
 
     /**
+     * Actively unlocks / resumes the AudioContext on user interaction (resolves AWS Amplify / HTTPS autoplay policy).
+     */
+    unlockAudioContext(): void {
+        const ctx = this.getAudioContext();
+        if (ctx && ctx.state === "suspended") {
+            ctx.resume().catch(() => {});
+        }
+    }
+
+    /**
      * Check if speech audio is currently playing.
      */
     isAudioPlaying(): boolean {
@@ -58,6 +68,12 @@ export class AvatarAudioService {
         if (!ctx) {
             onPlaybackEnded();
             return;
+        }
+
+        if (ctx.state === "suspended") {
+            try {
+                await ctx.resume();
+            } catch {}
         }
 
         // Convert Base64 string to ArrayBuffer

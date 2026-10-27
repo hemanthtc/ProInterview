@@ -60,7 +60,146 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
         }
     }, [ttsEndpoint]);
 
+    const fallbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    const cleanupFallback = useCallback(() => {
+        if (fallbackTimerRef.current) {
+            clearInterval(fallbackTimerRef.current);
+            fallbackTimerRef.current = null;
+        }
+        if (typeof window !== "undefined" && "speechSynthesis" in window) {
+            try {
+                window.speechSynthesis.cancel();
+            } catch {}
+        }
+    }, []);
+
+    const speakBrowserFallback = useCallback(
+        async (cleanText: string, speed: number) => {
+            if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+                setState("idle");
+                onEnd?.();
+                return;
+            }
+
+            cleanupFallback();
+            setState("speaking");
+            onStart?.();
+
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+
+            // Voice selection: prioritize warm conversational voices
+            const voices = window.speechSynthesis.getVoices();
+            if (voices && voices.length > 0) {
+                const targetVoiceKeywords = [
+                    "google us english",
+                    "microsoft jenny online",
+                    "microsoft jenny",
+                    "microsoft aria online",
+                    "microsoft aria",
+                    "microsoft zira",
+                    "samantha",
+                    "microsoft guy",
+                    "natural",
+                    "neural",
+                    "en-us",
+                ];
+                let selectedVoice: SpeechSynthesisVoice | null = null;
+                for (const kw of targetVoiceKeywords) {
+                    const found = voices.find((v) => v.name.toLowerCase().includes(kw));
+                    if (found) {
+                        selectedVoice = found;
+                        break;
+                    }
+                }
+                if (!selectedVoice) {
+                    selectedVoice =
+                        voices.find((v) => v.lang === "en-US" || v.lang === "en_US") ||
+                        voices.find((v) => v.lang?.toLowerCase().startsWith("en")) ||
+                        voices[0] ||
+                        null;
+                }
+                if (selectedVoice) {
+                    utterance.voice = selectedVoice;
+                }
+            }
+
+            utterance.pitch = 0.95;
+            utterance.rate = Math.max(0.75, Math.min(1.35, speed * 0.90));
+            utterance.volume = 1.0;
+
+            // Generate synthetic viseme cadence matched to words
+            const words = cleanText.toLowerCase().replace(/[^a-z\s]/g, "").split(/\s+/).filter(Boolean);
+            let wordIndex = 0;
+            let subWordStep = 0;
+            const visemeCycle = ["aa", "ee", "oo", "oh", "fv", "mbp", "ch"];
+
+            fallbackTimerRef.current = setInterval(() => {
+                if (wordIndex >= words.length) {
+                    wordIndex = 0;
+                }
+                const currentWord = words[wordIndex] || "sil";
+                const char = currentWord[subWordStep] || "";
+                subWordStep++;
+                if (subWordStep >= currentWord.length) {
+                    subWordStep = 0;
+                    wordIndex++;
+                }
+
+                let targetViseme = "aa";
+                let intensity = 0.6;
+                let energy = 0.55;
+
+                if ("aeiou".includes(char)) {
+                    targetViseme = char === "a" ? "aa" : (char === "e" || char === "i" ? "ee" : "oo");
+                    intensity = 0.72;
+                    energy = 0.68;
+                } else if ("fv".includes(char)) {
+                    targetViseme = "fv";
+                    intensity = 0.55;
+                    energy = 0.45;
+                } else if ("mbp".includes(char)) {
+                    targetViseme = "mbp";
+                    intensity = 0.58;
+                    energy = 0.50;
+                } else if ("sztcdj".includes(char)) {
+                    targetViseme = "ch";
+                    intensity = 0.50;
+                    energy = 0.42;
+                } else {
+                    targetViseme = visemeCycle[(wordIndex + subWordStep) % visemeCycle.length];
+                    intensity = 0.48;
+                    energy = 0.40;
+                }
+
+                setCurrentViseme(targetViseme);
+                setVisemeIntensity(intensity);
+                setAudioEnergy(energy);
+            }, 75);
+
+            utterance.onboundary = () => {
+                setAudioEnergy(0.65);
+            };
+
+            const finishPlayback = () => {
+                cleanupFallback();
+                setState("idle");
+                setCurrentViseme("sil");
+                setVisemeIntensity(0);
+                setAudioEnergy(0);
+                onEnd?.();
+            };
+
+            utterance.onend = finishPlayback;
+            utterance.onerror = finishPlayback;
+
+            window.speechSynthesis.speak(utterance);
+        },
+        [cleanupFallback, onStart, onEnd]
+    );
+
     const stop = useCallback(() => {
+        cleanupFallback();
         if (abortControllerRef.current) {
             try {
                 abortControllerRef.current.abort();
@@ -73,7 +212,7 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
         setVisemeIntensity(0);
         setAudioEnergy(0);
         onEnd?.();
-    }, [onEnd]);
+    }, [cleanupFallback, onEnd]);
 
     const speak = useCallback(
         async (text: string, speed?: number) => {
@@ -84,6 +223,7 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
 
             if (!cleanText) return;
 
+            avatarAudioService.unlockAudioContext();
             stop();
             setState("thinking");
 
@@ -102,7 +242,6 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
                         signal: abortController.signal,
                     });
                     if (!res.ok) {
-                        console.warn(`[AvatarSpeech] TTS endpoint responded with HTTP ${res.status}`);
                         return { audio_base64: null };
                     }
                     return await res.json();
@@ -110,7 +249,6 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
                     if (fetchErr instanceof Error && fetchErr.name === "AbortError") {
                         return { audio_base64: null };
                     }
-                    console.warn("[AvatarSpeech] Sentence audio fetch skipped or timed out:", fetchErr);
                     return { audio_base64: null };
                 }
             };
@@ -120,8 +258,9 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
                     const data = await fetchSentenceAudio(sentences[0]);
                     if (abortController.signal.aborted) return;
                     if (!data || !data.audio_base64) {
-                        setState("idle");
-                        onEnd?.();
+                        // Local daemon offline / AWS Amplify serverless mode -> activate high-clarity browser voice
+                        console.info("[AvatarSpeech] Piper daemon offline on Amplify. Falling back to browser speech synthesis.");
+                        await speakBrowserFallback(cleanText, actualSpeed);
                         return;
                     }
                     setState("speaking");
@@ -143,8 +282,7 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
                     return;
                 }
 
-                // Pipelined multi-sentence streaming:
-                // Fetch first sentence immediately for instant sub-250ms speech start
+                // Pipelined multi-sentence streaming
                 let nextPromise = fetchSentenceAudio(sentences[0]);
                 let isFirst = true;
 
@@ -159,8 +297,13 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
                         nextPromise = fetchSentenceAudio(sentences[i + 1]);
                     }
 
-                    if (!currentData.audio_base64) {
-                        console.warn("[AvatarSpeech] Sentence neural audio missing, skipping chunk.");
+                    if (!currentData || !currentData.audio_base64) {
+                        if (isFirst) {
+                            // If primary sentence has no neural audio, fallback for entire utterance
+                            console.info("[AvatarSpeech] Piper daemon offline on Amplify. Falling back to browser speech synthesis.");
+                            await speakBrowserFallback(cleanText, actualSpeed);
+                            return;
+                        }
                         continue;
                     }
 
@@ -190,15 +333,11 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
                 }
             } catch (err: unknown) {
                 if (err instanceof Error && err.name === "AbortError") return;
-                console.error("[AvatarSpeech] Neural speech synthesis encountered an error:", err);
-                setState("idle");
-                setCurrentViseme("sil");
-                setVisemeIntensity(0);
-                setAudioEnergy(0);
-                onEnd?.();
+                console.warn("[AvatarSpeech] Error in neural synthesis, activating fallback:", err);
+                await speakBrowserFallback(cleanText, actualSpeed);
             }
         },
-        [ttsEndpoint, defaultSpeed, stop, onStart, onEnd]
+        [ttsEndpoint, defaultSpeed, stop, onStart, onEnd, speakBrowserFallback]
     );
 
     return {
