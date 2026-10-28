@@ -71,35 +71,11 @@ function resolveScriptPath(): string | null {
 }
 
 /**
- * Auto-spawns the standalone Piper TTS microservice if offline.
+ * Checks if standalone Piper TTS microservice is running without spawning external terminal windows.
  */
 function ensureTtsDaemonRunning(): boolean {
-    const now = Date.now();
-    if (isSpawningDaemon || now - lastSpawnAttempt < 12000) return isSpawningDaemon;
-
-    const pythonPath = resolvePythonPath();
-    const scriptPath = resolveScriptPath();
-
-    if (pythonPath && scriptPath) {
-        isSpawningDaemon = true;
-        lastSpawnAttempt = now;
-        try {
-            const child = spawn(/*turbopackIgnore: true*/ pythonPath, [scriptPath, "--port", STANDALONE_PORT], {
-                detached: true,
-                stdio: "ignore",
-                cwd: path.dirname(scriptPath),
-                windowsHide: true,
-            });
-            child.unref();
-            setTimeout(() => {
-                isSpawningDaemon = false;
-            }, 6000);
-            return true;
-        } catch (e) {
-            console.warn("[TTS API Proxy] Failed to auto-spawn TTS daemon:", e);
-            isSpawningDaemon = false;
-        }
-    }
+    // Disabled auto-spawn to prevent unwanted background terminal popups.
+    // Client-side WebAssembly (piperWasmService) handles synthesis directly in-browser.
     return false;
 }
 

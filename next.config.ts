@@ -35,7 +35,7 @@ const securityHeaders = [
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
             "font-src 'self' https://fonts.gstatic.com",
             "img-src 'self' data: blob: https://*.razorpay.com https://cdn.razorpay.com https://*.amazonaws.com https://*.googleusercontent.com https://lh3.googleusercontent.com https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net",
-            "connect-src 'self' blob: data: https://*.razorpay.com https://lumberjack.razorpay.com https://api.razorpay.com https://checkout.razorpay.com https://generativelanguage.googleapis.com https://api.sarvam.ai https://tavusapi.com https://*.daily.co wss://*.daily.co https://*.dailywebrtc.com wss://*.dailywebrtc.com https://*.dailywebrtc.net wss://*.dailywebrtc.net https://*.sentry.io https://api.adzuna.com https://api.happenstance.ai https://emkc.org",
+            "connect-src 'self' blob: data: https://*.razorpay.com https://lumberjack.razorpay.com https://api.razorpay.com https://checkout.razorpay.com https://generativelanguage.googleapis.com https://api.sarvam.ai https://tavusapi.com https://*.daily.co wss://*.daily.co https://*.dailywebrtc.com wss://*.dailywebrtc.com https://*.dailywebrtc.net wss://*.dailywebrtc.net https://*.sentry.io https://api.adzuna.com https://api.happenstance.ai https://emkc.org https://huggingface.co https://*.huggingface.co https://*.hf.co https://cdn.jsdelivr.net",
             "frame-src 'self' https://*.razorpay.com https://checkout.razorpay.com https://api.razorpay.com https://accounts.google.com https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net https://*.tavus.io",
             "media-src 'self' blob: https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net https://tavus.video https://*.tavus.video https://*.amazonaws.com",
             "worker-src 'self' blob: https://*.daily.co https://*.dailywebrtc.com https://*.dailywebrtc.net",
@@ -48,6 +48,22 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
     serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+    turbopack: {
+        resolveAlias: {
+            fs: "./src/utils/emptyShim.ts",
+            path: "./src/utils/emptyShim.ts",
+        },
+    },
+    webpack: (config, { isServer }) => {
+        if (!isServer) {
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                fs: false,
+                path: false,
+            };
+        }
+        return config;
+    },
     async headers() {
         return [
             {

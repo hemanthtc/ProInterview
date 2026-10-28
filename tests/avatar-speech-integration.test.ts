@@ -57,4 +57,22 @@ describe("Portable 3D Avatar & Neural TTS Speech Integration", () => {
             expect(resultValid.fallback).toBe(false);
         });
     });
+
+    describe("PiperWasmService (Serverless Client-Side Neural TTS)", () => {
+        it("is safe in non-browser environments and handles empty inputs gracefully", async () => {
+            const { piperWasmService } = await import("../src/services/piperWasmService");
+            expect(piperWasmService).toBeDefined();
+            expect(typeof piperWasmService.init).toBe("function");
+            expect(typeof piperWasmService.synthesize).toBe("function");
+            expect(piperWasmService.isReady()).toBe(false);
+
+            // In server/node test environment (no window), init() resolves safely without crashing
+            const ready = await piperWasmService.init();
+            expect(ready).toBe(false);
+
+            // Empty strings return null immediately
+            const resultEmpty = await piperWasmService.synthesize("");
+            expect(resultEmpty).toBeNull();
+        });
+    });
 });

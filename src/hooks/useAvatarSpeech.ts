@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { avatarAudioService } from "@/services/avatarAudioService";
+import { piperWasmService } from "@/services/piperWasmService";
 import { type AvatarState } from "@/components/Avatar/RealisticHumanRenderer";
 
 export interface UseAvatarSpeechOptions {
@@ -53,9 +54,10 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
     const isSpeaking = state === "speaking";
     const abortControllerRef = useRef<AbortController | null>(null);
 
-    // Background pre-warm probe on mount so neural model is hot in memory
+    // Background pre-warm probe on mount so client neural model is loaded and ready
     useEffect(() => {
         if (typeof window !== "undefined") {
+            piperWasmService.init().catch(() => {});
             fetch(ttsEndpoint, { method: "GET" }).catch(() => {});
         }
     }, [ttsEndpoint]);
@@ -234,6 +236,21 @@ export function useAvatarSpeech(options: UseAvatarSpeechOptions = {}): UseAvatar
             const actualSpeed = speed || defaultSpeed;
 
             const fetchSentenceAudio = async (sentence: string) => {
+                if (abortController.signal.aborted) return { audio_base64: null };
+
+                // 1. Client-Side WebAssembly Piper Neural Voice (Serverless, 0 extra ports, works on AWS Amplify)
+                try {
+                    const wasmResult = await piperWasmService.synthesize(sentence);
+                    if (wasmResult && wasmResult.audio_base64) {
+                        return wasmResult;
+                    }
+                } catch {
+                    // Fall through to server API or browser fallback
+                }
+
+                if (abortController.signal.aborted) return { audio_base64: null };
+
+                // 2. Server API fallback (if backend endpoint available)
                 try {
                     const res = await fetch(ttsEndpoint, {
                         method: "POST",
