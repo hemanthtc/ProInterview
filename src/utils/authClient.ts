@@ -1,9 +1,53 @@
-import { getStorageItem, removeStorageItem, TAB_AUTH_KEYS } from "./storage";
+import { getStorageItem, setStorageItem, removeStorageItem, TAB_AUTH_KEYS } from "./storage";
 
 export const AUTH_STORAGE_KEYS = [
     ...TAB_AUTH_KEYS,
     "prointerview_todos",
 ];
+
+let _isHydratingSession = false;
+
+/**
+ * Attempts to rehydrate session from /api/auth/me using the secure HttpOnly cookie.
+ */
+export async function hydrateSessionFromServer(): Promise<boolean> {
+    if (typeof window === "undefined" || _isHydratingSession) return false;
+    _isHydratingSession = true;
+    try {
+        const res = await fetch("/api/auth/me", {
+            method: "GET",
+            headers: { "Content-Type": "application/json" },
+            credentials: "same-origin",
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data?.authenticated && data?.user) {
+                const u = data.user;
+                setStorageItem("userLoggedIn", "true");
+                setStorageItem("userName", u.displayName || "");
+                setStorageItem("userIdentifier", u.identifier || "");
+                setStorageItem("userRole", u.orgRole || (u.isOrganization ? "admin" : "user"));
+                setStorageItem("userType", u.isOrganization ? "organization" : "user");
+                if (data.token) {
+                    setStorageItem("sessionToken", data.token);
+                }
+                if (u.subscriptionPlan) {
+                    setStorageItem("userSubscriptionPlan", u.subscriptionPlan);
+                }
+                if (u.organizationName) setStorageItem("userOrgName", u.organizationName);
+                if (u.department) setStorageItem("userDepartment", u.department);
+                if (u.adminId) setStorageItem("userAdminId", u.adminId);
+                if (u.profilePhoto) setStorageItem("userProfilePhoto", u.profilePhoto);
+                return true;
+            }
+        }
+    } catch {
+        // Silently fail if not authenticated
+    } finally {
+        _isHydratingSession = false;
+    }
+    return false;
+}
 
 /**
  * Clears authentication tokens, user metadata, and in-memory caches for the current tab.
@@ -113,18 +157,43 @@ export function installGlobalAuthFetchInterceptor(): void {
 
 /**
  * Reconciles tab-scoped authentication state for the current tab.
- * Does not pull credentials from other tabs' storage.
+ * Restores session from localStorage or server cookie when tab is reopened after closing.
  */
 export function syncClientAuthState(): void {
     if (typeof window === "undefined") return;
 
     try {
-        const token = sessionStorage.getItem("sessionToken");
-        const isLogged = sessionStorage.getItem("userLoggedIn") === "true" || !!token;
+        const tabStorage = typeof sessionStorage !== "undefined" ? sessionStorage : null;
+        let token = tabStorage?.getItem("sessionToken");
+        let isLogged = tabStorage?.getItem("userLoggedIn") === "true" || !!token;
+
+        // If current tab has no session in sessionStorage, check localStorage (tab was closed and reopened)
+        if (!isLogged && typeof localStorage !== "undefined") {
+            const localToken = localStorage.getItem("sessionToken");
+            const localLogged = localStorage.getItem("userLoggedIn") === "true" || !!localToken;
+            if (localLogged) {
+                TAB_AUTH_KEYS.forEach((key) => {
+                    const val = localStorage.getItem(key);
+                    if (val !== null && val !== undefined) {
+                        try { tabStorage?.setItem(key, val); } catch {}
+                    }
+                });
+                isLogged = true;
+                token = localToken;
+            }
+        }
 
         if (isLogged) {
-            if (sessionStorage.getItem("userLoggedIn") !== "true") {
-                try { sessionStorage.setItem("userLoggedIn", "true"); } catch {}
+            if (tabStorage?.getItem("userLoggedIn") !== "true") {
+                try { tabStorage?.setItem("userLoggedIn", "true"); } catch {}
+            }
+        } else {
+            // Check if user has an active session cookie on the domain
+            const hasSessionCookie =
+                typeof document !== "undefined" &&
+                (document.cookie.includes("userLoggedIn=true") || document.cookie.includes("session="));
+            if (hasSessionCookie) {
+                hydrateSessionFromServer();
             }
         }
     } catch {}

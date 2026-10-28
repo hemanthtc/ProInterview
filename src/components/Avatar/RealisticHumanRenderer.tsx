@@ -165,7 +165,29 @@ export const RealisticHumanRenderer: React.FC<RealisticHumanRendererProps> = ({
         const textureLoader = new THREE.TextureLoader();
 
         // 1. Head Diffuse Texture (Naturally arched dark espresso eyebrows, Cupid's bow lips, cheek warmth, and eyelid contours)
-        const faceTexture = textureLoader.load("/models/facecap_diffuse.png");
+        const faceTexture = textureLoader.load(
+            "/models/facecap_diffuse.jpeg",
+            (tex) => {
+                tex.generateMipmaps = true;
+                tex.minFilter = THREE.LinearMipmapLinearFilter;
+                tex.magFilter = THREE.LinearFilter;
+                tex.needsUpdate = true;
+            },
+            undefined,
+            () => {
+                // Fallback to PNG if JPEG is unavailable
+                textureLoader.load("/models/facecap_diffuse.png", (fallbackTex) => {
+                    fallbackTex.flipY = false;
+                    fallbackTex.colorSpace = THREE.SRGBColorSpace;
+                    fallbackTex.wrapS = THREE.ClampToEdgeWrapping;
+                    fallbackTex.wrapT = THREE.ClampToEdgeWrapping;
+                    fallbackTex.repeat.set(0.000238723238, 0.000239208952);
+                    fallbackTex.offset.set(0.00724834995, 0.0100790262);
+                    skinMat.map = fallbackTex;
+                    skinMat.needsUpdate = true;
+                });
+            }
+        );
         faceTexture.flipY = false;
         faceTexture.colorSpace = THREE.SRGBColorSpace;
         faceTexture.wrapS = THREE.ClampToEdgeWrapping;
@@ -177,27 +199,23 @@ export const RealisticHumanRenderer: React.FC<RealisticHumanRendererProps> = ({
         const skinMat = new THREE.MeshStandardMaterial({
             map: faceTexture,
             color: 0xffffff,
-            roughness: 0.60,
-            metalness: 0.02,
-            envMapIntensity: 0.85,
+            roughness: 0.58,
+            metalness: 0.01,
+            envMapIntensity: 0.90,
         });
 
-        // 2. Dedicated Eye Diffuse Texture (Natural white sclera, hazel-slate iris & pupil)
-        const eyeTexture = textureLoader.load("/models/eye_diffuse.png");
-        eyeTexture.flipY = false;
-        eyeTexture.colorSpace = THREE.SRGBColorSpace;
-        eyeTexture.wrapS = THREE.ClampToEdgeWrapping;
-        eyeTexture.wrapT = THREE.ClampToEdgeWrapping;
-        eyeTexture.repeat.set(0.000238723238, 0.000239208952);
-        eyeTexture.offset.set(0.00724834995, 0.0100790262);
+        // 2. Eye texture — loaded but UV transform will be read from GLB's original eye material
+        const eyeTextureUrl = "/models/eye_diffuse.jpeg";
+        const eyeTextureFallbackUrl = "/models/eye_diffuse.png";
 
-        const eyeMat = new THREE.MeshStandardMaterial({
-            map: eyeTexture,
-            color: 0xffffff,
-            roughness: 0.04,
-            metalness: 0.02,
-            envMapIntensity: 1.8,
-        });
+        const eyeMatProps = {
+            color: new THREE.Color(0xfbf9f6),  // Warm natural cornea/sclera tone
+            roughness: 0.22,                   // Organic wet tissue smoothness
+            metalness: 0.0,
+            envMapIntensity: 0.28,             // Subtle, warm ambient reflection (eliminates light-blue glare)
+            clearcoat: 0.35,                   // Natural wet tear-film specular highlight
+            clearcoatRoughness: 0.14,          // Soft natural corneal glint
+        };
 
         // 3. Bright clean dental enamel pearl white
         const teethMat = new THREE.MeshStandardMaterial({
@@ -235,7 +253,58 @@ export const RealisticHumanRenderer: React.FC<RealisticHumanRendererProps> = ({
                             morphDict = mesh.morphTargetDictionary;
                             mesh.material = skinMat;
                         } else if (allNames.includes("eye")) {
-                            mesh.material = eyeMat;
+                            // Read UV transform from the GLB's original eye material
+                            const origMat = mesh.material as THREE.MeshStandardMaterial;
+                            const origMap = origMat?.map;
+
+                            // Clone the eye texture with the CORRECT UV transform from the GLB
+                            const eyeTex = textureLoader.load(
+                                eyeTextureUrl,
+                                (tex) => {
+                                    tex.generateMipmaps = true;
+                                    tex.minFilter = THREE.LinearMipmapLinearFilter;
+                                    tex.magFilter = THREE.LinearFilter;
+                                    tex.needsUpdate = true;
+                                },
+                                undefined,
+                                () => {
+                                    // Fallback to PNG
+                                    textureLoader.load(eyeTextureFallbackUrl, (fbTex) => {
+                                        fbTex.flipY = false;
+                                        fbTex.colorSpace = THREE.SRGBColorSpace;
+                                        if (origMap) {
+                                            fbTex.wrapS = origMap.wrapS;
+                                            fbTex.wrapT = origMap.wrapT;
+                                            fbTex.repeat.copy(origMap.repeat);
+                                            fbTex.offset.copy(origMap.offset);
+                                        }
+                                        (mesh.material as THREE.MeshPhysicalMaterial).map = fbTex;
+                                        (mesh.material as THREE.MeshPhysicalMaterial).needsUpdate = true;
+                                    });
+                                }
+                            );
+                            eyeTex.flipY = false;
+                            eyeTex.colorSpace = THREE.SRGBColorSpace;
+
+                            // Preserve the original UV wrapS/wrapT/repeat/offset from the GLB
+                            if (origMap) {
+                                eyeTex.wrapS = origMap.wrapS;
+                                eyeTex.wrapT = origMap.wrapT;
+                                eyeTex.repeat.copy(origMap.repeat);
+                                eyeTex.offset.copy(origMap.offset);
+                                console.log(`[Avatar] Eye mesh "${child.name}" UV transform — repeat:`, origMap.repeat, "offset:", origMap.offset);
+                            } else {
+                                // Fallback: use the face UV transform
+                                eyeTex.wrapS = THREE.ClampToEdgeWrapping;
+                                eyeTex.wrapT = THREE.ClampToEdgeWrapping;
+                                eyeTex.repeat.set(0.000238723238, 0.000239208952);
+                                eyeTex.offset.set(0.00724834995, 0.0100790262);
+                            }
+
+                            mesh.material = new THREE.MeshPhysicalMaterial({
+                                map: eyeTex,
+                                ...eyeMatProps,
+                            });
                         } else if (allNames.includes("teeth")) {
                             mesh.material = teethMat;
                         }
@@ -322,31 +391,34 @@ export const RealisticHumanRenderer: React.FC<RealisticHumanRendererProps> = ({
             r.currentGazeX = THREE.MathUtils.lerp(r.currentGazeX, r.targetGazeX, 0.08);
             r.currentGazeY = THREE.MathUtils.lerp(r.currentGazeY, r.targetGazeY, 0.08);
 
-            if (r.currentGazeX > 0) {
-                setMorph("eyeLookOut_R", r.currentGazeX);
-                setMorph("eyeLookIn_L", r.currentGazeX);
+            const gazeXClamped = Math.max(-0.22, Math.min(0.22, r.currentGazeX));
+            const gazeYClamped = Math.max(-0.16, Math.min(0.16, r.currentGazeY));
+
+            if (gazeXClamped > 0) {
+                setMorph("eyeLookOut_R", gazeXClamped);
+                setMorph("eyeLookIn_L", gazeXClamped);
                 setMorph("eyeLookIn_R", 0);
                 setMorph("eyeLookOut_L", 0);
             } else {
-                setMorph("eyeLookIn_R", -r.currentGazeX);
-                setMorph("eyeLookOut_L", -r.currentGazeX);
+                setMorph("eyeLookIn_R", -gazeXClamped);
+                setMorph("eyeLookOut_L", -gazeXClamped);
                 setMorph("eyeLookOut_R", 0);
                 setMorph("eyeLookIn_L", 0);
             }
 
-            if (r.currentGazeY > 0) {
-                setMorph("eyeLookUp_L", r.currentGazeY);
-                setMorph("eyeLookUp_R", r.currentGazeY);
+            if (gazeYClamped > 0) {
+                setMorph("eyeLookUp_L", gazeYClamped);
+                setMorph("eyeLookUp_R", gazeYClamped);
                 setMorph("eyeLookDown_L", 0);
                 setMorph("eyeLookDown_R", 0);
             } else {
-                setMorph("eyeLookDown_L", -r.currentGazeY);
-                setMorph("eyeLookDown_R", -r.currentGazeY);
+                setMorph("eyeLookDown_L", -gazeYClamped);
+                setMorph("eyeLookDown_R", -gazeYClamped);
                 setMorph("eyeLookUp_L", 0);
                 setMorph("eyeLookUp_R", 0);
             }
 
-            // 7.4 Natural Eyelid Blinking
+            // 7.4 Natural Eyelid Blinking with anatomical resting drape
             if (time > r.nextBlinkTime) {
                 r.isBlinking = true;
                 r.blinkProgress = 0;
@@ -361,7 +433,10 @@ export const RealisticHumanRenderer: React.FC<RealisticHumanRendererProps> = ({
                 }
             }
 
-            const blinkValue = r.isBlinking ? Math.sin(r.blinkProgress) : 0;
+            const restingBlink = 0.07;
+            const blinkValue = r.isBlinking
+                ? restingBlink + (1.0 - restingBlink) * Math.sin(r.blinkProgress)
+                : restingBlink;
             setMorph("eyeBlink_L", blinkValue);
             setMorph("eyeBlink_R", blinkValue);
 
@@ -497,9 +572,15 @@ export const RealisticHumanRenderer: React.FC<RealisticHumanRendererProps> = ({
             controls.dispose();
             ktx2Loader?.dispose();
             faceTexture.dispose();
-            eyeTexture.dispose();
+            // Dispose all dynamically-created eye materials & textures
+            modelGroup.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                    const mat = (child as THREE.Mesh).material as THREE.MeshStandardMaterial;
+                    if (mat?.map) mat.map.dispose();
+                    mat?.dispose();
+                }
+            });
             skinMat.dispose();
-            eyeMat.dispose();
             teethMat.dispose();
             pmremGenerator.dispose();
             roomEnv.dispose();

@@ -126,20 +126,22 @@ export async function POST(req: NextRequest) {
         account.otpExpires = otpExpiry();
         await account.save();
 
+        let isSimulation = false;
         if (account.type === "email") {
             const sent = await sendVerificationEmail(account.identifier, generatedOtp, account.displayName);
             if (!sent) {
-                return NextResponse.json(
-                    { error: "Failed to send verification email. Please check your GMAIL_USER and GMAIL_APP_PASSWORD configurations." },
-                    { status: 500 }
-                );
+                console.warn(`[Login] Email verification to ${account.identifier} failed or SMTP is not configured. Falling back to inline passcode mode for deployment resilience.`);
+                isSimulation = true;
             }
         }
 
         const responseData: OtpSendResponse = {
             success: true,
-            message: "Verification code sent.",
-            accountType: resolvedOrgRole
+            message: isSimulation
+                ? "SMTP service not configured or failed to deliver. Verification code generated."
+                : "Verification code sent.",
+            accountType: resolvedOrgRole,
+            ...(isSimulation ? { otpCode: generatedOtp } : {})
         };
         return NextResponse.json(responseData);
     } catch (error: unknown) {

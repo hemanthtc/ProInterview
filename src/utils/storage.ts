@@ -76,9 +76,12 @@ export function getStorageItem(key: string): string | null {
             }
         } catch {}
 
-        // 2. Check active sessionToken first in tab-scoped storage: auto-heals userLoggedIn if valid
+        // 2. Check active sessionToken first in tab-scoped storage or persistent localStorage: auto-heals userLoggedIn if valid
         try {
-            const token = tabStorage?.getItem("sessionToken") || tempMemory["sessionToken"];
+            const token =
+                tabStorage?.getItem("sessionToken") ||
+                tempMemory["sessionToken"] ||
+                (typeof localStorage !== "undefined" ? localStorage.getItem("sessionToken") : null);
             if (token) {
                 let isExpired = false;
                 try {
@@ -115,6 +118,18 @@ export function getStorageItem(key: string): string | null {
         if (fromTemp === "true") return "true";
         if (fromTemp === "guest") return "guest";
 
+        // 4. Persistent localStorage fallback (survives tab closure & browser restart)
+        try {
+            if (typeof localStorage !== "undefined" && localStorage) {
+                const fromLocal = localStorage.getItem("userLoggedIn");
+                if (fromLocal === "true") {
+                    try { tabStorage?.setItem("userLoggedIn", "true"); } catch {}
+                    tempMemory["userLoggedIn"] = "true";
+                    return "true";
+                }
+            }
+        } catch {}
+
         return null;
     }
 
@@ -126,6 +141,16 @@ export function getStorageItem(key: string): string | null {
         } catch {}
         const fromTemp = tempMemory[key];
         if (fromTemp !== null && fromTemp !== undefined) return fromTemp;
+        try {
+            if (typeof localStorage !== "undefined" && localStorage) {
+                const fromLocal = localStorage.getItem(key);
+                if (fromLocal !== null && fromLocal !== undefined) {
+                    try { tabStorage?.setItem(key, fromLocal); } catch {}
+                    tempMemory[key] = fromLocal;
+                    return fromLocal;
+                }
+            }
+        } catch {}
         return null;
     }
 
@@ -177,6 +202,10 @@ export function setStorageItem(key: string, value: string): void {
             try {
                 tabStorage?.setItem("userLoggedIn", "true");
                 tabStorage?.setItem("userSessionExpiresAt", expiresAt);
+                if (typeof localStorage !== "undefined" && localStorage) {
+                    localStorage.setItem("userLoggedIn", "true");
+                    localStorage.setItem("userSessionExpiresAt", expiresAt);
+                }
             } catch {}
             tempMemory["userLoggedIn"] = "true";
             tempMemory["userSessionExpiresAt"] = expiresAt;
@@ -199,9 +228,16 @@ export function setStorageItem(key: string, value: string): void {
             try {
                 tabStorage?.removeItem("userLoggedIn");
                 tabStorage?.removeItem("userSessionExpiresAt");
+                if (typeof localStorage !== "undefined" && localStorage) {
+                    localStorage.removeItem("userLoggedIn");
+                    localStorage.removeItem("userSessionExpiresAt");
+                }
             } catch {}
             delete tempMemory["userLoggedIn"];
             delete tempMemory["userSessionExpiresAt"];
+            if (typeof document !== "undefined") {
+                document.cookie = "userLoggedIn=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+            }
         }
         emitStorageChange(key);
         return;
@@ -209,6 +245,11 @@ export function setStorageItem(key: string, value: string): void {
 
     if (TAB_AUTH_KEYS.includes(key)) {
         try { tabStorage?.setItem(key, value); } catch {}
+        try {
+            if (typeof localStorage !== "undefined" && localStorage) {
+                localStorage.setItem(key, value);
+            }
+        } catch {}
         tempMemory[key] = value;
         emitStorageChange(key);
         return;
