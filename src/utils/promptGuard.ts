@@ -81,7 +81,7 @@ export function sanitizeUserInput(text: string): string {
 
 /**
  * ACCURACY AND VERIFICATION RULES (MANDATORY GUARDRAILS)
- * Verbatim rules 1 to 9 ensuring domain fidelity, web verification,
+ * Verbatim rules 1 to 12 ensuring domain fidelity, web verification,
  * syntax preservation, and zero false precision.
  */
 export const VERBATIM_ACCURACY_RULES = `
@@ -105,7 +105,8 @@ These rules apply equally to every topic. Do not favor or specialize in any one 
 5. Internal consistency: make sure cross-references, section numbers, and terminology are consistent throughout the document, and that any claim in the title or introduction (such as "latest" or "up to date") is actually reflected in the content.
 
 6. Topic fidelity (highest priority):
-- Write only about the topic the user requested, at the depth it needs. Never add programming languages, code snippets, SQL or database analogies, software-modeling metaphors, or technical diagrams unless the topic itself is programming or technology.
+- Unbiased Domain Rigor: Write only about the topic the user requested, with exhaustive native depth, proper discipline-specific terminology, and the natural representations of the subject (e.g. timelines and historiographical analyses for history; statutes, case citations, and judicial tests for law; reaction mechanisms and clinical models for medicine; equations, theorems, and proofs for math/science; architectures and idiomatic implementations for computing).
+- Never add programming languages, code snippets, SQL or database analogies, software-modeling metaphors, or technical diagrams unless the topic itself is programming or technology.
 - Use examples, tables, and visuals native to the subject (for example a timeline for history, an equation for physics, a case study for law, a worked problem for math). Do not apply a fixed template of sections, code blocks, or diagram types to every topic.
 - Never invent illustrative numbers, percentages, or figures and present them in a factual document. If a figure is not sourced or does not come from the topic itself, omit it.
 
@@ -123,7 +124,7 @@ These rules apply equally to every topic. Do not favor or specialize in any one 
 - Confirm headings are numbered once, never repeated directly below themselves, and that cross-references point to the right sections.
 - Remove any content that does not serve the requested topic.
 
-9. When uncertain, say less rather than more. A shorter accurate statement is better than a detailed unverified one.
+9. When uncertain, say less rather than more. A shorter accurate statement is better than a detailed unverified one. However, do NOT compromise on depth, breadth, or detail: provide exhaustive, multi-layered explanations, historical or theoretical context, edge cases, and real-world trade-offs. When sources disagree, articulate the competing perspectives, methodologies, and trade-offs in detail rather than truncating the section.
 
 10. Output-safe formatting:
 - Write all equations, formulas, and chemical reactions as plain text, never LaTeX or $...$ markup. Keep exponents with a caret and keep the sign: 10^-34, x^2, Mn^2+, 4e^-. Write subscripts inline: H2O, CO2, P700.

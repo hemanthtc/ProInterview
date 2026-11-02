@@ -532,18 +532,21 @@ A document must use the exact same date for the same historical event throughout
 Write all equations, formulas, and math expressions as plain text (e.g. 2H2O -> 4H+ + 4e- + O2, 14/3 = 4.67), NEVER LaTeX ($...$, \\frac, \\rightarrow).
 Any text diagram must use ASCII only (+ - | > v), max 80 columns. Non-technical topics must prefer a table or list over a drawn diagram.
 
+EXHAUSTIVE RESEARCH MANDATE:
 You MUST examine this topic in maximum depth, covering:
-- Every key concept, historical context, core principles, standard terminology, and domain-specific knowledge.
-- Crucial subtopics, background context, chronological or logical progression of lessons.
-- Nuanced perspectives, verified facts, and foundational through advanced domain mastery.
+- Domain Taxonomy & Core Concepts: exhaustive definitions, key terminology, primary classification trees, and mental models.
+- Chronological Progression & Milestones: comprehensive timeline, key historical phases, influential figures, and landmark events.
+- Foundational Principles & Theories: core doctrines, scientific laws, or governing principles.
+- Real-World Case Studies & Applications: specific historical events, institutional case studies, comparative perspectives, and primary source analyses.
+- Critical Debates & Nuanced Perspectives: scholarly controversies, trade-offs, and evolving viewpoints.
 
-Provide your findings as a highly detailed, comprehensive markdown report in 'researchNotes'. Leave no stone unturned and write a detailed analysis.
+Provide your findings as an extensive, highly detailed markdown report in 'researchNotes' (aim for comprehensive, multi-paragraph depth).
 Suggest EXACTLY ${sectionCount} logical outline sections in the 'fields' list (do not return fewer than ${sectionCount} items). Each section must have:
 - name: string (lowercase snake_case, e.g. 'historical_origins', 'cultural_renaissance')
 - label: string (readable section title WITHOUT leading numbers, e.g. 'Historical Origins and Foundations', 'Cultural and Architectural Renaissance')
 - type: string (must be exactly 'section')
-- description: string (brief explanation of what this section should cover)
-- rules: string (specific guidelines or details to generate)
+- description: string (detailed explanation of what this section should cover, including 3-5 subtopics)
+- rules: string (specific guidelines or details to generate, emphasizing depth, case studies, and tables)
 
 You must return a JSON object with this exact structure:
 {
@@ -564,19 +567,21 @@ ACCURACY AND FORMATTING RULES:
 - Any text diagram must use ASCII only (+ - | > v), max 80 columns.
 - SINGLE DATE RULE: A document must use the same release or deprecation date for the same version/event throughout, verified against grounded sources.
 
+EXHAUSTIVE RESEARCH MANDATE:
 You MUST examine this topic in maximum depth, covering:
-- Every key concept, standard terminology, advanced implementation details, design patterns, and programming syntax.
-- Crucial subtopics, background context, prerequisites, and production architecture.
-- Logical progression of lessons (e.g. foundational mechanisms precede complex abstractions).
-- Specific edge cases, pitfalls, security considerations, and common engineering errors.
+- Architectural Taxonomy & Internals: low-level mechanics, memory bounds, execution lifecycles, and core protocols.
+- Standard Industry Terminology & Idiomatic Patterns: standard nomenclature, production patterns, and modern tooling.
+- Chronological Evolution: major release milestones, deprecated features vs modern replacements, and future roadmap.
+- Production Implementations & Code Architecture: concrete algorithmic approaches, failure handling, and concurrency models.
+- Edge Cases, Trade-offs & Performance: benchmark comparisons, bottlenecks, security vulnerabilities, and failure recovery.
 
-Provide your findings as a highly detailed, comprehensive markdown report in 'researchNotes'. Leave no stone unturned and write a detailed analysis.
+Provide your findings as an extensive, highly detailed markdown report in 'researchNotes' (aim for comprehensive, multi-paragraph depth).
 Suggest EXACTLY ${sectionCount} logical outline sections in the 'fields' list (do not return fewer than ${sectionCount} items). Each section must have:
 - name: string (lowercase snake_case, e.g. 'core_architecture', 'concurrency_and_performance')
-- label: string (readable section title WITHOUT leading numbers, e.g. 'Core Architecture & Internals', 'Concurrency & Performance Optimization')
+- label: string (readable section title WITHOUT leading numbers, e.g. 'Core Architecture and Internals', 'Concurrency and Performance Optimization')
 - type: string (must be exactly 'section')
-- description: string (brief explanation of what this section should cover)
-- rules: string (specific technical guidelines or details to generate)
+- description: string (detailed explanation of what this section should cover, including 3-5 subtopics)
+- rules: string (specific technical guidelines or details to generate, emphasizing code snippets, diagrams, and benchmarks)
 
 You must return a JSON object with this exact structure:
 {
@@ -639,7 +644,7 @@ Requirements & Rules: ${sectionRules}
 
     prompt += `9. Markdown tables: Ensure all markdown tables follow standard syntax with pipe characters and a header separator row.
 10. Formatting integrity: Preserve all legitimate characters (|, ||, $, %, &, <, >, \\). Never introduce placeholder corruption like %%%.
-11. Dive deep: provide comprehensive explanations, historical/technical depth, definitions, and practical context.
+11. EXHAUSTIVE DEPTH MANDATE: Do not write short summaries, superficial outlines, or high-level placeholders. Target a minimum of 1,500 to 2,200 words for this section, divided into at least 4 to 6 detailed subsections using level 3 headings (###). Dive deep: provide comprehensive explanations, historical/technical depth, real-world case studies, detailed comparative markdown tables, and practical context.
 12. Return the raw markdown content ONLY. Do not wrap the response in JSON or conversational text.`;
 
     return prompt;

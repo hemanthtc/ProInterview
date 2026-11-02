@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  ADVANCED_CANDIDATE_MODELS,
   fetchKeySupportedModels,
   getAllGeminiApiKeys,
   getWorkingGeminiKey,
@@ -14,8 +13,12 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 const UPSTREAM_TIMEOUT_MS = 30000;
+const TOTAL_DEADLINE_MS = 54000;
 
 export async function POST(req: NextRequest) {
+  const startTime = Date.now();
+  const deadline = startTime + TOTAL_DEADLINE_MS;
+
   try {
     const body = await req.json().catch(() => ({}));
     const customKey =
@@ -85,11 +88,12 @@ export async function POST(req: NextRequest) {
       targetModel = "gemini-3-flash-preview";
     }
 
-    // Grounding: Enabled for factual domains AND tech versions/releases/deprecations on text calls.
-    // Note: tools and jsonMode cannot be combined per Gemini API specification (responseMimeType: 'application/json' rejects tools).
-    const enableGrounding = !jsonMode && isGroundingTopic(prompt);
+    // Grounding: Enabled for factual domains AND tech versions/releases/deprecations
+    const enableGrounding = isGroundingTopic(prompt);
 
     for (const key of candidateKeys) {
+      if (Date.now() >= deadline - 3000) break;
+
       const genAI = new GoogleGenerativeAI(key);
       const detectedKeyModels = await fetchKeySupportedModels(key);
       const validTextModels = preferTextModels(detectedKeyModels);
@@ -99,8 +103,6 @@ export async function POST(req: NextRequest) {
         ...validTextModels,
         "gemini-3-flash-preview",
         "gemini-3.1-flash-lite-preview",
-        "gemini-3.5-flash",
-        "gemini-3.8-flash",
         "gemini-2.5-flash",
         "gemini-flash-latest",
       ])).filter((m) =>
@@ -110,10 +112,21 @@ export async function POST(req: NextRequest) {
       ).slice(0, 5);
 
       for (let attempt = 0; attempt < 2; attempt++) {
+        if (Date.now() >= deadline - 2500) break;
+
         for (const modelName of candidateList) {
+          if (Date.now() >= deadline - 2000) break;
+
           try {
-            const generationConfig: any = { temperature };
-            if (jsonMode) {
+            // maxOutputTokens 8192 ensures long sections (1,500-2,500+ words) are never clipped
+            const generationConfig: any = {
+              temperature,
+              maxOutputTokens: 8192,
+            };
+
+            // Note: tools and responseMimeType: 'application/json' cannot be combined per Gemini API specification.
+            // If grounding is enabled, omit responseMimeType; the client's cleanAndParseJSON handles JSON extraction.
+            if (jsonMode && !enableGrounding) {
               generationConfig.responseMimeType = "application/json";
             }
 
@@ -151,7 +164,7 @@ export async function POST(req: NextRequest) {
                 throw toolErr;
               }
 
-              // Retry without tools ONLY when status === 400 or the error is INVALID_ARGUMENT (no includes("400"))
+              // Retry without tools ONLY when status === 400 or the error is INVALID_ARGUMENT
               const is400OrInvalidArgument =
                 status === 400 ||
                 toolErr?.errorDetails?.status === "INVALID_ARGUMENT" ||
