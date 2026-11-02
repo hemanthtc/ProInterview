@@ -517,7 +517,7 @@ export function normalizeTextForExport(text: string): string {
 /**
  * Builds the research and outline prompt adhering to topic classification.
  */
-export function buildResearchPrompt(topic: string, sectionCount = 5): string {
+export function buildResearchPrompt(topic: string, sectionCount = 14): string {
     const isTech = isTechnicalTopic(topic);
 
     if (!isTech) {
@@ -532,8 +532,9 @@ A document must use the exact same date for the same historical event throughout
 Write all equations, formulas, and math expressions as plain text (e.g. 2H2O -> 4H+ + 4e- + O2, 14/3 = 4.67), NEVER LaTeX ($...$, \\frac, \\rightarrow).
 Any text diagram must use ASCII only (+ - | > v), max 80 columns. Non-technical topics must prefer a table or list over a drawn diagram.
 
-EXHAUSTIVE RESEARCH MANDATE:
-You MUST examine this topic in maximum depth, covering:
+EXHAUSTIVE RESEARCH & CURRICULUM MANDATE:
+- Progression Span: If the topic indicates a progression (e.g. 'basic to advance', 'beginner to advanced', 'from scratch', 'complete guide', 'masterclass'), your outline and researchNotes MUST span the entire trajectory from foundational prerequisites, core mechanisms, intermediate algorithms/techniques, to advanced architectures and real-world deployment.
+- You MUST examine this topic in maximum depth, covering:
 - Domain Taxonomy & Core Concepts: exhaustive definitions, key terminology, primary classification trees, and mental models.
 - Chronological Progression & Milestones: comprehensive timeline, key historical phases, influential figures, and landmark events.
 - Foundational Principles & Theories: core doctrines, scientific laws, or governing principles.
@@ -567,8 +568,9 @@ ACCURACY AND FORMATTING RULES:
 - Any text diagram must use ASCII only (+ - | > v), max 80 columns.
 - SINGLE DATE RULE: A document must use the same release or deprecation date for the same version/event throughout, verified against grounded sources.
 
-EXHAUSTIVE RESEARCH MANDATE:
-You MUST examine this topic in maximum depth, covering:
+EXHAUSTIVE RESEARCH & CURRICULUM MANDATE:
+- Progression Span: If the topic indicates a progression (e.g. 'basic to advance', 'beginner to advanced', 'from scratch', 'complete guide', 'masterclass'), your outline and researchNotes MUST span the entire trajectory from foundational prerequisites, core mechanisms, intermediate algorithms/techniques, to advanced architectures and real-world deployment.
+- You MUST examine this topic in maximum depth, covering:
 - Architectural Taxonomy & Internals: low-level mechanics, memory bounds, execution lifecycles, and core protocols.
 - Standard Industry Terminology & Idiomatic Patterns: standard nomenclature, production patterns, and modern tooling.
 - Chronological Evolution: major release milestones, deprecated features vs modern replacements, and future roadmap.
