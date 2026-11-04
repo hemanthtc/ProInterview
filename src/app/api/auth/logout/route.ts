@@ -9,14 +9,18 @@ export async function POST(req: NextRequest) {
         let identifier: string | undefined;
         let accountType: string | undefined;
         let tabOnly = false;
-        let isGlobal = false;
+        let isGlobal = true;
 
         try {
             const body = await req.json();
             identifier = body?.identifier;
             accountType = body?.accountType;
-            tabOnly = Boolean(body?.tabOnly);
-            isGlobal = Boolean(body?.global);
+            if (typeof body?.tabOnly === "boolean") {
+                tabOnly = body.tabOnly;
+            }
+            if (typeof body?.global === "boolean") {
+                isGlobal = body.global;
+            }
         } catch {
             // Body is optional on logout
         }
@@ -39,52 +43,52 @@ export async function POST(req: NextRequest) {
         const isSecure = shouldSetSecureCookie(req);
         const response = NextResponse.json({ success: true, message: "Logged out successfully from session." });
 
-        // Tab-specific logout must NOT delete shared domain cookies if another tab might be using them
-        // Only clear cookies if global logout was explicitly requested, or if the cookie belongs to this user and not tab-scoped
-        if (isGlobal || !tabOnly) {
-            let shouldClearCookies = isGlobal;
-            if (!shouldClearCookies) {
-                const sessionCookie = req.cookies.get("session")?.value;
-                if (!sessionCookie) {
-                    shouldClearCookies = true;
-                } else if (identifier) {
-                    const cookiePayload = verifyToken(sessionCookie);
-                    // Only clear if the shared cookie actually belongs to the user logging out
-                    if (!cookiePayload || cookiePayload.identifier.toLowerCase() === identifier.toLowerCase()) {
-                        shouldClearCookies = true;
-                    }
+        // Tab-specific logout must NOT delete shared domain cookies ONLY IF:
+        // tabOnly is explicitly true AND isGlobal is false AND the cookie belongs to a DIFFERENT user than the one logging out.
+        // In all other cases (default logout, global logout, same user logout, or anonymous logout), ALWAYS clear cookies.
+        let shouldClearCookies = true;
+        if (tabOnly && !isGlobal) {
+            const sessionCookie = req.cookies.get("session")?.value;
+            if (sessionCookie && identifier) {
+                const cookiePayload = verifyToken(sessionCookie);
+                if (cookiePayload && cookiePayload.identifier.toLowerCase() !== identifier.toLowerCase()) {
+                    shouldClearCookies = false;
                 }
             }
+        }
 
-            if (shouldClearCookies) {
-                try {
-                    await clearSessionCookie(req);
-                } catch (cookieErr) {
-                    console.warn("clearSessionCookie warning:", cookieErr);
-                }
-
-                response.cookies.set("session", "", {
-                    httpOnly: true,
-                    secure: isSecure,
-                    sameSite: "lax",
-                    path: "/",
-                    expires: new Date(0),
-                    maxAge: 0
-                });
-                response.cookies.set("userLoggedIn", "", {
-                    httpOnly: false,
-                    secure: isSecure,
-                    sameSite: "lax",
-                    path: "/",
-                    expires: new Date(0),
-                    maxAge: 0
-                });
+        if (shouldClearCookies) {
+            try {
+                await clearSessionCookie(req);
+            } catch (cookieErr) {
+                console.warn("clearSessionCookie warning:", cookieErr);
             }
+
+            response.cookies.set("session", "", {
+                httpOnly: true,
+                secure: isSecure,
+                sameSite: "lax",
+                path: "/",
+                expires: new Date(0),
+                maxAge: 0
+            });
+            response.cookies.set("userLoggedIn", "", {
+                httpOnly: false,
+                secure: isSecure,
+                sameSite: "lax",
+                path: "/",
+                expires: new Date(0),
+                maxAge: 0
+            });
         }
 
         return response;
     } catch (error: any) {
         console.error("Logout API error:", error);
-        return NextResponse.json({ success: true, message: "Logged out with fallback." });
+        const isSecure = shouldSetSecureCookie(req);
+        const fallbackRes = NextResponse.json({ success: true, message: "Logged out with fallback." });
+        fallbackRes.cookies.set("session", "", { httpOnly: true, secure: isSecure, sameSite: "lax", path: "/", expires: new Date(0), maxAge: 0 });
+        fallbackRes.cookies.set("userLoggedIn", "", { httpOnly: false, secure: isSecure, sameSite: "lax", path: "/", expires: new Date(0), maxAge: 0 });
+        return fallbackRes;
     }
 }

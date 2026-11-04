@@ -117,22 +117,26 @@ export async function setSessionCookie(payload: SessionPayload, isPwa?: boolean,
  * Clears the session cookie.
  */
 export async function clearSessionCookie(req?: NextRequest | Request) {
-    const cookieStore = await cookies();
-    const isSecure = shouldSetSecureCookie(req);
-    cookieStore.set("session", "", {
-        httpOnly: true,
-        secure: isSecure,
-        sameSite: "lax",
-        path: "/",
-        expires: new Date(0)
-    });
-    cookieStore.set("userLoggedIn", "", {
-        httpOnly: false,
-        secure: isSecure,
-        sameSite: "lax",
-        path: "/",
-        expires: new Date(0)
-    });
+    try {
+        const cookieStore = await cookies();
+        const isSecure = shouldSetSecureCookie(req);
+        cookieStore.set("session", "", {
+            httpOnly: true,
+            secure: isSecure,
+            sameSite: "lax",
+            path: "/",
+            expires: new Date(0)
+        });
+        cookieStore.set("userLoggedIn", "", {
+            httpOnly: false,
+            secure: isSecure,
+            sameSite: "lax",
+            path: "/",
+            expires: new Date(0)
+        });
+    } catch {
+        // cookies() is only available within an active Next.js request context
+    }
 }
 
 /**

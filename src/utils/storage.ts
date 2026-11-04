@@ -341,6 +341,13 @@ export function removeStorageItem(key: string): void {
             delete tempMemory[k];
         });
         purgeAllUserLocalCaches();
+        if (typeof document !== "undefined") {
+            const past = "Thu, 01 Jan 1970 00:00:00 GMT";
+            try {
+                document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
+                document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0`;
+            } catch {}
+        }
         emitStorageChange(key);
         return;
     }

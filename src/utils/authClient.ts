@@ -50,8 +50,8 @@ export async function hydrateSessionFromServer(): Promise<boolean> {
 }
 
 /**
- * Clears authentication tokens, user metadata, and in-memory caches for the current tab.
- * Does not clear shared cookies or other tabs' sessions.
+ * Clears authentication tokens, user metadata, and in-memory caches for the current tab and browser.
+ * Also expires domain session cookies on the client side.
  */
 export function clearAllAuthSession(): void {
     if (typeof window === "undefined") return;
@@ -60,17 +60,27 @@ export function clearAllAuthSession(): void {
         try {
             removeStorageItem(key);
             sessionStorage.removeItem(key);
+            localStorage.removeItem(key);
         } catch {}
     });
+
+    try {
+        const past = "Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
+        document.cookie = `userLoggedIn=; path=/; expires=${past}; max-age=0`;
+        document.cookie = `session=; path=/; expires=${past}; max-age=0; SameSite=Lax`;
+        document.cookie = `session=; path=/; expires=${past}; max-age=0`;
+    } catch {}
 }
 
 /**
- * Tab-scoped logout:
- * Notifies the server of tab logout, purges this tab's storage and in-memory state,
- * dispatches a local tab state change, and redirects only this tab.
- * Does NOT clear other tabs' sessions or shared cookies unless global=true is requested.
+ * User logout:
+ * Notifies the server to invalidate session cookies, purges storage and in-memory state,
+ * dispatches a local state change, and cleanly redirects the browser.
+ * Defaults to global logout (isGlobal = true) so that session cookies and shared storage
+ * are completely cleared and do not auto-rehydrate upon page reload or navigation.
  */
-export async function logoutUser(redirectTo: string = "/", isGlobal: boolean = false): Promise<void> {
+export async function logoutUser(redirectTo: string = "/", isGlobal: boolean = true): Promise<void> {
     try {
         const identifier = getStorageItem("userIdentifier") || "";
         const role = getStorageItem("userRole") || getStorageItem("userType") || "user";
@@ -90,7 +100,6 @@ export async function logoutUser(redirectTo: string = "/", isGlobal: boolean = f
     clearAllAuthSession();
 
     if (typeof window !== "undefined") {
-        // Dispatch only window-local event; do NOT fire cross-tab "storage" event
         window.dispatchEvent(new CustomEvent("ai-storage-change", { detail: { key: "userLoggedIn" } }));
 
         if (redirectTo) {
@@ -188,10 +197,20 @@ export function syncClientAuthState(): void {
                 try { tabStorage?.setItem("userLoggedIn", "true"); } catch {}
             }
         } else {
-            // Check if user has an active session cookie on the domain
-            const hasSessionCookie =
-                typeof document !== "undefined" &&
-                (document.cookie.includes("userLoggedIn=true") || document.cookie.includes("session="));
+            // Check if user has an active, non-empty session cookie on the domain
+            let hasSessionCookie = false;
+            if (typeof document !== "undefined" && document.cookie) {
+                const getCookieVal = (name: string): string => {
+                    const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
+                    return match ? decodeURIComponent(match[1].trim()) : "";
+                };
+                const userVal = getCookieVal("userLoggedIn");
+                const sessVal = getCookieVal("session");
+                hasSessionCookie =
+                    userVal === "true" ||
+                    userVal === "guest" ||
+                    (Boolean(sessVal) && sessVal !== '""');
+            }
             if (hasSessionCookie) {
                 hydrateSessionFromServer();
             }
