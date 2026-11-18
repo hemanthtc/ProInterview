@@ -26,12 +26,14 @@ class PiperWasmService {
     private initPromise: Promise<boolean> | null = null;
     private downloadProgress = 0;
     private voiceId = "en_US-lessac-medium" as const;
+    private isUnavailable = false;
 
     /**
      * Pre-warms and downloads the neural model into browser OPFS storage in the background.
      */
     async init(): Promise<boolean> {
         if (typeof window === "undefined") return false;
+        if (this.isUnavailable) return false;
         if (this.session) return true;
         if (this.initPromise) return this.initPromise;
 
@@ -57,11 +59,15 @@ class PiperWasmService {
                     });
                 }
                 this.isInitializing = false;
+                if (!this.session) {
+                    this.isUnavailable = true;
+                    return false;
+                }
                 return true;
             } catch (err) {
-                console.warn("[PiperWasm] Failed to initialize client-side WebAssembly session:", err);
+                console.warn("[PiperWasm] Client WASM TTS unavailable in current browser environment (falling back to server TTS):", (err as Error)?.message || err);
+                this.isUnavailable = true;
                 this.isInitializing = false;
-                this.initPromise = null;
                 return false;
             }
         })();
@@ -88,6 +94,7 @@ class PiperWasmService {
      */
     async synthesize(text: string): Promise<PiperWasmSynthesisResult | null> {
         if (typeof window === "undefined") return null;
+        if (this.isUnavailable) return null;
 
         const cleanText = text
             .replace(/\[MODE:(?:CHAT|CODE|DRAW)\]/gi, "")
@@ -98,11 +105,15 @@ class PiperWasmService {
 
         try {
             const ready = await this.init();
+            if (!ready || !this.session) {
+                return null;
+            }
+
             const tts = await import("@zahid0/piper-tts-web");
 
             let wavBlob: Blob | null = null;
 
-            if (this.session && typeof (this.session as { predict: (t: string) => Promise<Blob> }).predict === "function") {
+            if (typeof (this.session as { predict: (t: string) => Promise<Blob> }).predict === "function") {
                 wavBlob = await (this.session as { predict: (t: string) => Promise<Blob> }).predict(cleanText);
             } else {
                 wavBlob = await tts.predict(

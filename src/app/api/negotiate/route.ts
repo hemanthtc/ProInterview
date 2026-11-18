@@ -102,7 +102,7 @@ Be practical, ethical, and specific to the numbers/context given.`;
         let rawText: string;
         try {
             rawText = await generateWithFallback(prompt, {
-                model: "gemini-3.8-flash",
+                model: "gemini-2.0-flash",
                 generationConfig: { temperature: 0.45 },
             });
         } catch (err: any) {

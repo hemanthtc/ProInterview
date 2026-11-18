@@ -46,7 +46,7 @@ export function getWorkingGeminiKey(): string {
     return keys[0];
 }
 
-export function getGeminiModel(model = "gemini-2.5-flash") {
+export function getGeminiModel(model = "gemini-2.0-flash") {
     const key = getWorkingGeminiKey();
     if (!key || key === "dummy") throw new Error("GEMINI_API_KEY is not configured");
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
@@ -87,17 +87,15 @@ export function promptCacheKey(namespace: string, ...parts: unknown[]): string {
 // Fast, sub-2s models (gemini-2.5-flash, gemini-3-flash-preview, gemini-3.1-flash-lite, gemini-3.5-flash)
 // are prioritized first to guarantee immediate responsiveness during interviews.
 export const ADVANCED_CANDIDATE_MODELS = [
-  "gemini-2.5-flash",
   "gemini-3-flash-preview",
-  "gemini-3.1-flash-lite",
-  "gemini-3.5-flash",
-  "gemini-3.5-flash-lite",
+  "gemini-2.0-flash",
+  "gemini-2.0-flash-lite",
+  "gemini-1.5-flash",
   "gemini-flash-latest",
   "gemini-flash-lite-latest",
-  "gemini-3.1-flash-lite-preview",
+  "gemini-2.0-pro-exp",
+  "gemini-1.5-pro",
   "gemini-pro-latest",
-  "gemini-2.5-pro",
-  "gemini-3.8-flash",
 ];
 
 /**
@@ -107,18 +105,18 @@ export const ADVANCED_CANDIDATE_MODELS = [
 export function preferTextModels(models: string[]): string[] {
   const isTextModel = (m: string) =>
     !/(embedding|imagen|tts|audio|live|aqa|learnlm|veo|robotics)/i.test(m) &&
-    !/(1\.5|2\.0)/i.test(m);
+    !/(2\.5|3\.1|3\.5|3\.8)/i.test(m);
   const score = (m: string) => {
     let s = 0;
-    if (m === "gemini-2.5-flash") s -= 60;
     if (m === "gemini-3-flash-preview") s -= 50;
-    if (m === "gemini-3.1-flash-lite") s -= 45;
-    if (m === "gemini-3.5-flash") s -= 40;
-    if (m === "gemini-3.5-flash-lite") s -= 35;
-    if (m === "gemini-3.1-flash-lite-preview") s -= 30;
-    if (m === "gemini-flash-latest") s -= 25;
-    if (m === "gemini-flash-lite-latest") s -= 20;
-    if (m === "gemini-3.8-flash") s -= 5;
+    if (m === "gemini-2.0-flash") s -= 45;
+    if (m === "gemini-2.0-flash-lite") s -= 40;
+    if (m === "gemini-1.5-flash") s -= 35;
+    if (m === "gemini-flash-latest") s -= 30;
+    if (m === "gemini-flash-lite-latest") s -= 25;
+    if (m === "gemini-2.0-pro-exp") s -= 15;
+    if (m === "gemini-1.5-pro") s -= 10;
+    if (m === "gemini-pro-latest") s -= 5;
     if (m.includes("flash")) s -= 5;
     if (m.includes("latest")) s -= 3;
     if (m.includes("lite")) s += 1;
@@ -171,7 +169,11 @@ export async function generateWithFallback(
     const keys = getAllGeminiApiKeys();
     if (keys.length === 0) throw new Error("GEMINI_API_KEY is not configured");
 
-    const primaryModel = options.model || "gemini-2.5-flash";
+    let rawModel = options.model || "gemini-2.0-flash";
+    if (/(2\.5|3\.1|3\.5|3\.8)/i.test(rawModel) && !rawModel.includes("preview")) {
+        rawModel = "gemini-2.0-flash";
+    }
+    const primaryModel = rawModel;
     // Total execution budget across all candidate models (respect caller's timeout up to 45s for deep generations like resume synthesis)
     const overallTimeout = Math.min(options.timeout ?? 32000, 45000);
     const deadline = Date.now() + overallTimeout;
@@ -195,19 +197,13 @@ export async function generateWithFallback(
         // Include all reliable flash and pro models without artificial exclusions
         const candidateList = Array.from(new Set([
             primaryModel,
-            "gemini-2.5-flash",
-            "gemini-3-flash-preview",
-            "gemini-3.1-flash-lite",
-            "gemini-3.5-flash",
-            "gemini-3.5-flash-lite",
-            "gemini-flash-latest",
-            "gemini-flash-lite-latest",
             ...validTextModels,
             ...ADVANCED_CANDIDATE_MODELS,
         ])).filter(m => 
-            !/(1\.5|2\.0)/i.test(m) &&
+            !/(embedding|imagen|tts|audio|live|aqa|learnlm|veo|robotics)/i.test(m) &&
             m !== "gemini-2.0-pro-exp-02-05" &&
-            m !== "gemini-2.0-flash-thinking-exp-01-21"
+            m !== "gemini-2.0-flash-thinking-exp-01-21" &&
+            (!/(2\.5|3\.1|3\.5|3\.8)/i.test(m) || m.includes("preview"))
         );
 
         const activeModels = candidateList.filter((m) => {
@@ -233,9 +229,10 @@ export async function generateWithFallback(
                 console.warn(`[Gemini API] Insufficient time remaining (${remainingTime}ms) before serverless deadline; terminating model loop.`);
                 break;
             }
-            // Allocate a responsive slice per attempt (max 8-10s) so hanging models don't exhaust the overall deadline
-            const perModelBudget = options.timeout ? Math.min(Math.floor(options.timeout / 2.5), 10000) : 8000;
-            const thisModelTimeout = Math.min(perModelBudget, Math.max(remainingTime - 1000, 3000));
+            // Allocate a responsive slice per attempt so hanging models don't exhaust the overall deadline
+            // Allow up to 25s when caller explicitly configured a larger timeout (e.g. 45s for deep analysis/resume generation)
+            const perModelBudget = options.timeout ? Math.min(Math.floor(options.timeout * 0.6), 25000) : 10000;
+            const thisModelTimeout = Math.min(perModelBudget, Math.max(remainingTime - 1000, 4000));
 
             try {
                 console.log(`[Gemini API] Invoking model: ${modelName}`);

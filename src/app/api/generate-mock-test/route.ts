@@ -98,7 +98,7 @@ Ensure the questions are realistic, technically accurate, and completely unique.
 
         try {
             const textResponse = await generateWithFallback(systemPrompt, {
-                model: "gemini-3.5-flash",
+                model: "gemini-2.0-flash",
                 timeout: 40000,
                 generationConfig: { temperature: 0.7 },
             });
