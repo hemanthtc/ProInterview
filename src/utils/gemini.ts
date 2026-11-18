@@ -46,7 +46,7 @@ export function getWorkingGeminiKey(): string {
     return keys[0];
 }
 
-export function getGeminiModel(model = "gemini-2.0-flash") {
+export function getGeminiModel(model = "gemini-3-flash-preview") {
     const key = getWorkingGeminiKey();
     if (!key || key === "dummy") throw new Error("GEMINI_API_KEY is not configured");
     return new GoogleGenerativeAI(key).getGenerativeModel({ model });
@@ -194,10 +194,13 @@ export async function generateWithFallback(
         const detectedKeyModels = await fetchKeySupportedModels(key);
         const validTextModels = preferTextModels(detectedKeyModels);
 
-        // Include all reliable flash and pro models without artificial exclusions
+        // Prioritize models that were actively verified for this key
+        const supportedPrimary = validTextModels.includes(primaryModel) ? primaryModel : null;
         const candidateList = Array.from(new Set([
-            primaryModel,
+            ...(supportedPrimary ? [supportedPrimary] : []),
             ...validTextModels,
+            primaryModel,
+            "gemini-3-flash-preview",
             ...ADVANCED_CANDIDATE_MODELS,
         ])).filter(m => 
             !/(embedding|imagen|tts|audio|live|aqa|learnlm|veo|robotics)/i.test(m) &&

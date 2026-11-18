@@ -184,7 +184,7 @@ ${ANTI_LEAK_SUFFIX}`;
         let responseResult: string;
         try {
             responseResult = await generateWithFallback({ contents: conversationContents }, {
-                model: "gemini-2.0-flash",
+                model: "gemini-3-flash-preview",
                 generationConfig: { temperature: 0.7 },
                 timeout: 20000
 
